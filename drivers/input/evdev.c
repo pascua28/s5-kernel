@@ -25,6 +25,7 @@
 #include <linux/device.h>
 #include <linux/wakelock.h>
 #include <linux/cdev.h>
+#include <linux/wakelock.h>
 #include "input-compat.h"
 
 struct evdev {
