@@ -24,6 +24,7 @@ struct user_namespace {
 	struct user_namespace	*parent;
 	kuid_t			owner;
 	kgid_t			group;
+	unsigned int		proc_inum;
 };
 
 extern struct user_namespace init_user_ns;
