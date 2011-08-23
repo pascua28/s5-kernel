@@ -33,6 +33,7 @@
 #include <linux/cpuidle.h>
 #include <linux/console.h>
 #include <linux/leds.h>
+#include <linux/console.h>
 
 #include <asm/cacheflush.h>
 #include <asm/idmap.h>
