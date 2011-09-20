@@ -454,6 +454,10 @@ void find_memory_hole(void)
 	}
 }
 
+unsigned long membank0_size;
+EXPORT_SYMBOL(membank0_size);
+unsigned long membank1_start;
+EXPORT_SYMBOL(membank1_start);
 #endif
 
 void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
@@ -465,9 +469,11 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 	for (i = 0; i < mi->nr_banks; i++)
 		memblock_add(mi->bank[i].start, mi->bank[i].size);
 
-#ifdef CONFIG_TIMA_RKP_30
-	memblock_reserve(__pa(_text), PAGE_SIZE);
-#endif /*CONFIG_TIMA_RKP_30*/
+#ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
+	membank0_size = meminfo.bank[0].size;
+	membank1_start = meminfo.bank[1].start;
+#endif
+
 	/* Register the kernel text, kernel data and initrd with memblock. */
 #ifdef CONFIG_XIP_KERNEL
 	memblock_reserve(__pa(_sdata), _end - _sdata);
