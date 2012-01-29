@@ -126,7 +126,7 @@ static int lg216x_write_regs(struct lg216x_state *state,
 
 	lg_reg("writing %d registers...\n", len);
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < len - 1; i++) {
 		ret = lg216x_write_reg(state, regs[i].reg, regs[i].val);
 		if (lg_fail(ret))
 			return ret;
@@ -413,7 +413,6 @@ static int lg216x_set_ensemble(struct lg216x_state *state, int id)
 		reg = 0x0400;
 		break;
 	case LG2161:
-	default:
 		reg = 0x0500;
 		break;
 	}
@@ -805,7 +804,6 @@ fail:
 
 /* ------------------------------------------------------------------------ */
 
-#if 0
 static int lg216x_read_fic_err_count(struct lg216x_state *state, u8 *err)
 {
 	u8 fic_err;
@@ -938,7 +936,6 @@ static int lg216x_read_rs_err_count(struct lg216x_state *state, u16 *err)
 	}
 	return ret;
 }
-#endif
 
 /* ------------------------------------------------------------------------ */
 
@@ -1019,7 +1016,6 @@ static int lg216x_get_frontend(struct dvb_frontend *fe)
 		if (lg_fail(ret))
 			goto fail;
 	}
-#if 0
 	ret = lg216x_read_fic_err_count(state,
 				(u8 *)&fe->dtv_property_cache.atscmh_fic_err);
 	if (lg_fail(ret))
@@ -1046,7 +1042,6 @@ static int lg216x_get_frontend(struct dvb_frontend *fe)
 		break;
 	}
 	lg_fail(ret);
-#endif
 fail:
 	return ret;
 }
@@ -1322,7 +1317,6 @@ fail:
 
 static int lg216x_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 {
-#if 0
 	struct lg216x_state *state = fe->demodulator_priv;
 	int ret;
 
@@ -1333,9 +1327,6 @@ static int lg216x_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 
 	*ucblocks = fe->dtv_property_cache.atscmh_rs_err;
 fail:
-#else
-	*ucblocks = 0;
-#endif
 	return 0;
 }
 
@@ -1359,6 +1350,7 @@ static struct dvb_frontend_ops lg2160_ops = {
 	.delsys = { SYS_ATSCMH },
 	.info = {
 		.name = "LG Electronics LG2160 ATSC/MH Frontend",
+		.type               = FE_ATSC,
 		.frequency_min      = 54000000,
 		.frequency_max      = 858000000,
 		.frequency_stepsize = 62500,
@@ -1387,6 +1379,7 @@ static struct dvb_frontend_ops lg2161_ops = {
 	.delsys = { SYS_ATSCMH },
 	.info = {
 		.name = "LG Electronics LG2161 ATSC/MH Frontend",
+		.type               = FE_ATSC,
 		.frequency_min      = 54000000,
 		.frequency_max      = 858000000,
 		.frequency_stepsize = 62500,
