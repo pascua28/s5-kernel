@@ -20,7 +20,6 @@
  */
 
 #include <linux/err.h>
-#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
