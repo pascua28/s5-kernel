@@ -526,7 +526,6 @@ config BATTERY_BCL
 config CHARGER_SMB347
 	tristate "Summit Microelectronics SMB347 Battery Charger"
 	depends on I2C
-	select REGMAP_I2C
 	help
 	  Say Y to include support for Summit Microelectronics SMB347
 	  Battery Charger.
@@ -552,4 +551,5 @@ config QPNP_BMS
 	  Say Y here to enable support for QPNP chip bms device.
 	  It registers a fuelgauge bms power supply to report
 	  State of Charge.
+
 endif # POWER_SUPPLY
