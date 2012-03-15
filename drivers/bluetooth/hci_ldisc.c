@@ -321,11 +321,11 @@ static void hci_uart_tty_close(struct tty_struct *tty)
 		cancel_work_sync(&hu->write_work);
 
 		if (test_and_clear_bit(HCI_UART_PROTO_SET, &hu->flags)) {
-			hu->proto->close(hu);
 			if (hdev) {
 				hci_unregister_dev(hdev);
 				hci_free_dev(hdev);
 			}
+			hu->proto->close(hu);
 		}
 
 		kfree(hu);
