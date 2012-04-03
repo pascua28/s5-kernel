@@ -19,11 +19,13 @@
 #define TRACER_CYCLE_ACC_BIT	2
 #define TRACER_TRACE_DATA_BIT	3
 #define TRACER_TIMESTAMP_BIT	4
+#define TRACER_BRANCHOUTPUT_BIT	5
 #define TRACER_ACCESSED		BIT(TRACER_ACCESSED_BIT)
 #define TRACER_RUNNING		BIT(TRACER_RUNNING_BIT)
 #define TRACER_CYCLE_ACC	BIT(TRACER_CYCLE_ACC_BIT)
 #define TRACER_TRACE_DATA	BIT(TRACER_TRACE_DATA_BIT)
 #define TRACER_TIMESTAMP	BIT(TRACER_TIMESTAMP_BIT)
+#define TRACER_BRANCHOUTPUT	BIT(TRACER_BRANCHOUTPUT_BIT)
 
 #define TRACER_TIMEOUT 10000
 
@@ -60,10 +62,6 @@
 #define ETMCTRL_BRANCH_OUTPUT	(1 << 8)
 #define ETMCTRL_CYCLEACCURATE	(1 << 12)
 #define ETMCTRL_TIMESTAMP_EN	(1 << 28)
-<<<<<<< HEAD
-#define ETMCTRL_RETURN_STACK_EN	(1 << 29)
-=======
->>>>>>> bbba6b086dd... ARM: etm: Add sysfs entry to enable timestamps if supported
 
 /* ETM configuration code register */
 #define ETMR_CONFCODE		(0x04)
@@ -130,6 +128,7 @@
 #define ETMR_VIEWDATACTRL3	0x3c
 #define ETMVDC3_EXCLONLY	BIT(16)
 
+<<<<<<< HEAD
 #define ETMR_ID			0x1e4
 #define ETMIDR_VERSION(x)	(((x) >> 4) & 0xff)
 #define ETMIDR_VERSION_3_1	0x21
@@ -143,6 +142,9 @@
 
 #define ETMCTRL_OPTS		(ETMCTRL_DO_CPRT | \
 				ETMCTRL_BRANCH_OUTPUT)
+=======
+#define ETMCTRL_OPTS		(ETMCTRL_DO_CPRT)
+>>>>>>> 395f8259e30... ARM: etm: Add sysfs entry to disable branch_output flag
 
 #define ETMR_ID			0x1e4
 #define ETMIDR_VERSION(x)	(((x) >> 4) & 0xff)
