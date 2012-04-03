@@ -146,6 +146,10 @@
 				ETMCTRL_BRANCH_OUTPUT | \
 				ETMCTRL_DO_CONTEXTID)
 
+#define ETMR_ID			0x1e4
+#define ETMIDR_VERSION(x)	(((x) >> 4) & 0xff)
+#define ETMIDR_VERSION_PFT_1_0	0x30
+
 #define ETMR_TRACEIDR		0x200
 
 /* ETM management registers, "ETM Architecture", 3.5.24 */
