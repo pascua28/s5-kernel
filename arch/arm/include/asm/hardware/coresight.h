@@ -142,8 +142,7 @@
 #define ETMR_TRACEIDR		0x200
 
 #define ETMCTRL_OPTS		(ETMCTRL_DO_CPRT | \
-				ETMCTRL_BRANCH_OUTPUT | \
-				ETMCTRL_DO_CONTEXTID)
+				ETMCTRL_BRANCH_OUTPUT)
 
 #define ETMR_ID			0x1e4
 #define ETMIDR_VERSION(x)	(((x) >> 4) & 0xff)
