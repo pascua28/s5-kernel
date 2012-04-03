@@ -1803,7 +1803,8 @@ struct cfg80211_ops {
 				  struct net_device *dev,
 				  u16 noack_map);
 
-	struct ieee80211_channel *(*get_channel)(struct wiphy *wiphy);
+	struct ieee80211_channel *(*get_channel)(struct wiphy *wiphy,
+						enum nl80211_channel_type *type);
 	int	(*update_ft_ies)(struct wiphy *wiphy, struct net_device *dev,
 				 struct cfg80211_update_ft_ies_params *ftie);
 
