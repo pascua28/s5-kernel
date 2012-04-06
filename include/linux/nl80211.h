@@ -636,6 +636,8 @@
  *	used in the wiphy data as a nested attribute containing descriptions
  *	(&struct nl80211_vendor_cmd_info) of the supported vendor commands.
  *	This may also be sent as an event with the same attributes.
+ *	%NL80211_ATTR_IFINDEX is now on %NL80211_ATTR_WIPHY_FREQ with
+ *	%NL80211_ATTR_WIPHY_CHANNEL_TYPE.
  *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
@@ -777,7 +779,6 @@ enum nl80211_commands {
 	NL80211_CMD_UNEXPECTED_4ADDR_FRAME,
 
 	NL80211_CMD_SET_NOACK_MAP,
-
 
 	NL80211_CMD_CH_SWITCH_NOTIFY,
 
