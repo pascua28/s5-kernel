@@ -26,11 +26,6 @@
 #define DVB_USB_LOG_PREFIX "af9035"
 
 #include "dvb-usb.h"
-#include "af9033.h"
-#include "tua9001.h"
-#include "fc0011.h"
-#include "mxl5007t.h"
-#include "tda18218.h"
 
 struct reg_val {
 	u32 reg;
@@ -52,10 +47,9 @@ struct usb_req {
 	u8  *rbuf;
 };
 
-struct state {
+struct config {
 	bool dual_mode;
-
-	struct af9033_config af9033_config[2];
+	bool hw_not_supported;
 };
 
 u32 clock_lut[] = {
@@ -102,7 +96,6 @@ u32 clock_lut_it9135[] = {
 #define CMD_MEM_WR                  0x01
 #define CMD_I2C_RD                  0x02
 #define CMD_I2C_WR                  0x03
-#define CMD_IR_GET                  0x18
 #define CMD_FW_DL                   0x21
 #define CMD_FW_QUERYINFO            0x22
 #define CMD_FW_BOOT                 0x23
