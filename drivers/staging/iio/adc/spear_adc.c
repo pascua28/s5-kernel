@@ -19,8 +19,8 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 
-#include <linux/iio/iio.h>
-#include <linux/iio/sysfs.h>
+#include "../iio.h"
+#include "../sysfs.h"
 
 /*
  * SPEAR registers definitions
@@ -150,7 +150,7 @@ static int spear_read_raw(struct iio_dev *indio_dev,
 	u32 status;
 
 	switch (mask) {
-	case IIO_CHAN_INFO_RAW:
+	case 0:
 		mutex_lock(&indio_dev->mlock);
 
 		status = CHANNEL_NUM(chan->channel) |
@@ -180,8 +180,7 @@ static int spear_read_raw(struct iio_dev *indio_dev,
 #define SPEAR_ADC_CHAN(idx) {				\
 	.type = IIO_VOLTAGE,				\
 	.indexed = 1,					\
-	.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |	\
-	IIO_CHAN_INFO_SCALE_SHARED_BIT,			\
+	.info_mask = IIO_CHAN_INFO_SCALE_SHARED_BIT,	\
 	.channel = idx,					\
 	.scan_type = {					\
 		.sign = 'u',				\
@@ -231,7 +230,7 @@ static ssize_t spear_adc_read_frequency(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct spear_adc_info *info = iio_priv(indio_dev);
 
 	return sprintf(buf, "%d\n", info->current_clk);
@@ -242,7 +241,7 @@ static ssize_t spear_adc_write_frequency(struct device *dev,
 					 const char *buf,
 					 size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct spear_adc_info *info = iio_priv(indio_dev);
 	u32 clk_high, clk_low, count;
 	u32 apb_clk = clk_get_rate(info->clk);
@@ -291,7 +290,7 @@ static const struct iio_info spear_adc_iio_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int spear_adc_probe(struct platform_device *pdev)
+static int __devinit spear_adc_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
@@ -300,7 +299,7 @@ static int spear_adc_probe(struct platform_device *pdev)
 	int ret = -ENODEV;
 	int irq;
 
-	iodev = iio_device_alloc(sizeof(struct spear_adc_info));
+	iodev = iio_allocate_device(sizeof(struct spear_adc_info));
 	if (!iodev) {
 		dev_err(dev, "failed allocating iio device\n");
 		ret = -ENOMEM;
@@ -404,12 +403,12 @@ errout4:
 errout3:
 	iounmap(info->adc_base_spear6xx);
 errout2:
-	iio_device_free(iodev);
+	iio_free_device(iodev);
 errout1:
 	return ret;
 }
 
-static int spear_adc_remove(struct platform_device *pdev)
+static int __devexit spear_adc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *iodev = platform_get_drvdata(pdev);
 	struct spear_adc_info *info = iio_priv(iodev);
@@ -420,7 +419,7 @@ static int spear_adc_remove(struct platform_device *pdev)
 	clk_unprepare(info->clk);
 	clk_put(info->clk);
 	iounmap(info->adc_base_spear6xx);
-	iio_device_free(iodev);
+	iio_free_device(iodev);
 
 	return 0;
 }
@@ -433,7 +432,7 @@ MODULE_DEVICE_TABLE(of, spear_adc_dt_ids);
 
 static struct platform_driver spear_adc_driver = {
 	.probe		= spear_adc_probe,
-	.remove		= spear_adc_remove,
+	.remove		= __devexit_p(spear_adc_remove),
 	.driver		= {
 		.name	= MOD_NAME,
 		.owner	= THIS_MODULE,
