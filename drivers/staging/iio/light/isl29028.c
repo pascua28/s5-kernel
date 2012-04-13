@@ -24,8 +24,8 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/regmap.h>
-#include <linux/iio/iio.h>
-#include <linux/iio/sysfs.h>
+#include "../iio.h"
+#include "../sysfs.h"
 
 #define CONVERSION_TIME_MS		100
 
@@ -272,7 +272,7 @@ static int isl29028_write_raw(struct iio_dev *indio_dev,
 	mutex_lock(&chip->lock);
 	switch (chan->type) {
 	case IIO_PROXIMITY:
-		if (mask != IIO_CHAN_INFO_SAMP_FREQ) {
+		if (mask != IIO_CHAN_INFO_SAMP_FREQ_SEPARATE_BIT) {
 			dev_err(chip->dev,
 				"proximity: mask value 0x%08lx not supported\n",
 				mask);
@@ -294,7 +294,7 @@ static int isl29028_write_raw(struct iio_dev *indio_dev,
 		break;
 
 	case IIO_LIGHT:
-		if (mask != IIO_CHAN_INFO_SCALE) {
+		if (mask != IIO_CHAN_INFO_SCALE_SEPARATE_BIT) {
 			dev_err(chip->dev,
 				"light: mask value 0x%08lx not supported\n",
 				mask);
@@ -330,8 +330,7 @@ static int isl29028_read_raw(struct iio_dev *indio_dev,
 
 	mutex_lock(&chip->lock);
 	switch (mask) {
-	case IIO_CHAN_INFO_RAW:
-	case IIO_CHAN_INFO_PROCESSED:
+	case 0:
 		switch (chan->type) {
 		case IIO_LIGHT:
 			ret = isl29028_als_get(chip, val);
@@ -350,14 +349,14 @@ static int isl29028_read_raw(struct iio_dev *indio_dev,
 		ret = IIO_VAL_INT;
 		break;
 
-	case IIO_CHAN_INFO_SAMP_FREQ:
+	case IIO_CHAN_INFO_SAMP_FREQ_SEPARATE_BIT:
 		if (chan->type != IIO_PROXIMITY)
 			break;
 		*val = chip->prox_sampling;
 		ret = IIO_VAL_INT;
 		break;
 
-	case IIO_CHAN_INFO_SCALE:
+	case IIO_CHAN_INFO_SCALE_SEPARATE_BIT:
 		if (chan->type != IIO_LIGHT)
 			break;
 		*val = chip->lux_scale;
@@ -391,15 +390,13 @@ static const struct attribute_group isl29108_group = {
 static const struct iio_chan_spec isl29028_channels[] = {
 	{
 		.type = IIO_LIGHT,
-		.info_mask = IIO_CHAN_INFO_PROCESSED_SEPARATE_BIT |
-		IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
+		.processed_val = 1,
+		.info_mask = IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
 	}, {
 		.type = IIO_INTENSITY,
-		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT,
 	}, {
 		.type = IIO_PROXIMITY,
-		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
-		IIO_CHAN_INFO_SAMP_FREQ_SEPARATE_BIT,
+		.info_mask = IIO_CHAN_INFO_SAMP_FREQ_SEPARATE_BIT,
 	}
 };
 
@@ -475,14 +472,14 @@ static const struct regmap_config isl29028_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
-static int isl29028_probe(struct i2c_client *client,
+static int __devinit isl29028_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	struct isl29028_chip *chip;
 	struct iio_dev *indio_dev;
 	int ret;
 
-	indio_dev = iio_device_alloc(sizeof(*chip));
+	indio_dev = iio_allocate_device(sizeof(*chip));
 	if (!indio_dev) {
 		dev_err(&client->dev, "iio allocation fails\n");
 		return -ENOMEM;
@@ -522,16 +519,16 @@ static int isl29028_probe(struct i2c_client *client,
 	return 0;
 
 exit_iio_free:
-	iio_device_free(indio_dev);
+	iio_free_device(indio_dev);
 	return ret;
 }
 
-static int isl29028_remove(struct i2c_client *client)
+static int __devexit isl29028_remove(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 
 	iio_device_unregister(indio_dev);
-	iio_device_free(indio_dev);
+	iio_free_device(indio_dev);
 	return 0;
 }
 
@@ -542,7 +539,7 @@ static const struct i2c_device_id isl29028_id[] = {
 MODULE_DEVICE_TABLE(i2c, isl29028_id);
 
 static const struct of_device_id isl29028_of_match[] = {
-	{ .compatible = "isil,isl29028", },
+	{ .compatible = "isl,isl29028", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, isl29028_of_match);
@@ -555,7 +552,7 @@ static struct i2c_driver isl29028_driver = {
 		.of_match_table = isl29028_of_match,
 	},
 	.probe	 = isl29028_probe,
-	.remove  = isl29028_remove,
+	.remove  = __devexit_p(isl29028_remove),
 	.id_table = isl29028_id,
 };
 
