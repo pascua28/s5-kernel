@@ -300,7 +300,7 @@ int iio_buffer_register(struct iio_dev *indio_dev,
 				goto error_cleanup_dynamic;
 			attrcount += ret;
 			if (channels[i].type == IIO_TIMESTAMP)
-				buffer->scan_index_timestamp =
+				indio_dev->scan_index_timestamp =
 					channels[i].scan_index;
 		}
 		if (indio_dev->masklength && buffer->scan_mask == NULL) {
@@ -529,8 +529,7 @@ static int iio_compute_scan_bytes(struct iio_dev *indio_dev, const long *mask,
 	}
 	if (timestamp) {
 		ch = iio_find_channel_from_si(indio_dev,
-					      indio_dev
-					      ->buffer->scan_index_timestamp);
+					      indio_dev->scan_index_timestamp);
 		length = ch->scan_type.storagebits / 8;
 		bytes = ALIGN(bytes, length);
 		bytes += length;
@@ -725,7 +724,7 @@ int iio_update_demux(struct iio_dev *indio_dev)
 			goto error_clear_mux_table;
 		}
 		ch = iio_find_channel_from_si(indio_dev,
-			buffer->scan_index_timestamp);
+			indio_dev->scan_index_timestamp);
 		length = ch->scan_type.storagebits/8;
 		if (out_loc % length)
 			out_loc += length - out_loc % length;
