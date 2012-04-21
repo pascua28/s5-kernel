@@ -673,6 +673,32 @@ static int af9035_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 		d->props.rc.core.rc_query = af9035_rc_query;
 	}
 
+	ret = af9035_rd_reg(d, EEPROM_IR_MODE, &tmp);
+	if (ret < 0)
+		goto err;
+	pr_debug("%s: ir_mode=%02x\n", __func__, tmp);
+
+	/* don't activate rc if in HID mode or if not available */
+	if (tmp == 5) {
+		ret = af9035_rd_reg(d, EEPROM_IR_TYPE, &tmp);
+		if (ret < 0)
+			goto err;
+		pr_debug("%s: ir_type=%02x\n", __func__, tmp);
+
+		switch (tmp) {
+		case 0: /* NEC */
+		default:
+			d->props.rc.core.protocol = RC_TYPE_NEC;
+			d->props.rc.core.allowed_protos = RC_TYPE_NEC;
+			break;
+		case 1: /* RC6 */
+			d->props.rc.core.protocol = RC_TYPE_RC6;
+			d->props.rc.core.allowed_protos = RC_TYPE_RC6;
+			break;
+		}
+		d->props.rc.core.rc_query = af9035_rc_query;
+	}
+
 	return 0;
 
 err:
