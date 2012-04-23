@@ -25,6 +25,7 @@
 #include <linux/videodev2.h>
 
 /* forward references */
+struct file;
 struct v4l2_ctrl_handler;
 struct v4l2_ctrl_helper;
 struct v4l2_ctrl;
