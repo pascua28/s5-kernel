@@ -1607,6 +1607,16 @@ struct cfg80211_update_ft_ies_params {
  *	when number of MAC addresses entries is passed as 0. Drivers which
  *	advertise the support for MAC based ACL have to implement this callback.
  *
+ *
+ * @get_et_sset_count:  Ethtool API to get string-set count.
+ *	See @ethtool_ops.get_sset_count
+ *
+ * @get_et_stats:  Ethtool API to get a set of u64 stats.
+ *	See @ethtool_ops.get_ethtool_stats
+ *
+ * @get_et_strings:  Ethtool API to get a set of strings to describe stats
+ *	and perhaps other supported types of ethtool data-sets.
+ *	See @ethtool_ops.get_strings
  */
 struct cfg80211_ops {
 	int	(*suspend)(struct wiphy *wiphy, struct cfg80211_wowlan *wow);
@@ -1810,6 +1820,13 @@ struct cfg80211_ops {
 
 	int (*set_mac_acl)(struct wiphy *wiphy, struct net_device *dev,
 			   const struct cfg80211_acl_data *params);
+
+	int	(*get_et_sset_count)(struct wiphy *wiphy,
+				     struct net_device *dev, int sset);
+	void	(*get_et_stats)(struct wiphy *wiphy, struct net_device *dev,
+				struct ethtool_stats *stats, u64 *data);
+	void	(*get_et_strings)(struct wiphy *wiphy, struct net_device *dev,
+				  u32 sset, u8 *data);
 };
 
 /*
