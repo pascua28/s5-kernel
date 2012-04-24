@@ -28,10 +28,10 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/version.h>
-#include <linux/iio/events.h>
-#include <linux/iio/iio.h>
-#include <linux/iio/sysfs.h>
 #include "tsl2x7x.h"
+#include "../events.h"
+#include "../iio.h"
+#include "../sysfs.h"
 
 /* Cal defs*/
 #define PROX_STAT_CAL        0
@@ -129,8 +129,6 @@
 #define TSL2X7X_EVENT_MASK \
 		(IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) | \
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)),
-
-#define TSL2X7X_MIN_ITIME 3
 
 /* TAOS txx2x7x Device family members */
 enum {
@@ -279,7 +277,7 @@ enum {
 	ALSPRX2,
 };
 
-static const u8 device_channel_config[] = {
+const u8 device_channel_config[] = {
 	ALS,
 	PRX,
 	PRX,
@@ -780,7 +778,7 @@ static int tsl2x7x_chip_on(struct iio_dev *indio_dev)
 		}
 	}
 
-	mdelay(3);	/* Power-on settling time */
+	udelay(3000);	/* Power-on settling time */
 
 	/* NOW enable the ADC
 	 * initialize the desired mode of operation */
@@ -855,7 +853,6 @@ static int tsl2x7x_chip_off(struct iio_dev *indio_dev)
  * put device back into proper state, and unlock
  * resource.
  */
-static
 int tsl2x7x_invoke_change(struct iio_dev *indio_dev)
 {
 	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
@@ -971,7 +968,7 @@ static void tsl2x7x_prox_cal(struct iio_dev *indio_dev)
 static ssize_t tsl2x7x_power_state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct tsl2X7X_chip *chip = iio_priv(dev_to_iio_dev(dev));
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 
 	return snprintf(buf, PAGE_SIZE, "%d\n", chip->tsl2x7x_chip_status);
 }
@@ -979,7 +976,7 @@ static ssize_t tsl2x7x_power_state_show(struct device *dev,
 static ssize_t tsl2x7x_power_state_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	bool value;
 
 	if (strtobool(buf, &value))
@@ -996,7 +993,7 @@ static ssize_t tsl2x7x_power_state_store(struct device *dev,
 static ssize_t tsl2x7x_gain_available_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct tsl2X7X_chip *chip = iio_priv(dev_to_iio_dev(dev));
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 
 	switch (chip->id) {
 	case tsl2571:
@@ -1020,11 +1017,11 @@ static ssize_t tsl2x7x_prox_gain_available_show(struct device *dev,
 static ssize_t tsl2x7x_als_time_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct tsl2X7X_chip *chip = iio_priv(dev_to_iio_dev(dev));
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	int y, z;
 
 	y = (TSL2X7X_MAX_TIMER_CNT - (u8)chip->tsl2x7x_settings.als_time) + 1;
-	z = y * TSL2X7X_MIN_ITIME;
+	z = y * 2.72;
 	y /= 1000;
 	z %= 1000;
 
@@ -1034,8 +1031,8 @@ static ssize_t tsl2x7x_als_time_show(struct device *dev,
 static ssize_t tsl2x7x_als_time_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	struct tsl2x7x_parse_result result;
 
 	result.integer = 0;
@@ -1062,7 +1059,7 @@ static IIO_CONST_ATTR(in_illuminance0_integration_time_available,
 static ssize_t tsl2x7x_als_cal_target_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct tsl2X7X_chip *chip = iio_priv(dev_to_iio_dev(dev));
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 
 	return snprintf(buf, PAGE_SIZE, "%d\n",
 			chip->tsl2x7x_settings.als_cal_target);
@@ -1071,8 +1068,8 @@ static ssize_t tsl2x7x_als_cal_target_show(struct device *dev,
 static ssize_t tsl2x7x_als_cal_target_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	unsigned long value;
 
 	if (kstrtoul(buf, 0, &value))
@@ -1090,12 +1087,12 @@ static ssize_t tsl2x7x_als_cal_target_store(struct device *dev,
 static ssize_t tsl2x7x_als_persistence_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct tsl2X7X_chip *chip = iio_priv(dev_to_iio_dev(dev));
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	int y, z, filter_delay;
 
 	/* Determine integration time */
 	y = (TSL2X7X_MAX_TIMER_CNT - (u8)chip->tsl2x7x_settings.als_time) + 1;
-	z = y * TSL2X7X_MIN_ITIME;
+	z = y * 2.72;
 	filter_delay = z * (chip->tsl2x7x_settings.persistence & 0x0F);
 	y = (filter_delay / 1000);
 	z = (filter_delay % 1000);
@@ -1106,8 +1103,8 @@ static ssize_t tsl2x7x_als_persistence_show(struct device *dev,
 static ssize_t tsl2x7x_als_persistence_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	struct tsl2x7x_parse_result result;
 	int y, z, filter_delay;
 
@@ -1117,7 +1114,7 @@ static ssize_t tsl2x7x_als_persistence_store(struct device *dev,
 
 	result.fract /= 1000;
 	y = (TSL2X7X_MAX_TIMER_CNT - (u8)chip->tsl2x7x_settings.als_time) + 1;
-	z = y * TSL2X7X_MIN_ITIME;
+	z = y * 2.72;
 
 	filter_delay =
 		DIV_ROUND_UP(((result.integer * 1000) + result.fract), z);
@@ -1136,12 +1133,12 @@ static ssize_t tsl2x7x_als_persistence_store(struct device *dev,
 static ssize_t tsl2x7x_prox_persistence_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct tsl2X7X_chip *chip = iio_priv(dev_to_iio_dev(dev));
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	int y, z, filter_delay;
 
 	/* Determine integration time */
 	y = (TSL2X7X_MAX_TIMER_CNT - (u8)chip->tsl2x7x_settings.prx_time) + 1;
-	z = y * TSL2X7X_MIN_ITIME;
+	z = y * 2.72;
 	filter_delay = z * ((chip->tsl2x7x_settings.persistence & 0xF0) >> 4);
 	y = (filter_delay / 1000);
 	z = (filter_delay % 1000);
@@ -1152,8 +1149,8 @@ static ssize_t tsl2x7x_prox_persistence_show(struct device *dev,
 static ssize_t tsl2x7x_prox_persistence_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	struct tsl2x7x_parse_result result;
 	int y, z, filter_delay;
 
@@ -1163,7 +1160,7 @@ static ssize_t tsl2x7x_prox_persistence_store(struct device *dev,
 
 	result.fract /= 1000;
 	y = (TSL2X7X_MAX_TIMER_CNT - (u8)chip->tsl2x7x_settings.prx_time) + 1;
-	z = y * TSL2X7X_MIN_ITIME;
+	z = y * 2.72;
 
 	filter_delay =
 		DIV_ROUND_UP(((result.integer * 1000) + result.fract), z);
@@ -1182,7 +1179,7 @@ static ssize_t tsl2x7x_prox_persistence_store(struct device *dev,
 static ssize_t tsl2x7x_do_calibrate(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	bool value;
 
 	if (strtobool(buf, &value))
@@ -1199,7 +1196,7 @@ static ssize_t tsl2x7x_do_calibrate(struct device *dev,
 static ssize_t tsl2x7x_luxtable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct tsl2X7X_chip *chip = iio_priv(dev_to_iio_dev(dev));
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	int i = 0;
 	int offset = 0;
 
@@ -1224,8 +1221,8 @@ static ssize_t tsl2x7x_luxtable_show(struct device *dev,
 static ssize_t tsl2x7x_luxtable_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct tsl2X7X_chip *chip = iio_priv(dev_get_drvdata(dev));
 	int value[ARRAY_SIZE(chip->tsl2x7x_device_lux)*3 + 1];
 	int n;
 
@@ -1263,7 +1260,7 @@ static ssize_t tsl2x7x_luxtable_store(struct device *dev,
 static ssize_t tsl2x7x_do_prox_calibrate(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	bool value;
 
 	if (strtobool(buf, &value))
@@ -1392,20 +1389,13 @@ static int tsl2x7x_read_raw(struct iio_dev *indio_dev,
 	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
 
 	switch (mask) {
-	case IIO_CHAN_INFO_PROCESSED:
+	case IIO_CHAN_INFO_RAW:
 		switch (chan->type) {
 		case IIO_LIGHT:
 			tsl2x7x_get_lux(indio_dev);
 			*val = chip->als_cur_info.lux;
 			ret = IIO_VAL_INT;
 			break;
-		default:
-			return -EINVAL;
-			break;
-		}
-		break;
-	case IIO_CHAN_INFO_RAW:
-		switch (chan->type) {
 		case IIO_INTENSITY:
 			tsl2x7x_get_lux(indio_dev);
 			if (chan->channel == 0)
@@ -1898,7 +1888,7 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 	},
 };
 
-static int tsl2x7x_probe(struct i2c_client *clientp,
+static int __devinit tsl2x7x_probe(struct i2c_client *clientp,
 	const struct i2c_device_id *id)
 {
 	int ret;
@@ -1906,7 +1896,7 @@ static int tsl2x7x_probe(struct i2c_client *clientp,
 	struct iio_dev *indio_dev;
 	struct tsl2X7X_chip *chip;
 
-	indio_dev = iio_device_alloc(sizeof(*chip));
+	indio_dev = iio_allocate_device(sizeof(*chip));
 	if (!indio_dev)
 		return -ENOMEM;
 
@@ -1986,7 +1976,7 @@ fail1:
 	if (clientp->irq)
 		free_irq(clientp->irq, indio_dev);
 fail2:
-	iio_device_free(indio_dev);
+	iio_free_device(indio_dev);
 
 	return ret;
 }
@@ -2027,7 +2017,7 @@ static int tsl2x7x_resume(struct device *dev)
 	return ret;
 }
 
-static int tsl2x7x_remove(struct i2c_client *client)
+static int __devexit tsl2x7x_remove(struct i2c_client *client)
 {
 	struct tsl2X7X_chip *chip = i2c_get_clientdata(client);
 	struct iio_dev *indio_dev = iio_priv_to_dev(chip);
@@ -2038,7 +2028,7 @@ static int tsl2x7x_remove(struct i2c_client *client)
 	if (client->irq)
 		free_irq(client->irq, chip->client->name);
 
-	iio_device_free(indio_dev);
+	iio_free_device(indio_dev);
 
 	return 0;
 }
@@ -2072,7 +2062,7 @@ static struct i2c_driver tsl2x7x_driver = {
 	},
 	.id_table = tsl2x7x_idtable,
 	.probe = tsl2x7x_probe,
-	.remove = tsl2x7x_remove,
+	.remove = __devexit_p(tsl2x7x_remove),
 };
 
 module_i2c_driver(tsl2x7x_driver);
