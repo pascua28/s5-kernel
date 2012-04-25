@@ -36,7 +36,7 @@ struct iio_buffer;
  * any of them not existing.
  **/
 struct iio_buffer_access_funcs {
-	int (*store_to)(struct iio_buffer *buffer, u8 *data);
+	int (*store_to)(struct iio_buffer *buffer, u8 *data, s64 timestamp);
 	int (*read_first_n)(struct iio_buffer *buffer,
 			    size_t n,
 			    char __user *buf);
@@ -66,8 +66,7 @@ struct iio_buffer_access_funcs {
  * @stufftoread:	[INTERN] flag to indicate new data.
  * @demux_list:		[INTERN] list of operations required to demux the scan.
  * @demux_bounce:	[INTERN] buffer for doing gather from incoming scan.
- * @buffer_list:	[INTERN] entry in the devices list of current buffers.
- */
+ **/
 struct iio_buffer {
 	int					length;
 	int					bytes_per_datum;
@@ -82,24 +81,11 @@ struct iio_buffer {
 	const struct attribute_group *attrs;
 	struct list_head			demux_list;
 	unsigned char				*demux_bounce;
-	struct list_head			buffer_list;
 };
 
 /**
- * iio_update_buffers() - add or remove buffer from active list
- * @indio_dev:		device to add buffer to
- * @insert_buffer:	buffer to insert
- * @remove_buffer:	buffer_to_remove
- *
- * Note this will tear down the all buffering and build it up again
- */
-int iio_update_buffers(struct iio_dev *indio_dev,
-		       struct iio_buffer *insert_buffer,
-		       struct iio_buffer *remove_buffer);
-
-/**
  * iio_buffer_init() - Initialize the buffer structure
- * @buffer:		buffer to be initialized
+ * @buffer: buffer to be initialized
  **/
 void iio_buffer_init(struct iio_buffer *buffer);
 
@@ -121,27 +107,26 @@ int iio_scan_mask_query(struct iio_dev *indio_dev,
 
 /**
  * iio_scan_mask_set() - set particular bit in the scan mask
- * @indio_dev		IIO device structure
- * @buffer:		the buffer whose scan mask we are interested in
- * @bit:		the bit to be set.
+ * @buffer: the buffer whose scan mask we are interested in
+ * @bit: the bit to be set.
  **/
 int iio_scan_mask_set(struct iio_dev *indio_dev,
 		      struct iio_buffer *buffer, int bit);
 
 /**
- * iio_push_to_buffers() - push to a registered buffer.
- * @indio_dev:		iio_dev structure for device.
- * @data:		Full scan.
+ * iio_push_to_buffer() - push to a registered buffer.
+ * @buffer:		IIO buffer structure for device
+ * @scan:		Full scan.
+ * @timestamp:
  */
-int iio_push_to_buffers(struct iio_dev *indio_dev, unsigned char *data);
+int iio_push_to_buffer(struct iio_buffer *buffer, unsigned char *data,
+		       s64 timestamp);
 
 int iio_update_demux(struct iio_dev *indio_dev);
 
 /**
  * iio_buffer_register() - register the buffer with IIO core
- * @indio_dev:		device with the buffer to be registered
- * @channels:		the channel descriptions used to construct buffer
- * @num_channels:	the number of channels
+ * @indio_dev: device with the buffer to be registered
  **/
 int iio_buffer_register(struct iio_dev *indio_dev,
 			const struct iio_chan_spec *channels,
@@ -149,7 +134,7 @@ int iio_buffer_register(struct iio_dev *indio_dev,
 
 /**
  * iio_buffer_unregister() - unregister the buffer from IIO core
- * @indio_dev:		the device with the buffer to be unregistered
+ * @indio_dev: the device with the buffer to be unregistered
  **/
 void iio_buffer_unregister(struct iio_dev *indio_dev);
 
@@ -189,20 +174,17 @@ ssize_t iio_buffer_show_enable(struct device *dev,
 
 int iio_sw_buffer_preenable(struct iio_dev *indio_dev);
 
-bool iio_validate_scan_mask_onehot(struct iio_dev *indio_dev,
-	const unsigned long *mask);
-
 #else /* CONFIG_IIO_BUFFER */
 
 static inline int iio_buffer_register(struct iio_dev *indio_dev,
-					   const struct iio_chan_spec *channels,
+					   struct iio_chan_spec *channels,
 					   int num_channels)
 {
 	return 0;
 }
 
 static inline void iio_buffer_unregister(struct iio_dev *indio_dev)
-{}
+{};
 
 #endif /* CONFIG_IIO_BUFFER */
 

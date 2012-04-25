@@ -11,6 +11,7 @@
 #define _IIO_TYPES_H_
 
 enum iio_chan_type {
+	/* real channel types */
 	IIO_VOLTAGE,
 	IIO_CURRENT,
 	IIO_POWER,
@@ -26,9 +27,10 @@ enum iio_chan_type {
 	IIO_ANGL,
 	IIO_TIMESTAMP,
 	IIO_CAPACITANCE,
-	IIO_ALTVOLTAGE,
-	IIO_CCT,
-	IIO_PRESSURE,
+	IIO_GRIP,
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+	IIO_QUATERNION,
+#endif
 };
 
 enum iio_modifier {
@@ -46,19 +48,11 @@ enum iio_modifier {
 	IIO_MOD_X_OR_Y_OR_Z,
 	IIO_MOD_LIGHT_BOTH,
 	IIO_MOD_LIGHT_IR,
-	IIO_MOD_ROOT_SUM_SQUARED_X_Y,
-	IIO_MOD_SUM_SQUARED_X_Y_Z,
-	IIO_MOD_LIGHT_CLEAR,
-	IIO_MOD_LIGHT_RED,
-	IIO_MOD_LIGHT_GREEN,
-	IIO_MOD_LIGHT_BLUE,
+	IIO_MOD_R,
 };
 
 #define IIO_VAL_INT 1
 #define IIO_VAL_INT_PLUS_MICRO 2
 #define IIO_VAL_INT_PLUS_NANO 3
-#define IIO_VAL_INT_PLUS_MICRO_DB 4
-#define IIO_VAL_FRACTIONAL 10
-#define IIO_VAL_FRACTIONAL_LOG2 11
 
 #endif /* _IIO_TYPES_H_ */
