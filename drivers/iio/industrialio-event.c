@@ -35,6 +35,9 @@
  */
 struct iio_event_interface {
 	wait_queue_head_t	wait;
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+	struct mutex		read_lock;
+#endif
 	DECLARE_KFIFO(det_events, struct iio_event_data, 16);
 
 	struct list_head	dev_attr_list;
@@ -95,16 +98,25 @@ static ssize_t iio_event_chrdev_read(struct file *filep,
 
 	if (count < sizeof(struct iio_event_data))
 		return -EINVAL;
-
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+	if (mutex_lock_interruptible(&ev_int->read_lock))
+		return -ERESTARTSYS;
+#else
 	spin_lock(&ev_int->wait.lock);
+#endif
 	if (kfifo_is_empty(&ev_int->det_events)) {
 		if (filep->f_flags & O_NONBLOCK) {
 			ret = -EAGAIN;
 			goto error_unlock;
 		}
 		/* Blocking on device; waiting for something to be there */
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+		ret = wait_event_interruptible(ev_int->wait,
+					!kfifo_is_empty(&ev_int->det_events));
+#else
 		ret = wait_event_interruptible_locked(ev_int->wait,
 					!kfifo_is_empty(&ev_int->det_events));
+#endif
 		if (ret)
 			goto error_unlock;
 		/* Single access device so no one else can get the data */
@@ -113,7 +125,12 @@ static ssize_t iio_event_chrdev_read(struct file *filep,
 	ret = kfifo_to_user(&ev_int->det_events, buf, count, &copied);
 
 error_unlock:
-	spin_unlock(&ev_int->wait.lock);
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+	mutex_unlock(&ev_int->read_lock);
+#else
+		spin_unlock(&ev_int->wait.lock);
+#endif
+
 
 	return ret ? ret : copied;
 }
@@ -186,7 +203,7 @@ static ssize_t iio_ev_state_store(struct device *dev,
 				  const char *buf,
 				  size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 	int ret;
 	bool val;
@@ -205,7 +222,7 @@ static ssize_t iio_ev_state_show(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 	int val = indio_dev->info->read_event_config(indio_dev,
 						     this_attr->address);
@@ -220,7 +237,7 @@ static ssize_t iio_ev_value_show(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 	int val, ret;
 
@@ -237,15 +254,15 @@ static ssize_t iio_ev_value_store(struct device *dev,
 				  const char *buf,
 				  size_t len)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
-	int val;
+	unsigned long val;
 	int ret;
 
 	if (!indio_dev->info->write_event_value)
 		return -EINVAL;
 
-	ret = kstrtoint(buf, 10, &val);
+	ret = strict_strtoul(buf, 10, &val);
 	if (ret)
 		return ret;
 
@@ -345,15 +362,21 @@ static inline int __iio_add_event_config_attrs(struct iio_dev *indio_dev)
 {
 	int j, ret, attrcount = 0;
 
+	INIT_LIST_HEAD(&indio_dev->event_interface->dev_attr_list);
 	/* Dynically created from the channels array */
 	for (j = 0; j < indio_dev->num_channels; j++) {
 		ret = iio_device_add_event_sysfs(indio_dev,
 						 &indio_dev->channels[j]);
 		if (ret < 0)
-			return ret;
+			goto error_clear_attrs;
 		attrcount += ret;
 	}
 	return attrcount;
+
+error_clear_attrs:
+	__iio_remove_event_config_attrs(indio_dev);
+
+	return ret;
 }
 
 static bool iio_check_for_dynamic_events(struct iio_dev *indio_dev)
@@ -370,6 +393,9 @@ static void iio_setup_ev_int(struct iio_event_interface *ev_int)
 {
 	INIT_KFIFO(ev_int->det_events);
 	init_waitqueue_head(&ev_int->wait);
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+	mutex_init(&ev_int->read_lock);
+#endif
 }
 
 static const char *iio_event_group_name = "events";
@@ -389,8 +415,6 @@ int iio_device_register_eventset(struct iio_dev *indio_dev)
 		ret = -ENOMEM;
 		goto error_ret;
 	}
-
-	INIT_LIST_HEAD(&indio_dev->event_interface->dev_attr_list);
 
 	iio_setup_ev_int(indio_dev->event_interface);
 	if (indio_dev->info->event_attrs != NULL) {
@@ -433,6 +457,9 @@ int iio_device_register_eventset(struct iio_dev *indio_dev)
 
 error_free_setup_event_lines:
 	__iio_remove_event_config_attrs(indio_dev);
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+	mutex_destroy(&indio_dev->event_interface->read_lock);
+#endif
 	kfree(indio_dev->event_interface);
 error_ret:
 
@@ -444,6 +471,9 @@ void iio_device_unregister_eventset(struct iio_dev *indio_dev)
 	if (indio_dev->event_interface == NULL)
 		return;
 	__iio_remove_event_config_attrs(indio_dev);
+#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+	mutex_destroy(&indio_dev->event_interface->read_lock);
+#endif
 	kfree(indio_dev->event_interface->group.attrs);
 	kfree(indio_dev->event_interface);
 }
