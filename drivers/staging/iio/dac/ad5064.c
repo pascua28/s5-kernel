@@ -442,7 +442,7 @@ static int __devinit ad5064_probe(struct spi_device *spi)
 	unsigned int i;
 	int ret;
 
-	indio_dev = iio_allocate_device(sizeof(*st));
+	indio_dev = iio_device_alloc(sizeof(*st));
 	if (indio_dev == NULL)
 		return  -ENOMEM;
 
@@ -499,7 +499,7 @@ error_free_reg:
 	if (!st->use_internal_vref)
 		regulator_bulk_free(ad5064_num_vref(st), st->vref_reg);
 error_free:
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return ret;
 }
@@ -517,7 +517,7 @@ static int __devexit ad5064_remove(struct spi_device *spi)
 		regulator_bulk_free(ad5064_num_vref(st), st->vref_reg);
 	}
 
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return 0;
 }
