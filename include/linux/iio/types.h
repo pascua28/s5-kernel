@@ -31,6 +31,7 @@ enum iio_chan_type {
 #if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
 	IIO_QUATERNION,
 #endif
+	IIO_ALTVOLTAGE,
 };
 
 enum iio_modifier {
