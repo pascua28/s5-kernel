@@ -48,7 +48,7 @@ static ssize_t ad5930_set_parameter(struct device *dev,
 	struct spi_transfer xfer;
 	int ret;
 	struct ad5903_config *config = (struct ad5903_config *)buf;
-	struct iio_dev *idev = dev_to_iio_dev(dev);
+	struct iio_dev *idev = dev_get_drvdata(dev);
 	struct ad5930_state *st = iio_priv(idev);
 
 	config->control = (config->control & ~value_mask);
@@ -91,7 +91,7 @@ static const struct iio_info ad5930_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int ad5930_probe(struct spi_device *spi)
+static int __devinit ad5930_probe(struct spi_device *spi)
 {
 	struct ad5930_state *st;
 	struct iio_dev *idev;
@@ -127,7 +127,7 @@ error_ret:
 	return ret;
 }
 
-static int ad5930_remove(struct spi_device *spi)
+static int __devexit ad5930_remove(struct spi_device *spi)
 {
 	iio_device_unregister(spi_get_drvdata(spi));
 	iio_device_free(spi_get_drvdata(spi));
@@ -141,7 +141,7 @@ static struct spi_driver ad5930_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = ad5930_probe,
-	.remove = ad5930_remove,
+	.remove = __devexit_p(ad5930_remove),
 };
 module_spi_driver(ad5930_driver);
 

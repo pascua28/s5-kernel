@@ -43,7 +43,7 @@ static ssize_t ad9850_set_parameter(struct device *dev,
 	struct spi_transfer xfer;
 	int ret;
 	struct ad9850_config *config = (struct ad9850_config *)buf;
-	struct iio_dev *idev = dev_to_iio_dev(dev);
+	struct iio_dev *idev = dev_get_drvdata(dev);
 	struct ad9850_state *st = iio_priv(idev);
 
 	xfer.len = len;
@@ -77,7 +77,7 @@ static const struct iio_info ad9850_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int ad9850_probe(struct spi_device *spi)
+static int __devinit ad9850_probe(struct spi_device *spi)
 {
 	struct ad9850_state *st;
 	struct iio_dev *idev;
@@ -113,7 +113,7 @@ error_ret:
 	return ret;
 }
 
-static int ad9850_remove(struct spi_device *spi)
+static int __devexit ad9850_remove(struct spi_device *spi)
 {
 	iio_device_unregister(spi_get_drvdata(spi));
 	iio_device_free(spi_get_drvdata(spi));
@@ -127,7 +127,7 @@ static struct spi_driver ad9850_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = ad9850_probe,
-	.remove = ad9850_remove,
+	.remove = __devexit_p(ad9850_remove),
 };
 module_spi_driver(ad9850_driver);
 
