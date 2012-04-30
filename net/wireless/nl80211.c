@@ -3643,6 +3643,7 @@ static int nl80211_get_mesh_config(struct sk_buff *skb,
 	pinfoattr = nla_nest_start(msg, NL80211_ATTR_MESH_CONFIG);
 	if (!pinfoattr)
 		goto nla_put_failure;
+
 	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, dev->ifindex);
 	NLA_PUT_U16(msg, NL80211_MESHCONF_RETRY_TIMEOUT,
 			cur_params.dot11MeshRetryTimeout);
@@ -3686,6 +3687,8 @@ static int nl80211_get_mesh_config(struct sk_buff *skb,
 			cur_params.dot11MeshForwarding);
 	NLA_PUT_U32(msg, NL80211_MESHCONF_RSSI_THRESHOLD,
 			cur_params.rssi_threshold);
+	NLA_PUT_U32(msg, NL80211_MESHCONF_HT_OPMODE,
+			cur_params.ht_opmode);
 	nla_nest_end(msg, pinfoattr);
 	genlmsg_end(msg, hdr);
 	return genlmsg_reply(msg, info);
@@ -3720,6 +3723,7 @@ static const struct nla_policy nl80211_meshconf_params_policy[NL80211_MESHCONF_A
 	[NL80211_MESHCONF_GATE_ANNOUNCEMENTS] = { .type = NLA_U8 },
 	[NL80211_MESHCONF_FORWARDING] = { .type = NLA_U8 },
 	[NL80211_MESHCONF_RSSI_THRESHOLD] = { .type = NLA_U32},
+	[NL80211_MESHCONF_HT_OPMODE] = { .type = NLA_U16},
 };
 
 static const struct nla_policy
@@ -3817,6 +3821,8 @@ do {\
 			mask, NL80211_MESHCONF_FORWARDING, nla_get_u8);
 	FILL_IN_MESH_PARAM_IF_SET(tb, cfg, rssi_threshold,
 			mask, NL80211_MESHCONF_RSSI_THRESHOLD, nla_get_u32);
+	FILL_IN_MESH_PARAM_IF_SET(tb, cfg, ht_opmode,
+			mask, NL80211_MESHCONF_HT_OPMODE, nla_get_u16);
 	if (mask_out)
 		*mask_out = mask;
 
