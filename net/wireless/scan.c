@@ -383,7 +383,11 @@ static int cmp_bss_core(struct cfg80211_bss *a,
 			       b->len_information_elements);
 	}
 
-	r = memcmp(a->bssid, b->bssid, ETH_ALEN);
+	/*
+	 * we can't use compare_ether_addr here since we need a < > operator.
+	 * The binary return value of compare_ether_addr isn't enough
+	 */
+	r = memcmp(a->bssid, b->bssid, sizeof(a->bssid));
 #if (defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) \
         || defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) \
         || defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) \
