@@ -615,6 +615,7 @@ static int af9035_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 			state->af9033_config[i].spec_inv = 1;
 			break;
 		default:
+			state->hw_not_supported = true;
 			warn("tuner ID=%02x not supported, please report!",
 				tmp);
 		};
@@ -646,32 +647,6 @@ static int af9035_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 
 	for (i = 0; i < af9035_properties[0].num_adapters; i++)
 		state->af9033_config[i].clock = clock_lut[tmp];
-
-	ret = af9035_rd_reg(d, EEPROM_IR_MODE, &tmp);
-	if (ret < 0)
-		goto err;
-	pr_debug("%s: ir_mode=%02x\n", __func__, tmp);
-
-	/* don't activate rc if in HID mode or if not available */
-	if (tmp == 5) {
-		ret = af9035_rd_reg(d, EEPROM_IR_TYPE, &tmp);
-		if (ret < 0)
-			goto err;
-		pr_debug("%s: ir_type=%02x\n", __func__, tmp);
-
-		switch (tmp) {
-		case 0: /* NEC */
-		default:
-			d->props.rc.core.protocol = RC_TYPE_NEC;
-			d->props.rc.core.allowed_protos = RC_TYPE_NEC;
-			break;
-		case 1: /* RC6 */
-			d->props.rc.core.protocol = RC_TYPE_RC6;
-			d->props.rc.core.allowed_protos = RC_TYPE_RC6;
-			break;
-		}
-		d->props.rc.core.rc_query = af9035_rc_query;
-	}
 
 	ret = af9035_rd_reg(d, EEPROM_IR_MODE, &tmp);
 	if (ret < 0)
@@ -834,8 +809,7 @@ static int af9035_frontend_attach(struct dvb_usb_adapter *adap)
 	struct state *state = adap->dev->priv;
 	int ret;
 
-	if (!state->af9033_config[adap->id].tuner) {
-		/* unsupported tuner */
+	if (state->hw_not_supported) {
 		ret = -ENODEV;
 		goto err;
 	}
@@ -1016,10 +990,7 @@ err:
 
 enum af9035_id_entry {
 	AF9035_15A4_9035,
-	AF9035_15A4_1000,
 	AF9035_15A4_1001,
-	AF9035_15A4_1002,
-	AF9035_15A4_1003,
 	AF9035_0CCD_0093,
 	AF9035_07CA_A835,
 	AF9035_07CA_B835,
@@ -1030,15 +1001,9 @@ enum af9035_id_entry {
 
 static struct usb_device_id af9035_id[] = {
 	[AF9035_15A4_9035] = {
-		USB_DEVICE(USB_VID_AFATECH, USB_PID_AFATECH_AF9035_9035)},
-	[AF9035_15A4_1000] = {
-		USB_DEVICE(USB_VID_AFATECH, USB_PID_AFATECH_AF9035_1000)},
+		USB_DEVICE(USB_VID_AFATECH, USB_PID_AFATECH_AF9035)},
 	[AF9035_15A4_1001] = {
-		USB_DEVICE(USB_VID_AFATECH, USB_PID_AFATECH_AF9035_1001)},
-	[AF9035_15A4_1002] = {
-		USB_DEVICE(USB_VID_AFATECH, USB_PID_AFATECH_AF9035_1002)},
-	[AF9035_15A4_1003] = {
-		USB_DEVICE(USB_VID_AFATECH, USB_PID_AFATECH_AF9035_1003)},
+		USB_DEVICE(USB_VID_AFATECH, USB_PID_AFATECH_AF9035_2)},
 	[AF9035_0CCD_0093] = {
 		USB_DEVICE(USB_VID_TERRATEC, USB_PID_TERRATEC_CINERGY_T_STICK)},
 	[AF9035_07CA_A835] = {
@@ -1109,10 +1074,7 @@ static struct dvb_usb_device_properties af9035_properties[] = {
 				.name = "Afatech AF9035 reference design",
 				.cold_ids = {
 					&af9035_id[AF9035_15A4_9035],
-					&af9035_id[AF9035_15A4_1000],
 					&af9035_id[AF9035_15A4_1001],
-					&af9035_id[AF9035_15A4_1002],
-					&af9035_id[AF9035_15A4_1003],
 				},
 			}, {
 				.name = "TerraTec Cinergy T Stick",
