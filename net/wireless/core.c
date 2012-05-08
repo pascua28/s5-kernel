@@ -669,7 +669,7 @@ void wiphy_unregister(struct wiphy *wiphy)
 		mutex_lock(&rdev->devlist_mtx);
 		__count = rdev->opencount;
 		mutex_unlock(&rdev->devlist_mtx);
-		__count == 0;}));
+		__count == 0; }));
 
 	mutex_lock(&rdev->devlist_mtx);
 	BUG_ON(!list_empty(&rdev->netdev_list));
@@ -781,7 +781,7 @@ static struct device_type wiphy_type = {
 	.name	= "wlan",
 };
 
-static int cfg80211_netdev_notifier_call(struct notifier_block * nb,
+static int cfg80211_netdev_notifier_call(struct notifier_block *nb,
 					 unsigned long state,
 					 void *ndev)
 {
