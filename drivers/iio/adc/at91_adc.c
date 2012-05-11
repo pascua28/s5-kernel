@@ -15,8 +15,6 @@
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
@@ -26,9 +24,9 @@
 
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
+#include <linux/iio/kfifo_buf.h>
 #include <linux/iio/trigger.h>
 #include <linux/iio/trigger_consumer.h>
-#include <linux/iio/triggered_buffer.h>
 
 #include <mach/at91_adc.h>
 
@@ -46,6 +44,7 @@ struct at91_adc_state {
 	struct clk		*clk;
 	bool			done;
 	int			irq;
+	bool			irq_enabled;
 	u16			last_value;
 	struct mutex		lock;
 	u8			num_channels;
@@ -65,6 +64,7 @@ static irqreturn_t at91_adc_trigger_handler(int irq, void *p)
 	struct iio_poll_func *pf = p;
 	struct iio_dev *idev = pf->indio_dev;
 	struct at91_adc_state *st = iio_priv(idev);
+	struct iio_buffer *buffer = idev->buffer;
 	int i, j = 0;
 
 	for (i = 0; i < idev->masklength; i++) {
@@ -80,9 +80,10 @@ static irqreturn_t at91_adc_trigger_handler(int irq, void *p)
 		*timestamp = pf->timestamp;
 	}
 
-	iio_push_to_buffers(idev, (u8 *)st->buffer);
+	buffer->access->store_to(buffer, (u8 *)st->buffer, pf->timestamp);
 
 	iio_trigger_notify_done(idev->trig);
+	st->irq_enabled = true;
 
 	/* Needed to ACK the DRDY interruption */
 	at91_adc_readl(st, AT91_ADC_LCDR);
@@ -103,6 +104,7 @@ static irqreturn_t at91_adc_eoc_trigger(int irq, void *private)
 
 	if (iio_buffer_enabled(idev)) {
 		disable_irq_nosync(irq);
+		st->irq_enabled = false;
 		iio_trigger_poll(idev->trig, iio_get_time_ns());
 	} else {
 		st->last_value = at91_adc_readl(st, AT91_ADC_LCDR);
@@ -314,15 +316,58 @@ static void at91_adc_trigger_remove(struct iio_dev *idev)
 	}
 }
 
+static const struct iio_buffer_setup_ops at91_adc_buffer_ops = {
+	.preenable = &iio_sw_buffer_preenable,
+	.postenable = &iio_triggered_buffer_postenable,
+	.predisable = &iio_triggered_buffer_predisable,
+};
+
 static int at91_adc_buffer_init(struct iio_dev *idev)
 {
-	return iio_triggered_buffer_setup(idev, &iio_pollfunc_store_time,
-		&at91_adc_trigger_handler, NULL);
+	int ret;
+
+	idev->buffer = iio_kfifo_allocate(idev);
+	if (!idev->buffer) {
+		ret = -ENOMEM;
+		goto error_ret;
+	}
+
+	idev->pollfunc = iio_alloc_pollfunc(&iio_pollfunc_store_time,
+					    &at91_adc_trigger_handler,
+					    IRQF_ONESHOT,
+					    idev,
+					    "%s-consumer%d",
+					    idev->name,
+					    idev->id);
+	if (idev->pollfunc == NULL) {
+		ret = -ENOMEM;
+		goto error_pollfunc;
+	}
+
+	idev->setup_ops = &at91_adc_buffer_ops;
+	idev->modes |= INDIO_BUFFER_TRIGGERED;
+
+	ret = iio_buffer_register(idev,
+				  idev->channels,
+				  idev->num_channels);
+	if (ret)
+		goto error_register;
+
+	return 0;
+
+error_register:
+	iio_dealloc_pollfunc(idev->pollfunc);
+error_pollfunc:
+	iio_kfifo_free(idev->buffer);
+error_ret:
+	return ret;
 }
 
 static void at91_adc_buffer_remove(struct iio_dev *idev)
 {
-	iio_triggered_buffer_cleanup(idev);
+	iio_buffer_unregister(idev);
+	iio_dealloc_pollfunc(idev->pollfunc);
+	iio_kfifo_free(idev->buffer);
 }
 
 static int at91_adc_read_raw(struct iio_dev *idev,
@@ -345,11 +390,9 @@ static int at91_adc_read_raw(struct iio_dev *idev,
 						       st->done,
 						       msecs_to_jiffies(1000));
 		if (ret == 0)
-			ret = -ETIMEDOUT;
-		if (ret < 0) {
-			mutex_unlock(&st->lock);
+			return -ETIMEDOUT;
+		else if (ret < 0)
 			return ret;
-		}
 
 		*val = st->last_value;
 
@@ -370,123 +413,6 @@ static int at91_adc_read_raw(struct iio_dev *idev,
 		break;
 	}
 	return -EINVAL;
-}
-
-static int at91_adc_probe_dt(struct at91_adc_state *st,
-			     struct platform_device *pdev)
-{
-	struct iio_dev *idev = iio_priv_to_dev(st);
-	struct device_node *node = pdev->dev.of_node;
-	struct device_node *trig_node;
-	int i = 0, ret;
-	u32 prop;
-
-	if (!node)
-		return -EINVAL;
-
-	st->use_external = of_property_read_bool(node, "atmel,adc-use-external-triggers");
-
-	if (of_property_read_u32(node, "atmel,adc-channels-used", &prop)) {
-		dev_err(&idev->dev, "Missing adc-channels-used property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->channels_mask = prop;
-
-	if (of_property_read_u32(node, "atmel,adc-num-channels", &prop)) {
-		dev_err(&idev->dev, "Missing adc-num-channels property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->num_channels = prop;
-
-	if (of_property_read_u32(node, "atmel,adc-startup-time", &prop)) {
-		dev_err(&idev->dev, "Missing adc-startup-time property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->startup_time = prop;
-
-
-	if (of_property_read_u32(node, "atmel,adc-vref", &prop)) {
-		dev_err(&idev->dev, "Missing adc-vref property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->vref_mv = prop;
-
-	st->registers = devm_kzalloc(&idev->dev,
-				     sizeof(struct at91_adc_reg_desc),
-				     GFP_KERNEL);
-	if (!st->registers) {
-		dev_err(&idev->dev, "Could not allocate register memory.\n");
-		ret = -ENOMEM;
-		goto error_ret;
-	}
-
-	if (of_property_read_u32(node, "atmel,adc-channel-base", &prop)) {
-		dev_err(&idev->dev, "Missing adc-channel-base property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->registers->channel_base = prop;
-
-	if (of_property_read_u32(node, "atmel,adc-drdy-mask", &prop)) {
-		dev_err(&idev->dev, "Missing adc-drdy-mask property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->registers->drdy_mask = prop;
-
-	if (of_property_read_u32(node, "atmel,adc-status-register", &prop)) {
-		dev_err(&idev->dev, "Missing adc-status-register property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->registers->status_register = prop;
-
-	if (of_property_read_u32(node, "atmel,adc-trigger-register", &prop)) {
-		dev_err(&idev->dev, "Missing adc-trigger-register property in the DT.\n");
-		ret = -EINVAL;
-		goto error_ret;
-	}
-	st->registers->trigger_register = prop;
-
-	st->trigger_number = of_get_child_count(node);
-	st->trigger_list = devm_kzalloc(&idev->dev, st->trigger_number *
-					sizeof(struct at91_adc_trigger),
-					GFP_KERNEL);
-	if (!st->trigger_list) {
-		dev_err(&idev->dev, "Could not allocate trigger list memory.\n");
-		ret = -ENOMEM;
-		goto error_ret;
-	}
-
-	for_each_child_of_node(node, trig_node) {
-		struct at91_adc_trigger *trig = st->trigger_list + i;
-		const char *name;
-
-		if (of_property_read_string(trig_node, "trigger-name", &name)) {
-			dev_err(&idev->dev, "Missing trigger-name property in the DT.\n");
-			ret = -EINVAL;
-			goto error_ret;
-		}
-	        trig->name = name;
-
-		if (of_property_read_u32(trig_node, "trigger-value", &prop)) {
-			dev_err(&idev->dev, "Missing trigger-value property in the DT.\n");
-			ret = -EINVAL;
-			goto error_ret;
-		}
-	        trig->value = prop;
-		trig->is_external = of_property_read_bool(trig_node, "trigger-external");
-		i++;
-	}
-
-	return 0;
-
-error_ret:
-	return ret;
 }
 
 static int at91_adc_probe_pdata(struct at91_adc_state *st,
@@ -514,7 +440,7 @@ static const struct iio_info at91_adc_info = {
 	.read_raw = &at91_adc_read_raw,
 };
 
-static int at91_adc_probe(struct platform_device *pdev)
+static int __devinit at91_adc_probe(struct platform_device *pdev)
 {
 	unsigned int prsc, mstrclk, ticks, adc_clk;
 	int ret;
@@ -530,15 +456,18 @@ static int at91_adc_probe(struct platform_device *pdev)
 
 	st = iio_priv(idev);
 
-	if (pdev->dev.of_node)
-		ret = at91_adc_probe_dt(st, pdev);
-	else
-		ret = at91_adc_probe_pdata(st, pdev);
-
+	ret = at91_adc_probe_pdata(st, pdev);
 	if (ret) {
 		dev_err(&pdev->dev, "No platform data available.\n");
 		ret = -EINVAL;
 		goto error_free_device;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "No resource defined\n");
+		ret = -ENXIO;
+		goto error_ret;
 	}
 
 	platform_set_drvdata(pdev, idev);
@@ -555,12 +484,18 @@ static int at91_adc_probe(struct platform_device *pdev)
 		goto error_free_device;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-
-	st->reg_base = devm_request_and_ioremap(&pdev->dev, res);
-	if (!st->reg_base) {
-		ret = -ENOMEM;
+	if (!request_mem_region(res->start, resource_size(res),
+				"AT91 adc registers")) {
+		dev_err(&pdev->dev, "Resources are unavailable.\n");
+		ret = -EBUSY;
 		goto error_free_device;
+	}
+
+	st->reg_base = ioremap(res->start, resource_size(res));
+	if (!st->reg_base) {
+		dev_err(&pdev->dev, "Failed to map registers.\n");
+		ret = -ENOMEM;
+		goto error_release_mem;
 	}
 
 	/*
@@ -575,35 +510,45 @@ static int at91_adc_probe(struct platform_device *pdev)
 			  idev);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to allocate IRQ.\n");
-		goto error_free_device;
+		goto error_unmap_reg;
 	}
 
-	st->clk = devm_clk_get(&pdev->dev, "adc_clk");
+	st->clk = clk_get(&pdev->dev, "adc_clk");
 	if (IS_ERR(st->clk)) {
 		dev_err(&pdev->dev, "Failed to get the clock.\n");
 		ret = PTR_ERR(st->clk);
 		goto error_free_irq;
 	}
 
-	ret = clk_prepare_enable(st->clk);
+	ret = clk_prepare(st->clk);
 	if (ret) {
-		dev_err(&pdev->dev,
-			"Could not prepare or enable the clock.\n");
-		goto error_free_irq;
+		dev_err(&pdev->dev, "Could not prepare the clock.\n");
+		goto error_free_clk;
 	}
 
-	st->adc_clk = devm_clk_get(&pdev->dev, "adc_op_clk");
+	ret = clk_enable(st->clk);
+	if (ret) {
+		dev_err(&pdev->dev, "Could not enable the clock.\n");
+		goto error_unprepare_clk;
+	}
+
+	st->adc_clk = clk_get(&pdev->dev, "adc_op_clk");
 	if (IS_ERR(st->adc_clk)) {
 		dev_err(&pdev->dev, "Failed to get the ADC clock.\n");
-		ret = PTR_ERR(st->adc_clk);
+		ret = PTR_ERR(st->clk);
 		goto error_disable_clk;
 	}
 
-	ret = clk_prepare_enable(st->adc_clk);
+	ret = clk_prepare(st->adc_clk);
 	if (ret) {
-		dev_err(&pdev->dev,
-			"Could not prepare or enable the ADC clock.\n");
-		goto error_disable_clk;
+		dev_err(&pdev->dev, "Could not prepare the ADC clock.\n");
+		goto error_free_adc_clk;
+	}
+
+	ret = clk_enable(st->adc_clk);
+	if (ret) {
+		dev_err(&pdev->dev, "Could not enable the ADC clock.\n");
+		goto error_unprepare_adc_clk;
 	}
 
 	/*
@@ -667,45 +612,56 @@ error_remove_triggers:
 error_unregister_buffer:
 	at91_adc_buffer_remove(idev);
 error_disable_adc_clk:
-	clk_disable_unprepare(st->adc_clk);
+	clk_disable(st->adc_clk);
+error_unprepare_adc_clk:
+	clk_unprepare(st->adc_clk);
+error_free_adc_clk:
+	clk_put(st->adc_clk);
 error_disable_clk:
-	clk_disable_unprepare(st->clk);
+	clk_disable(st->clk);
+error_unprepare_clk:
+	clk_unprepare(st->clk);
+error_free_clk:
+	clk_put(st->clk);
 error_free_irq:
 	free_irq(st->irq, idev);
+error_unmap_reg:
+	iounmap(st->reg_base);
+error_release_mem:
+	release_mem_region(res->start, resource_size(res));
 error_free_device:
 	iio_device_free(idev);
 error_ret:
 	return ret;
 }
 
-static int at91_adc_remove(struct platform_device *pdev)
+static int __devexit at91_adc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *idev = platform_get_drvdata(pdev);
+	struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	struct at91_adc_state *st = iio_priv(idev);
 
 	iio_device_unregister(idev);
 	at91_adc_trigger_remove(idev);
 	at91_adc_buffer_remove(idev);
 	clk_disable_unprepare(st->adc_clk);
-	clk_disable_unprepare(st->clk);
+	clk_put(st->adc_clk);
+	clk_disable(st->clk);
+	clk_unprepare(st->clk);
+	clk_put(st->clk);
 	free_irq(st->irq, idev);
+	iounmap(st->reg_base);
+	release_mem_region(res->start, resource_size(res));
 	iio_device_free(idev);
 
 	return 0;
 }
 
-static const struct of_device_id at91_adc_dt_ids[] = {
-	{ .compatible = "atmel,at91sam9260-adc" },
-	{},
-};
-MODULE_DEVICE_TABLE(of, at91_adc_dt_ids);
-
 static struct platform_driver at91_adc_driver = {
 	.probe = at91_adc_probe,
-	.remove = at91_adc_remove,
+	.remove = __devexit_p(at91_adc_remove),
 	.driver = {
 		   .name = "at91_adc",
-		   .of_match_table = of_match_ptr(at91_adc_dt_ids),
 	},
 };
 
