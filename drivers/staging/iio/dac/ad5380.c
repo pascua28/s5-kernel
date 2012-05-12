@@ -167,7 +167,7 @@ static const struct ad5380_chip_info ad5380_chip_info_tbl[] = {
 static ssize_t ad5380_read_dac_powerdown(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5380_state *st = iio_priv(indio_dev);
 
 	return sprintf(buf, "%d\n", st->pwr_down);
@@ -176,7 +176,7 @@ static ssize_t ad5380_read_dac_powerdown(struct device *dev,
 static ssize_t ad5380_write_dac_powerdown(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5380_state *st = iio_priv(indio_dev);
 	bool pwr_down;
 	int ret;
@@ -212,7 +212,7 @@ static const char ad5380_powerdown_modes[][15] = {
 static ssize_t ad5380_read_powerdown_mode(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5380_state *st = iio_priv(indio_dev);
 	unsigned int mode;
 	int ret;
@@ -229,7 +229,7 @@ static ssize_t ad5380_read_powerdown_mode(struct device *dev,
 static ssize_t ad5380_write_powerdown_mode(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5380_state *st = iio_priv(indio_dev);
 	unsigned int i;
 	int ret;
