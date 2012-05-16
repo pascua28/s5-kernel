@@ -905,20 +905,31 @@ static inline notrace void rcu_read_unlock_sched_notrace(void)
 #define RCU_INIT_POINTER(p, v) \
 		p = (typeof(*v) __force __rcu *)(v)
 
-/*
- * Does the specified offset indicate that the corresponding rcu_head
- * structure can be handled by kfree_rcu()?
+/**
+ * RCU_POINTER_INITIALIZER() - statically initialize an RCU protected pointer
+ *
+ * GCC-style initialization for an RCU-protected pointer in a structure field.
  */
-#define __is_kfree_rcu_offset(offset) ((offset) < 4096)
+#define RCU_POINTER_INITIALIZER(p, v) \
+		.p = (typeof(*v) __force __rcu *)(v)
 
-/*
- * Helper macro for kfree_rcu() to prevent argument-expansion eyestrain.
- */
-#define __kfree_rcu(head, offset) \
-	do { \
-		BUILD_BUG_ON(!__is_kfree_rcu_offset(offset)); \
-		call_rcu(head, (void (*)(struct rcu_head *))(unsigned long)(offset)); \
-	} while (0)
+static __always_inline bool __is_kfree_rcu_offset(unsigned long offset)
+{
+	return offset < 4096;
+}
+
+static __always_inline
+void __kfree_rcu(struct rcu_head *head, unsigned long offset)
+{
+	typedef void (*rcu_callback)(struct rcu_head *);
+
+	BUILD_BUG_ON(!__builtin_constant_p(offset));
+
+	/* See the kfree_rcu() header comment. */
+	BUILD_BUG_ON(!__is_kfree_rcu_offset(offset));
+
+	kfree_call_rcu(head, (rcu_callback)offset);
+}
 
 /*
  * Does the specified offset indicate that the corresponding rcu_head
