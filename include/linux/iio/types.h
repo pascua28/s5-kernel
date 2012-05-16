@@ -32,6 +32,7 @@ enum iio_chan_type {
 	IIO_QUATERNION,
 #endif
 	IIO_ALTVOLTAGE,
+	IIO_CCT,
 };
 
 enum iio_modifier {
@@ -52,6 +53,10 @@ enum iio_modifier {
 	IIO_MOD_R,
 	IIO_MOD_ROOT_SUM_SQUARED_X_Y,
 	IIO_MOD_SUM_SQUARED_X_Y_Z,
+	IIO_MOD_LIGHT_CLEAR,
+	IIO_MOD_LIGHT_RED,
+	IIO_MOD_LIGHT_GREEN,
+	IIO_MOD_LIGHT_BLUE,
 };
 
 #define IIO_VAL_INT 1

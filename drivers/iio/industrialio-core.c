@@ -68,6 +68,7 @@ static const char * const iio_chan_type_name_spec[] = {
 	[IIO_QUATERNION] = "quaternion",
 #endif
 	[IIO_ALTVOLTAGE] = "altvoltage",
+	[IIO_CCT] = "cct",
 };
 
 static const char * const iio_modifier_names[] = {
@@ -79,6 +80,10 @@ static const char * const iio_modifier_names[] = {
 	[IIO_MOD_LIGHT_BOTH] = "both",
 	[IIO_MOD_LIGHT_IR] = "ir",
 	[IIO_MOD_R] = "r",
+	[IIO_MOD_LIGHT_CLEAR] = "clear",
+	[IIO_MOD_LIGHT_RED] = "red",
+	[IIO_MOD_LIGHT_GREEN] = "green",
+	[IIO_MOD_LIGHT_BLUE] = "blue",
 };
 
 /* relies on pairs of these shared then separate */
