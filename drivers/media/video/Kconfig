@@ -655,6 +655,8 @@ menuconfig V4L_USB_DRIVERS
 
 if V4L_USB_DRIVERS
 
+source "drivers/media/video/au0828/Kconfig"
+
 source "drivers/media/video/uvc/Kconfig"
 
 source "drivers/media/video/gspca/Kconfig"
@@ -729,8 +731,6 @@ menuconfig V4L_PCI_DRIVERS
 	  Say Y here to enable support for these PCI(e) drivers.
 
 if V4L_PCI_DRIVERS
-
-source "drivers/media/video/au0828/Kconfig"
 
 source "drivers/media/video/bt8xx/Kconfig"
 
