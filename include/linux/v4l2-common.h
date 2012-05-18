@@ -29,11 +29,7 @@
 #ifndef __V4L2_COMMON__
 #define __V4L2_COMMON__
 
-/*
- *
- * Selection interface definitions
- *
- */
+/* Selection target definitions */
 
 /* Current cropping area */
 #define V4L2_SEL_TGT_CROP		0x0000
@@ -50,7 +46,7 @@
 /* Current composing area plus all padding pixels */
 #define V4L2_SEL_TGT_COMPOSE_PADDED	0x0103
 
-/* Backward compatibility target definitions --- to be removed. */
+/* Backward compatibility definitions */
 #define V4L2_SEL_TGT_CROP_ACTIVE	V4L2_SEL_TGT_CROP
 #define V4L2_SEL_TGT_COMPOSE_ACTIVE	V4L2_SEL_TGT_COMPOSE
 #define V4L2_SUBDEV_SEL_TGT_CROP_ACTUAL \
