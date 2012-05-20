@@ -687,7 +687,7 @@ static void fimc_capture_try_selection(struct fimc_ctx *ctx,
 		r->left   = r->top = 0;
 		return;
 	}
-	if (target == V4L2_SEL_TGT_COMPOSE_ACTIVE) {
+	if (target == V4L2_SEL_TGT_COMPOSE) {
 		if (ctx->rotation != 90 && ctx->rotation != 270)
 			align_h = 1;
 		max_sc_h = min(SCALER_MAX_HRATIO, 1 << (ffs(sink->width) - 3));
@@ -714,7 +714,7 @@ static void fimc_capture_try_selection(struct fimc_ctx *ctx,
 		      rotate ? sink->f_height : sink->f_width);
 	max_h = min_t(u32, FIMC_CAMIF_MAX_HEIGHT, sink->f_height);
 
-	if (target == V4L2_SEL_TGT_COMPOSE_ACTIVE) {
+	if (target == V4L2_SEL_TGT_COMPOSE) {
 		min_w = min_t(u32, max_w, sink->f_width / max_sc_h);
 		min_h = min_t(u32, max_h, sink->f_height / max_sc_v);
 		if (rotate) {
@@ -1175,9 +1175,9 @@ static int fimc_cap_g_selection(struct file *file, void *fh,
 		s->r.height = f->o_height;
 		return 0;
 
-	case V4L2_SEL_TGT_COMPOSE_ACTIVE:
+	case V4L2_SEL_TGT_COMPOSE:
 		f = &ctx->d_frame;
-	case V4L2_SEL_TGT_CROP_ACTIVE:
+	case V4L2_SEL_TGT_CROP:
 		s->r.left = f->offs_h;
 		s->r.top = f->offs_v;
 		s->r.width = f->width;
@@ -1213,9 +1213,9 @@ static int fimc_cap_s_selection(struct file *file, void *fh,
 	if (s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
 		return -EINVAL;
 
-	if (s->target == V4L2_SEL_TGT_COMPOSE_ACTIVE)
+	if (s->target == V4L2_SEL_TGT_COMPOSE)
 		f = &ctx->d_frame;
-	else if (s->target == V4L2_SEL_TGT_CROP_ACTIVE)
+	else if (s->target == V4L2_SEL_TGT_CROP)
 		f = &ctx->s_frame;
 	else
 		return -EINVAL;
@@ -1511,7 +1511,7 @@ static int fimc_subdev_set_selection(struct v4l2_subdev *sd,
 		return -EINVAL;
 
 	mutex_lock(&fimc->lock);
-	fimc_capture_try_selection(ctx, r, V4L2_SEL_TGT_CROP_ACTIVE);
+	fimc_capture_try_selection(ctx, r, V4L2_SEL_TGT_CROP);
 
 	switch (sel->target) {
 	case V4L2_SUBDEV_SEL_TGT_COMPOSE_BOUNDS:
