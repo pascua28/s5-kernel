@@ -498,7 +498,7 @@ int atl1c_phy_reset(struct atl1c_hw *hw)
 
 int atl1c_phy_init(struct atl1c_hw *hw)
 {
-	struct atl1c_adapter *adapter = (struct atl1c_adapter *)hw->adapter;
+	struct atl1c_adapter *adapter = hw->adapter;
 	struct pci_dev *pdev = adapter->pdev;
 	int ret_val;
 	u16 mii_bmcr_data = BMCR_RESET;
@@ -591,7 +591,7 @@ int atl1c_get_speed_and_duplex(struct atl1c_hw *hw, u16 *speed, u16 *duplex)
 
 int atl1c_phy_power_saving(struct atl1c_hw *hw)
 {
-	struct atl1c_adapter *adapter = (struct atl1c_adapter *)hw->adapter;
+	struct atl1c_adapter *adapter = hw->adapter;
 	struct pci_dev *pdev = adapter->pdev;
 	int ret = 0;
 	u16 autoneg_advertised = ADVERTISED_10baseT_Half;

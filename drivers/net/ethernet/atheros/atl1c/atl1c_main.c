@@ -963,13 +963,13 @@ static int atl1c_setup_ring_resources(struct atl1c_adapter *adapter)
 	}
 	for (i = 0; i < AT_MAX_TRANSMIT_QUEUE; i++) {
 		tpd_ring[i].buffer_info =
-			(struct atl1c_buffer *) (tpd_ring->buffer_info + count);
+			(tpd_ring->buffer_info + count);
 		count += tpd_ring[i].count;
 	}
 
 	for (i = 0; i < num_rx_queues; i++) {
 		rfd_ring[i].buffer_info =
-			(struct atl1c_buffer *) (tpd_ring->buffer_info + count);
+		(tpd_ring->buffer_info + count);
 		count += rfd_ring[i].count;
 		rx_desc_count += rfd_ring[i].count;
 	}
@@ -1284,7 +1284,7 @@ static void atl1c_enable_tx_ctrl(struct atl1c_hw *hw)
  */
 static int atl1c_reset_mac(struct atl1c_hw *hw)
 {
-	struct atl1c_adapter *adapter = (struct atl1c_adapter *)hw->adapter;
+	struct atl1c_adapter *adapter = hw->adapter;
 	struct pci_dev *pdev = adapter->pdev;
 	u32 master_ctrl_data = 0;
 
@@ -1628,8 +1628,7 @@ static inline void atl1c_clear_phy_int(struct atl1c_adapter *adapter)
 static bool atl1c_clean_tx_irq(struct atl1c_adapter *adapter,
 				enum atl1c_trans_queue type)
 {
-	struct atl1c_tpd_ring *tpd_ring = (struct atl1c_tpd_ring *)
-				&adapter->tpd_ring[type];
+	struct atl1c_tpd_ring *tpd_ring = &adapter->tpd_ring[type];
 	struct atl1c_buffer *buffer_info;
 	struct pci_dev *pdev = adapter->pdev;
 	u16 next_to_clean = atomic_read(&tpd_ring->next_to_clean);
