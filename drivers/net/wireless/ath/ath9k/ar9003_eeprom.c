@@ -3192,7 +3192,7 @@ static int ar9300_compress_decision(struct ath_hw *ah,
 				mdata_size, length);
 			return -1;
 		}
-		memcpy(mptr, (u8 *) (word + COMP_HDR_LEN), length);
+		memcpy(mptr, word + COMP_HDR_LEN, length);
 		ath_dbg(common, EEPROM,
 			"restored eeprom %d: uncompressed, length %d\n",
 			it, length);
@@ -3213,7 +3213,7 @@ static int ar9300_compress_decision(struct ath_hw *ah,
 			"restore eeprom %d: block, reference %d, length %d\n",
 			it, reference, length);
 		ar9300_uncompress_block(ah, mptr, mdata_size,
-					(u8 *) (word + COMP_HDR_LEN), length);
+					(word + COMP_HDR_LEN), length);
 		break;
 	default:
 		ath_dbg(common, EEPROM, "unknown compression code %d\n", code);
