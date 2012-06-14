@@ -152,4 +152,7 @@ comment "Supported DVB Frontends"
         depends on DVB_CORE
 source "drivers/media/dvb-frontends/Kconfig"
 
+# Common drivers
+source "drivers/media/common/Kconfig"
+
 endif # MEDIA_SUPPORT

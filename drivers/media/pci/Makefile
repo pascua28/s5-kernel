@@ -10,6 +10,5 @@ obj-y        :=	ttpci/		\
 		pt1/		\
 		mantis/		\
 		ngene/		\
-		ddbridge/
-
-obj-$(CONFIG_DVB_FIREDTV)	+= firewire/
+		ddbridge/	\
+		b2c2/
