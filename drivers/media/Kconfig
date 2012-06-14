@@ -125,7 +125,8 @@ source "drivers/media/radio/Kconfig"
 # DVB adapters
 #
 
-source "drivers/media/dvb/Kconfig"
+source "drivers/media/dvb-core/Kconfig"
+source "drivers/media/pci/Kconfig"
 source "drivers/media/usb/Kconfig"
 
 #

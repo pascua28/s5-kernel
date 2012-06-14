@@ -15,4 +15,4 @@ obj-$(CONFIG_TDMB)  += tdmb/
 obj-$(CONFIG_ISDBTMM)   += isdbtmm/
 obj-$(CONFIG_ISDBT) += isdbt/
 obj-$(CONFIG_MTV) += mtv/
-obj-$(CONFIG_DVB_CORE)  += dvb-core/ dvb/ dvb-frontends/ usb/
+obj-$(CONFIG_DVB_CORE)  += dvb-core/ pci/ dvb-frontends/ usb/
