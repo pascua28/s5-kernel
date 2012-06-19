@@ -2431,6 +2431,33 @@ static int nl80211_parse_beacon(struct genl_info *info,
 	return 0;
 }
 
+static bool nl80211_get_ap_channel(struct cfg80211_registered_device *rdev,
+				   struct cfg80211_ap_settings *params)
+{
+	struct wireless_dev *wdev;
+	bool ret = false;
+
+	mutex_lock(&rdev->devlist_mtx);
+
+	list_for_each_entry(wdev, &rdev->netdev_list, list) {
+		if (wdev->iftype != NL80211_IFTYPE_AP &&
+		    wdev->iftype != NL80211_IFTYPE_P2P_GO)
+			continue;
+
+		if (!wdev->preset_chan)
+			continue;
+
+		params->channel = wdev->preset_chan;
+		params->channel_type = wdev->preset_chantype;
+		ret = true;
+		break;
+	}
+
+	mutex_unlock(&rdev->devlist_mtx);
+
+	return ret;
+}
+
 static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
 {
 	struct cfg80211_registered_device *rdev = info->user_ptr[0];
@@ -2524,7 +2551,9 @@ static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
 	}
 
 	err = rdev->ops->start_ap(&rdev->wiphy, dev, &params);
-	if (!err)
+	if (!err) {
+		wdev->preset_chan = params.channel;
+		wdev->preset_chantype = params.channel_type;
 		wdev->beacon_interval = params.beacon_interval;
 
 	kfree(params.acl);
