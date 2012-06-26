@@ -4,12 +4,12 @@
 menu "Digital to analog converters"
 
 config AD5064
-	tristate "Analog Devices AD5064 and similar multi-channel DAC driver"
-	depends on (SPI_MASTER || I2C)
+	tristate "Analog Devices AD5064/64-1/65/44/45/24/25, AD5628/48/66/68 DAC driver"
+	depends on SPI
 	help
 	  Say yes here to build support for Analog Devices AD5024, AD5025, AD5044,
-	  AD5045, AD5064, AD5064-1, AD5065, AD5628, AD5629R, AD5648, AD5666, AD5668,
-	  AD5669R Digital to Analog Converter.
+	  AD5045, AD5064, AD5064-1, AD5065, AD5628, AD5648, AD5666, AD5668 Digital
+	  to Analog Converter.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad5064.
@@ -57,25 +57,14 @@ config AD5624R_SPI
 
 config AD5446
 	tristate "Analog Devices AD5446 and similar single channel DACs driver"
-	depends on (SPI_MASTER || I2C)
+	depends on SPI
 	help
-	  Say yes here to build support for Analog Devices AD5300, AD5301, AD5310,
-	  AD5311, AD5320, AD5321, AD5444, AD5446, AD5450, AD5451, AD5452, AD5453,
-	  AD5512A, AD5541A, AD5542A, AD5543, AD5553, AD5601, AD5602, AD5611, AD5612,
-	  AD5620, AD5621, AD5622, AD5640, AD5660, AD5662 DACs.
+	  Say yes here to build support for Analog Devices AD5444, AD5446, AD5450,
+	  AD5451, AD5452, AD5453, AD5512A, AD5541A, AD5542A, AD5543, AD5553, AD5601,
+	  AD5611, AD5620, AD5621, AD5640, AD5660, AD5662 DACs.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad5446.
-
-config AD5449
-	tristate "Analog Device AD5449 and similar DACs driver"
-	depends on SPI_MASTER
-	help
-	  Say yes here to build support for Analog Devices AD5415, AD5426, AD5429,
-	  AD5432, AD5439, AD5443, AD5449 Digital to Analog Converters.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called ad5449.
 
 config AD5504
 	tristate "Analog Devices AD5504/AD5501 DAC SPI driver"
@@ -86,17 +75,6 @@ config AD5504
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad5504.
-
-config AD5755
-	tristate "Analog Devices AD5755/AD5755-1/AD5757/AD5735/AD5737 DAC driver"
-	depends on SPI_MASTER
-	help
-	  Say yes here to build support for Analog Devices AD5755, AD5755-1,
-	  AD5757, AD5735, AD5737 quad channel Digital to
-	  Analog Converter.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called ad5755.
 
 config AD5764
 	tristate "Analog Devices AD5764/64R/44/44R DAC driver"
@@ -132,7 +110,7 @@ config AD5686
 
 config MAX517
 	tristate "Maxim MAX517/518/519 DAC driver"
-	depends on I2C
+	depends on I2C && EXPERIMENTAL
 	help
 	  If you say yes here you get support for the Maxim chips MAX517,
 	  MAX518 and MAX519 (I2C 8-Bit DACs with rail-to-rail outputs).
