@@ -2317,7 +2317,9 @@ struct wiphy {
 	char fw_version[ETHTOOL_BUSINFO_LEN];
 	u32 hw_version;
 
+#ifdef CONFIG_PM
 	struct wiphy_wowlan_support wowlan;
+#endif
 
 	u16 max_remain_on_channel_duration;
 
