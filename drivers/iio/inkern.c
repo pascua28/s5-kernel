@@ -193,7 +193,6 @@ struct iio_channel *iio_channel_get_all(const char *name)
 						c->map->adc_channel_label);
 		if (chans[mapind].channel == NULL) {
 			ret = -EINVAL;
-			put_device(&chans[mapind].indio_dev->dev);
 			goto error_free_chans;
 		}
 		get_device(&chans[mapind].indio_dev->dev);
