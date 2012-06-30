@@ -98,7 +98,7 @@ static irqreturn_t ad799x_trigger_handler(int irq, void *p)
 		memcpy(rxbuf + indio_dev->scan_bytes - sizeof(s64),
 			&time_ns, sizeof(time_ns));
 
-	iio_push_to_buffer(indio_dev->buffer, rxbuf);
+	iio_push_to_buffers(indio_dev, rxbuf);
 done:
 	kfree(rxbuf);
 	if (b_sent < 0)
