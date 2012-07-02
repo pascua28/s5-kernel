@@ -145,6 +145,11 @@ static ssize_t queue_io_opt_show(struct request_queue *q, char *page)
 	return queue_var_show(queue_io_opt(q), page);
 }
 
+static ssize_t queue_discard_alignment_show(struct request_queue *q, char *page)
+{
+	return queue_var_show(q->limits.discard_alignment, page);
+}
+
 static ssize_t queue_discard_granularity_show(struct request_queue *q, char *page)
 {
 	return queue_var_show(q->limits.discard_granularity, page);
@@ -344,6 +349,11 @@ static struct queue_sysfs_entry queue_io_opt_entry = {
 	.show = queue_io_opt_show,
 };
 
+static struct queue_sysfs_entry queue_discard_alignment_entry = {
+	.attr = {.name = "discard_alignment", .mode = S_IRUGO },
+	.show = queue_discard_alignment_show,
+};
+
 static struct queue_sysfs_entry queue_discard_granularity_entry = {
 	.attr = {.name = "discard_granularity", .mode = S_IRUGO },
 	.show = queue_discard_granularity_show,
@@ -404,6 +414,7 @@ static struct attribute *default_attrs[] = {
 	&queue_io_min_entry.attr,
 	&queue_io_opt_entry.attr,
 	&queue_discard_granularity_entry.attr,
+	&queue_discard_alignment_entry.attr,
 	&queue_discard_max_entry.attr,
 	&queue_discard_zeroes_data_entry.attr,
 	&queue_nonrot_entry.attr,
