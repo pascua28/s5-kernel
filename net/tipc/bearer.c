@@ -178,8 +178,8 @@ struct sk_buff *tipc_media_get_names(void)
 
 /**
  * bearer_name_validate - validate & (optionally) deconstruct bearer name
- * @name - ptr to bearer name string
- * @name_parts - ptr to area for bearer name components (or NULL if not needed)
+ * @name: ptr to bearer name string
+ * @name_parts: ptr to area for bearer name components (or NULL if not needed)
  *
  * Returns 1 if bearer name is valid, otherwise 0.
  */
@@ -538,8 +538,7 @@ exit:
 }
 
 /**
- * tipc_block_bearer(): Block the bearer with the given name,
- *                      and reset all its links
+ * tipc_block_bearer - Block the bearer with the given name, and reset all its links
  */
 
 int tipc_block_bearer(const char *name)

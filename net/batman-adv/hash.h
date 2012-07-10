@@ -77,7 +77,7 @@ static inline void hash_delete(struct hashtable_t *hash,
 }
 
 /**
- *	hash_add - adds data to the hashtable
+ *	batadv_hash_add - adds data to the hashtable
  *	@hash: storage hash table
  *	@compare: callback to determine if 2 hash elements are identical
  *	@choose: callback calculating the hash index
