@@ -332,8 +332,10 @@ int pps_register_cdev(struct pps_device *pps)
 	}
 	pps->dev = device_create(pps_class, pps->info.dev, devt, pps,
 							"pps%d", pps->id);
-	if (IS_ERR(pps->dev))
+	if (IS_ERR(pps->dev)) {
+		err = PTR_ERR(pps->dev);
 		goto del_cdev;
+	}
 
 	/* Override the release function with our own */
 	pps->dev->release = pps_device_destruct;
