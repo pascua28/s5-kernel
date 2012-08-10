@@ -973,7 +973,7 @@ static const struct iio_info ad7195_info = {
 	  IIO_CHAN_INFO_SCALE_SHARED_BIT,				\
 	  .address = _address,						\
 	  .scan_index = _si,						\
-	  .scan_type =  IIO_ST('s', 24, 32, 0)}
+	  .scan_type =  IIO_ST('u', 24, 32, 0)}
 
 #define AD7192_CHAN(_chan, _address, _si)				\
 	{ .type = IIO_VOLTAGE,						\
@@ -983,7 +983,7 @@ static const struct iio_info ad7195_info = {
 	  IIO_CHAN_INFO_SCALE_SHARED_BIT,				\
 	  .address = _address,						\
 	  .scan_index = _si,						\
-	  .scan_type =  IIO_ST('s', 24, 32, 0)}
+	  .scan_type =  IIO_ST('u', 24, 32, 0)}
 
 #define AD7192_CHAN_TEMP(_chan, _address, _si)				\
 	{ .type = IIO_TEMP,						\
@@ -993,7 +993,7 @@ static const struct iio_info ad7195_info = {
 	  IIO_CHAN_INFO_SCALE_SEPARATE_BIT,				\
 	  .address = _address,						\
 	  .scan_index = _si,						\
-	  .scan_type =  IIO_ST('s', 24, 32, 0)}
+	  .scan_type =  IIO_ST('u', 24, 32, 0)}
 
 static struct iio_chan_spec ad7192_channels[] = {
 	AD7192_CHAN_DIFF(1, 2, NULL, AD7192_CH_AIN1P_AIN2M, 0),
