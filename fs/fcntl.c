@@ -74,6 +74,9 @@ SYSCALL_DEFINE3(dup3, unsigned int, oldfd, unsigned int, newfd, int, flags)
 		return -EMFILE;
 	}
 
+	if (newfd >= rlimit(RLIMIT_NOFILE))
+		return -EMFILE;
+
 	spin_lock(&files->file_lock);
 	err = expand_files(files, newfd);
 	file = fcheck(oldfd);
