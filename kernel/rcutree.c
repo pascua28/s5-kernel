@@ -1919,8 +1919,6 @@ __call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *rcu),
 	head->func = func;
 	head->next = NULL;
 
-	smp_mb(); /* Ensure RCU update seen before callback registry. */
-
 	/*
 	 * Opportunistically note grace-period endings and beginnings.
 	 * Note that we might see a beginning right after we see an
