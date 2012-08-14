@@ -9,6 +9,7 @@ ifeq ($(CONFIG_MEDIA_CONTROLLER),y)
 endif
 
 obj-y += v4l2-core/ tuners/ common/ platform/ rc/ video/
+obj-y += i2c/ pci/ usb/ mmc/ firewire/ parport/
 
 obj-$(CONFIG_VIDEO_DEV) += radio/
 obj-$(CONFIG_TDMB)  += tdmb/

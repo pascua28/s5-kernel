@@ -31,7 +31,6 @@
 #include <linux/pci.h>
 #include <linux/pci_ids.h>
 #include <linux/timer.h>
-#include <linux/version.h>
 #include <linux/i2c.h>
 #include <linux/swab.h>
 #include <linux/vmalloc.h>
@@ -579,6 +578,7 @@ static int demod_attach_drxk(struct ddb_input *input)
 
 	memset(&config, 0, sizeof(config));
 	config.microcode_name = "drxk_a3.mc";
+	config.qam_demod_parameter_count = 4;
 	config.adr = 0x29 + (input->nr & 1);
 
 	fe = input->fe = dvb_attach(drxk_attach, &config, i2c);
@@ -1497,7 +1497,7 @@ static int ddb_class_create(void)
 	ddb_class = class_create(THIS_MODULE, DDB_NAME);
 	if (IS_ERR(ddb_class)) {
 		unregister_chrdev(ddb_major, DDB_NAME);
-		return -1;
+		return PTR_ERR(ddb_class);
 	}
 	ddb_class->devnode = ddb_devnode;
 	return 0;
@@ -1701,11 +1701,18 @@ static struct pci_driver ddb_pci_driver = {
 
 static __init int module_init_ddbridge(void)
 {
+	int ret;
+
 	printk(KERN_INFO "Digital Devices PCIE bridge driver, "
 	       "Copyright (C) 2010-11 Digital Devices GmbH\n");
-	if (ddb_class_create())
-		return -1;
-	return pci_register_driver(&ddb_pci_driver);
+
+	ret = ddb_class_create();
+	if (ret < 0)
+		return ret;
+	ret = pci_register_driver(&ddb_pci_driver);
+	if (ret < 0)
+		ddb_class_destroy();
+	return ret;
 }
 
 static __exit void module_exit_ddbridge(void)

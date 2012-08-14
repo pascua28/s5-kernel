@@ -113,19 +113,15 @@ source "drivers/media/platform/Kconfig"
 
 source "drivers/media/tuners/Kconfig"
 
-#
-# Video/Radio/Hybrid adapters
-#
+source "drivers/media/i2c/Kconfig"
 
+#
+# V4L platform/mem2mem drivers
+#
 source "drivers/media/video/Kconfig"
 
 source "drivers/media/radio/Kconfig"
 
-#
-# DVB adapters
-#
-
-source "drivers/media/dvb-core/Kconfig"
 source "drivers/media/pci/Kconfig"
 source "drivers/media/usb/Kconfig"
 source "drivers/media/mmc/Kconfig"
