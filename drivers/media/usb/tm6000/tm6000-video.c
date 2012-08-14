@@ -882,6 +882,7 @@ static int vidioc_querycap(struct file *file, void  *priv,
 
 	strlcpy(cap->driver, "tm6000", sizeof(cap->driver));
 	strlcpy(cap->card, "Trident TVMaster TM5600/6000/6010", sizeof(cap->card));
+	cap->version = TM6000_VERSION;
 	cap->capabilities =	V4L2_CAP_VIDEO_CAPTURE |
 				V4L2_CAP_STREAMING     |
 				V4L2_CAP_AUDIO         |
@@ -1401,7 +1402,7 @@ static int radio_g_audio(struct file *file, void *priv,
 }
 
 static int radio_s_audio(struct file *file, void *priv,
-					const struct v4l2_audio *a)
+					struct v4l2_audio *a)
 {
 	return 0;
 }
@@ -1448,7 +1449,7 @@ static int radio_queryctrl(struct file *file, void *priv,
 	File operations for the device
    ------------------------------------------------------------------*/
 
-static int __tm6000_open(struct file *file)
+static int tm6000_open(struct file *file)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct tm6000_core *dev = video_drvdata(file);
@@ -1540,41 +1541,23 @@ static int __tm6000_open(struct file *file)
 	return 0;
 }
 
-static int tm6000_open(struct file *file)
-{
-	struct video_device *vdev = video_devdata(file);
-	int res;
-
-	mutex_lock(vdev->lock);
-	res = __tm6000_open(file);
-	mutex_unlock(vdev->lock);
-	return res;
-}
-
 static ssize_t
 tm6000_read(struct file *file, char __user *data, size_t count, loff_t *pos)
 {
-	struct tm6000_fh *fh = file->private_data;
-	struct tm6000_core *dev = fh->dev;
+	struct tm6000_fh        *fh = file->private_data;
 
 	if (fh->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		int res;
-
 		if (!res_get(fh->dev, fh, true))
 			return -EBUSY;
 
-		if (mutex_lock_interruptible(&dev->lock))
-			return -ERESTARTSYS;
-		res = videobuf_read_stream(&fh->vb_vidq, data, count, pos, 0,
+		return videobuf_read_stream(&fh->vb_vidq, data, count, pos, 0,
 					file->f_flags & O_NONBLOCK);
-		mutex_unlock(&dev->lock);
-		return res;
 	}
 	return 0;
 }
 
 static unsigned int
-__tm6000_poll(struct file *file, struct poll_table_struct *wait)
+tm6000_poll(struct file *file, struct poll_table_struct *wait)
 {
 	struct tm6000_fh        *fh = file->private_data;
 	struct tm6000_buffer    *buf;
@@ -1601,18 +1584,6 @@ __tm6000_poll(struct file *file, struct poll_table_struct *wait)
 	return 0;
 }
 
-static unsigned int tm6000_poll(struct file *file, struct poll_table_struct *wait)
-{
-	struct tm6000_fh *fh = file->private_data;
-	struct tm6000_core *dev = fh->dev;
-	unsigned int res;
-
-	mutex_lock(&dev->lock);
-	res = __tm6000_poll(file, wait);
-	mutex_unlock(&dev->lock);
-	return res;
-}
-
 static int tm6000_release(struct file *file)
 {
 	struct tm6000_fh         *fh = file->private_data;
@@ -1622,7 +1593,6 @@ static int tm6000_release(struct file *file)
 	dprintk(dev, V4L2_DEBUG_OPEN, "tm6000: close called (dev=%s, users=%d)\n",
 		video_device_node_name(vdev), dev->users);
 
-	mutex_lock(&dev->lock);
 	dev->users--;
 
 	res_free(dev, fh);
@@ -1650,7 +1620,6 @@ static int tm6000_release(struct file *file)
 	}
 
 	kfree(fh);
-	mutex_unlock(&dev->lock);
 
 	return 0;
 }
@@ -1658,14 +1627,8 @@ static int tm6000_release(struct file *file)
 static int tm6000_mmap(struct file *file, struct vm_area_struct * vma)
 {
 	struct tm6000_fh *fh = file->private_data;
-	struct tm6000_core *dev = fh->dev;
-	int res;
 
-	if (mutex_lock_interruptible(&dev->lock))
-		return -ERESTARTSYS;
-	res = videobuf_mmap_mapper(&fh->vb_vidq, vma);
-	mutex_unlock(&dev->lock);
-	return res;
+	return videobuf_mmap_mapper(&fh->vb_vidq, vma);
 }
 
 static struct v4l2_file_operations tm6000_fops = {
@@ -1762,6 +1725,10 @@ static struct video_device *vdev_init(struct tm6000_core *dev,
 	vfd->release = video_device_release;
 	vfd->debug = tm6000_debug;
 	vfd->lock = &dev->lock;
+	/* Locking in file operations other than ioctl should be done
+	   by the driver, not the V4L2 core.
+	   This driver needs auditing so that this flag can be removed. */
+	set_bit(V4L2_FL_LOCK_ALL_FOPS, &vfd->flags);
 
 	snprintf(vfd->name, sizeof(vfd->name), "%s %s", dev->name, type_name);
 

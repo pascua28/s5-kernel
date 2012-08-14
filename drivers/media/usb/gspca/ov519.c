@@ -141,14 +141,14 @@ enum sensors {
 
 /* table of the disabled controls */
 struct ctrl_valid {
-	unsigned int has_brightness:1;
-	unsigned int has_contrast:1;
-	unsigned int has_exposure:1;
-	unsigned int has_autogain:1;
-	unsigned int has_sat:1;
-	unsigned int has_hvflip:1;
-	unsigned int has_autobright:1;
-	unsigned int has_freq:1;
+	int has_brightness:1;
+	int has_contrast:1;
+	int has_exposure:1;
+	int has_autogain:1;
+	int has_sat:1;
+	int has_hvflip:1;
+	int has_autobright:1;
+	int has_freq:1;
 };
 
 static const struct ctrl_valid valid_controls[] = {
@@ -2701,7 +2701,7 @@ static void ov7xx0_configure(struct sd *sd)
 	/* add OV7670 here
 	 * it appears to be wrongly detected as a 7610 by default */
 	if (rc < 0) {
-		pr_err("Error detecting sensor type\n");
+		PDEBUG(D_ERR, "Error detecting sensor type");
 		return;
 	}
 	if ((rc & 3) == 3) {
@@ -2729,12 +2729,12 @@ static void ov7xx0_configure(struct sd *sd)
 		/* try to read product id registers */
 		high = i2c_r(sd, 0x0a);
 		if (high < 0) {
-			pr_err("Error detecting camera chip PID\n");
+			PDEBUG(D_ERR, "Error detecting camera chip PID");
 			return;
 		}
 		low = i2c_r(sd, 0x0b);
 		if (low < 0) {
-			pr_err("Error detecting camera chip VER\n");
+			PDEBUG(D_ERR, "Error detecting camera chip VER");
 			return;
 		}
 		if (high == 0x76) {
@@ -2760,7 +2760,7 @@ static void ov7xx0_configure(struct sd *sd)
 				sd->sensor = SEN_OV7660;
 				break;
 			default:
-				pr_err("Unknown sensor: 0x76%02x\n", low);
+				PDEBUG(D_PROBE, "Unknown sensor: 0x76%x", low);
 				return;
 			}
 		} else {
@@ -2781,7 +2781,7 @@ static void ov6xx0_configure(struct sd *sd)
 	/* Detect sensor (sub)type */
 	rc = i2c_r(sd, OV7610_REG_COM_I);
 	if (rc < 0) {
-		pr_err("Error detecting sensor type\n");
+		PDEBUG(D_ERR, "Error detecting sensor type");
 		return;
 	}
 
@@ -4762,7 +4762,7 @@ static int sd_get_jcomp(struct gspca_dev *gspca_dev,
 }
 
 static int sd_set_jcomp(struct gspca_dev *gspca_dev,
-			const struct v4l2_jpegcompression *jcomp)
+			struct v4l2_jpegcompression *jcomp)
 {
 	struct sd *sd = (struct sd *) gspca_dev;
 

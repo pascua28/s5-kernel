@@ -583,10 +583,6 @@ if V4L_USB_DRIVERS
 
 source "drivers/media/video/au0828/Kconfig"
 
-source "drivers/media/video/uvc/Kconfig"
-
-source "drivers/media/video/gspca/Kconfig"
-
 source "drivers/media/video/pvrusb2/Kconfig"
 
 source "drivers/media/video/hdpvr/Kconfig"
@@ -602,10 +598,6 @@ source "drivers/media/video/tm6000/Kconfig"
 source "drivers/media/video/usbvision/Kconfig"
 
 source "drivers/media/video/sn9c102/Kconfig"
-
-source "drivers/media/video/pwc/Kconfig"
-
-source "drivers/media/video/cpia2/Kconfig"
 
 config USB_ZR364XX
 	tristate "USB ZR364XX Camera support"
@@ -643,7 +635,7 @@ config USB_S2255
 	  Say Y here if you want support for the Sensoray 2255 USB device.
 	  This driver can be compiled as a module, called s2255drv.
 
-endif # V4L_USB_DRIVERS
+endif # V4L_USB_DRIVERS && MEDIA_CAMERA_SUPPORT
 
 #
 # PCI drivers configuration

@@ -205,19 +205,6 @@ int pvr2_s_std(struct file *file, void *priv, v4l2_std_id *std)
 		pvr2_hdw_get_ctrl_by_id(hdw, PVR2_CID_STDCUR), *std);
 }
 
-static int pvr2_querystd(struct file *file, void *priv, v4l2_std_id *std)
-{
-	struct pvr2_v4l2_fh *fh = file->private_data;
-	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
-	int val = 0;
-	int ret;
-
-	ret = pvr2_ctrl_get_value(
-		pvr2_hdw_get_ctrl_by_id(hdw, PVR2_CID_STDDETECT), &val);
-	*std = val;
-	return ret;
-}
-
 static int pvr2_enum_input(struct file *file, void *priv, struct v4l2_input *vi)
 {
 	struct pvr2_v4l2_fh *fh = file->private_data;
@@ -226,11 +213,13 @@ static int pvr2_enum_input(struct file *file, void *priv, struct v4l2_input *vi)
 	struct v4l2_input tmp;
 	unsigned int cnt;
 	int val;
+	int ret;
 
 	cptr = pvr2_hdw_get_ctrl_by_id(hdw, PVR2_CID_INPUT);
 
 	memset(&tmp, 0, sizeof(tmp));
 	tmp.index = vi->index;
+	ret = 0;
 	if (vi->index >= fh->input_cnt)
 		return -EINVAL;
 	val = fh->input_map[vi->index];
@@ -333,7 +322,7 @@ static int pvr2_g_audio(struct file *file, void *priv, struct v4l2_audio *vin)
 	return 0;
 }
 
-static int pvr2_s_audio(struct file *file, void *priv, const struct v4l2_audio *vout)
+static int pvr2_s_audio(struct file *file, void *priv, struct v4l2_audio *vout)
 {
 	if (vout->index)
 		return -EINVAL;
@@ -554,7 +543,9 @@ static int pvr2_queryctrl(struct file *file, void *priv,
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
 	struct pvr2_ctrl *cptr;
 	int val;
+	int ret;
 
+	ret = 0;
 	if (vc->id & V4L2_CTRL_FLAG_NEXT_CTRL) {
 		cptr = pvr2_hdw_get_ctrl_nextv4l(
 				hdw, (vc->id & ~V4L2_CTRL_FLAG_NEXT_CTRL));
@@ -701,9 +692,11 @@ static int pvr2_try_ext_ctrls(struct file *file, void *priv,
 	struct v4l2_ext_control *ctrl;
 	struct pvr2_ctrl *pctl;
 	unsigned int idx;
+	int ret;
 
 	/* For the moment just validate that the requested control
 	   actually exists. */
+	ret = 0;
 	for (idx = 0; idx < ctls->count; idx++) {
 		ctrl = ctls->controls + idx;
 		pctl = pvr2_hdw_get_ctrl_v4l(hdw, ctrl->id);
@@ -760,14 +753,16 @@ static int pvr2_g_crop(struct file *file, void *priv, struct v4l2_crop *crop)
 	return 0;
 }
 
-static int pvr2_s_crop(struct file *file, void *priv, const struct v4l2_crop *crop)
+static int pvr2_s_crop(struct file *file, void *priv, struct v4l2_crop *crop)
 {
 	struct pvr2_v4l2_fh *fh = file->private_data;
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
+	struct v4l2_cropcap cap;
 	int ret;
 
 	if (crop->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
+	cap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	ret = pvr2_ctrl_set_value(
 			pvr2_hdw_get_ctrl_by_id(hdw, PVR2_CID_CROPL),
 			crop->c.left);
@@ -849,7 +844,6 @@ static const struct v4l2_ioctl_ops pvr2_ioctl_ops = {
 	.vidioc_g_tuner			    = pvr2_g_tuner,
 	.vidioc_g_std			    = pvr2_g_std,
 	.vidioc_s_std			    = pvr2_s_std,
-	.vidioc_querystd		    = pvr2_querystd,
 	.vidioc_log_status		    = pvr2_log_status,
 	.vidioc_enum_fmt_vid_cap	    = pvr2_enum_fmt_vid_cap,
 	.vidioc_g_fmt_vid_cap		    = pvr2_g_fmt_vid_cap,
@@ -1301,12 +1295,10 @@ static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 	struct usb_device *usbdev;
 	int mindevnum;
 	int unit_number;
-	struct pvr2_hdw *hdw;
 	int *nr_ptr = NULL;
 	dip->v4lp = vp;
 
-	hdw = vp->channel.mc_head->hdw;
-	usbdev = pvr2_hdw_get_dev(hdw);
+	usbdev = pvr2_hdw_get_dev(vp->channel.mc_head->hdw);
 	dip->v4l_type = v4l_type;
 	switch (v4l_type) {
 	case VFL_TYPE_GRABBER:
@@ -1342,16 +1334,13 @@ static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 	memcpy(&dip->devbase,&vdev_template,sizeof(vdev_template));
 	dip->devbase.release = pvr2_video_device_release;
 	dip->devbase.ioctl_ops = &pvr2_ioctl_ops;
-	{
-		int val;
-		pvr2_ctrl_get_value(
-			pvr2_hdw_get_ctrl_by_id(hdw,
-						PVR2_CID_STDAVAIL), &val);
-		dip->devbase.tvnorms = (v4l2_std_id)val;
-	}
+	/* FIXME: tvnorms should be set to the set of supported standards
+	   by this device. Then video_ioctl2 will implement VIDIOC_ENUMSTD
+	   based on this field. */
+	dip->devbase.tvnorms = V4L2_STD_ALL;
 
 	mindevnum = -1;
-	unit_number = pvr2_hdw_get_unit_number(hdw);
+	unit_number = pvr2_hdw_get_unit_number(vp->channel.mc_head->hdw);
 	if (nr_ptr && (unit_number >= 0) && (unit_number < PVR_NUM)) {
 		mindevnum = nr_ptr[unit_number];
 	}
@@ -1368,7 +1357,7 @@ static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 	       video_device_node_name(&dip->devbase),
 	       pvr2_config_get_name(dip->config));
 
-	pvr2_hdw_v4l_store_minor_number(hdw,
+	pvr2_hdw_v4l_store_minor_number(vp->channel.mc_head->hdw,
 					dip->minor_type,dip->devbase.minor);
 }
 

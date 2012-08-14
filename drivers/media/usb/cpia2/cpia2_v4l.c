@@ -84,26 +84,21 @@ MODULE_VERSION(CPIA_VERSION);
 static int cpia2_open(struct file *file)
 {
 	struct camera_data *cam = video_drvdata(file);
-	int retval;
+	int retval = v4l2_fh_open(file);
 
-	if (mutex_lock_interruptible(&cam->v4l2_lock))
-		return -ERESTARTSYS;
-	retval = v4l2_fh_open(file);
 	if (retval)
-		goto open_unlock;
+		return retval;
 
 	if (v4l2_fh_is_singular_file(file)) {
 		if (cpia2_allocate_buffers(cam)) {
 			v4l2_fh_release(file);
-			retval = -ENOMEM;
-			goto open_unlock;
+			return -ENOMEM;
 		}
 
 		/* reset the camera */
 		if (cpia2_reset_camera(cam) < 0) {
 			v4l2_fh_release(file);
-			retval = -EIO;
-			goto open_unlock;
+			return -EIO;
 		}
 
 		cam->APP_len = 0;
@@ -111,9 +106,7 @@ static int cpia2_open(struct file *file)
 	}
 
 	cpia2_dbg_dump_registers(cam);
-open_unlock:
-	mutex_unlock(&cam->v4l2_lock);
-	return retval;
+	return 0;
 }
 
 /******************************************************************************
@@ -126,7 +119,6 @@ static int cpia2_close(struct file *file)
 	struct video_device *dev = video_devdata(file);
 	struct camera_data *cam = video_get_drvdata(dev);
 
-	mutex_lock(&cam->v4l2_lock);
 	if (video_is_registered(&cam->vdev) && v4l2_fh_is_singular_file(file)) {
 		cpia2_usb_stream_stop(cam);
 
@@ -141,7 +133,6 @@ static int cpia2_close(struct file *file)
 		cam->stream_fh = NULL;
 		cam->mmapped = 0;
 	}
-	mutex_unlock(&cam->v4l2_lock);
 	return v4l2_fh_release(file);
 }
 
@@ -155,16 +146,11 @@ static ssize_t cpia2_v4l_read(struct file *file, char __user *buf, size_t count,
 {
 	struct camera_data *cam = video_drvdata(file);
 	int noblock = file->f_flags&O_NONBLOCK;
-	ssize_t ret;
 
 	if(!cam)
 		return -EINVAL;
 
-	if (mutex_lock_interruptible(&cam->v4l2_lock))
-		return -ERESTARTSYS;
-	ret = cpia2_read(cam, buf, count, noblock);
-	mutex_unlock(&cam->v4l2_lock);
-	return ret;
+	return cpia2_read(cam, buf, count, noblock);
 }
 
 
@@ -176,12 +162,8 @@ static ssize_t cpia2_v4l_read(struct file *file, char __user *buf, size_t count,
 static unsigned int cpia2_v4l_poll(struct file *filp, struct poll_table_struct *wait)
 {
 	struct camera_data *cam = video_drvdata(filp);
-	unsigned int res;
 
-	mutex_lock(&cam->v4l2_lock);
-	res = cpia2_poll(cam, filp, wait);
-	mutex_unlock(&cam->v4l2_lock);
-	return res;
+	return cpia2_poll(cam, filp, wait);
 }
 
 
@@ -734,8 +716,7 @@ static int cpia2_g_jpegcomp(struct file *file, void *fh, struct v4l2_jpegcompres
  *
  *****************************************************************************/
 
-static int cpia2_s_jpegcomp(struct file *file, void *fh,
-		const struct v4l2_jpegcompression *parms)
+static int cpia2_s_jpegcomp(struct file *file, void *fh, struct v4l2_jpegcompression *parms)
 {
 	struct camera_data *cam = video_drvdata(file);
 
@@ -744,6 +725,8 @@ static int cpia2_s_jpegcomp(struct file *file, void *fh,
 
 	cam->params.compression.inhibit_htables =
 		!(parms->jpeg_markers & V4L2_JPEG_MARKER_DHT);
+	parms->jpeg_markers &= V4L2_JPEG_MARKER_DQT | V4L2_JPEG_MARKER_DRI |
+			       V4L2_JPEG_MARKER_DHT;
 
 	if(parms->APP_len != 0) {
 		if(parms->APP_len > 0 &&
@@ -1004,13 +987,10 @@ static int cpia2_mmap(struct file *file, struct vm_area_struct *area)
 	struct camera_data *cam = video_drvdata(file);
 	int retval;
 
-	if (mutex_lock_interruptible(&cam->v4l2_lock))
-		return -ERESTARTSYS;
 	retval = cpia2_remap_buffer(cam, area);
 
 	if(!retval)
 		cam->stream_fh = file->private_data;
-	mutex_unlock(&cam->v4l2_lock);
 	return retval;
 }
 
@@ -1167,6 +1147,10 @@ int cpia2_register_camera(struct camera_data *cam)
 	cam->vdev.ctrl_handler = hdl;
 	cam->vdev.v4l2_dev = &cam->v4l2_dev;
 	set_bit(V4L2_FL_USE_FH_PRIO, &cam->vdev.flags);
+	/* Locking in file operations other than ioctl should be done
+	   by the driver, not the V4L2 core.
+	   This driver needs auditing so that this flag can be removed. */
+	set_bit(V4L2_FL_LOCK_ALL_FOPS, &cam->vdev.flags);
 
 	reset_camera_struct_v4l(cam);
 

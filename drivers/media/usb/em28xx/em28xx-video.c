@@ -1352,7 +1352,7 @@ static int vidioc_g_audio(struct file *file, void *priv, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_s_audio(struct file *file, void *priv, const struct v4l2_audio *a)
+static int vidioc_s_audio(struct file *file, void *priv, struct v4l2_audio *a)
 {
 	struct em28xx_fh   *fh  = priv;
 	struct em28xx      *dev = fh->dev;
@@ -2087,7 +2087,7 @@ static int radio_s_tuner(struct file *file, void *priv,
 }
 
 static int radio_s_audio(struct file *file, void *fh,
-			 const struct v4l2_audio *a)
+			 struct v4l2_audio *a)
 {
 	return 0;
 }
@@ -2146,12 +2146,9 @@ static int em28xx_v4l2_open(struct file *filp)
 			dev->users);
 
 
-	if (mutex_lock_interruptible(&dev->lock))
-		return -ERESTARTSYS;
 	fh = kzalloc(sizeof(struct em28xx_fh), GFP_KERNEL);
 	if (!fh) {
 		em28xx_errdev("em28xx-video.c: Out of memory?!\n");
-		mutex_unlock(&dev->lock);
 		return -ENOMEM;
 	}
 	fh->dev = dev;
@@ -2192,7 +2189,6 @@ static int em28xx_v4l2_open(struct file *filp)
 				    V4L2_BUF_TYPE_VBI_CAPTURE,
 				    V4L2_FIELD_SEQ_TB,
 				    sizeof(struct em28xx_buffer), fh, &dev->lock);
-	mutex_unlock(&dev->lock);
 
 	return errCode;
 }
@@ -2247,7 +2243,6 @@ static int em28xx_v4l2_close(struct file *filp)
 
 	em28xx_videodbg("users=%d\n", dev->users);
 
-	mutex_lock(&dev->lock);
 	if (res_check(fh, EM28XX_RESOURCE_VIDEO)) {
 		videobuf_stop(&fh->vb_vidq);
 		res_free(fh, EM28XX_RESOURCE_VIDEO);
@@ -2264,7 +2259,6 @@ static int em28xx_v4l2_close(struct file *filp)
 		if (dev->state & DEV_DISCONNECTED) {
 			em28xx_release_resources(dev);
 			kfree(dev->alt_max_pkt_size);
-			mutex_unlock(&dev->lock);
 			kfree(dev);
 			kfree(fh);
 			return 0;
@@ -2291,7 +2285,6 @@ static int em28xx_v4l2_close(struct file *filp)
 	videobuf_mmap_free(&fh->vb_vbiq);
 	kfree(fh);
 	dev->users--;
-	mutex_unlock(&dev->lock);
 	return 0;
 }
 
@@ -2311,35 +2304,35 @@ em28xx_v4l2_read(struct file *filp, char __user *buf, size_t count,
 	if (rc < 0)
 		return rc;
 
-	if (mutex_lock_interruptible(&dev->lock))
-		return -ERESTARTSYS;
 	/* FIXME: read() is not prepared to allow changing the video
 	   resolution while streaming. Seems a bug at em28xx_set_fmt
 	 */
 
 	if (fh->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		if (res_locked(dev, EM28XX_RESOURCE_VIDEO))
-			rc = -EBUSY;
-		else
-			rc = videobuf_read_stream(&fh->vb_vidq, buf, count, pos, 0,
-					filp->f_flags & O_NONBLOCK);
-	} else if (fh->type == V4L2_BUF_TYPE_VBI_CAPTURE) {
-		if (!res_get(fh, EM28XX_RESOURCE_VBI))
-			rc = -EBUSY;
-		else
-			rc = videobuf_read_stream(&fh->vb_vbiq, buf, count, pos, 0,
+			return -EBUSY;
+
+		return videobuf_read_stream(&fh->vb_vidq, buf, count, pos, 0,
 					filp->f_flags & O_NONBLOCK);
 	}
-	mutex_unlock(&dev->lock);
 
-	return rc;
+
+	if (fh->type == V4L2_BUF_TYPE_VBI_CAPTURE) {
+		if (!res_get(fh, EM28XX_RESOURCE_VBI))
+			return -EBUSY;
+
+		return videobuf_read_stream(&fh->vb_vbiq, buf, count, pos, 0,
+					filp->f_flags & O_NONBLOCK);
+	}
+
+	return 0;
 }
 
 /*
- * em28xx_poll()
+ * em28xx_v4l2_poll()
  * will allocate buffers when called for the first time
  */
-static unsigned int em28xx_poll(struct file *filp, poll_table *wait)
+static unsigned int em28xx_v4l2_poll(struct file *filp, poll_table *wait)
 {
 	struct em28xx_fh *fh = filp->private_data;
 	struct em28xx *dev = fh->dev;
@@ -2362,18 +2355,6 @@ static unsigned int em28xx_poll(struct file *filp, poll_table *wait)
 	}
 }
 
-static unsigned int em28xx_v4l2_poll(struct file *filp, poll_table *wait)
-{
-	struct em28xx_fh *fh = filp->private_data;
-	struct em28xx *dev = fh->dev;
-	unsigned int res;
-
-	mutex_lock(&dev->lock);
-	res = em28xx_poll(filp, wait);
-	mutex_unlock(&dev->lock);
-	return res;
-}
-
 /*
  * em28xx_v4l2_mmap()
  */
@@ -2387,13 +2368,10 @@ static int em28xx_v4l2_mmap(struct file *filp, struct vm_area_struct *vma)
 	if (rc < 0)
 		return rc;
 
-	if (mutex_lock_interruptible(&dev->lock))
-		return -ERESTARTSYS;
 	if (fh->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		rc = videobuf_mmap_mapper(&fh->vb_vidq, vma);
 	else if (fh->type == V4L2_BUF_TYPE_VBI_CAPTURE)
 		rc = videobuf_mmap_mapper(&fh->vb_vbiq, vma);
-	mutex_unlock(&dev->lock);
 
 	em28xx_videodbg("vma start=0x%08lx, size=%ld, ret=%d\n",
 		(unsigned long)vma->vm_start,
@@ -2517,6 +2495,10 @@ static struct video_device *em28xx_vdev_init(struct em28xx *dev,
 	vfd->release	= video_device_release;
 	vfd->debug	= video_debug;
 	vfd->lock	= &dev->lock;
+	/* Locking in file operations other than ioctl should be done
+	   by the driver, not the V4L2 core.
+	   This driver needs auditing so that this flag can be removed. */
+	set_bit(V4L2_FL_LOCK_ALL_FOPS, &vfd->flags);
 
 	snprintf(vfd->name, sizeof(vfd->name), "%s %s",
 		 dev->name, type_name);
