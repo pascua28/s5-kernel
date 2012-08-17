@@ -27,7 +27,6 @@
 #include <linux/suspend.h>
 
 #include "base.h"
-#include "power/power.h"
 
 MODULE_AUTHOR("Manuel Estrada Sainz");
 MODULE_DESCRIPTION("Multi purpose firmware loading support");
@@ -1094,7 +1093,7 @@ static int devm_name_match(struct device *dev, void *res,
 	return (fwn->magic == (unsigned long)match_data);
 }
 
-static void dev_cache_fw_image(struct device *dev)
+static void dev_cache_fw_image(struct device *dev, void *data)
 {
 	LIST_HEAD(todo);
 	struct fw_cache_entry *fce;
@@ -1149,7 +1148,6 @@ static void __device_uncache_fw_images(void)
 static void device_cache_fw_images(void)
 {
 	struct firmware_cache *fwc = &fw_cache;
-	struct device *dev;
 	int old_timeout;
 	DEFINE_WAIT(wait);
 
@@ -1166,10 +1164,7 @@ static void device_cache_fw_images(void)
 	old_timeout = loading_timeout;
 	loading_timeout = 10;
 
-	device_pm_lock();
-	list_for_each_entry(dev, &dpm_list, power.entry)
-		dev_cache_fw_image(dev);
-	device_pm_unlock();
+	dpm_for_each_dev(NULL, dev_cache_fw_image);
 
 	/* wait for completion of caching firmware for all devices */
 	spin_lock(&fwc->name_lock);
