@@ -5762,6 +5762,7 @@ EXPORT_SYMBOL(netdev_refcnt_read);
 
 /**
  * netdev_wait_allrefs - wait until all references are gone.
+ * @dev: target net_device
  *
  * This is called when unregistering network devices.
  *
