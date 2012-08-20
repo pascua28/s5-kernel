@@ -117,7 +117,7 @@ config VIDEO_CS53L32A
 
 config VIDEO_TLV320AIC23B
 	tristate "Texas Instruments TLV320AIC23B audio codec"
-	depends on VIDEO_V4L2 && I2C
+	depends on VIDEO_V4L2 && I2C && EXPERIMENTAL
 	---help---
 	  Support for the Texas Instruments TLV320AIC23B audio codec.
 
@@ -187,18 +187,6 @@ config VIDEO_ADV7183
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7183.
-
-config VIDEO_ADV7604
-	tristate "Analog Devices ADV7604 decoder"
-	depends on VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
-	---help---
-	  Support for the Analog Devices ADV7604 video decoder.
-
-	  This is a Analog Devices Component/Graphics Digitizer
-	  with 4:1 Multiplexed HDMI Receiver.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called adv7604.
 
 config VIDEO_BT819
 	tristate "BT819A VideoStream decoder"
@@ -387,17 +375,6 @@ config VIDEO_ADV7393
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7393.
 
-config VIDEO_AD9389B
-	tristate "Analog Devices AD9389B encoder"
-	depends on VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
-	---help---
-	  Support for the Analog Devices AD9389B video encoder.
-
-	  This is a Analog Devices HDMI transmitter.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called ad9389b.
-
 config VIDEO_AK881X
 	tristate "AK8813/AK8814 video encoders"
 	depends on I2C
@@ -492,7 +469,7 @@ config VIDEO_SR030PC30
 
 config VIDEO_NOON010PC30
 	tristate "Siliconfile NOON010PC30 sensor support"
-	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	depends on I2C && VIDEO_V4L2 && EXPERIMENTAL && VIDEO_V4L2_SUBDEV_API
 	depends on MEDIA_CAMERA_SUPPORT
 	---help---
 	  This driver supports NOON010PC30 CIF camera from Siliconfile
@@ -506,13 +483,6 @@ config VIDEO_S5K6AA
 	---help---
 	  This is a V4L2 sensor-level driver for Samsung S5K6AA(FX) 1.3M
 	  camera sensor with an embedded SoC image signal processor.
-
-config VIDEO_S5K4ECGX
-        tristate "Samsung S5K4ECGX sensor support"
-        depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
-        ---help---
-          This is a V4L2 sensor-level driver for Samsung S5K4ECGX 5M
-          camera sensor with an embedded SoC image signal processor.
 
 source "drivers/media/i2c/smiapp/Kconfig"
 
@@ -579,7 +549,7 @@ config VIDEO_M52790
 	 To compile this driver as a module, choose M here: the
 	 module will be called m52790.
 endmenu
-
+	 
 menu "Sensors used on soc_camera driver"
 
 if SOC_CAMERA
