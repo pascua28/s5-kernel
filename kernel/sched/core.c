@@ -2239,16 +2239,25 @@ unsigned long this_cpu_loadx(int i)
 }
 #endif /* CONFIG_RUNTIME_COMPCACHE */
 
-unsigned long get_avg_nr_running(unsigned int cpu)
+u64 nr_running_integral(unsigned int cpu)
 {
-        struct rq *q;
+	unsigned int seqcnt;
+	u64 integral;
+    struct rq *q;
 
-        if (cpu >= nr_cpu_ids)
-                return 0;
+    if (cpu >= nr_cpu_ids)
+        return 0;
 
-        q = cpu_rq(cpu);
+    q = cpu_rq(cpu);
 
-        return q->ave_nr_running;
+    seqcnt = read_seqcount_begin(&q->ave_seqcnt);
+    integral = do_nr_running_integral(q);
+    if (read_seqcount_retry(&q->ave_seqcnt, seqcnt)) {
+        read_seqcount_begin(&q->ave_seqcnt);
+        integral = q->nr_running_integral;
+    }
+
+    return integral;
 }
 
 /*
