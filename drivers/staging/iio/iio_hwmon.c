@@ -227,6 +227,6 @@ static void iio_inkern_exit(void)
 }
 module_exit(iio_inkern_exit);
 
-MODULE_AUTHOR("Jonathan Cameron <jic23@cam.ac.uk>");
+MODULE_AUTHOR("Jonathan Cameron <jic23@kernel.org>");
 MODULE_DESCRIPTION("IIO to hwmon driver");
 MODULE_LICENSE("GPL v2");
