@@ -237,9 +237,10 @@ static irqreturn_t mxs_lradc_trigger_handler(int irq, void *p)
 	struct iio_poll_func *pf = p;
 	struct iio_dev *iio = pf->indio_dev;
 	struct mxs_lradc *lradc = iio_priv(iio);
+	struct iio_buffer *buffer = iio->buffer;
 	const uint32_t chan_value = LRADC_CH_ACCUMULATE |
 		((LRADC_DELAY_TIMER_LOOP - 1) << LRADC_CH_NUM_SAMPLES_OFFSET);
-	unsigned int i, j = 0;
+	int i, j = 0;
 
 	for_each_set_bit(i, iio->active_scan_mask, iio->masklength) {
 		lradc->buffer[j] = readl(lradc->base + LRADC_CH(j));
@@ -255,7 +256,7 @@ static irqreturn_t mxs_lradc_trigger_handler(int irq, void *p)
 		*timestamp = pf->timestamp;
 	}
 
-	iio_push_to_buffers(iio, (u8 *)lradc->buffer);
+	iio_push_to_buffer(buffer, (u8 *)lradc->buffer);
 
 	iio_trigger_notify_done(iio->trig);
 
@@ -350,7 +351,7 @@ static int mxs_lradc_buffer_preenable(struct iio_dev *iio)
 		writel(chan_value, lradc->base + LRADC_CH(ofs));
 		enable |= 1 << ofs;
 		ofs++;
-	}
+	};
 
 	writel(LRADC_DELAY_TRIGGER_LRADCS_MASK | LRADC_DELAY_KICK,
 		lradc->base + LRADC_DELAY(0) + STMP_OFFSET_REG_CLR);
@@ -466,7 +467,7 @@ static void mxs_lradc_hw_stop(struct mxs_lradc *lradc)
 		writel(0, lradc->base + LRADC_DELAY(i));
 }
 
-static int mxs_lradc_probe(struct platform_device *pdev)
+static int __devinit mxs_lradc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mxs_lradc *lradc;
@@ -551,7 +552,7 @@ err_addr:
 	return ret;
 }
 
-static int mxs_lradc_remove(struct platform_device *pdev)
+static int __devexit mxs_lradc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *iio = platform_get_drvdata(pdev);
 	struct mxs_lradc *lradc = iio_priv(iio);
@@ -579,7 +580,7 @@ static struct platform_driver mxs_lradc_driver = {
 		.of_match_table = mxs_lradc_dt_ids,
 	},
 	.probe	= mxs_lradc_probe,
-	.remove	= mxs_lradc_remove,
+	.remove	= __devexit_p(mxs_lradc_remove),
 };
 
 module_platform_driver(mxs_lradc_driver);

@@ -91,6 +91,7 @@ static irqreturn_t ad7266_trigger_handler(int irq, void *p)
 {
 	struct iio_poll_func *pf = p;
 	struct iio_dev *indio_dev = pf->indio_dev;
+	struct iio_buffer *buffer = indio_dev->buffer;
 	struct ad7266_state *st = iio_priv(indio_dev);
 	int ret;
 
@@ -98,7 +99,7 @@ static irqreturn_t ad7266_trigger_handler(int irq, void *p)
 	if (ret == 0) {
 		if (indio_dev->scan_timestamp)
 			((s64 *)st->data)[1] = pf->timestamp;
-		iio_push_to_buffers(indio_dev, (u8 *)st->data);
+		iio_push_to_buffer(buffer, (u8 *)st->data);
 	}
 
 	iio_trigger_notify_done(indio_dev->trig);
@@ -367,7 +368,7 @@ static const struct ad7266_chan_info ad7266_chan_infos[] = {
 	},
 };
 
-static void ad7266_init_channels(struct iio_dev *indio_dev)
+static void __devinit ad7266_init_channels(struct iio_dev *indio_dev)
 {
 	struct ad7266_state *st = iio_priv(indio_dev);
 	bool is_differential, is_signed;
@@ -391,7 +392,7 @@ static const char * const ad7266_gpio_labels[] = {
 	"AD0", "AD1", "AD2",
 };
 
-static int ad7266_probe(struct spi_device *spi)
+static int __devinit ad7266_probe(struct spi_device *spi)
 {
 	struct ad7266_platform_data *pdata = spi->dev.platform_data;
 	struct iio_dev *indio_dev;
@@ -411,11 +412,7 @@ static int ad7266_probe(struct spi_device *spi)
 		if (ret)
 			goto error_put_reg;
 
-		ret = regulator_get_voltage(st->reg);
-		if (ret < 0)
-			goto error_disable_reg;
-
-		st->vref_uv = ret;
+		st->vref_uv = regulator_get_voltage(st->reg);
 	} else {
 		/* Use internal reference */
 		st->vref_uv = 2500000;
@@ -498,7 +495,7 @@ error_put_reg:
 	return ret;
 }
 
-static int ad7266_remove(struct spi_device *spi)
+static int __devexit ad7266_remove(struct spi_device *spi)
 {
 	struct iio_dev *indio_dev = spi_get_drvdata(spi);
 	struct ad7266_state *st = iio_priv(indio_dev);
@@ -529,7 +526,7 @@ static struct spi_driver ad7266_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ad7266_probe,
-	.remove		= ad7266_remove,
+	.remove		= __devexit_p(ad7266_remove),
 	.id_table	= ad7266_id,
 };
 module_spi_driver(ad7266_driver);

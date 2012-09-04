@@ -155,7 +155,7 @@ static irqreturn_t lis3l02dq_trigger_handler(int irq, void *p)
 		*(s64 *)(((phys_addr_t)data + len
 				+ sizeof(s64) - 1) & ~(sizeof(s64) - 1))
 			= pf->timestamp;
-	iio_push_to_buffer(indio_dev->buffer, (u8 *)data, pf->timestamp);
+	iio_push_to_buffer(indio_dev->buffer, (u8 *)data);
 
 	iio_trigger_notify_done(indio_dev->trig);
 	kfree(data);
