@@ -13,6 +13,8 @@
 #ifndef __ASM_S390_PROCESSOR_H
 #define __ASM_S390_PROCESSOR_H
 
+#ifndef __ASSEMBLY__
+
 #include <linux/linkage.h>
 #include <linux/irqflags.h>
 #include <asm/cpu.h>
@@ -343,23 +345,25 @@ extern void (*s390_base_ext_handler_fn)(void);
 
 #define ARCH_LOW_ADDRESS_LIMIT	0x7fffffffUL
 
-#endif
-
 /*
  * Helper macro for exception table entries
  */
-#ifndef __s390x__
-#define EX_TABLE(_fault,_target)			\
-	".section __ex_table,\"a\"\n"			\
-	"	.align 4\n"				\
-	"	.long  " #_fault "," #_target "\n"	\
+#define EX_TABLE(_fault, _target)	\
+	".section __ex_table,\"a\"\n"	\
+	".align	4\n"			\
+	".long	(" #_fault ") - .\n"	\
+	".long	(" #_target ") - .\n"	\
 	".previous\n"
-#else
-#define EX_TABLE(_fault,_target)			\
-	".section __ex_table,\"a\"\n"			\
-	"	.align 8\n"				\
-	"	.quad  " #_fault "," #_target "\n"	\
-	".previous\n"
-#endif
 
-#endif                                 /* __ASM_S390_PROCESSOR_H           */
+#else /* __ASSEMBLY__ */
+
+#define EX_TABLE(_fault, _target)	\
+	.section __ex_table,"a"	;	\
+	.align	4 ;			\
+	.long	(_fault) - . ;		\
+	.long	(_target) - . ;		\
+	.previous
+
+#endif /* __ASSEMBLY__ */
+
+#endif /* __ASM_S390_PROCESSOR_H */
