@@ -130,7 +130,7 @@ extern int __get_user_8(void *);
 #define __get_user_xb __get_user_x
 #endif
 
-#define get_user(x,p)							\
+#define __get_user_check(x,p)							\
 	({								\
 		unsigned long __limit = current_thread_info()->addr_limit - 1; \
 		register const typeof(*(p)) __user *__p asm("r0") = (p);\
@@ -159,6 +159,12 @@ extern int __get_user_8(void *);
 		__e;							\
 	})
 
+#define get_user(x,p)							\
+	({								\
+		might_fault();						\
+		__get_user_check(x,p);					\
+	 })
+
 extern int __put_user_1(void *, unsigned int);
 extern int __put_user_2(void *, unsigned int);
 extern int __put_user_4(void *, unsigned int);
@@ -173,7 +179,7 @@ extern int __put_user_8(void *, unsigned long long);
 		: "0" (__p), "r" (__r2), "r" (__l)			\
 		: "ip", "lr", "cc")
 
-#define put_user(x,p)							\
+#define __put_user_check(x,p)							\
 	({								\
 		unsigned long __limit = current_thread_info()->addr_limit - 1; \
 		const typeof(*(p)) __user *__tmp_p = (p);		\
@@ -198,6 +204,12 @@ extern int __put_user_8(void *, unsigned long long);
 		}							\
 		__e;							\
 	})
+
+#define put_user(x,p)							\
+	({								\
+		might_fault();						\
+		__put_user_check(x,p);					\
+	 })
 
 #else /* CONFIG_MMU */
 
@@ -249,6 +261,7 @@ do {									\
 	unsigned long __gu_addr = (unsigned long)(ptr);			\
 	unsigned long __gu_val;						\
 	__chk_user_ptr(ptr);						\
+	might_fault();							\
 	switch (sizeof(*(ptr))) {					\
 	case 1:	__get_user_asm_byte(__gu_val,__gu_addr,err);	break;	\
 	case 2:	__get_user_asm_half(__gu_val,__gu_addr,err);	break;	\
@@ -330,6 +343,7 @@ do {									\
 	unsigned long __pu_addr = (unsigned long)(ptr);			\
 	__typeof__(*(ptr)) __pu_val = (x);				\
 	__chk_user_ptr(ptr);						\
+	might_fault();							\
 	switch (sizeof(*(ptr))) {					\
 	case 1: __put_user_asm_byte(__pu_val,__pu_addr,err);	break;	\
 	case 2: __put_user_asm_half(__pu_val,__pu_addr,err);	break;	\
