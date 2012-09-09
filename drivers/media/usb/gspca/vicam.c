@@ -191,7 +191,7 @@ static void vicam_dostream(struct work_struct *work)
 		goto exit;
 	}
 
-	while (gspca_dev->dev && gspca_dev->streaming) {
+	while (gspca_dev->present && gspca_dev->streaming) {
 #ifdef CONFIG_PM
 		if (gspca_dev->frozen)
 			break;
@@ -296,7 +296,7 @@ static void sd_stop0(struct gspca_dev *gspca_dev)
 	dev->work_thread = NULL;
 	mutex_lock(&gspca_dev->usb_lock);
 
-	if (gspca_dev->dev)
+	if (gspca_dev->present)
 		vicam_set_camera_power(gspca_dev, 0);
 }
 
