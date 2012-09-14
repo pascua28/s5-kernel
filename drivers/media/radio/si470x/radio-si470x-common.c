@@ -293,7 +293,11 @@ int si470x_set_freq(struct si470x_device *radio, unsigned int freq)
  * si470x_set_seek - set seek
  */
 static int si470x_set_seek(struct si470x_device *radio,
+<<<<<<< HEAD
 		unsigned int wrap_around, unsigned int seek_upward)
+=======
+			   const struct v4l2_hw_freq_seek *seek)
+>>>>>>> ec6f4328108... [media] v4l2: make vidioc_s_freq_hw_seek const
 {
 	int retval = 0;
 	bool timed_out = 0;
@@ -680,7 +684,7 @@ static int si470x_vidioc_s_frequency(struct file *file, void *priv,
  * si470x_vidioc_s_hw_freq_seek - set hardware frequency seek
  */
 static int si470x_vidioc_s_hw_freq_seek(struct file *file, void *priv,
-		struct v4l2_hw_freq_seek *seek)
+		const struct v4l2_hw_freq_seek *seek)
 {
 	struct si470x_device *radio = video_drvdata(file);
 

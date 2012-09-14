@@ -301,19 +301,27 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 }
 
 static int vidioc_s_hw_freq_seek(struct file *file, void *fh,
-					struct v4l2_hw_freq_seek *a)
+					const struct v4l2_hw_freq_seek *a)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);
 	u32 orig_freq = tea->freq;
 	unsigned long timeout;
+<<<<<<< HEAD
 	int res, spacing = 200 * 16; /* 200 kHz */
 	/* These are fixed *for now* */
 	const u32 seek_rangelow  = TEA5777_FM_RANGELOW;
 	const u32 seek_rangehigh = TEA5777_FM_RANGEHIGH;
+=======
+	u32 rangelow = a->rangelow;
+	u32 rangehigh = a->rangehigh;
+	int i, res, spacing;
+	u32 orig_freq;
+>>>>>>> ec6f4328108... [media] v4l2: make vidioc_s_freq_hw_seek const
 
 	if (a->tuner || a->wrap_around)
 		return -EINVAL;
 
+<<<<<<< HEAD
 	tea->write_reg |= TEA5777_W_PROGBLIM_MASK;
 	if (seek_rangelow != tea->seek_rangelow) {
 		tea->write_reg &= ~TEA5777_W_UPDWN_MASK;
@@ -330,6 +338,51 @@ static int vidioc_s_hw_freq_seek(struct file *file, void *fh,
 		if (res)
 			goto leave;
 		tea->seek_rangehigh = tea->freq;
+=======
+	if (rangelow || rangehigh) {
+		for (i = 0; i < ARRAY_SIZE(bands); i++) {
+			if (i == BAND_AM && !tea->has_am)
+				continue;
+			if (bands[i].rangelow  >= rangelow &&
+			    bands[i].rangehigh <= rangehigh)
+				break;
+		}
+		if (i == ARRAY_SIZE(bands))
+			return -EINVAL; /* No matching band found */
+
+		tea->band = i;
+		if (tea->freq < rangelow || tea->freq > rangehigh) {
+			tea->freq = clamp(tea->freq, rangelow,
+						     rangehigh);
+			res = radio_tea5777_set_freq(tea);
+			if (res)
+				return res;
+		}
+	} else {
+		rangelow  = bands[tea->band].rangelow;
+		rangehigh = bands[tea->band].rangehigh;
+	}
+
+	spacing   = (tea->band == BAND_AM) ? (5 * 16) : (200 * 16); /* kHz */
+	orig_freq = tea->freq;
+
+	tea->write_reg |= TEA5777_W_PROGBLIM_MASK;
+	if (tea->seek_rangelow != rangelow) {
+		tea->write_reg &= ~TEA5777_W_UPDWN_MASK;
+		tea->freq = rangelow;
+		res = radio_tea5777_set_freq(tea);
+		if (res)
+			goto leave;
+		tea->seek_rangelow = rangelow;
+	}
+	if (tea->seek_rangehigh != rangehigh) {
+		tea->write_reg |= TEA5777_W_UPDWN_MASK;
+		tea->freq = rangehigh;
+		res = radio_tea5777_set_freq(tea);
+		if (res)
+			goto leave;
+		tea->seek_rangehigh = rangehigh;
+>>>>>>> ec6f4328108... [media] v4l2: make vidioc_s_freq_hw_seek const
 	}
 	tea->write_reg &= ~TEA5777_W_PROGBLIM_MASK;
 
