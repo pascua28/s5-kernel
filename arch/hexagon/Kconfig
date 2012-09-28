@@ -27,6 +27,7 @@ config HEXAGON
 	select HAVE_ARCH_TRACEHOOK
 	select NO_IOPORT
 	select GENERIC_IOMAP
+	select MODULES_USE_ELF_RELA
 	# mostly generic routines, with some accelerated ones
 	---help---
 	  Qualcomm Hexagon is a processor architecture designed for high
