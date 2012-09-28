@@ -2285,7 +2285,7 @@ static int dvb_frontend_ioctl_legacy(struct file *file,
 		fepriv->tune_mode_flags = (unsigned long) parg;
 		err = 0;
 		break;
-	};
+	}
 
 	if (fe->dvb->fe_ioctl_override) {
 		cb_err = fe->dvb->fe_ioctl_override(fe, cmd, parg,
