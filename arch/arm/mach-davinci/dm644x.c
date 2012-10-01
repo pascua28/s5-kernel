@@ -23,12 +23,12 @@
 #include <mach/time.h>
 #include <mach/serial.h>
 #include <mach/common.h>
+#include <mach/asp.h>
 #include <mach/gpio-davinci.h>
 
 #include "davinci.h"
 #include "clock.h"
 #include "mux.h"
-#include "asp.h"
 
 /*
  * Device specific clocks
@@ -713,7 +713,8 @@ static int dm644x_venc_setup_clock(enum vpbe_enc_timings_type type,
 		break;
 	case VPBE_ENC_CUSTOM_TIMINGS:
 		if (pclock <= 27000000) {
-			v |= DM644X_VPSS_DACCLKEN;
+			v |= DM644X_VPSS_MUXSEL_PLL2_MODE |
+			     DM644X_VPSS_DACCLKEN;
 			writel(v, DAVINCI_SYSMOD_VIRT(SYSMOD_VPSS_CLKCTL));
 		} else {
 			/*

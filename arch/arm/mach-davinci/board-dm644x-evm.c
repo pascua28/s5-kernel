@@ -32,13 +32,13 @@
 #include <asm/mach/arch.h>
 
 #include <mach/common.h>
-#include <linux/platform_data/i2c-davinci.h>
+#include <mach/i2c.h>
 #include <mach/serial.h>
 #include <mach/mux.h>
-#include <linux/platform_data/mtd-davinci.h>
-#include <linux/platform_data/mmc-davinci.h>
-#include <linux/platform_data/usb-davinci.h>
-#include <linux/platform_data/mtd-davinci-aemif.h>
+#include <mach/nand.h>
+#include <mach/mmc.h>
+#include <mach/usb.h>
+#include <mach/aemif.h>
 
 #include "davinci.h"
 
@@ -699,7 +699,7 @@ static struct vpbe_output dm644xevm_vpbe_outputs[] = {
 			.index		= 1,
 			.name		= "Component",
 			.type		= V4L2_OUTPUT_TYPE_ANALOG,
-			.capabilities	= V4L2_OUT_CAP_DV_TIMINGS,
+			.capabilities	= V4L2_OUT_CAP_CUSTOM_TIMINGS,
 		},
 		.subdev_name	= VPBE_VENC_SUBDEV_NAME,
 		.default_mode	= "480p59_94",
