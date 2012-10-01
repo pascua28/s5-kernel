@@ -104,7 +104,7 @@ config MSM_OTG_ENABLE_A_WAIT_BCON_TIMEOUT
 
 config TWL6030_USB
 	tristate "TWL6030 USB Transceiver Driver"
-	depends on TWL4030_CORE
+	depends on TWL4030_CORE && OMAP_USB2
 	select USB_OTG_UTILS
 	help
 	  Enable this to support the USB OTG transceiver on TWL6030

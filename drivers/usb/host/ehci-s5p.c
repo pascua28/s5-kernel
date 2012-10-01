@@ -94,7 +94,7 @@ static int __devinit s5p_ehci_probe(struct platform_device *pdev)
 	}
 
 	s5p_ehci->hcd = hcd;
-	s5p_ehci->clk = clk_get(&pdev->dev, "usbhost");
+	s5p_ehci->clk = devm_clk_get(&pdev->dev, "usbhost");
 
 	if (IS_ERR(s5p_ehci->clk)) {
 		dev_err(&pdev->dev, "Failed to get usbhost clock\n");
@@ -104,7 +104,7 @@ static int __devinit s5p_ehci_probe(struct platform_device *pdev)
 
 	err = clk_enable(s5p_ehci->clk);
 	if (err)
-		goto fail_clken;
+		goto fail_clk;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -162,8 +162,6 @@ fail:
 	iounmap(hcd->regs);
 fail_io:
 	clk_disable(s5p_ehci->clk);
-fail_clken:
-	clk_put(s5p_ehci->clk);
 fail_clk:
 	usb_put_hcd(hcd);
 fail_hcd:
@@ -185,7 +183,6 @@ static int __devexit s5p_ehci_remove(struct platform_device *pdev)
 	iounmap(hcd->regs);
 
 	clk_disable(s5p_ehci->clk);
-	clk_put(s5p_ehci->clk);
 
 	usb_put_hcd(hcd);
 	kfree(s5p_ehci);
