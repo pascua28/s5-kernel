@@ -1,6 +1,6 @@
 /*  Copyright (C) 2010 Texas Instruments
     Author: Shubhrajyoti Datta <shubhrajyoti@ti.com>
-    Acknowledgement: Jonathan Cameron <jic23@cam.ac.uk> for valuable inputs.
+    Acknowledgement: Jonathan Cameron <jic23@kernel.org> for valuable inputs.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

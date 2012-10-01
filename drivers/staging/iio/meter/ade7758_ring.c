@@ -62,7 +62,6 @@ static irqreturn_t ade7758_trigger_handler(int irq, void *p)
 {
 	struct iio_poll_func *pf = p;
 	struct iio_dev *indio_dev = pf->indio_dev;
-	struct iio_buffer *ring = indio_dev->buffer;
 	struct ade7758_state *st = iio_priv(indio_dev);
 	s64 dat64[2];
 	u32 *dat32 = (u32 *)dat64;
@@ -75,7 +74,7 @@ static irqreturn_t ade7758_trigger_handler(int irq, void *p)
 	if (ring->scan_timestamp)
 		dat64[1] = pf->timestamp;
 
-	ring->access->store_to(ring, (u8 *)dat64, pf->timestamp);
+	iio_push_to_buffer(indio_dev->buffer, (u8 *)dat64);
 
 	iio_trigger_notify_done(indio_dev->trig);
 

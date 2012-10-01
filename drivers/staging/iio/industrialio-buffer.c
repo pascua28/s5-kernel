@@ -417,7 +417,7 @@ ssize_t iio_buffer_store_enable(struct device *dev,
 			ret = indio_dev->setup_ops->preenable(indio_dev);
 			if (ret) {
 				printk(KERN_ERR
-				       "Buffer not started:"
+				       "Buffer not started: "
 				       "buffer preenable failed\n");
 				goto error_ret;
 			}
@@ -426,12 +426,12 @@ ssize_t iio_buffer_store_enable(struct device *dev,
 			ret = buffer->access->request_update(buffer);
 			if (ret) {
 				printk(KERN_INFO
-				       "Buffer not started:"
+				       "Buffer not started: "
 				       "buffer parameter update failed\n");
 				goto error_ret;
 			}
 		}
-		/* Definitely possible for devices to support both of these.*/
+		/* Definitely possible for devices to support both of these. */
 		if (indio_dev->modes & INDIO_BUFFER_TRIGGERED) {
 			if (!indio_dev->trig) {
 				printk(KERN_INFO
@@ -451,7 +451,7 @@ ssize_t iio_buffer_store_enable(struct device *dev,
 			ret = indio_dev->setup_ops->postenable(indio_dev);
 			if (ret) {
 				printk(KERN_INFO
-				       "Buffer not started:"
+				       "Buffer not started: "
 				       "postenable failed\n");
 				indio_dev->currentmode = previous_mode;
 				if (indio_dev->setup_ops->postdisable)
@@ -608,7 +608,7 @@ EXPORT_SYMBOL_GPL(iio_scan_mask_query);
 /**
  * struct iio_demux_table() - table describing demux memcpy ops
  * @from:	index to copy from
- * @to:	index to copy to
+ * @to:		index to copy to
  * @length:	how many bytes to copy
  * @l:		list head used for management
  */
@@ -633,12 +633,11 @@ static unsigned char *iio_demux(struct iio_buffer *buffer,
 	return buffer->demux_bounce;
 }
 
-int iio_push_to_buffer(struct iio_buffer *buffer, unsigned char *data,
-		       s64 timestamp)
+int iio_push_to_buffer(struct iio_buffer *buffer, unsigned char *data)
 {
 	unsigned char *dataout = iio_demux(buffer, data);
 
-	return buffer->access->store_to(buffer, dataout, timestamp);
+	return buffer->access->store_to(buffer, dataout);
 }
 EXPORT_SYMBOL_GPL(iio_push_to_buffer);
 
