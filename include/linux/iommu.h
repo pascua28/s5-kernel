@@ -329,13 +329,13 @@ static inline void iommu_group_put(struct iommu_group *group)
 }
 
 static inline int iommu_group_register_notifier(struct iommu_group *group,
-				  struct notifier_block *nb)
+						struct notifier_block *nb)
 {
 	return -ENODEV;
 }
 
 static inline int iommu_group_unregister_notifier(struct iommu_group *group,
-				    struct notifier_block *nb)
+						  struct notifier_block *nb)
 {
 	return 0;
 }
