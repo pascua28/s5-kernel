@@ -33,13 +33,17 @@
 #include <mach/board.h>
 #include "board-dt.h"
 
-#define MSM_CHIP_DEVICE(name, chip) { \
+#define MSM_CHIP_DEVICE_TYPE(name, chip, mem_type) { \
 		.virtual = (unsigned long) MSM_##name##_BASE, \
 		.pfn = __phys_to_pfn(chip##_##name##_PHYS), \
 		.length = chip##_##name##_SIZE, \
-		.type = MT_DEVICE, \
+		.type = mem_type, \
 	 }
 
+#define MSM_DEVICE_TYPE(name, mem_type) \
+		MSM_CHIP_DEVICE_TYPE(name, MSM, mem_type)
+#define MSM_CHIP_DEVICE(name, chip) \
+		MSM_CHIP_DEVICE_TYPE(name, chip, MT_DEVICE)
 #define MSM_DEVICE(name) MSM_CHIP_DEVICE(name, MSM)
 
 /* msm_shared_ram_phys default value of 0x00100000 is the most common value
@@ -62,16 +66,15 @@ static void __init msm_map_io(struct map_desc *io_desc, int size)
 #if defined(CONFIG_ARCH_MSM7X01A) || defined(CONFIG_ARCH_MSM7X27) \
 	|| defined(CONFIG_ARCH_MSM7X25)
 static struct map_desc msm_io_desc[] __initdata = {
-	MSM_CHIP_DEVICE(VIC, MSM7XXX),
-	MSM_CHIP_DEVICE(CSR, MSM7XXX),
-	MSM_CHIP_DEVICE(TMR, MSM7XXX),
-	MSM_CHIP_DEVICE(GPIO1, MSM7XXX),
-	MSM_CHIP_DEVICE(GPIO2, MSM7XXX),
-	MSM_CHIP_DEVICE(CLK_CTL, MSM7XXX),
-	MSM_CHIP_DEVICE(AD5, MSM7XXX),
+	MSM_DEVICE_TYPE(VIC, MT_DEVICE_NONSHARED),
+	MSM_CHIP_DEVICE_TYPE(CSR, MSM7X00, MT_DEVICE_NONSHARED),
+	MSM_DEVICE_TYPE(DMOV, MT_DEVICE_NONSHARED),
+	MSM_CHIP_DEVICE_TYPE(GPIO1, MSM7X00, MT_DEVICE_NONSHARED),
+	MSM_CHIP_DEVICE_TYPE(GPIO2, MSM7X00, MT_DEVICE_NONSHARED),
+	MSM_DEVICE_TYPE(CLK_CTL, MT_DEVICE_NONSHARED),
 #if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
 	defined(CONFIG_DEBUG_MSM_UART3)
-	MSM_DEVICE(DEBUG_UART),
+	MSM_DEVICE_TYPE(DEBUG_UART, MT_DEVICE_NONSHARED),
 #endif
 #ifdef CONFIG_CACHE_L2X0
 	{
@@ -342,37 +345,6 @@ void __init msm_map_8084_io(void)
 	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
 }
 #endif /* CONFIG_ARCH_APQ8084 */
-
-#ifdef CONFIG_ARCH_MSM7X30
-static struct map_desc msm7x30_io_desc[] __initdata = {
-	MSM_CHIP_DEVICE(VIC, MSM7X30),
-	MSM_CHIP_DEVICE(CSR, MSM7X30),
-	MSM_CHIP_DEVICE(TMR, MSM7X30),
-	MSM_CHIP_DEVICE(GPIO1, MSM7X30),
-	MSM_CHIP_DEVICE(GPIO2, MSM7X30),
-	MSM_CHIP_DEVICE(CLK_CTL, MSM7X30),
-	MSM_CHIP_DEVICE(CLK_CTL_SH2, MSM7X30),
-	MSM_CHIP_DEVICE(AD5, MSM7X30),
-	MSM_CHIP_DEVICE(ACC0, MSM7X30),
-	MSM_CHIP_DEVICE(SAW0, MSM7X30),
-	MSM_CHIP_DEVICE(APCS_GCC, MSM7X30),
-	MSM_CHIP_DEVICE(TCSR, MSM7X30),
-#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
-	defined(CONFIG_DEBUG_MSM_UART3)
-	MSM_DEVICE(DEBUG_UART),
-#endif
-	{
-		.virtual =  (unsigned long) MSM_SHARED_RAM_BASE,
-		.length =   MSM_SHARED_RAM_SIZE,
-		.type =     MT_DEVICE,
-	},
-};
-
-void __init msm_map_msm7x30_io(void)
-{
-	msm_map_io(msm7x30_io_desc, ARRAY_SIZE(msm7x30_io_desc));
-}
-#endif /* CONFIG_ARCH_MSM7X30 */
 
 #ifdef CONFIG_ARCH_FSM9XXX
 static struct map_desc fsm9xxx_io_desc[] __initdata = {
