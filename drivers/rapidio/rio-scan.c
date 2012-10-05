@@ -31,14 +31,13 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/timer.h>
+#include <linux/sched.h>
 #include <linux/jiffies.h>
 #include <linux/slab.h>
 
 #include "rio.h"
 
 LIST_HEAD(rio_devices);
-
-static void rio_enum_timeout(unsigned long);
 
 static void rio_init_em(struct rio_dev *rdev);
 
@@ -47,9 +46,6 @@ DEFINE_SPINLOCK(rio_global_list_lock);
 static int next_destid = 0;
 static int next_net = 0;
 static int next_comptag = 1;
-
-static struct timer_list rio_enum_timer =
-TIMER_INITIALIZER(rio_enum_timeout, 0, 0);
 
 static int rio_mport_phys_table[] = {
 	RIO_EFB_PAR_EP_ID,
@@ -1236,20 +1232,6 @@ static void rio_build_route_tables(struct rio_net *net)
 }
 
 /**
- * rio_enum_timeout- Signal that enumeration timed out
- * @data: Address of timeout flag.
- *
- * When the enumeration complete timer expires, set a flag that
- * signals to the discovery process that enumeration did not
- * complete in a sane amount of time.
- */
-static void rio_enum_timeout(unsigned long data)
-{
-	/* Enumeration timed out, set flag */
-	*(int *)data = 1;
-}
-
-/**
  * rio_disc_mport- Start discovery through a master port
  * @mport: Master port to send transactions
  *
@@ -1262,34 +1244,33 @@ static void rio_enum_timeout(unsigned long data)
 int __devinit rio_disc_mport(struct rio_mport *mport)
 {
 	struct rio_net *net = NULL;
-	int enum_timeout_flag = 0;
+	unsigned long to_end;
 
 	printk(KERN_INFO "RIO: discover master port %d, %s\n", mport->id,
 	       mport->name);
 
 	/* If master port has an active link, allocate net and discover peers */
 	if (rio_mport_is_active(mport)) {
-		if (!(net = rio_alloc_net(mport))) {
+		pr_debug("RIO: wait for enumeration to complete...\n");
+
+		to_end = jiffies + CONFIG_RAPIDIO_DISC_TIMEOUT * HZ;
+		while (time_before(jiffies, to_end)) {
+			if (rio_enum_complete(mport))
+				goto enum_done;
+			schedule_timeout_uninterruptible(msecs_to_jiffies(10));
+		}
+
+		pr_debug("RIO: discovery timeout on mport %d %s\n",
+			 mport->id, mport->name);
+		goto bail;
+enum_done:
+		pr_debug("RIO: ... enumeration done\n");
+
+		net = rio_alloc_net(mport);
+		if (!net) {
 			printk(KERN_ERR "RIO: Failed to allocate new net\n");
 			goto bail;
 		}
-
-		pr_debug("RIO: wait for enumeration complete...");
-
-		rio_enum_timer.expires =
-		    jiffies + CONFIG_RAPIDIO_DISC_TIMEOUT * HZ;
-		rio_enum_timer.data = (unsigned long)&enum_timeout_flag;
-		add_timer(&rio_enum_timer);
-		while (!rio_enum_complete(mport)) {
-			mdelay(1);
-			if (enum_timeout_flag) {
-				del_timer_sync(&rio_enum_timer);
-				goto timeout;
-			}
-		}
-		del_timer_sync(&rio_enum_timer);
-
-		pr_debug("done\n");
 
 		/* Read DestID assigned by enumerator */
 		rio_local_read_config_32(mport, RIO_DID_CSR,
@@ -1309,9 +1290,6 @@ int __devinit rio_disc_mport(struct rio_mport *mport)
 	}
 
 	return 0;
-
-      timeout:
-	pr_debug("timeout\n");
-      bail:
+bail:
 	return -EBUSY;
 }
