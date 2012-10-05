@@ -428,7 +428,7 @@ sub top_of_kernel_tree {
 		}
 	}
 	return 1;
-    }
+}
 
 sub parse_email {
 	my ($formatted_email) = @_;
@@ -2577,8 +2577,10 @@ sub process {
 			my $orig = $1;
 			my $level = lc($orig);
 			$level = "warn" if ($level eq "warning");
+			my $level2 = $level;
+			$level2 = "dbg" if ($level eq "debug");
 			WARN("PREFER_PR_LEVEL",
-			     "Prefer pr_$level(... to printk(KERN_$1, ...\n" . $herecurr);
+			     "Prefer netdev_$level2(netdev, ... then dev_$level2(dev, ... then pr_$level(...  to printk(KERN_$orig ...\n" . $herecurr);
 		}
 
 		if ($line =~ /\bpr_warning\s*\(/) {
