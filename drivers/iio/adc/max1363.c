@@ -32,12 +32,6 @@
 #include <linux/err.h>
 #include <linux/module.h>
 
-<<<<<<< HEAD:drivers/staging/iio/adc/max1363_core.c
-#include "../iio.h"
-#include "../sysfs.h"
-#include "../events.h"
-#include "../buffer.h"
-=======
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
 #include <linux/iio/events.h>
@@ -152,7 +146,6 @@ struct max1363_chip_info {
 	u8				num_modes;
 	u8				bits;
 };
->>>>>>> v3.8:drivers/iio/adc/max1363.c
 
 /**
  * struct max1363_state - driver instance specific data
@@ -399,7 +392,7 @@ static int max1363_read_raw(struct iio_dev *indio_dev,
 	struct max1363_state *st = iio_priv(indio_dev);
 	int ret;
 	switch (m) {
-	case 0:
+	case IIO_CHAN_INFO_RAW:
 		ret = max1363_read_single_chan(indio_dev, chan, val, m);
 		if (ret < 0)
 			return ret;
@@ -432,7 +425,8 @@ static const enum max1363_modes max1363_mode_list[] = {
 #define MAX1363_EV_M						\
 	(IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)	\
 	 | IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING))
-#define MAX1363_INFO_MASK IIO_CHAN_INFO_SCALE_SHARED_BIT
+#define MAX1363_INFO_MASK (IIO_CHAN_INFO_RAW_SEPARATE_BIT |	\
+			   IIO_CHAN_INFO_SCALE_SHARED_BIT)
 #define MAX1363_CHAN_U(num, addr, si, bits, evmask)			\
 	{								\
 		.type = IIO_VOLTAGE,					\
@@ -648,7 +642,7 @@ static ssize_t max1363_monitor_show_freq(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
-	struct max1363_state *st = iio_priv(dev_get_drvdata(dev));
+	struct max1363_state *st = iio_priv(dev_to_iio_dev(dev));
 	return sprintf(buf, "%d\n", max1363_monitor_speeds[st->monitor_speed]);
 }
 
@@ -657,7 +651,7 @@ static ssize_t max1363_monitor_store_freq(struct device *dev,
 					const char *buf,
 					size_t len)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct max1363_state *st = iio_priv(indio_dev);
 	int i, ret;
 	unsigned long val;
@@ -994,6 +988,7 @@ static int max1363_update_scan_mode(struct iio_dev *indio_dev,
 static const struct iio_info max1238_info = {
 	.read_raw = &max1363_read_raw,
 	.driver_module = THIS_MODULE,
+	.update_scan_mode = &max1363_update_scan_mode,
 };
 
 static const struct iio_info max1363_info = {
@@ -1407,7 +1402,7 @@ static int max1363_initial_setup(struct max1363_state *st)
 	return max1363_set_scan_mode(st);
 }
 
-static int max1363_alloc_scan_masks(struct iio_dev *indio_dev)
+static int __devinit max1363_alloc_scan_masks(struct iio_dev *indio_dev)
 {
 	struct max1363_state *st = iio_priv(indio_dev);
 	unsigned long *masks;
@@ -1530,26 +1525,23 @@ static void max1363_buffer_cleanup(struct iio_dev *indio_dev)
 	iio_kfifo_free(indio_dev->buffer);
 }
 
-static int max1363_probe(struct i2c_client *client,
-			 const struct i2c_device_id *id)
+static int __devinit max1363_probe(struct i2c_client *client,
+				   const struct i2c_device_id *id)
 {
 	int ret;
 	struct max1363_state *st;
 	struct iio_dev *indio_dev;
 
-	indio_dev = iio_allocate_device(sizeof(struct max1363_state));
+	indio_dev = iio_device_alloc(sizeof(struct max1363_state));
 	if (indio_dev == NULL) {
 		ret = -ENOMEM;
 		goto error_out;
 	}
-<<<<<<< HEAD:drivers/staging/iio/adc/max1363_core.c
-=======
 
 	ret = iio_map_array_register(indio_dev, client->dev.platform_data);
 	if (ret < 0)
 		goto error_free_device;
 
->>>>>>> v3.8:drivers/iio/adc/max1363.c
 	st = iio_priv(indio_dev);
 
 	st->reg = regulator_get(&client->dev, "vcc");
@@ -1570,11 +1562,7 @@ static int max1363_probe(struct i2c_client *client,
 
 	ret = max1363_alloc_scan_masks(indio_dev);
 	if (ret)
-<<<<<<< HEAD:drivers/staging/iio/adc/max1363_core.c
-		goto error_free_device;
-=======
 		goto error_disable_reg;
->>>>>>> v3.8:drivers/iio/adc/max1363.c
 
 	/* Estabilish that the iio_dev is a child of the i2c device */
 	indio_dev->dev.parent = &client->dev;
@@ -1617,31 +1605,21 @@ static int max1363_probe(struct i2c_client *client,
 
 	return 0;
 error_free_irq:
-	if (client->irq)
-		free_irq(st->client->irq, indio_dev);
+	free_irq(st->client->irq, indio_dev);
 error_uninit_buffer:
 	iio_buffer_unregister(indio_dev);
 error_cleanup_buffer:
 	max1363_buffer_cleanup(indio_dev);
 error_free_available_scan_masks:
 	kfree(indio_dev->available_scan_masks);
-<<<<<<< HEAD:drivers/staging/iio/adc/max1363_core.c
-error_free_device:
-	iio_free_device(indio_dev);
-error_disable_reg:
-	regulator_disable(reg);
-error_put_reg:
-	regulator_put(reg);
-=======
+error_unregister_map:
+	iio_map_array_unregister(indio_dev, client->dev.platform_data);
 error_disable_reg:
 	regulator_disable(st->reg);
 error_put_reg:
 	regulator_put(st->reg);
-error_unregister_map:
-	iio_map_array_unregister(indio_dev, client->dev.platform_data);
 error_free_device:
 	iio_device_free(indio_dev);
->>>>>>> v3.8:drivers/iio/adc/max1363.c
 error_out:
 	return ret;
 }
@@ -1657,18 +1635,12 @@ static int max1363_remove(struct i2c_client *client)
 	iio_buffer_unregister(indio_dev);
 	max1363_buffer_cleanup(indio_dev);
 	kfree(indio_dev->available_scan_masks);
-<<<<<<< HEAD:drivers/staging/iio/adc/max1363_core.c
-	if (!IS_ERR(reg)) {
-		regulator_disable(reg);
-		regulator_put(reg);
+	if (!IS_ERR(st->reg)) {
+		regulator_disable(st->reg);
+		regulator_put(st->reg);
 	}
-	iio_free_device(indio_dev);
-=======
-	regulator_disable(st->reg);
-	regulator_put(st->reg);
 	iio_map_array_unregister(indio_dev, client->dev.platform_data);
 	iio_device_free(indio_dev);
->>>>>>> v3.8:drivers/iio/adc/max1363.c
 
 	return 0;
 }
@@ -1723,6 +1695,6 @@ static struct i2c_driver max1363_driver = {
 };
 module_i2c_driver(max1363_driver);
 
-MODULE_AUTHOR("Jonathan Cameron <jic23@cam.ac.uk>");
+MODULE_AUTHOR("Jonathan Cameron <jic23@kernel.org>");
 MODULE_DESCRIPTION("Maxim 1363 ADC");
 MODULE_LICENSE("GPL v2");
