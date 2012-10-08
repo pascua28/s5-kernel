@@ -1090,8 +1090,7 @@ static int usbvision_v4l2_mmap(struct file *file, struct vm_area_struct *vma)
 	}
 
 	/* VM_IO is eventually going to replace PageReserved altogether */
-	vma->vm_flags |= VM_IO;
-	vma->vm_flags |= VM_RESERVED;	/* avoid to swap out this VMA */
+	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 
 	pos = usbvision->frame[i].data;
 	while (size > 0) {
