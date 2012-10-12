@@ -595,9 +595,14 @@ int in_gate_area_no_mm(unsigned long addr)
 
 const char *arch_vma_name(struct vm_area_struct *vma)
 {
-	return is_gate_vma(vma) ? "[vectors]" :
-		(vma->vm_mm && vma->vm_start == vma->vm_mm->context.sigpage) ?
-		 "[sigpage]" : NULL;
+	if (vma == &gate_vma)
+		return "[vectors]";
+	else if (vma == get_user_timers_vma(NULL))
+		return "[timers]";
+	else if (vma->vm_mm && vma->vm_start == vma->vm_mm->context.sigpage)
+		return "[sigpage]";
+	else
+		return NULL;
 }
 
 static struct page *signal_page;
