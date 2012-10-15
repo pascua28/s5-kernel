@@ -589,8 +589,8 @@ static int adis16400_read_raw(struct iio_dev *indio_dev,
 			*val2 = 500; /* 0.5 mgauss */
 			return IIO_VAL_INT_PLUS_MICRO;
 		case IIO_TEMP:
-			*val = 140; /* 0.14 C */
-			*val2 = 0;
+			*val = st->variant->temp_scale_nano / 1000000;
+			*val2 = (st->variant->temp_scale_nano % 1000000);
 			return IIO_VAL_INT_PLUS_MICRO;
 		default:
 			return -EINVAL;
@@ -607,7 +607,8 @@ static int adis16400_read_raw(struct iio_dev *indio_dev,
 		*val = val16;
 		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_OFFSET:
-		*val = 2500 / 14; /* 25 C = 0x00 */
+		/* currently only temperature */
+		*val = st->variant->temp_offset;
 		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY:
 		mutex_lock(&indio_dev->mlock);
@@ -1081,6 +1082,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.num_channels = ARRAY_SIZE(adis16300_channels),
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(50000), /* 0.05 deg/s */
 		.accel_scale_micro = 5884,
+		.temp_scale_nano = 140000000, /* 0.14 C */
+		.temp_offset = 25000000 / 140000, /* 25 C = 0x00 */
 		.default_scan_mask = (1 << ADIS16400_SCAN_SUPPLY) |
 		(1 << ADIS16400_SCAN_GYRO_X) | (1 << ADIS16400_SCAN_ACC_X) |
 		(1 << ADIS16400_SCAN_ACC_Y) | (1 << ADIS16400_SCAN_ACC_Z) |
@@ -1093,6 +1096,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.num_channels = ARRAY_SIZE(adis16334_channels),
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(50000), /* 0.05 deg/s */
 		.accel_scale_micro = IIO_G_TO_M_S_2(1000), /* 1 mg */
+		.temp_scale_nano = 67850000, /* 0.06785 C */
+		.temp_offset = 25000000 / 67850, /* 25 C = 0x00 */
 		.default_scan_mask = (1 << ADIS16400_SCAN_GYRO_X) |
 		(1 << ADIS16400_SCAN_GYRO_Y) | (1 << ADIS16400_SCAN_GYRO_Z) |
 		(1 << ADIS16400_SCAN_ACC_X) | (1 << ADIS16400_SCAN_ACC_Y) |
@@ -1103,6 +1108,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.num_channels = ARRAY_SIZE(adis16350_channels),
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(73260), /* 0.07326 deg/s */
 		.accel_scale_micro = IIO_G_TO_M_S_2(2522), /* 0.002522 g */
+		.temp_scale_nano = 145300000, /* 0.1453 C */
+		.temp_offset = 25000000 / 145300, /* 25 C = 0x00 */
 		.default_scan_mask = 0x7FF,
 		.flags = ADIS16400_NO_BURST,
 	},
@@ -1113,6 +1120,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.product_id = 0x3FE8,
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(50000), /* 0.05 deg/s */
 		.accel_scale_micro = IIO_G_TO_M_S_2(3333), /* 3.333 mg */
+		.temp_scale_nano = 136000000, /* 0.136 C */
+		.temp_offset = 25000000 / 136000, /* 25 C = 0x00 */
 		.default_scan_mask = 0x7FF,
 	},
 	[ADIS16362] = {
@@ -1122,6 +1131,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.product_id = 0x3FEA,
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(50000), /* 0.05 deg/s */
 		.accel_scale_micro = IIO_G_TO_M_S_2(333), /* 0.333 mg */
+		.temp_scale_nano = 136000000, /* 0.136 C */
+		.temp_offset = 25000000 / 136000, /* 25 C = 0x00 */
 		.default_scan_mask = 0x7FF,
 	},
 	[ADIS16364] = {
@@ -1131,6 +1142,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.product_id = 0x3FEC,
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(50000), /* 0.05 deg/s */
 		.accel_scale_micro = IIO_G_TO_M_S_2(1000), /* 1 mg */
+		.temp_scale_nano = 136000000, /* 0.136 C */
+		.temp_offset = 25000000 / 136000, /* 25 C = 0x00 */
 		.default_scan_mask = 0x7FF,
 	},
 	[ADIS16365] = {
@@ -1140,6 +1153,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.product_id = 0x3FED,
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(50000), /* 0.05 deg/s */
 		.accel_scale_micro = IIO_G_TO_M_S_2(1000), /* 1 mg */
+		.temp_scale_nano = 136000000, /* 0.136 C */
+		.temp_offset = 25000000 / 136000, /* 25 C = 0x00 */
 		.default_scan_mask = 0x7FF,
 	},
 	[ADIS16400] = {
@@ -1150,6 +1165,8 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(50000), /* 0.05 deg/s */
 		.accel_scale_micro = IIO_G_TO_M_S_2(3333), /* 3.333 mg */
 		.default_scan_mask = 0xFFF,
+		.temp_scale_nano = 140000000, /* 0.14 C */
+		.temp_offset = 25000000 / 140000, /* 25 C = 0x00 */
 	}
 };
 
