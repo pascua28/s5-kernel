@@ -1056,7 +1056,7 @@ static const struct iio_chan_spec adis16334_channels[] = {
 		.indexed = 1,
 		.channel = 0,
 		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
-		IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT |
+		IIO_CHAN_INFO_OFFSET_SEPARATE_BIT |
 		IIO_CHAN_INFO_SCALE_SHARED_BIT,
 		.address = accel_z,
 		.scan_index = ADIS16400_SCAN_ACC_Z,
