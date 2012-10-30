@@ -58,13 +58,12 @@ struct cpufreq_cooling_device {
 };
 static LIST_HEAD(cooling_cpufreq_list);
 static DEFINE_IDR(cpufreq_idr);
-static DEFINE_MUTEX(cooling_cpufreq_lock);
 
-static unsigned int cpufreq_dev_count;
+static struct mutex cooling_cpufreq_lock;
 
 /* notify_table passes value to the CPUFREQ_ADJUST callback function. */
 #define NOTIFY_INVALID NULL
-static struct cpufreq_cooling_device *notify_device;
+struct cpufreq_cooling_device *notify_device;
 
 /**
  * get_idr - function to get a unique id.
@@ -241,18 +240,28 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
 static int cpufreq_get_max_state(struct thermal_cooling_device *cdev,
 				 unsigned long *state)
 {
-	struct cpufreq_cooling_device *cpufreq_device = cdev->devdata;
-	struct cpumask *maskPtr = &cpufreq_device->allowed_cpus;
+	int ret = -EINVAL, i = 0;
+	struct cpufreq_cooling_device *cpufreq_device;
+	struct cpumask *maskPtr;
 	unsigned int cpu;
 	struct cpufreq_frequency_table *table;
 	unsigned long count = 0;
-	int i = 0;
 
+	mutex_lock(&cooling_cpufreq_lock);
+	list_for_each_entry(cpufreq_device, &cooling_cpufreq_list, node) {
+		if (cpufreq_device && cpufreq_device->cool_dev == cdev)
+			break;
+	}
+	if (cpufreq_device == NULL)
+		goto return_get_max_state;
+
+	maskPtr = &cpufreq_device->allowed_cpus;
 	cpu = cpumask_any(maskPtr);
 	table = cpufreq_frequency_get_table(cpu);
 	if (!table) {
 		*state = 0;
-		return 0;
+		ret = 0;
+		goto return_get_max_state;
 	}
 
 	for (i = 0; (table[i].frequency != CPUFREQ_TABLE_END); i++) {
@@ -263,10 +272,12 @@ static int cpufreq_get_max_state(struct thermal_cooling_device *cdev,
 
 	if (count > 0) {
 		*state = --count;
-		return 0;
+		ret = 0;
 	}
 
-	return -EINVAL;
+return_get_max_state:
+	mutex_unlock(&cooling_cpufreq_lock);
+	return ret;
 }
 
 /**
@@ -277,10 +288,20 @@ static int cpufreq_get_max_state(struct thermal_cooling_device *cdev,
 static int cpufreq_get_cur_state(struct thermal_cooling_device *cdev,
 				 unsigned long *state)
 {
-	struct cpufreq_cooling_device *cpufreq_device = cdev->devdata;
+	int ret = -EINVAL;
+	struct cpufreq_cooling_device *cpufreq_device;
 
-	*state = cpufreq_device->cpufreq_state;
-	return 0;
+	mutex_lock(&cooling_cpufreq_lock);
+	list_for_each_entry(cpufreq_device, &cooling_cpufreq_list, node) {
+		if (cpufreq_device && cpufreq_device->cool_dev == cdev) {
+			*state = cpufreq_device->cpufreq_state;
+			ret = 0;
+			break;
+		}
+	}
+	mutex_unlock(&cooling_cpufreq_lock);
+
+	return ret;
 }
 
 /**
@@ -291,9 +312,22 @@ static int cpufreq_get_cur_state(struct thermal_cooling_device *cdev,
 static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 				 unsigned long state)
 {
-	struct cpufreq_cooling_device *cpufreq_device = cdev->devdata;
+	int ret = -EINVAL;
+	struct cpufreq_cooling_device *cpufreq_device;
 
-	return cpufreq_apply_cooling(cpufreq_device, state);
+	mutex_lock(&cooling_cpufreq_lock);
+	list_for_each_entry(cpufreq_device, &cooling_cpufreq_list, node) {
+		if (cpufreq_device && cpufreq_device->cool_dev == cdev) {
+			ret = 0;
+			break;
+		}
+	}
+	if (!ret)
+		ret = cpufreq_apply_cooling(cpufreq_device, state);
+
+	mutex_unlock(&cooling_cpufreq_lock);
+
+	return ret;
 }
 
 /* Bind cpufreq callbacks to thermal cooling device ops */
@@ -313,14 +347,17 @@ static struct notifier_block thermal_cpufreq_notifier_block = {
  * @clip_cpus: cpumask of cpus where the frequency constraints will happen.
  */
 struct thermal_cooling_device *cpufreq_cooling_register(
-	const struct cpumask *clip_cpus)
+	struct cpumask *clip_cpus)
 {
 	struct thermal_cooling_device *cool_dev;
 	struct cpufreq_cooling_device *cpufreq_dev = NULL;
-	unsigned int min = 0, max = 0;
+	unsigned int cpufreq_dev_count = 0, min = 0, max = 0;
 	char dev_name[THERMAL_NAME_LENGTH];
 	int ret = 0, i;
 	struct cpufreq_policy policy;
+
+	list_for_each_entry(cpufreq_dev, &cooling_cpufreq_list, node)
+		cpufreq_dev_count++;
 
 	/*Verify that all the clip cpus have same freq_min, freq_max limit*/
 	for_each_cpu(i, clip_cpus) {
@@ -343,6 +380,9 @@ struct thermal_cooling_device *cpufreq_cooling_register(
 
 	cpumask_copy(&cpufreq_dev->allowed_cpus, clip_cpus);
 
+	if (cpufreq_dev_count == 0)
+		mutex_init(&cooling_cpufreq_lock);
+
 	ret = get_idr(&cpufreq_idr, &cpufreq_dev->id);
 	if (ret) {
 		kfree(cpufreq_dev);
@@ -361,12 +401,12 @@ struct thermal_cooling_device *cpufreq_cooling_register(
 	cpufreq_dev->cool_dev = cool_dev;
 	cpufreq_dev->cpufreq_state = 0;
 	mutex_lock(&cooling_cpufreq_lock);
+	list_add_tail(&cpufreq_dev->node, &cooling_cpufreq_list);
 
 	/* Register the notifier for first cpufreq cooling device */
 	if (cpufreq_dev_count == 0)
 		cpufreq_register_notifier(&thermal_cpufreq_notifier_block,
 						CPUFREQ_POLICY_NOTIFIER);
-	cpufreq_dev_count++;
 
 	mutex_unlock(&cooling_cpufreq_lock);
 	return cool_dev;
@@ -379,20 +419,33 @@ EXPORT_SYMBOL(cpufreq_cooling_register);
  */
 void cpufreq_cooling_unregister(struct thermal_cooling_device *cdev)
 {
-	struct cpufreq_cooling_device *cpufreq_dev = cdev->devdata;
+	struct cpufreq_cooling_device *cpufreq_dev = NULL;
+	unsigned int cpufreq_dev_count = 0;
 
 	mutex_lock(&cooling_cpufreq_lock);
-	cpufreq_dev_count--;
+	list_for_each_entry(cpufreq_dev, &cooling_cpufreq_list, node) {
+		if (cpufreq_dev && cpufreq_dev->cool_dev == cdev)
+			break;
+		cpufreq_dev_count++;
+	}
+
+	if (!cpufreq_dev || cpufreq_dev->cool_dev != cdev) {
+		mutex_unlock(&cooling_cpufreq_lock);
+		return;
+	}
+
+	list_del(&cpufreq_dev->node);
 
 	/* Unregister the notifier for the last cpufreq cooling device */
-	if (cpufreq_dev_count == 0) {
+	if (cpufreq_dev_count == 1) {
 		cpufreq_unregister_notifier(&thermal_cpufreq_notifier_block,
 					CPUFREQ_POLICY_NOTIFIER);
 	}
 	mutex_unlock(&cooling_cpufreq_lock);
-
 	thermal_cooling_device_unregister(cpufreq_dev->cool_dev);
 	release_idr(&cpufreq_idr, cpufreq_dev->id);
+	if (cpufreq_dev_count == 1)
+		mutex_destroy(&cooling_cpufreq_lock);
 	kfree(cpufreq_dev);
 }
 EXPORT_SYMBOL(cpufreq_cooling_unregister);
