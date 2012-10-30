@@ -1437,8 +1437,6 @@ static int mx2_camera_try_fmt(struct soc_camera_device *icd,
 		return -EINVAL;
 	}
 
-	/* FIXME: implement MX27 limits */
-
 	/* limit to MX25 hardware capabilities */
 	if (is_imx25_camera(pcdev)) {
 		if (xlate->host_fmt->bits_per_sample <= 8)
@@ -1470,6 +1468,12 @@ static int mx2_camera_try_fmt(struct soc_camera_device *icd,
 			pix->sizeimage = soc_mbus_image_size(xlate->host_fmt,
 						pix->bytesperline, pix->height);
 		}
+	} else {
+		/*
+		 * Width must be a multiple of 8 as requested by the CSI.
+		 * (Table 39-2 in the i.MX27 Reference Manual).
+		 */
+		pix->width &= ~0x7;
 	}
 
 	/* limit to sensor capabilities */
