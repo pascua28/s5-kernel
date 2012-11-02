@@ -548,6 +548,8 @@ static int fintek_probe(struct pnp_dev *pdev, const struct pnp_device_id *dev_id
 	/* rx resolution is hardwired to 50us atm, 1, 25, 100 also possible */
 	rdev->rx_resolution = US_TO_NS(CIR_SAMPLE_PERIOD);
 
+	fintek->rdev = rdev;
+
 	ret = -EBUSY;
 	/* now claim resources */
 	if (!request_region(fintek->cir_addr,
@@ -563,7 +565,7 @@ static int fintek_probe(struct pnp_dev *pdev, const struct pnp_device_id *dev_id
 		goto exit_free_irq;
 
 	device_init_wakeup(&pdev->dev, true);
-	fintek->rdev = rdev;
+
 	fit_pr(KERN_NOTICE, "driver has been successfully loaded\n");
 	if (debug)
 		cir_dump_regs(fintek);
