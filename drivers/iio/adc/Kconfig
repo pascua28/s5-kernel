@@ -103,4 +103,11 @@ config MAX1363
 	  max11646, max11647) Provides direct access via sysfs and buffered
 	  data via the iio dev interface.
 
+config VIPERBOARD_ADC
+	tristate "Viperboard ADC support"
+	depends on MFD_VIPERBOARD && USB
+	help
+	  Say yes here to access the ADC part of the Nano River
+	  Technologies Viperboard.
+
 endmenu
