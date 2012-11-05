@@ -108,7 +108,6 @@ static int __init enforcing_setup(char *str)
 {
 	unsigned long enforcing;
 	if (!strict_strtoul(str, 0, &enforcing))
-
 		selinux_enforcing = enforcing ? 1 : 0;
 	return 1;
 }
@@ -122,9 +121,7 @@ static int __init selinux_enabled_setup(char *str)
 {
 	unsigned long enabled;
 	if (!strict_strtoul(str, 0, &enabled))
-
 		selinux_enabled = enabled ? 1 : 0;
-
 	return 1;
 }
 __setup("selinux=", selinux_enabled_setup);
@@ -221,14 +218,6 @@ static int inode_alloc_security(struct inode *inode)
 	return 0;
 }
 
-static void inode_free_rcu(struct rcu_head *head)
-{
-	struct inode_security_struct *isec;
-
-	isec = container_of(head, struct inode_security_struct, rcu);
-	kmem_cache_free(sel_inode_cache, isec);
-}
-
 static void inode_free_security(struct inode *inode)
 {
 	struct inode_security_struct *isec = inode->i_security;
@@ -239,16 +228,8 @@ static void inode_free_security(struct inode *inode)
 		list_del_init(&isec->list);
 	spin_unlock(&sbsec->isec_lock);
 
-	/*
-	 * The inode may still be referenced in a path walk and
-	 * a call to selinux_inode_permission() can be made
-	 * after inode_free_security() is called. Ideally, the VFS
-	 * wouldn't do this, but fixing that is a much harder
-	 * job. For now, simply free the i_security via RCU, and
-	 * leave the current inode->i_security pointer intact.
-	 * The inode will be freed after the RCU grace period too.
-	 */
-	call_rcu(&isec->rcu, inode_free_rcu);
+	inode->i_security = NULL;
+	kmem_cache_free(sel_inode_cache, isec);
 }
 
 static int file_alloc_security(struct file *file)
@@ -421,11 +402,8 @@ static int sb_finish_set_opts(struct super_block *sb)
 	    sbsec->behavior > ARRAY_SIZE(labeling_behaviors))
 		sbsec->flags &= ~SE_SBLABELSUPP;
 
-	/* Special handling. Is genfs but also has in-core setxattr handler*/
-	if (!strcmp(sb->s_type->name, "sysfs") ||
-	    !strcmp(sb->s_type->name, "pstore") ||
-	    !strcmp(sb->s_type->name, "debugfs") ||
-	    !strcmp(sb->s_type->name, "rootfs"))
+	/* Special handling for sysfs. Is genfs but also has setxattr handler*/
+	if (strncmp(sb->s_type->name, "sysfs", sizeof("sysfs")) == 0)
 		sbsec->flags |= SE_SBLABELSUPP;
 
 	/* Initialize the root inode. */
@@ -442,7 +420,6 @@ next_inode:
 				list_entry(sbsec->isec_head.next,
 					   struct inode_security_struct, list);
 		struct inode *inode = isec->inode;
-		list_del_init(&isec->list);
 		spin_unlock(&sbsec->isec_lock);
 		inode = igrab(inode);
 		if (inode) {
@@ -451,6 +428,7 @@ next_inode:
 			iput(inode);
 		}
 		spin_lock(&sbsec->isec_lock);
+		list_del_init(&isec->list);
 		goto next_inode;
 	}
 	spin_unlock(&sbsec->isec_lock);
@@ -1536,11 +1514,6 @@ static int inode_has_perm(const struct cred *cred,
 	sid = cred_sid(cred);
 	isec = inode->i_security;
 
-	if (unlikely(!isec)){
-		printk(KERN_CRIT "[SELinux] isec is NULL, inode->i_security is already freed. \n");
-		return -EACCES;
-	}
-
 	return avc_has_perm_flags(sid, isec->sid, isec->sclass, perms, adp, flags);
 }
 
@@ -1889,7 +1862,7 @@ static int selinux_binder_transfer_file(struct task_struct *from, struct task_st
 	struct selinux_audit_data sad = {0,};
 	int rc;
 
-	ad.type = LSM_AUDIT_DATA_PATH;
+	COMMON_AUDIT_DATA_INIT(&ad, PATH);
 	ad.u.path = file->f_path;
 	ad.selinux_audit_data = &sad;
 
@@ -3088,48 +3061,6 @@ static void selinux_file_free_security(struct file *file)
 	file_free_security(file);
 }
 
-/*
- * Check whether a task has the ioctl permission and cmd
- * operation to an inode.
- */
-int ioctl_has_perm(const struct cred *cred, struct file *file,
-		u32 requested, u16 cmd)
-{
-	struct common_audit_data ad;
-	struct file_security_struct *fsec = file->f_security;
-	struct inode *inode = file->f_path.dentry->d_inode;
-	struct inode_security_struct *isec = inode->i_security;
-	struct lsm_ioctlop_audit ioctl;
-	u32 ssid = cred_sid(cred);
-	struct selinux_audit_data sad = {0,};
-	int rc;
-	u8 driver = cmd >> 8;
-	u8 xperm = cmd & 0xff;
-
-	ad.type = LSM_AUDIT_DATA_IOCTL_OP;
-	ad.u.op = &ioctl;
-	ad.u.op->cmd = cmd;
-	ad.selinux_audit_data = &sad;
-	ad.u.op->path = file->f_path;
-
-	if (ssid != fsec->sid) {
-		rc = avc_has_perm(ssid, fsec->sid,
-				SECCLASS_FD,
-				FD__USE,
-				&ad);
-		if (rc)
-			goto out;
-	}
-
-	if (unlikely(IS_PRIVATE(inode)))
-		return 0;
-
-	rc = avc_has_extended_perms(ssid, isec->sid, isec->sclass,
-			requested, driver, xperm, &ad);
-out:
-	return rc;
-}
-
 static int selinux_file_ioctl(struct file *file, unsigned int cmd,
 			      unsigned long arg)
 {
@@ -3172,7 +3103,7 @@ static int selinux_file_ioctl(struct file *file, unsigned int cmd,
 	 * to the file's ioctl() function.
 	 */
 	default:
-		error = ioctl_has_perm(cred, file, FILE__IOCTL, (u16) cmd);
+		error = file_has_perm(cred, file, FILE__IOCTL);
 	}
 	return error;
 }
@@ -3886,11 +3817,6 @@ static int sock_has_perm(struct task_struct *task, struct sock *sk, u32 perms)
 	struct common_audit_data ad;
 	struct lsm_network_audit net = {0,};
 	u32 tsid = task_sid(task);
-
-	if (unlikely(!sksec)){
-		printk(KERN_CRIT "[SELinux] sksec is NULL, socket is already freed. \n");
-		return -EINVAL;
-	}
 
 	if (sksec->sid == SECINITSID_KERNEL)
 		return 0;
@@ -4660,9 +4586,7 @@ static int selinux_nlmsg_perm(struct sock *sk, struct sk_buff *skb)
 				  "SELinux:  unrecognized netlink message"
 				  " type=%hu for sclass=%hu\n",
 				  nlh->nlmsg_type, sksec->sclass);
-
 			if (!selinux_enforcing || security_get_allow_unknown())
-
 				err = 0;
 		}
 
