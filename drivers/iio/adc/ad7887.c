@@ -134,7 +134,7 @@ static irqreturn_t ad7887_trigger_handler(int irq, void *p)
 		memcpy(st->data + indio_dev->scan_bytes - sizeof(s64),
 		       &time_ns, sizeof(time_ns));
 
-	iio_push_to_buffers(indio_dev, st->data);
+	iio_push_to_buffer(indio_dev->buffer, st->data);
 done:
 	iio_trigger_notify_done(indio_dev->trig);
 
@@ -233,7 +233,7 @@ static const struct iio_info ad7887_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int ad7887_probe(struct spi_device *spi)
+static int __devinit ad7887_probe(struct spi_device *spi)
 {
 	struct ad7887_platform_data *pdata = spi->dev.platform_data;
 	struct ad7887_state *st;
@@ -340,7 +340,7 @@ error_free:
 	return ret;
 }
 
-static int ad7887_remove(struct spi_device *spi)
+static int __devexit ad7887_remove(struct spi_device *spi)
 {
 	struct iio_dev *indio_dev = spi_get_drvdata(spi);
 	struct ad7887_state *st = iio_priv(indio_dev);
@@ -368,7 +368,7 @@ static struct spi_driver ad7887_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ad7887_probe,
-	.remove		= ad7887_remove,
+	.remove		= __devexit_p(ad7887_remove),
 	.id_table	= ad7887_id,
 };
 module_spi_driver(ad7887_driver);
