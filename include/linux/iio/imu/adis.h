@@ -14,13 +14,8 @@
 #include <linux/interrupt.h>
 #include <linux/iio/types.h>
 
-#define ADIS_WRITE_REG(reg) ((0x80 | (reg)))
-#define ADIS_READ_REG(reg) ((reg) & 0x7f)
-
-#define ADIS_PAGE_SIZE 0x80
-#define ADIS_REG_PAGE_ID 0x00
-
-struct adis;
+#define ADIS_WRITE_REG(reg) (0x80 | (reg))
+#define ADIS_READ_REG(reg) (reg)
 
 /**
  * struct adis_data - ADIS chip variant specific data
@@ -45,10 +40,6 @@ struct adis_data {
 
 	const char * const *status_error_msgs;
 	unsigned int status_error_mask;
-
-	int (*enable_irq)(struct adis *adis, bool enable);
-
-	bool has_paging;
 };
 
 struct adis {
@@ -60,10 +51,9 @@ struct adis {
 	struct mutex		txrx_lock;
 	struct spi_message	msg;
 	struct spi_transfer	*xfer;
-	unsigned int		current_page;
 	void			*buffer;
 
-	uint8_t			tx[10] ____cacheline_aligned;
+	uint8_t			tx[8] ____cacheline_aligned;
 	uint8_t			rx[4];
 };
 
@@ -71,82 +61,9 @@ int adis_init(struct adis *adis, struct iio_dev *indio_dev,
 	struct spi_device *spi, const struct adis_data *data);
 int adis_reset(struct adis *adis);
 
-int adis_write_reg(struct adis *adis, unsigned int reg,
-	unsigned int val, unsigned int size);
-int adis_read_reg(struct adis *adis, unsigned int reg,
-	unsigned int *val, unsigned int size);
-
-/**
- * adis_write_reg_8() - Write single byte to a register
- * @adis: The adis device
- * @reg: The address of the register to be written
- * @value: The value to write
- */
-static inline int adis_write_reg_8(struct adis *adis, unsigned int reg,
-	uint8_t val)
-{
-	return adis_write_reg(adis, reg, val, 1);
-}
-
-/**
- * adis_write_reg_16() - Write 2 bytes to a pair of registers
- * @adis: The adis device
- * @reg: The address of the lower of the two registers
- * @value: Value to be written
- */
-static inline int adis_write_reg_16(struct adis *adis, unsigned int reg,
-	uint16_t val)
-{
-	return adis_write_reg(adis, reg, val, 2);
-}
-
-/**
- * adis_write_reg_32() - write 4 bytes to four registers
- * @adis: The adis device
- * @reg: The address of the lower of the four register
- * @value: Value to be written
- */
-static inline int adis_write_reg_32(struct adis *adis, unsigned int reg,
-	uint32_t val)
-{
-	return adis_write_reg(adis, reg, val, 4);
-}
-
-/**
- * adis_read_reg_16() - read 2 bytes from a 16-bit register
- * @adis: The adis device
- * @reg: The address of the lower of the two registers
- * @val: The value read back from the device
- */
-static inline int adis_read_reg_16(struct adis *adis, unsigned int reg,
-	uint16_t *val)
-{
-	unsigned int tmp;
-	int ret;
-
-	ret = adis_read_reg(adis, reg, &tmp, 2);
-	*val = tmp;
-
-	return ret;
-}
-
-/**
- * adis_read_reg_32() - read 4 bytes from a 32-bit register
- * @adis: The adis device
- * @reg: The address of the lower of the two registers
- * @val: The value read back from the device
- */
-static inline int adis_read_reg_32(struct adis *adis, unsigned int reg,
-	uint32_t *val)
-{
-	unsigned int tmp;
-	int ret;
-
-	ret = adis_read_reg(adis, reg, &tmp, 4);
-	*val = tmp;
-
-	return ret;
-}
+int adis_write_reg_8(struct adis *adis, unsigned int reg, uint8_t val);
+int adis_write_reg_16(struct adis *adis, unsigned int reg, uint16_t val);
+int adis_read_reg_16(struct adis *adis, unsigned int reg, uint16_t *val);
 
 int adis_enable_irq(struct adis *adis, bool enable);
 int adis_check_status(struct adis *adis);
@@ -265,16 +182,5 @@ static inline void adis_remove_trigger(struct adis *adis)
 #define adis_update_scan_mode NULL
 
 #endif /* CONFIG_IIO_BUFFER */
-
-#ifdef CONFIG_DEBUG_FS
-
-int adis_debugfs_reg_access(struct iio_dev *indio_dev,
-	unsigned int reg, unsigned int writeval, unsigned int *readval);
-
-#else
-
-#define adis_debugfs_reg_access NULL
-
-#endif
 
 #endif
