@@ -39,15 +39,16 @@
 		},							\
 	}
 
-static struct iio_chan_spec ad7298_channels[] = {
+static const struct iio_chan_spec ad7298_channels[] = {
 	{
 		.type = IIO_TEMP,
 		.indexed = 1,
 		.channel = 0,
 		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
-		IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
-		.address = 9,
-		.scan_index = AD7298_CH_TEMP,
+			IIO_CHAN_INFO_SCALE_SEPARATE_BIT |
+			IIO_CHAN_INFO_OFFSET_SEPARATE_BIT,
+		.address = AD7298_CH_TEMP,
+		.scan_index = -1,
 		.scan_type = {
 			.sign = 's',
 			.realbits = 32,
@@ -80,7 +81,7 @@ static int ad7298_scan_direct(struct ad7298_state *st, unsigned ch)
 
 static int ad7298_scan_temp(struct ad7298_state *st, int *val)
 {
-	int tmp, ret;
+	int ret;
 	__be16 buf;
 
 	buf = cpu_to_be16(AD7298_WRITE | AD7298_TSENSE |
@@ -102,24 +103,24 @@ static int ad7298_scan_temp(struct ad7298_state *st, int *val)
 	if (ret)
 		return ret;
 
-	tmp = be16_to_cpu(buf) & RES_MASK(AD7298_BITS);
-
-	/*
-	 * One LSB of the ADC corresponds to 0.25 deg C.
-	 * The temperature reading is in 12-bit twos complement format
-	 */
-
-	if (tmp & (1 << (AD7298_BITS - 1))) {
-		tmp = (4096 - tmp) * 250;
-		tmp -= (2 * tmp);
-
-	} else {
-		tmp *= 250; /* temperature in milli degrees Celsius */
-	}
-
-	*val = tmp;
+	*val = sign_extend32(be16_to_cpu(buf), 11);
 
 	return 0;
+}
+
+static int ad7298_get_ref_voltage(struct ad7298_state *st)
+{
+	int vref;
+
+	if (st->ext_ref) {
+		vref = regulator_get_voltage(st->reg);
+		if (vref < 0)
+			return vref;
+
+		return vref / 1000;
+	} else {
+		return AD7298_INTREF_mV;
+	}
 }
 
 static int ad7298_read_raw(struct iio_dev *indio_dev,
@@ -130,7 +131,6 @@ static int ad7298_read_raw(struct iio_dev *indio_dev,
 {
 	int ret;
 	struct ad7298_state *st = iio_priv(indio_dev);
-	int scale_mv;
 
 	switch (m) {
 	case IIO_CHAN_INFO_RAW:
@@ -155,30 +155,26 @@ static int ad7298_read_raw(struct iio_dev *indio_dev,
 	case IIO_CHAN_INFO_SCALE:
 		switch (chan->type) {
 		case IIO_VOLTAGE:
-			if (st->ext_ref) {
-				scale_mv = regulator_get_voltage(st->reg);
-				if (scale_mv < 0)
-					return scale_mv;
-				scale_mv /= 1000;
-			} else {
-				scale_mv = AD7298_INTREF_mV;
-			}
-			*val =  scale_mv;
+			*val = ad7298_get_ref_voltage(st);
 			*val2 = chan->scan_type.realbits;
 			return IIO_VAL_FRACTIONAL_LOG2;
 		case IIO_TEMP:
-			*val =  1;
-			*val2 = 0;
-			return IIO_VAL_INT_PLUS_MICRO;
+			*val = ad7298_get_ref_voltage(st);
+			*val2 = 10;
+			return IIO_VAL_FRACTIONAL;
 		default:
 			return -EINVAL;
 		}
+	case IIO_CHAN_INFO_OFFSET:
+		*val = 1093 - 2732500 / ad7298_get_ref_voltage(st);
+		return IIO_VAL_INT;
 	}
 	return -EINVAL;
 }
 
 static const struct iio_info ad7298_info = {
 	.read_raw = &ad7298_read_raw,
+	.update_scan_mode = ad7298_update_scan_mode,
 	.driver_module = THIS_MODULE,
 };
 
@@ -239,19 +235,12 @@ static int __devinit ad7298_probe(struct spi_device *spi)
 	if (ret)
 		goto error_disable_reg;
 
-	ret = iio_buffer_register(indio_dev,
-				  &ad7298_channels[1], /* skip temp0 */
-				  ARRAY_SIZE(ad7298_channels) - 1);
-	if (ret)
-		goto error_cleanup_ring;
 	ret = iio_device_register(indio_dev);
 	if (ret)
-		goto error_unregister_ring;
+		goto error_cleanup_ring;
 
 	return 0;
 
-error_unregister_ring:
-	iio_buffer_unregister(indio_dev);
 error_cleanup_ring:
 	ad7298_ring_cleanup(indio_dev);
 error_disable_reg:
@@ -272,7 +261,6 @@ static int __devexit ad7298_remove(struct spi_device *spi)
 	struct ad7298_state *st = iio_priv(indio_dev);
 
 	iio_device_unregister(indio_dev);
-	iio_buffer_unregister(indio_dev);
 	ad7298_ring_cleanup(indio_dev);
 	if (st->ext_ref) {
 		regulator_disable(st->reg);
