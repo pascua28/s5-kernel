@@ -395,7 +395,7 @@ int ip_options_compile(struct net *net,
 					optptr[2] += 8;
 					break;
 				      default:
-					if (!skb && !capable(CAP_NET_RAW)) {
+					if (!skb && !ns_capable(net->user_ns, CAP_NET_RAW)) {
 						pp_ptr = optptr + 3;
 						goto error;
 					}
@@ -431,7 +431,7 @@ int ip_options_compile(struct net *net,
 				opt->router_alert = optptr - iph;
 			break;
 		      case IPOPT_CIPSO:
-			if ((!skb && !capable(CAP_NET_RAW)) || opt->cipso) {
+			if ((!skb && !ns_capable(net->user_ns, CAP_NET_RAW)) || opt->cipso) {
 				pp_ptr = optptr;
 				goto error;
 			}
@@ -444,7 +444,7 @@ int ip_options_compile(struct net *net,
 		      case IPOPT_SEC:
 		      case IPOPT_SID:
 		      default:
-			if (!skb && !capable(CAP_NET_RAW)) {
+			if (!skb && !ns_capable(net->user_ns, CAP_NET_RAW)) {
 				pp_ptr = optptr;
 				goto error;
 			}
