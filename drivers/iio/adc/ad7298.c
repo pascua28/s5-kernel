@@ -17,42 +17,6 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 
-<<<<<<< HEAD:drivers/staging/iio/adc/ad7298_core.c
-#include "../iio.h"
-#include "../sysfs.h"
-#include "../buffer.h"
-
-#include "ad7298.h"
-
-static struct iio_chan_spec ad7298_channels[] = {
-	IIO_CHAN(IIO_TEMP, 0, 1, 0, NULL, 0, 0,
-		 IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
-		 9, AD7298_CH_TEMP, IIO_ST('s', 32, 32, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 0, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 0, 0, IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 1, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 1, 1, IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 2, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 2, 2, IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 3, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 3, 3, IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 4, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 4, 4, IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 5, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 5, 5, IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 6, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 6, 6, IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 7, 0,
-		 IIO_CHAN_INFO_SCALE_SHARED_BIT,
-		 7, 7, IIO_ST('u', 12, 16, 0), 0),
-=======
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
 #include <linux/iio/buffer.h>
@@ -90,8 +54,8 @@ struct ad7298_state {
 	 * DMA (thus cache coherency maintenance) requires the
 	 * transfer buffers to live in their own cache lines.
 	 */
-	__be16				rx_buf[12] ____cacheline_aligned;
-	__be16				tx_buf[2];
+	unsigned short			rx_buf[12] ____cacheline_aligned;
+	unsigned short			tx_buf[2];
 };
 
 #define AD7298_V_CHAN(index)						\
@@ -135,7 +99,6 @@ static const struct iio_chan_spec ad7298_channels[] = {
 	AD7298_V_CHAN(5),
 	AD7298_V_CHAN(6),
 	AD7298_V_CHAN(7),
->>>>>>> v3.8:drivers/iio/adc/ad7298.c
 	IIO_CHAN_SOFT_TIMESTAMP(8),
 };
 
@@ -284,7 +247,7 @@ static int ad7298_read_raw(struct iio_dev *indio_dev,
 	struct ad7298_state *st = iio_priv(indio_dev);
 
 	switch (m) {
-	case 0:
+	case IIO_CHAN_INFO_RAW:
 		mutex_lock(&indio_dev->mlock);
 		if (indio_dev->currentmode == INDIO_BUFFER_TRIGGERED) {
 			ret = -EBUSY;
@@ -325,20 +288,16 @@ static int ad7298_read_raw(struct iio_dev *indio_dev,
 
 static const struct iio_info ad7298_info = {
 	.read_raw = &ad7298_read_raw,
+	.update_scan_mode = ad7298_update_scan_mode,
 	.driver_module = THIS_MODULE,
 };
 
-static int ad7298_probe(struct spi_device *spi)
+static int __devinit ad7298_probe(struct spi_device *spi)
 {
 	struct ad7298_platform_data *pdata = spi->dev.platform_data;
 	struct ad7298_state *st;
-<<<<<<< HEAD:drivers/staging/iio/adc/ad7298_core.c
-	int ret;
-	struct iio_dev *indio_dev = iio_allocate_device(sizeof(*st));
-=======
 	struct iio_dev *indio_dev = iio_device_alloc(sizeof(*st));
 	int ret;
->>>>>>> v3.8:drivers/iio/adc/ad7298.c
 
 	if (indio_dev == NULL)
 		return -ENOMEM;
@@ -391,19 +350,12 @@ static int ad7298_probe(struct spi_device *spi)
 	if (ret)
 		goto error_disable_reg;
 
-	ret = iio_buffer_register(indio_dev,
-				  &ad7298_channels[1], /* skip temp0 */
-				  ARRAY_SIZE(ad7298_channels) - 1);
-	if (ret)
-		goto error_cleanup_ring;
 	ret = iio_device_register(indio_dev);
 	if (ret)
-		goto error_unregister_ring;
+		goto error_cleanup_ring;
 
 	return 0;
 
-error_unregister_ring:
-	iio_buffer_unregister(indio_dev);
 error_cleanup_ring:
 	iio_triggered_buffer_cleanup(indio_dev);
 error_disable_reg:
@@ -412,34 +364,24 @@ error_disable_reg:
 error_put_reg:
 	if (st->ext_ref)
 		regulator_put(st->reg);
-<<<<<<< HEAD:drivers/staging/iio/adc/ad7298_core.c
-	iio_free_device(indio_dev);
-=======
 error_free:
 	iio_device_free(indio_dev);
->>>>>>> v3.8:drivers/iio/adc/ad7298.c
 
 	return ret;
 }
 
-static int ad7298_remove(struct spi_device *spi)
+static int __devexit ad7298_remove(struct spi_device *spi)
 {
 	struct iio_dev *indio_dev = spi_get_drvdata(spi);
 	struct ad7298_state *st = iio_priv(indio_dev);
 
 	iio_device_unregister(indio_dev);
-<<<<<<< HEAD:drivers/staging/iio/adc/ad7298_core.c
-	iio_buffer_unregister(indio_dev);
-	ad7298_ring_cleanup(indio_dev);
-	if (!IS_ERR(st->reg)) {
-=======
 	iio_triggered_buffer_cleanup(indio_dev);
 	if (st->ext_ref) {
->>>>>>> v3.8:drivers/iio/adc/ad7298.c
 		regulator_disable(st->reg);
 		regulator_put(st->reg);
 	}
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return 0;
 }
@@ -456,7 +398,7 @@ static struct spi_driver ad7298_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ad7298_probe,
-	.remove		= ad7298_remove,
+	.remove		= __devexit_p(ad7298_remove),
 	.id_table	= ad7298_id,
 };
 module_spi_driver(ad7298_driver);
