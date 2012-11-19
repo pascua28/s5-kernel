@@ -1331,7 +1331,7 @@ static struct spi_driver adis16400_driver = {
 	},
 	.id_table = adis16400_id,
 	.probe = adis16400_probe,
-	.remove = __devexit_p(adis16400_remove),
+	.remove = adis16400_remove,
 };
 module_spi_driver(adis16400_driver);
 
