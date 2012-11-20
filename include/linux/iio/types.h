@@ -33,6 +33,7 @@ enum iio_chan_type {
 #endif
 	IIO_ALTVOLTAGE,
 	IIO_CCT,
+	IIO_PRESSURE,
 };
 
 enum iio_modifier {
