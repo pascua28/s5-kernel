@@ -1202,7 +1202,7 @@ static struct i2c_driver smb347_driver = {
 		.name = "smb347",
 	},
 	.probe        = smb347_probe,
-	.remove       = __devexit_p(smb347_remove),
+	.remove       = smb347_remove,
 	.id_table     = smb347_id,
 };
 
