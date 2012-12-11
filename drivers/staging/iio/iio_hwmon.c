@@ -92,7 +92,7 @@ static void iio_hwmon_free_attrs(struct iio_hwmon_state *st)
 		}
 }
 
-static int __devinit iio_hwmon_probe(struct platform_device *pdev)
+static int iio_hwmon_probe(struct platform_device *pdev)
 {
 	struct iio_hwmon_state *st;
 	struct sensor_device_attribute *a;
@@ -193,7 +193,7 @@ error_ret:
 	return ret;
 }
 
-static int __devexit iio_hwmon_remove(struct platform_device *pdev)
+static int iio_hwmon_remove(struct platform_device *pdev)
 {
 	struct iio_hwmon_state *st = platform_get_drvdata(pdev);
 
@@ -212,7 +212,7 @@ static struct platform_driver __refdata iio_hwmon_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = iio_hwmon_probe,
-	.remove = __devexit_p(iio_hwmon_remove),
+	.remove = iio_hwmon_remove,
 };
 
 static int iio_inkern_init(void)

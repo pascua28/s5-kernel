@@ -533,7 +533,7 @@ static const struct iio_info ade7754_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int __devinit ade7754_probe(struct spi_device *spi)
+static int ade7754_probe(struct spi_device *spi)
 {
 	int ret;
 	struct ade7754_state *st;
@@ -598,7 +598,7 @@ static struct spi_driver ade7754_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = ade7754_probe,
-	.remove = __devexit_p(ade7754_remove),
+	.remove = ade7754_remove,
 };
 module_spi_driver(ade7754_driver);
 
