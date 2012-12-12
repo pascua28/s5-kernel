@@ -110,7 +110,7 @@ static struct pci_driver pci_driver = {
 	.name		= "synclink_gt",
 	.id_table	= pci_table,
 	.probe		= init_one,
-	.remove		= __devexit_p(remove_one),
+	.remove		= remove_one,
 };
 
 static bool pci_registered;
@@ -3645,8 +3645,10 @@ static void device_init(int adapter_num, struct pci_dev *pdev)
 	for (i=0; i < port_count; ++i) {
 		port_array[i] = alloc_dev(adapter_num, i, pdev);
 		if (port_array[i] == NULL) {
-			for (--i; i >= 0; --i)
+			for (--i; i >= 0; --i) {
+				tty_port_destroy(&port_array[i]->port);
 				kfree(port_array[i]);
+			}
 			return;
 		}
 	}
@@ -3693,7 +3695,7 @@ static void device_init(int adapter_num, struct pci_dev *pdev)
 		tty_register_device(serial_driver, port_array[i]->line, &(port_array[i]->pdev->dev));
 }
 
-static int __devinit init_one(struct pci_dev *dev,
+static int init_one(struct pci_dev *dev,
 			      const struct pci_device_id *ent)
 {
 	if (pci_enable_device(dev)) {
@@ -3705,7 +3707,7 @@ static int __devinit init_one(struct pci_dev *dev,
 	return 0;
 }
 
-static void __devexit remove_one(struct pci_dev *dev)
+static void remove_one(struct pci_dev *dev)
 {
 }
 
@@ -3770,6 +3772,7 @@ static void slgt_cleanup(void)
 			release_resources(info);
 		tmp = info;
 		info = info->next_device;
+		tty_port_destroy(&tmp->port);
 		kfree(tmp);
 	}
 

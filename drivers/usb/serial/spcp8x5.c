@@ -28,9 +28,6 @@
 #include <linux/usb.h>
 #include <linux/usb/serial.h>
 
-
-/* Version Information */
-#define DRIVER_VERSION	"v0.10"
 #define DRIVER_DESC 	"SPCP8x5 USB to serial adaptor driver"
 
 static bool debug;
@@ -669,7 +666,6 @@ static struct usb_serial_driver * const serial_drivers[] = {
 module_usb_serial_driver(spcp8x5_driver, serial_drivers);
 
 MODULE_DESCRIPTION(DRIVER_DESC);
-MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPL");
 
 module_param(debug, bool, S_IRUGO | S_IWUSR);
