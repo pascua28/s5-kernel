@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <linux/types.h>
+#include <linux/platform_data/atmel.h>
 
 #include <linux/mmc/host.h>
 #include <linux/mmc/sdio.h>
@@ -37,7 +38,6 @@
 #include <asm/unaligned.h>
 
 #include <mach/cpu.h>
-#include <mach/board.h>
 
 #include "atmel-mci-regs.h"
 
