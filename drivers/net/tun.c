@@ -306,13 +306,12 @@ static void tun_flow_cleanup(unsigned long data)
 	spin_unlock_bh(&tun->lock);
 }
 
-static void tun_flow_update(struct tun_struct *tun, struct sk_buff *skb,
+static void tun_flow_update(struct tun_struct *tun, u32 rxhash,
 			    u16 queue_index)
 {
 	struct hlist_head *head;
 	struct tun_flow_entry *e;
 	unsigned long delay = tun->ageing_time;
-	u32 rxhash = skb_get_rxhash(skb);
 
 	if (!rxhash)
 		return;
@@ -1019,6 +1018,7 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
 	int copylen;
 	bool zerocopy = false;
 	int err;
+	u32 rxhash;
 
 	if (!(tun->flags & TUN_NO_PI)) {
 		if ((len -= sizeof(pi)) > total_len)
@@ -1171,12 +1171,13 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
 		skb_shinfo(skb)->tx_flags |= SKBTX_DEV_ZEROCOPY;
 	}
 
+	rxhash = skb_get_rxhash(skb);
 	netif_rx_ni(skb);
 
 	tun->dev->stats.rx_packets++;
 	tun->dev->stats.rx_bytes += len;
 
-	tun_flow_update(tun, skb, tfile->queue_index);
+	tun_flow_update(tun, rxhash, tfile->queue_index);
 	return total_len;
 }
 
