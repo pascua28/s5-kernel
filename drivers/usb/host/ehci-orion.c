@@ -12,7 +12,11 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/mbus.h>
-#include <plat/ehci-orion.h>
+#include <linux/clk.h>
+#include <linux/platform_data/usb-ehci-orion.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_irq.h>
 
 #define rdl(off)	__raw_readl(hcd->regs + (off))
 #define wrl(off, val)	__raw_writel((val), hcd->regs + (off))
@@ -100,31 +104,6 @@ static void orion_usb_phy_v1_setup(struct usb_hcd *hcd)
 	wrl(USB_MODE, 0x13);
 }
 
-static int ehci_orion_setup(struct usb_hcd *hcd)
-{
-	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	int retval;
-
-	hcd->has_tt = 1;
-
-	retval = ehci_halt(ehci);
-	if (retval)
-		return retval;
-
-	/*
-	 * data structure init
-	 */
-	retval = ehci_init(hcd);
-	if (retval)
-		return retval;
-
-	ehci_reset(ehci);
-
-	ehci_port_power(ehci, 0);
-
-	return retval;
-}
-
 static const struct hc_driver ehci_orion_hc_driver = {
 	.description = hcd_name,
 	.product_desc = "Marvell Orion EHCI",
@@ -139,7 +118,7 @@ static const struct hc_driver ehci_orion_hc_driver = {
 	/*
 	 * basic lifecycle operations
 	 */
-	.reset = ehci_orion_setup,
+	.reset = ehci_setup,
 	.start = ehci_run,
 	.stop = ehci_stop,
 	.shutdown = ehci_shutdown,
@@ -170,7 +149,7 @@ static const struct hc_driver ehci_orion_hc_driver = {
 	.clear_tt_buffer_complete = ehci_clear_tt_buffer_complete,
 };
 
-static void __init
+static void
 ehci_orion_conf_mbus_windows(struct usb_hcd *hcd,
 			     const struct mbus_dram_target_info *dram)
 {
@@ -191,22 +170,29 @@ ehci_orion_conf_mbus_windows(struct usb_hcd *hcd,
 	}
 }
 
-static int __devinit ehci_orion_drv_probe(struct platform_device *pdev)
+static u64 ehci_orion_dma_mask = DMA_BIT_MASK(32);
+
+static int ehci_orion_drv_probe(struct platform_device *pdev)
 {
 	struct orion_ehci_data *pd = pdev->dev.platform_data;
 	const struct mbus_dram_target_info *dram;
 	struct resource *res;
 	struct usb_hcd *hcd;
 	struct ehci_hcd *ehci;
+	struct clk *clk;
 	void __iomem *regs;
 	int irq, err;
+	enum orion_ehci_phy_ver phy_version;
 
 	if (usb_disabled())
 		return -ENODEV;
 
 	pr_debug("Initializing Orion-SoC USB Host Controller\n");
 
-	irq = platform_get_irq(pdev, 0);
+	if (pdev->dev.of_node)
+		irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+	else
+		irq = platform_get_irq(pdev, 0);
 	if (irq <= 0) {
 		dev_err(&pdev->dev,
 			"Found HC with no IRQ. Check %s setup!\n",
@@ -224,6 +210,14 @@ static int __devinit ehci_orion_drv_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
+	/*
+	 * Right now device-tree probed devices don't get dma_mask
+	 * set. Since shared usb code relies on it, set it here for
+	 * now. Once we have dma capability bindings this can go away.
+	 */
+	if (!pdev->dev.dma_mask)
+		pdev->dev.dma_mask = &ehci_orion_dma_mask;
+
 	if (!request_mem_region(res->start, resource_size(res),
 				ehci_orion_hc_driver.description)) {
 		dev_dbg(&pdev->dev, "controller already in use\n");
@@ -236,6 +230,14 @@ static int __devinit ehci_orion_drv_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "error mapping memory\n");
 		err = -EFAULT;
 		goto err2;
+	}
+
+	/* Not all platforms can gate the clock, so it is not
+	   an error if the clock does not exists. */
+	clk = clk_get(&pdev->dev, NULL);
+	if (!IS_ERR(clk)) {
+		clk_prepare_enable(clk);
+		clk_put(clk);
 	}
 
 	hcd = usb_create_hcd(&ehci_orion_hc_driver,
@@ -251,11 +253,7 @@ static int __devinit ehci_orion_drv_probe(struct platform_device *pdev)
 
 	ehci = hcd_to_ehci(hcd);
 	ehci->caps = hcd->regs + 0x100;
-	ehci->regs = hcd->regs + 0x100 +
-		HC_LENGTH(ehci, ehci_readl(ehci, &ehci->caps->hc_capbase));
-	ehci->hcs_params = ehci_readl(ehci, &ehci->caps->hcs_params);
 	hcd->has_tt = 1;
-	ehci->sbrn = 0x20;
 
 	/*
 	 * (Re-)program MBUS remapping windows if we are asked to.
@@ -267,7 +265,12 @@ static int __devinit ehci_orion_drv_probe(struct platform_device *pdev)
 	/*
 	 * setup Orion USB controller.
 	 */
-	switch (pd->phy_version) {
+	if (pdev->dev.of_node)
+		phy_version = EHCI_PHY_NA;
+	else
+		phy_version = pd->phy_version;
+
+	switch (phy_version) {
 	case EHCI_PHY_NA:	/* dont change USB phy settings */
 		break;
 	case EHCI_PHY_ORION:
@@ -288,6 +291,10 @@ static int __devinit ehci_orion_drv_probe(struct platform_device *pdev)
 err4:
 	usb_put_hcd(hcd);
 err3:
+	if (!IS_ERR(clk)) {
+		clk_disable_unprepare(clk);
+		clk_put(clk);
+	}
 	iounmap(regs);
 err2:
 	release_mem_region(res->start, resource_size(res));
@@ -301,20 +308,36 @@ err1:
 static int __exit ehci_orion_drv_remove(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(pdev);
+	struct clk *clk;
 
 	usb_remove_hcd(hcd);
 	iounmap(hcd->regs);
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 	usb_put_hcd(hcd);
 
+	clk = clk_get(&pdev->dev, NULL);
+	if (!IS_ERR(clk)) {
+		clk_disable_unprepare(clk);
+		clk_put(clk);
+	}
 	return 0;
 }
 
 MODULE_ALIAS("platform:orion-ehci");
 
+static const struct of_device_id ehci_orion_dt_ids[] __devinitdata = {
+	{ .compatible = "marvell,orion-ehci", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, ehci_orion_dt_ids);
+
 static struct platform_driver ehci_orion_driver = {
 	.probe		= ehci_orion_drv_probe,
 	.remove		= __exit_p(ehci_orion_drv_remove),
 	.shutdown	= usb_hcd_platform_shutdown,
-	.driver.name	= "orion-ehci",
+	.driver = {
+		.name	= "orion-ehci",
+		.owner  = THIS_MODULE,
+		.of_match_table = of_match_ptr(ehci_orion_dt_ids),
+	},
 };

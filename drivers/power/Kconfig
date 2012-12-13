@@ -544,6 +544,8 @@ config AB8500_BATTERY_THERM_ON_BATCTRL
 	  Say Y to enable battery temperature measurements using
 	  thermistor connected on BATCTRL ADC.
 
+source "drivers/power/reset/Kconfig"
+
 config QPNP_BMS
 	tristate "QPNP Battery Monitoring System driver"
 	depends on SPMI
