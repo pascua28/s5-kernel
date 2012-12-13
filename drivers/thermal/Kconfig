@@ -98,6 +98,26 @@ config THERMAL_QPNP
 	depends on OF
 	depends on SPMI
 	depends on OF_SPMI
+
+config RCAR_THERMAL
+	tristate "Renesas R-Car thermal driver"
+	depends on ARCH_SHMOBILE
+	help
+	  Enable this to plug the R-Car thermal sensor driver into the Linux
+	  thermal framework
+
+config EXYNOS_THERMAL
+	tristate "Temperature sensor on Samsung EXYNOS"
+	depends on (ARCH_EXYNOS4 || ARCH_EXYNOS5)
+	depends on CPU_THERMAL
+	help
+	  If you say yes here you get support for TMU (Thermal Management
+	  Unit) on SAMSUNG EXYNOS series of SoC.
+
+config DB8500_THERMAL
+	bool "DB8500 thermal management"
+	depends on ARCH_U8500
+	default y
 	help
 	  This enables a thermal Sysfs driver for Qualcomm plug-and-play (QPNP)
 	  PMIC devices. It shows up in Sysfs as a thermal zone with multiple
