@@ -144,6 +144,8 @@ static inline void dma_coherent_post_ops(void)
 #endif
 }
 
+extern int arm_dma_set_mask(struct device *dev, u64 dma_mask);
+
 /**
  * arm_dma_alloc - allocate consistent memory for DMA
  * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
