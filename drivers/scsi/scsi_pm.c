@@ -70,17 +70,8 @@ scsi_bus_resume_common(struct device *dev, int (*cb)(struct device *))
 {
 	int err = 0;
 
-	if (scsi_is_sdev_device(dev)) {
-		/*
-		 * Parent device may have runtime suspended as soon as
-		 * it is woken up during the system resume.
-		 *
-		 * Resume it on behalf of child.
-		 */
-		pm_runtime_get_sync(dev->parent);
+	if (scsi_is_sdev_device(dev))
 		err = scsi_dev_type_resume(dev, cb);
-		pm_runtime_put_sync(dev->parent);
-	}
 
 	if (err == 0) {
 		pm_runtime_disable(dev);
@@ -188,10 +179,16 @@ static int sdev_runtime_suspend(struct device *dev)
 static int scsi_runtime_suspend(struct device *dev)
 {
 	int err = 0;
+	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
 
 	dev_dbg(dev, "scsi_runtime_suspend\n");
-	if (scsi_is_sdev_device(dev))
-		err = sdev_runtime_suspend(dev);
+	if (scsi_is_sdev_device(dev)) {
+		err = scsi_dev_type_suspend(dev,
+				pm ? pm->runtime_suspend : NULL);
+		if (err == -EAGAIN)
+			pm_schedule_suspend(dev, jiffies_to_msecs(
+				round_jiffies_up_relative(HZ/10)));
+	}
 
 	/* Insert hooks here for targets, hosts, and transport classes */
 
@@ -226,10 +223,11 @@ static int sdev_runtime_resume(struct device *dev)
 static int scsi_runtime_resume(struct device *dev)
 {
 	int err = 0;
+	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
 
 	dev_dbg(dev, "scsi_runtime_resume\n");
 	if (scsi_is_sdev_device(dev))
-		err = sdev_runtime_resume(dev);
+		err = scsi_dev_type_resume(dev, pm ? pm->runtime_resume : NULL);
 
 	/* Insert hooks here for targets, hosts, and transport classes */
 
