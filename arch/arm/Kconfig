@@ -608,8 +608,6 @@ config ARCH_KIRKWOOD
 	select GENERIC_CLOCKEVENTS
 	select PCI
 	select PCI_QUIRKS
-	select PINCTRL
-	select PINCTRL_KIRKWOOD
 	select PLAT_ORION_LEGACY
 	help
 	  Support for the following Marvell Kirkwood series SoCs:

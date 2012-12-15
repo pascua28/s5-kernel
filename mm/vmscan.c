@@ -2432,8 +2432,7 @@ static bool zone_balanced(struct zone *zone, int order,
 				    balance_gap, classzone_idx, 0))
 		return false;
 
-	if (IS_ENABLED(CONFIG_COMPACTION) && order &&
-	    !compaction_suitable(zone, order))
+	if (COMPACTION_BUILD && order && !compaction_suitable(zone, order))
 		return false;
 
 	return true;

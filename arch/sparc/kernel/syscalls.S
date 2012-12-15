@@ -127,6 +127,14 @@ sparc_exit_group:
 	 or	%g7, %lo(sys_exit_group), %g7
 	.size	sparc_exit_group,.-sparc_exit_group
 
+	.globl	sparc_exit_group
+	.type	sparc_exit_group,#function
+sparc_exit_group:
+	sethi	%hi(sys_exit_group), %g7
+	ba,pt	%xcc, 1f
+	 or	%g7, %lo(sys_exit_group), %g7
+	.size	sparc_exit_group,.-sparc_exit_group
+
 	.globl	sparc_exit
 	.type	sparc_exit,#function
 sparc_exit:

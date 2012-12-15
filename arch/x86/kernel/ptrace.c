@@ -23,7 +23,6 @@
 #include <linux/hw_breakpoint.h>
 #include <linux/rcupdate.h>
 #include <linux/module.h>
-#include <linux/context_tracking.h>
 
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
@@ -1492,7 +1491,7 @@ long syscall_trace_enter(struct pt_regs *regs)
 {
 	long ret = 0;
 
-	user_exit();
+	rcu_user_exit();
 
 	/*
 	 * If we stepped into a sysenter/syscall insn, it trapped in
@@ -1547,7 +1546,7 @@ void syscall_trace_leave(struct pt_regs *regs)
 	 * or do_notify_resume(), in which case we can be in RCU
 	 * user mode.
 	 */
-	user_exit();
+	rcu_user_exit();
 
 	audit_syscall_exit(regs);
 
@@ -1565,5 +1564,5 @@ void syscall_trace_leave(struct pt_regs *regs)
 	if (step || test_thread_flag(TIF_SYSCALL_TRACE))
 		tracehook_report_syscall_exit(regs, step);
 
-	user_enter();
+	rcu_user_enter();
 }
