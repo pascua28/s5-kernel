@@ -20,10 +20,6 @@
 
 #include "tda10071_priv.h"
 
-int tda10071_debug;
-module_param_named(debug, tda10071_debug, int, 0644);
-MODULE_PARM_DESC(debug, "Turn on/off frontend debugging (default:off).");
-
 static struct dvb_frontend_ops tda10071_ops;
 
 /* write multiple registers */
@@ -48,7 +44,8 @@ static int tda10071_wr_regs(struct tda10071_priv *priv, u8 reg, u8 *val,
 	if (ret == 1) {
 		ret = 0;
 	} else {
-		warn("i2c wr failed=%d reg=%02x len=%d", ret, reg, len);
+		dev_warn(&priv->i2c->dev, "%s: i2c wr failed=%d reg=%02x " \
+				"len=%d\n", KBUILD_MODNAME, ret, reg, len);
 		ret = -EREMOTEIO;
 	}
 	return ret;
@@ -79,7 +76,8 @@ static int tda10071_rd_regs(struct tda10071_priv *priv, u8 reg, u8 *val,
 		memcpy(val, buf, len);
 		ret = 0;
 	} else {
-		warn("i2c rd failed=%d reg=%02x len=%d", ret, reg, len);
+		dev_warn(&priv->i2c->dev, "%s: i2c rd failed=%d reg=%02x " \
+				"len=%d\n", KBUILD_MODNAME, ret, reg, len);
 		ret = -EREMOTEIO;
 	}
 	return ret;
@@ -172,7 +170,7 @@ static int tda10071_cmd_execute(struct tda10071_priv *priv,
 		usleep_range(200, 5000);
 	}
 
-	dbg("%s: loop=%d", __func__, i);
+	dev_dbg(&priv->i2c->dev, "%s: loop=%d\n", __func__, i);
 
 	if (i == 0) {
 		ret = -ETIMEDOUT;
@@ -181,7 +179,7 @@ static int tda10071_cmd_execute(struct tda10071_priv *priv,
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -198,7 +196,8 @@ static int tda10071_set_tone(struct dvb_frontend *fe,
 		goto error;
 	}
 
-	dbg("%s: tone_mode=%d", __func__, fe_sec_tone_mode);
+	dev_dbg(&priv->i2c->dev, "%s: tone_mode=%d\n", __func__,
+			fe_sec_tone_mode);
 
 	switch (fe_sec_tone_mode) {
 	case SEC_TONE_ON:
@@ -208,24 +207,25 @@ static int tda10071_set_tone(struct dvb_frontend *fe,
 		tone = 0;
 		break;
 	default:
-		dbg("%s: invalid fe_sec_tone_mode", __func__);
+		dev_dbg(&priv->i2c->dev, "%s: invalid fe_sec_tone_mode\n",
+				__func__);
 		ret = -EINVAL;
 		goto error;
 	}
 
-	cmd.args[0x00] = CMD_LNB_PCB_CONFIG;
-	cmd.args[0x01] = 0;
-	cmd.args[0x02] = 0x00;
-	cmd.args[0x03] = 0x00;
-	cmd.args[0x04] = tone;
-	cmd.len = 0x05;
+	cmd.args[0] = CMD_LNB_PCB_CONFIG;
+	cmd.args[1] = 0;
+	cmd.args[2] = 0x00;
+	cmd.args[3] = 0x00;
+	cmd.args[4] = tone;
+	cmd.len = 5;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -242,7 +242,7 @@ static int tda10071_set_voltage(struct dvb_frontend *fe,
 		goto error;
 	}
 
-	dbg("%s: voltage=%d", __func__, fe_sec_voltage);
+	dev_dbg(&priv->i2c->dev, "%s: voltage=%d\n", __func__, fe_sec_voltage);
 
 	switch (fe_sec_voltage) {
 	case SEC_VOLTAGE_13:
@@ -255,22 +255,23 @@ static int tda10071_set_voltage(struct dvb_frontend *fe,
 		voltage = 0;
 		break;
 	default:
-		dbg("%s: invalid fe_sec_voltage", __func__);
+		dev_dbg(&priv->i2c->dev, "%s: invalid fe_sec_voltage\n",
+				__func__);
 		ret = -EINVAL;
 		goto error;
-	};
+	}
 
-	cmd.args[0x00] = CMD_LNB_SET_DC_LEVEL;
-	cmd.args[0x01] = 0;
-	cmd.args[0x02] = voltage;
-	cmd.len = 0x03;
+	cmd.args[0] = CMD_LNB_SET_DC_LEVEL;
+	cmd.args[1] = 0;
+	cmd.args[2] = voltage;
+	cmd.len = 3;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -287,9 +288,10 @@ static int tda10071_diseqc_send_master_cmd(struct dvb_frontend *fe,
 		goto error;
 	}
 
-	dbg("%s: msg_len=%d", __func__, diseqc_cmd->msg_len);
+	dev_dbg(&priv->i2c->dev, "%s: msg_len=%d\n", __func__,
+			diseqc_cmd->msg_len);
 
-	if (diseqc_cmd->msg_len < 3 || diseqc_cmd->msg_len > 16) {
+	if (diseqc_cmd->msg_len < 3 || diseqc_cmd->msg_len > 6) {
 		ret = -EINVAL;
 		goto error;
 	}
@@ -303,7 +305,7 @@ static int tda10071_diseqc_send_master_cmd(struct dvb_frontend *fe,
 		usleep_range(10000, 20000);
 	}
 
-	dbg("%s: loop=%d", __func__, i);
+	dev_dbg(&priv->i2c->dev, "%s: loop=%d\n", __func__, i);
 
 	if (i == 0) {
 		ret = -ETIMEDOUT;
@@ -314,22 +316,22 @@ static int tda10071_diseqc_send_master_cmd(struct dvb_frontend *fe,
 	if (ret)
 		goto error;
 
-	cmd.args[0x00] = CMD_LNB_SEND_DISEQC;
-	cmd.args[0x01] = 0;
-	cmd.args[0x02] = 0;
-	cmd.args[0x03] = 0;
-	cmd.args[0x04] = 2;
-	cmd.args[0x05] = 0;
-	cmd.args[0x06] = diseqc_cmd->msg_len;
-	memcpy(&cmd.args[0x07], diseqc_cmd->msg, diseqc_cmd->msg_len);
-	cmd.len = 0x07 + diseqc_cmd->msg_len;
+	cmd.args[0] = CMD_LNB_SEND_DISEQC;
+	cmd.args[1] = 0;
+	cmd.args[2] = 0;
+	cmd.args[3] = 0;
+	cmd.args[4] = 2;
+	cmd.args[5] = 0;
+	cmd.args[6] = diseqc_cmd->msg_len;
+	memcpy(&cmd.args[7], diseqc_cmd->msg, diseqc_cmd->msg_len);
+	cmd.len = 7 + diseqc_cmd->msg_len;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -346,7 +348,7 @@ static int tda10071_diseqc_recv_slave_reply(struct dvb_frontend *fe,
 		goto error;
 	}
 
-	dbg("%s:", __func__);
+	dev_dbg(&priv->i2c->dev, "%s:\n", __func__);
 
 	/* wait LNB RX */
 	for (i = 500, tmp = 0; i && !tmp; i--) {
@@ -357,7 +359,7 @@ static int tda10071_diseqc_recv_slave_reply(struct dvb_frontend *fe,
 		usleep_range(10000, 20000);
 	}
 
-	dbg("%s: loop=%d", __func__, i);
+	dev_dbg(&priv->i2c->dev, "%s: loop=%d\n", __func__, i);
 
 	if (i == 0) {
 		ret = -ETIMEDOUT;
@@ -369,14 +371,14 @@ static int tda10071_diseqc_recv_slave_reply(struct dvb_frontend *fe,
 	if (ret)
 		goto error;
 
-	reply->msg_len = tmp & 0x1f; /* [4:0] */;
+	reply->msg_len = tmp & 0x1f; /* [4:0] */
 	if (reply->msg_len > sizeof(reply->msg))
 		reply->msg_len = sizeof(reply->msg); /* truncate API max */
 
 	/* read reply */
-	cmd.args[0x00] = CMD_LNB_UPDATE_REPLY;
-	cmd.args[0x01] = 0;
-	cmd.len = 0x02;
+	cmd.args[0] = CMD_LNB_UPDATE_REPLY;
+	cmd.args[1] = 0;
+	cmd.len = 2;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
@@ -387,7 +389,7 @@ static int tda10071_diseqc_recv_slave_reply(struct dvb_frontend *fe,
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -404,7 +406,8 @@ static int tda10071_diseqc_send_burst(struct dvb_frontend *fe,
 		goto error;
 	}
 
-	dbg("%s: fe_sec_mini_cmd=%d", __func__, fe_sec_mini_cmd);
+	dev_dbg(&priv->i2c->dev, "%s: fe_sec_mini_cmd=%d\n", __func__,
+			fe_sec_mini_cmd);
 
 	switch (fe_sec_mini_cmd) {
 	case SEC_MINI_A:
@@ -414,7 +417,8 @@ static int tda10071_diseqc_send_burst(struct dvb_frontend *fe,
 		burst = 1;
 		break;
 	default:
-		dbg("%s: invalid fe_sec_mini_cmd", __func__);
+		dev_dbg(&priv->i2c->dev, "%s: invalid fe_sec_mini_cmd\n",
+				__func__);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -428,7 +432,7 @@ static int tda10071_diseqc_send_burst(struct dvb_frontend *fe,
 		usleep_range(10000, 20000);
 	}
 
-	dbg("%s: loop=%d", __func__, i);
+	dev_dbg(&priv->i2c->dev, "%s: loop=%d\n", __func__, i);
 
 	if (i == 0) {
 		ret = -ETIMEDOUT;
@@ -439,17 +443,17 @@ static int tda10071_diseqc_send_burst(struct dvb_frontend *fe,
 	if (ret)
 		goto error;
 
-	cmd.args[0x00] = CMD_LNB_SEND_TONEBURST;
-	cmd.args[0x01] = 0;
-	cmd.args[0x02] = burst;
-	cmd.len = 0x03;
+	cmd.args[0] = CMD_LNB_SEND_TONEBURST;
+	cmd.args[1] = 0;
+	cmd.args[2] = burst;
+	cmd.len = 3;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -483,7 +487,7 @@ static int tda10071_read_status(struct dvb_frontend *fe, fe_status_t *status)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -508,7 +512,7 @@ static int tda10071_read_snr(struct dvb_frontend *fe, u16 *snr)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -525,9 +529,9 @@ static int tda10071_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 		goto error;
 	}
 
-	cmd.args[0x00] = CMD_GET_AGCACC;
-	cmd.args[0x01] = 0;
-	cmd.len = 0x02;
+	cmd.args[0] = CMD_GET_AGCACC;
+	cmd.args[1] = 0;
+	cmd.len = 2;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
@@ -547,7 +551,7 @@ static int tda10071_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -585,17 +589,18 @@ static int tda10071_read_ber(struct dvb_frontend *fe, u32 *ber)
 		goto error;
 
 	if (priv->meas_count[i] == tmp) {
-		dbg("%s: meas not ready=%02x", __func__, tmp);
+		dev_dbg(&priv->i2c->dev, "%s: meas not ready=%02x\n", __func__,
+				tmp);
 		*ber = priv->ber;
 		return 0;
 	} else {
 		priv->meas_count[i] = tmp;
 	}
 
-	cmd.args[0x00] = CMD_BER_UPDATE_COUNTERS;
-	cmd.args[0x01] = 0;
-	cmd.args[0x02] = i;
-	cmd.len = 0x03;
+	cmd.args[0] = CMD_BER_UPDATE_COUNTERS;
+	cmd.args[1] = 0;
+	cmd.args[2] = i;
+	cmd.len = 3;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
@@ -614,7 +619,7 @@ static int tda10071_read_ber(struct dvb_frontend *fe, u32 *ber)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -634,7 +639,7 @@ static int tda10071_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -646,10 +651,11 @@ static int tda10071_set_frontend(struct dvb_frontend *fe)
 	int ret, i;
 	u8 mode, rolloff, pilot, inversion, div;
 
-	dbg("%s: delivery_system=%d modulation=%d frequency=%d " \
-		"symbol_rate=%d inversion=%d pilot=%d rolloff=%d", __func__,
-		c->delivery_system, c->modulation, c->frequency,
-		c->symbol_rate, c->inversion, c->pilot, c->rolloff);
+	dev_dbg(&priv->i2c->dev, "%s: delivery_system=%d modulation=%d " \
+		"frequency=%d symbol_rate=%d inversion=%d pilot=%d " \
+		"rolloff=%d\n", __func__, c->delivery_system, c->modulation,
+		c->frequency, c->symbol_rate, c->inversion, c->pilot,
+		c->rolloff);
 
 	priv->delivery_system = SYS_UNDEFINED;
 
@@ -671,7 +677,7 @@ static int tda10071_set_frontend(struct dvb_frontend *fe)
 		inversion = 3;
 		break;
 	default:
-		dbg("%s: invalid inversion", __func__);
+		dev_dbg(&priv->i2c->dev, "%s: invalid inversion\n", __func__);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -694,7 +700,8 @@ static int tda10071_set_frontend(struct dvb_frontend *fe)
 			break;
 		case ROLLOFF_AUTO:
 		default:
-			dbg("%s: invalid rolloff", __func__);
+			dev_dbg(&priv->i2c->dev, "%s: invalid rolloff\n",
+					__func__);
 			ret = -EINVAL;
 			goto error;
 		}
@@ -710,13 +717,15 @@ static int tda10071_set_frontend(struct dvb_frontend *fe)
 			pilot = 2;
 			break;
 		default:
-			dbg("%s: invalid pilot", __func__);
+			dev_dbg(&priv->i2c->dev, "%s: invalid pilot\n",
+					__func__);
 			ret = -EINVAL;
 			goto error;
 		}
 		break;
 	default:
-		dbg("%s: invalid delivery_system", __func__);
+		dev_dbg(&priv->i2c->dev, "%s: invalid delivery_system\n",
+				__func__);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -726,13 +735,15 @@ static int tda10071_set_frontend(struct dvb_frontend *fe)
 			c->modulation == TDA10071_MODCOD[i].modulation &&
 			c->fec_inner == TDA10071_MODCOD[i].fec) {
 			mode = TDA10071_MODCOD[i].val;
-			dbg("%s: mode found=%02x", __func__, mode);
+			dev_dbg(&priv->i2c->dev, "%s: mode found=%02x\n",
+					__func__, mode);
 			break;
 		}
 	}
 
 	if (mode == 0xff) {
-		dbg("%s: invalid parameter combination", __func__);
+		dev_dbg(&priv->i2c->dev, "%s: invalid parameter combination\n",
+				__func__);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -750,22 +761,22 @@ static int tda10071_set_frontend(struct dvb_frontend *fe)
 	if (ret)
 		goto error;
 
-	cmd.args[0x00] = CMD_CHANGE_CHANNEL;
-	cmd.args[0x01] = 0;
-	cmd.args[0x02] = mode;
-	cmd.args[0x03] = (c->frequency >> 16) & 0xff;
-	cmd.args[0x04] = (c->frequency >>  8) & 0xff;
-	cmd.args[0x05] = (c->frequency >>  0) & 0xff;
-	cmd.args[0x06] = ((c->symbol_rate / 1000) >> 8) & 0xff;
-	cmd.args[0x07] = ((c->symbol_rate / 1000) >> 0) & 0xff;
-	cmd.args[0x08] = (tda10071_ops.info.frequency_tolerance >> 8) & 0xff;
-	cmd.args[0x09] = (tda10071_ops.info.frequency_tolerance >> 0) & 0xff;
-	cmd.args[0x0a] = rolloff;
-	cmd.args[0x0b] = inversion;
-	cmd.args[0x0c] = pilot;
-	cmd.args[0x0d] = 0x00;
-	cmd.args[0x0e] = 0x00;
-	cmd.len = 0x0f;
+	cmd.args[0] = CMD_CHANGE_CHANNEL;
+	cmd.args[1] = 0;
+	cmd.args[2] = mode;
+	cmd.args[3] = (c->frequency >> 16) & 0xff;
+	cmd.args[4] = (c->frequency >>  8) & 0xff;
+	cmd.args[5] = (c->frequency >>  0) & 0xff;
+	cmd.args[6] = ((c->symbol_rate / 1000) >> 8) & 0xff;
+	cmd.args[7] = ((c->symbol_rate / 1000) >> 0) & 0xff;
+	cmd.args[8] = (tda10071_ops.info.frequency_tolerance >> 8) & 0xff;
+	cmd.args[9] = (tda10071_ops.info.frequency_tolerance >> 0) & 0xff;
+	cmd.args[10] = rolloff;
+	cmd.args[11] = inversion;
+	cmd.args[12] = pilot;
+	cmd.args[13] = 0x00;
+	cmd.args[14] = 0x00;
+	cmd.len = 15;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
@@ -774,7 +785,7 @@ static int tda10071_set_frontend(struct dvb_frontend *fe)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -831,7 +842,7 @@ static int tda10071_get_frontend(struct dvb_frontend *fe)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -841,7 +852,7 @@ static int tda10071_init(struct dvb_frontend *fe)
 	struct tda10071_cmd cmd;
 	int ret, i, len, remaining, fw_size;
 	const struct firmware *fw;
-	u8 *fw_file = TDA10071_DEFAULT_FIRMWARE;
+	u8 *fw_file = TDA10071_FIRMWARE;
 	u8 tmp, buf[4];
 	struct tda10071_reg_val_mask tab[] = {
 		{ 0xcd, 0x00, 0x07 },
@@ -917,10 +928,10 @@ static int tda10071_init(struct dvb_frontend *fe)
 				goto error;
 		}
 
-		cmd.args[0x00] = CMD_SET_SLEEP_MODE;
-		cmd.args[0x01] = 0;
-		cmd.args[0x02] = 0;
-		cmd.len = 0x03;
+		cmd.args[0] = CMD_SET_SLEEP_MODE;
+		cmd.args[1] = 0;
+		cmd.args[2] = 0;
+		cmd.len = 3;
 		ret = tda10071_cmd_execute(priv, &cmd);
 		if (ret)
 			goto error;
@@ -931,10 +942,11 @@ static int tda10071_init(struct dvb_frontend *fe)
 		/* request the firmware, this will block and timeout */
 		ret = request_firmware(&fw, fw_file, priv->i2c->dev.parent);
 		if (ret) {
-			err("did not find the firmware file. (%s) "
-				"Please see linux/Documentation/dvb/ for more" \
-				" details on firmware-problems. (%d)",
-				fw_file, ret);
+			dev_err(&priv->i2c->dev, "%s: did not find the " \
+					"firmware file. (%s) Please see " \
+					"linux/Documentation/dvb/ for more " \
+					"details on firmware-problems. (%d)\n",
+					KBUILD_MODNAME, fw_file, ret);
 			goto error;
 		}
 
@@ -963,10 +975,11 @@ static int tda10071_init(struct dvb_frontend *fe)
 		if (ret)
 			goto error_release_firmware;
 
-		info("found a '%s' in cold state, will try to load a firmware",
-			tda10071_ops.info.name);
-
-		info("downloading firmware from file '%s'", fw_file);
+		dev_info(&priv->i2c->dev, "%s: found a '%s' in cold state, " \
+				"will try to load a firmware\n", KBUILD_MODNAME,
+				tda10071_ops.info.name);
+		dev_info(&priv->i2c->dev, "%s: downloading firmware from " \
+				"file '%s'\n", KBUILD_MODNAME, fw_file);
 
 		/* do not download last byte */
 		fw_size = fw->size - 1;
@@ -980,7 +993,9 @@ static int tda10071_init(struct dvb_frontend *fe)
 			ret = tda10071_wr_regs(priv, 0xfa,
 				(u8 *) &fw->data[fw_size - remaining], len);
 			if (ret) {
-				err("firmware download failed=%d", ret);
+				dev_err(&priv->i2c->dev, "%s: firmware " \
+						"download failed=%d\n",
+						KBUILD_MODNAME, ret);
 				if (ret)
 					goto error_release_firmware;
 			}
@@ -1004,15 +1019,16 @@ static int tda10071_init(struct dvb_frontend *fe)
 			goto error;
 
 		if (tmp) {
-			info("firmware did not run");
+			dev_info(&priv->i2c->dev, "%s: firmware did not run\n",
+					KBUILD_MODNAME);
 			ret = -EFAULT;
 			goto error;
 		} else {
 			priv->warm = 1;
 		}
 
-		cmd.args[0x00] = CMD_GET_FW_VERSION;
-		cmd.len = 0x01;
+		cmd.args[0] = CMD_GET_FW_VERSION;
+		cmd.len = 1;
 		ret = tda10071_cmd_execute(priv, &cmd);
 		if (ret)
 			goto error;
@@ -1021,54 +1037,55 @@ static int tda10071_init(struct dvb_frontend *fe)
 		if (ret)
 			goto error;
 
-		info("firmware version %d.%d.%d.%d",
-			buf[0], buf[1], buf[2], buf[3]);
-		info("found a '%s' in warm state.", tda10071_ops.info.name);
+		dev_info(&priv->i2c->dev, "%s: firmware version %d.%d.%d.%d\n",
+				KBUILD_MODNAME, buf[0], buf[1], buf[2], buf[3]);
+		dev_info(&priv->i2c->dev, "%s: found a '%s' in warm state\n",
+				KBUILD_MODNAME, tda10071_ops.info.name);
 
 		ret = tda10071_rd_regs(priv, 0x81, buf, 2);
 		if (ret)
 			goto error;
 
-		cmd.args[0x00] = CMD_DEMOD_INIT;
-		cmd.args[0x01] = ((priv->cfg.xtal / 1000) >> 8) & 0xff;
-		cmd.args[0x02] = ((priv->cfg.xtal / 1000) >> 0) & 0xff;
-		cmd.args[0x03] = buf[0];
-		cmd.args[0x04] = buf[1];
-		cmd.args[0x05] = priv->cfg.pll_multiplier;
-		cmd.args[0x06] = priv->cfg.spec_inv;
-		cmd.args[0x07] = 0x00;
-		cmd.len = 0x08;
+		cmd.args[0] = CMD_DEMOD_INIT;
+		cmd.args[1] = ((priv->cfg.xtal / 1000) >> 8) & 0xff;
+		cmd.args[2] = ((priv->cfg.xtal / 1000) >> 0) & 0xff;
+		cmd.args[3] = buf[0];
+		cmd.args[4] = buf[1];
+		cmd.args[5] = priv->cfg.pll_multiplier;
+		cmd.args[6] = priv->cfg.spec_inv;
+		cmd.args[7] = 0x00;
+		cmd.len = 8;
 		ret = tda10071_cmd_execute(priv, &cmd);
 		if (ret)
 			goto error;
 
-		cmd.args[0x00] = CMD_TUNER_INIT;
-		cmd.args[0x01] = 0x00;
-		cmd.args[0x02] = 0x00;
-		cmd.args[0x03] = 0x00;
-		cmd.args[0x04] = 0x00;
-		cmd.args[0x05] = 0x14;
-		cmd.args[0x06] = 0x00;
-		cmd.args[0x07] = 0x03;
-		cmd.args[0x08] = 0x02;
-		cmd.args[0x09] = 0x02;
-		cmd.args[0x0a] = 0x00;
-		cmd.args[0x0b] = 0x00;
-		cmd.args[0x0c] = 0x00;
-		cmd.args[0x0d] = 0x00;
-		cmd.args[0x0e] = 0x00;
-		cmd.len = 0x0f;
+		cmd.args[0] = CMD_TUNER_INIT;
+		cmd.args[1] = 0x00;
+		cmd.args[2] = 0x00;
+		cmd.args[3] = 0x00;
+		cmd.args[4] = 0x00;
+		cmd.args[5] = (priv->cfg.tuner_i2c_addr) ? priv->cfg.tuner_i2c_addr : 0x14;
+		cmd.args[6] = 0x00;
+		cmd.args[7] = 0x03;
+		cmd.args[8] = 0x02;
+		cmd.args[9] = 0x02;
+		cmd.args[10] = 0x00;
+		cmd.args[11] = 0x00;
+		cmd.args[12] = 0x00;
+		cmd.args[13] = 0x00;
+		cmd.args[14] = 0x00;
+		cmd.len = 15;
 		ret = tda10071_cmd_execute(priv, &cmd);
 		if (ret)
 			goto error;
 
-		cmd.args[0x00] = CMD_MPEG_CONFIG;
-		cmd.args[0x01] = 0;
-		cmd.args[0x02] = priv->cfg.ts_mode;
-		cmd.args[0x03] = 0x00;
-		cmd.args[0x04] = 0x04;
-		cmd.args[0x05] = 0x00;
-		cmd.len = 0x06;
+		cmd.args[0] = CMD_MPEG_CONFIG;
+		cmd.args[1] = 0;
+		cmd.args[2] = priv->cfg.ts_mode;
+		cmd.args[3] = 0x00;
+		cmd.args[4] = 0x04;
+		cmd.args[5] = 0x00;
+		cmd.len = 6;
 		ret = tda10071_cmd_execute(priv, &cmd);
 		if (ret)
 			goto error;
@@ -1077,27 +1094,27 @@ static int tda10071_init(struct dvb_frontend *fe)
 		if (ret)
 			goto error;
 
-		cmd.args[0x00] = CMD_LNB_CONFIG;
-		cmd.args[0x01] = 0;
-		cmd.args[0x02] = 150;
-		cmd.args[0x03] = 3;
-		cmd.args[0x04] = 22;
-		cmd.args[0x05] = 1;
-		cmd.args[0x06] = 1;
-		cmd.args[0x07] = 30;
-		cmd.args[0x08] = 30;
-		cmd.args[0x09] = 30;
-		cmd.args[0x0a] = 30;
-		cmd.len = 0x0b;
+		cmd.args[0] = CMD_LNB_CONFIG;
+		cmd.args[1] = 0;
+		cmd.args[2] = 150;
+		cmd.args[3] = 3;
+		cmd.args[4] = 22;
+		cmd.args[5] = 1;
+		cmd.args[6] = 1;
+		cmd.args[7] = 30;
+		cmd.args[8] = 30;
+		cmd.args[9] = 30;
+		cmd.args[10] = 30;
+		cmd.len = 11;
 		ret = tda10071_cmd_execute(priv, &cmd);
 		if (ret)
 			goto error;
 
-		cmd.args[0x00] = CMD_BER_CONTROL;
-		cmd.args[0x01] = 0;
-		cmd.args[0x02] = 14;
-		cmd.args[0x03] = 14;
-		cmd.len = 0x04;
+		cmd.args[0] = CMD_BER_CONTROL;
+		cmd.args[1] = 0;
+		cmd.args[2] = 14;
+		cmd.args[3] = 14;
+		cmd.len = 4;
 		ret = tda10071_cmd_execute(priv, &cmd);
 		if (ret)
 			goto error;
@@ -1107,7 +1124,7 @@ static int tda10071_init(struct dvb_frontend *fe)
 error_release_firmware:
 	release_firmware(fw);
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -1134,10 +1151,10 @@ static int tda10071_sleep(struct dvb_frontend *fe)
 		goto error;
 	}
 
-	cmd.args[0x00] = CMD_SET_SLEEP_MODE;
-	cmd.args[0x01] = 0;
-	cmd.args[0x02] = 1;
-	cmd.len = 0x03;
+	cmd.args[0] = CMD_SET_SLEEP_MODE;
+	cmd.args[1] = 0;
+	cmd.args[2] = 1;
+	cmd.len = 3;
 	ret = tda10071_cmd_execute(priv, &cmd);
 	if (ret)
 		goto error;
@@ -1151,7 +1168,7 @@ static int tda10071_sleep(struct dvb_frontend *fe)
 
 	return ret;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
 	return ret;
 }
 
@@ -1210,7 +1227,7 @@ struct dvb_frontend *tda10071_attach(const struct tda10071_config *config,
 
 	return &priv->fe;
 error:
-	dbg("%s: failed=%d", __func__, ret);
+	dev_dbg(&i2c->dev, "%s: failed=%d\n", __func__, ret);
 	kfree(priv);
 	return NULL;
 }
@@ -1267,3 +1284,4 @@ static struct dvb_frontend_ops tda10071_ops = {
 MODULE_AUTHOR("Antti Palosaari <crope@iki.fi>");
 MODULE_DESCRIPTION("NXP TDA10071 DVB-S/S2 demodulator driver");
 MODULE_LICENSE("GPL");
+MODULE_FIRMWARE(TDA10071_FIRMWARE);
