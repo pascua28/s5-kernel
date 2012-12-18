@@ -111,6 +111,7 @@ static int pmic8xxx_pwrkey_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(pm8xxx_pwr_key_pm_ops,
 		pmic8xxx_pwrkey_suspend, pmic8xxx_pwrkey_resume);
 
+<<<<<<< HEAD
 static int pmic8xxx_set_pon1(struct device *dev, u32 debounce_us, bool pull_up)
 {
 	int err;
@@ -175,6 +176,9 @@ static ssize_t pmic8xxx_debounce_store(struct device *dev,
 static DEVICE_ATTR(debounce_us, 0664, NULL, pmic8xxx_debounce_store);
 
 static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
+=======
+static int pmic8xxx_pwrkey_probe(struct platform_device *pdev)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	struct input_dev *pwr;
 	int key_release_irq = platform_get_irq(pdev, 0);
@@ -284,7 +288,7 @@ free_pwrkey:
 	return err;
 }
 
-static int __devexit pmic8xxx_pwrkey_remove(struct platform_device *pdev)
+static int pmic8xxx_pwrkey_remove(struct platform_device *pdev)
 {
 	struct pmic8xxx_pwrkey *pwrkey = platform_get_drvdata(pdev);
 	int key_release_irq = platform_get_irq(pdev, 0);
@@ -304,7 +308,7 @@ static int __devexit pmic8xxx_pwrkey_remove(struct platform_device *pdev)
 
 static struct platform_driver pmic8xxx_pwrkey_driver = {
 	.probe		= pmic8xxx_pwrkey_probe,
-	.remove		= __devexit_p(pmic8xxx_pwrkey_remove),
+	.remove		= pmic8xxx_pwrkey_remove,
 	.driver		= {
 		.name	= PM8XXX_PWRKEY_DEV_NAME,
 		.owner	= THIS_MODULE,

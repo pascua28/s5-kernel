@@ -309,7 +309,30 @@ static int bma150_get_range(struct i2c_client *client, unsigned char *Range)
 
 		*Range = BMA150_GET_BITSLICE(data, BMA150_RANGE);
 
+<<<<<<< HEAD
 	}
+=======
+/*
+ * The settings for the given range, bandwidth and interrupt features
+ * are stated and verified by Bosch Sensortec where they are configured
+ * to provide a generic sensitivity performance.
+ */
+static struct bma150_cfg default_cfg = {
+	.any_motion_int = 1,
+	.hg_int = 1,
+	.lg_int = 1,
+	.any_motion_dur = 0,
+	.any_motion_thres = 0,
+	.hg_hyst = 0,
+	.hg_dur = 150,
+	.hg_thres = 160,
+	.lg_hyst = 0,
+	.lg_dur = 150,
+	.lg_thres = 20,
+	.range = BMA150_RANGE_2G,
+	.bandwidth = BMA150_BW_50HZ
+};
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 
 	return comres;
 }
@@ -360,8 +383,12 @@ static int bma150_get_bandwidth(struct i2c_client *client, unsigned char *BW)
 	return comres;
 }
 
+<<<<<<< HEAD
 static int bma150_read_accel_xyz(struct i2c_client *client,
 		struct bma150acc *acc)
+=======
+static int bma150_soft_reset(struct bma150_data *bma150)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	int comres;
 	unsigned char data[6];
@@ -403,14 +430,31 @@ static int bma150_read_accel_xyz(struct i2c_client *client,
 	return comres;
 }
 
+<<<<<<< HEAD
 static void bma150_work_func(struct work_struct *work)
+=======
+static int bma150_set_range(struct bma150_data *bma150, u8 range)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	struct bma150_data *bma150 = container_of((struct delayed_work *)work,
 			struct bma150_data, work);
 	static struct bma150acc acc;
 	unsigned long delay = msecs_to_jiffies(atomic_read(&bma150->delay));
 
+<<<<<<< HEAD
 
+=======
+static int bma150_set_bandwidth(struct bma150_data *bma150, u8 bw)
+{
+	return bma150_set_reg_bits(bma150->client, bw, BMA150_BANDWIDTH_POS,
+				BMA150_BANDWIDTH_MSK, BMA150_BANDWIDTH_REG);
+}
+
+static int bma150_set_low_g_interrupt(struct bma150_data *bma150,
+					u8 enable, u8 hyst, u8 dur, u8 thres)
+{
+	int error;
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 
 	bma150_read_accel_xyz(bma150->bma150_client, &acc);
 	input_report_abs(bma150->input, ABS_X, acc.x);
@@ -437,9 +481,14 @@ static ssize_t bma150_mode_show(struct device *dev,
 	return sprintf(buf, "%d\n", data);
 }
 
+<<<<<<< HEAD
 static ssize_t bma150_mode_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
+=======
+static int bma150_set_high_g_interrupt(struct bma150_data *bma150,
+					u8 enable, u8 hyst, u8 dur, u8 thres)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	unsigned long data;
 	int error;
@@ -468,9 +517,14 @@ static ssize_t bma150_range_show(struct device *dev,
 	return sprintf(buf, "%d\n", data);
 }
 
+<<<<<<< HEAD
 static ssize_t bma150_range_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
+=======
+static int bma150_set_any_motion_interrupt(struct bma150_data *bma150,
+						u8 enable, u8 dur, u8 thres)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	unsigned long data;
 	int error;
@@ -546,9 +600,14 @@ static ssize_t bma150_delay_show(struct device *dev,
 
 }
 
+<<<<<<< HEAD
 static ssize_t bma150_delay_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
+=======
+static int bma150_initialize(struct bma150_data *bma150,
+				       const struct bma150_cfg *cfg)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	unsigned long data;
 	int error;
@@ -562,6 +621,7 @@ static ssize_t bma150_delay_store(struct device *dev,
 		data = BMA150_MAX_DELAY;
 	atomic_set(&bma150->delay, (unsigned int) data);
 
+<<<<<<< HEAD
 	return count;
 }
 
@@ -584,6 +644,50 @@ static struct attribute *bma150_attributes[] = {
 	&dev_attr_delay.attr,
 	NULL
 };
+=======
+	if (bma150->client->irq) {
+		error = bma150_set_any_motion_interrupt(bma150,
+					cfg->any_motion_int,
+					cfg->any_motion_dur,
+					cfg->any_motion_thres);
+		if (error)
+			return error;
+
+		error = bma150_set_high_g_interrupt(bma150,
+					cfg->hg_int, cfg->hg_hyst,
+					cfg->hg_dur, cfg->hg_thres);
+		if (error)
+			return error;
+
+		error = bma150_set_low_g_interrupt(bma150,
+					cfg->lg_int, cfg->lg_hyst,
+					cfg->lg_dur, cfg->lg_thres);
+		if (error)
+			return error;
+	}
+
+	return bma150_set_mode(bma150, BMA150_MODE_SLEEP);
+}
+
+static void bma150_init_input_device(struct bma150_data *bma150,
+						struct input_dev *idev)
+{
+	idev->name = BMA150_DRIVER;
+	idev->phys = BMA150_DRIVER "/input0";
+	idev->id.bustype = BUS_I2C;
+	idev->dev.parent = &bma150->client->dev;
+
+	idev->evbit[0] = BIT_MASK(EV_ABS);
+	input_set_abs_params(idev, ABS_X, ABSMIN_ACC_VAL, ABSMAX_ACC_VAL, 0, 0);
+	input_set_abs_params(idev, ABS_Y, ABSMIN_ACC_VAL, ABSMAX_ACC_VAL, 0, 0);
+	input_set_abs_params(idev, ABS_Z, ABSMIN_ACC_VAL, ABSMAX_ACC_VAL, 0, 0);
+}
+
+static int bma150_register_input_device(struct bma150_data *bma150)
+{
+	struct input_dev *idev;
+	int error;
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 
 static struct attribute_group bma150_attribute_group = {
 	.attrs = bma150_attributes
@@ -602,7 +706,11 @@ static int bma150_detect(struct i2c_client *client,
 	return 0;
 }
 
+<<<<<<< HEAD
 static int bma150_input_init(struct bma150_data *bma150)
+=======
+static int bma150_register_polled_device(struct bma150_data *bma150)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	struct input_dev *dev;
 	int err;
@@ -629,7 +737,12 @@ static int bma150_input_init(struct bma150_data *bma150)
 	return 0;
 }
 
+<<<<<<< HEAD
 static void bma150_input_delete(struct bma150_data *bma150)
+=======
+static int bma150_probe(struct i2c_client *client,
+				  const struct i2c_device_id *id)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	struct input_dev *dev = bma150->input;
 
@@ -707,7 +820,11 @@ exit:
 	return err;
 }
 
+<<<<<<< HEAD
 static int bma150_suspend(struct i2c_client *client, pm_message_t mesg)
+=======
+static int bma150_remove(struct i2c_client *client)
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 {
 	struct bma150_data *data = i2c_get_clientdata(client);
 
@@ -769,9 +886,12 @@ static struct i2c_driver bma150_driver = {
 	.id_table	= bma150_id,
 	.probe		= bma150_probe,
 	.remove		= bma150_remove,
+<<<<<<< HEAD
 	.detect		= bma150_detect,
 	.suspend    = bma150_suspend,
 	.resume     = bma150_resume,
+=======
+>>>>>>> 31564cbd77b... Merge branch 'for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/dtor/input
 };
 
 static int __init BMA150_init(void)
