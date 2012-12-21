@@ -36,6 +36,7 @@
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/sched.h>
+#include <linux/spinlock.h>
 #include <linux/workqueue.h>
 
 /* DryIce Register Definitions */
