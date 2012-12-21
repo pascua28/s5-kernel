@@ -1510,10 +1510,6 @@ static inline void sb_start_intwrite(struct super_block *sb)
 
 extern bool inode_owner_or_capable(const struct inode *inode);
 
-/* not quite ready to be deprecated, but... */
-extern void lock_super(struct super_block *);
-extern void unlock_super(struct super_block *);
-
 /*
  * VFS helper functions..
  */
@@ -1631,7 +1627,6 @@ struct inode_operations {
 	int (*mknod) (struct inode *,struct dentry *,umode_t,dev_t);
 	int (*rename) (struct inode *, struct dentry *,
 			struct inode *, struct dentry *);
-	void (*truncate) (struct inode *);
 	int (*setattr) (struct dentry *, struct iattr *);
 	int (*getattr) (struct vfsmount *mnt, struct dentry *, struct kstat *);
 	int (*setxattr) (struct dentry *, const char *,const void *,size_t,int);
