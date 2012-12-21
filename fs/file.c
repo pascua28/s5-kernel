@@ -405,7 +405,7 @@ out:
 	return NULL;
 }
 
-static void __devinit fdtable_defer_list_init(int cpu)
+static void fdtable_defer_list_init(int cpu)
 {
 	struct fdtable_defer *fddef = &per_cpu(fdtable_defer_list, cpu);
 	spin_lock_init(&fddef->lock);
