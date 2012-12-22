@@ -1655,8 +1655,7 @@ bad:
 	return ret;
 }
 
-static int crypt_map(struct dm_target *ti, struct bio *bio,
-		     union map_info *map_context)
+static int crypt_map(struct dm_target *ti, struct bio *bio)
 {
 	struct dm_crypt_io *io;
 	struct crypt_config *cc;
@@ -1813,7 +1812,7 @@ static int crypt_iterate_devices(struct dm_target *ti,
 
 static struct target_type crypt_target = {
 	.name   = "crypt",
-	.version = {1, 11, 0},
+	.version = {1, 12, 0},
 	.module = THIS_MODULE,
 	.ctr    = crypt_ctr,
 	.dtr    = crypt_dtr,
