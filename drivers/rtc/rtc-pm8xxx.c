@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,7 +31,6 @@
 #define PM8xxx_RTC_ENABLE		BIT(7)
 #define PM8xxx_RTC_ALARM_ENABLE		BIT(1)
 #define PM8xxx_RTC_ALARM_CLEAR		BIT(0)
-#define PM8xxx_RTC_ABORT_ENABLE		BIT(0)
 
 #define NUM_8_BIT_RTC_REGS		0x4
 
@@ -383,7 +382,7 @@ rtc_alarm_handled:
 	return IRQ_HANDLED;
 }
 
-static int __devinit pm8xxx_rtc_probe(struct platform_device *pdev)
+static int pm8xxx_rtc_probe(struct platform_device *pdev)
 {
 	int rc;
 	u8 ctrl_reg;
@@ -447,21 +446,11 @@ static int __devinit pm8xxx_rtc_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* Enable abort enable feature */
-	ctrl_reg |= PM8xxx_RTC_ABORT_ENABLE;
-	rc = pm8xxx_write_wrapper(rtc_dd, &ctrl_reg, rtc_dd->rtc_base, 1);
-	if (rc < 0) {
-		dev_err(&pdev->dev, "PM8xxx write failed!\n");
-		goto fail_rtc_enable;
-	}
-
 	rtc_dd->ctrl_reg = ctrl_reg;
 	if (rtc_write_enable == true)
 		pm8xxx_rtc_ops.set_time = pm8xxx_rtc_set_time;
 
 	platform_set_drvdata(pdev, rtc_dd);
-
-	device_init_wakeup(&pdev->dev, 1);
 
 	/* Register the RTC device */
 	rtc_dd->rtc = rtc_device_register("pm8xxx_rtc", &pdev->dev,
@@ -482,6 +471,8 @@ static int __devinit pm8xxx_rtc_probe(struct platform_device *pdev)
 		goto fail_req_irq;
 	}
 
+	device_init_wakeup(&pdev->dev, 1);
+
 	dev_dbg(&pdev->dev, "Probe success !!\n");
 
 	return 0;
@@ -494,7 +485,7 @@ fail_rtc_enable:
 	return rc;
 }
 
-static int __devexit pm8xxx_rtc_remove(struct platform_device *pdev)
+static int pm8xxx_rtc_remove(struct platform_device *pdev)
 {
 	struct pm8xxx_rtc *rtc_dd = platform_get_drvdata(pdev);
 
@@ -531,48 +522,9 @@ static int pm8xxx_rtc_suspend(struct device *dev)
 
 static SIMPLE_DEV_PM_OPS(pm8xxx_rtc_pm_ops, pm8xxx_rtc_suspend, pm8xxx_rtc_resume);
 
-static void pm8xxx_rtc_shutdown(struct platform_device *pdev)
-{
-	u8 value[4] = {0, 0, 0, 0};
-	u8 reg;
-	int rc;
-	unsigned long irq_flags;
-	bool rtc_alarm_powerup = false;
-	struct pm8xxx_rtc *rtc_dd = platform_get_drvdata(pdev);
-	struct pm8xxx_rtc_platform_data *pdata = pdev->dev.platform_data;
-
-	if (pdata != NULL)
-		rtc_alarm_powerup =  pdata->rtc_alarm_powerup;
-
-	if (!rtc_alarm_powerup) {
-
-		spin_lock_irqsave(&rtc_dd->ctrl_reg_lock, irq_flags);
-		dev_dbg(&pdev->dev, "Disabling alarm interrupts\n");
-
-		/* Disable RTC alarms */
-		reg = rtc_dd->ctrl_reg;
-		reg &= ~PM8xxx_RTC_ALARM_ENABLE;
-		rc = pm8xxx_write_wrapper(rtc_dd, &reg, rtc_dd->rtc_base, 1);
-		if (rc < 0) {
-			dev_err(rtc_dd->rtc_dev, "Disabling alarm failed\n");
-			goto fail_alarm_disable;
-		}
-
-		/* Clear Alarm register */
-		rc = pm8xxx_write_wrapper(rtc_dd, value,
-				rtc_dd->alarm_rw_base, NUM_8_BIT_RTC_REGS);
-		if (rc < 0)
-			dev_err(rtc_dd->rtc_dev, "Clearing alarm failed\n");
-
-fail_alarm_disable:
-		spin_unlock_irqrestore(&rtc_dd->ctrl_reg_lock, irq_flags);
-	}
-}
-
 static struct platform_driver pm8xxx_rtc_driver = {
 	.probe		= pm8xxx_rtc_probe,
-	.remove		= __devexit_p(pm8xxx_rtc_remove),
-	.shutdown	= pm8xxx_rtc_shutdown,
+	.remove		= pm8xxx_rtc_remove,
 	.driver	= {
 		.name	= PM8XXX_RTC_DEV_NAME,
 		.owner	= THIS_MODULE,
