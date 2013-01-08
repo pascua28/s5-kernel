@@ -127,7 +127,7 @@ if [ "$1" = "clean" ]; then
 fi
 
 # We need access to CONFIG_ symbols
-. ./.config
+. ${KCONFIG_CONFIG}
 
 #link vmlinux.o
 info LD vmlinux.o
