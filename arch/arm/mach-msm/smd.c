@@ -3331,7 +3331,7 @@ static __init int modem_restart_late_init(void)
 }
 late_initcall(modem_restart_late_init);
 
-int __init msm_smd_init(void)
+static int __init msm_smd_init(void)
 {
 	static bool registered;
 	int rc;
