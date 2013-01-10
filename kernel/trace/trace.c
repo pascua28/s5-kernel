@@ -2900,6 +2900,8 @@ tracing_trace_options_write(struct file *filp, const char __user *ubuf,
 	if (copy_from_user(&buf, ubuf, cnt))
 		return -EFAULT;
 
+	buf[cnt] = 0;
+
 	trace_set_options(buf);
 
 	*ppos += cnt;
