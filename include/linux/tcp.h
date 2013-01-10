@@ -369,6 +369,8 @@ struct tcp_sock {
 		unused      : 1;
 	u8	repair_queue;
 
+	u8	do_early_retrans:1;/* Enable RFC5827 early-retransmit  */
+
 /* RTT measurement */
 	u32	srtt;		/* smoothed round trip time << 3	*/
 	u32	mdev;		/* medium deviation			*/
