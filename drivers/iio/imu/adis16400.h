@@ -43,6 +43,9 @@
 #define ADIS16300_PITCH_OUT 0x12 /* X axis inclinometer output measurement */
 #define ADIS16300_ROLL_OUT  0x12 /* Y axis inclinometer output measurement */
 
+#define ADIS16448_BARO_OUT	0x16 /* Barometric pressure output */
+#define ADIS16448_TEMP_OUT  0x18 /* Temperature output */
+
 /* Calibration parameters */
 #define ADIS16400_XGYRO_OFF 0x1A /* X-axis gyroscope bias offset factor */
 #define ADIS16400_YGYRO_OFF 0x1C /* Y-axis gyroscope bias offset factor */
@@ -178,6 +181,7 @@ enum {
 	ADIS16400_SCAN_MAGN_X,
 	ADIS16400_SCAN_MAGN_Y,
 	ADIS16400_SCAN_MAGN_Z,
+	ADIS16400_SCAN_BARO,
 	ADIS16350_SCAN_TEMP_X,
 	ADIS16350_SCAN_TEMP_Y,
 	ADIS16350_SCAN_TEMP_Z,
