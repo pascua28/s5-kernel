@@ -43,9 +43,6 @@
 #define ADIS16300_PITCH_OUT 0x12 /* X axis inclinometer output measurement */
 #define ADIS16300_ROLL_OUT  0x12 /* Y axis inclinometer output measurement */
 
-#define ADIS16448_BARO_OUT	0x16 /* Barometric pressure output */
-#define ADIS16448_TEMP_OUT  0x18 /* Temperature output */
-
 /* Calibration parameters */
 #define ADIS16400_XGYRO_OFF 0x1A /* X-axis gyroscope bias offset factor */
 #define ADIS16400_YGYRO_OFF 0x1C /* Y-axis gyroscope bias offset factor */
@@ -76,10 +73,7 @@
 #define ADIS16400_ALM_CTRL  0x48 /* Alarm control */
 #define ADIS16400_AUX_DAC   0x4A /* Auxiliary DAC data */
 
-#define ADIS16334_LOT_ID1   0x52 /* Lot identification code 1 */
-#define ADIS16334_LOT_ID2   0x54 /* Lot identification code 2 */
 #define ADIS16400_PRODUCT_ID 0x56 /* Product identifier */
-#define ADIS16334_SERIAL_NUMBER 0x58 /* Serial number, lot specific */
 
 #define ADIS16400_ERROR_ACTIVE			(1<<14)
 #define ADIS16400_NEW_DATA			(1<<14)
@@ -137,7 +131,6 @@
 #define ADIS16400_HAS_PROD_ID		BIT(0)
 #define ADIS16400_NO_BURST		BIT(1)
 #define ADIS16400_HAS_SLOW_MODE		BIT(2)
-#define ADIS16400_HAS_SERIAL_NUMBER	BIT(3)
 
 struct adis16400_state;
 
@@ -181,7 +174,6 @@ enum {
 	ADIS16400_SCAN_MAGN_X,
 	ADIS16400_SCAN_MAGN_Y,
 	ADIS16400_SCAN_MAGN_Z,
-	ADIS16400_SCAN_BARO,
 	ADIS16350_SCAN_TEMP_X,
 	ADIS16350_SCAN_TEMP_Y,
 	ADIS16350_SCAN_TEMP_Z,
