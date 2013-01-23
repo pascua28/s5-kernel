@@ -519,7 +519,7 @@ do_bad(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	return 1;
 }
 
-#ifdef CONFIG_ARCH_MSM_SCORPION
+#if defined(CONFIG_ARCH_MSM_SCORPION) && !defined(CONFIG_MSM_SMP)
 #define __str(x) #x
 #define MRC(x, v1, v2, v4, v5, v6) do {					\
 	unsigned int __##x;						\
@@ -536,7 +536,7 @@ do_bad(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 int
 do_imprecise_ext(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 {
-#ifdef CONFIG_ARCH_MSM_SCORPION
+#if defined(CONFIG_ARCH_MSM_SCORPION) && !defined(CONFIG_MSM_SMP)
 	MRC(ADFSR,    p15, 0,  c5, c1, 0);
 	MRC(DFSR,     p15, 0,  c5, c0, 0);
 	MRC(ACTLR,    p15, 0,  c1, c0, 1);
@@ -556,7 +556,7 @@ do_imprecise_ext(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 		      "mcr p15, 0, %0, c5, c1, 0"
 		      : : "r" (0));
 #endif
-#ifdef CONFIG_ARCH_MSM_SCORPION
+#if defined(CONFIG_ARCH_MSM_SCORPION) && !defined(CONFIG_MSM_SMP)
 	pr_info("%s: TCSR_SPARE2 = 0x%.8x\n", __func__, readl(MSM_TCSR_SPARE2));
 #endif
 	return 1;
