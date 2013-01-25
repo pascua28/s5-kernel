@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/iio/iio.h>
+#include <linux/iio/trigger.h>
 
 #include <linux/iio/common/st_sensors.h>
 #include <linux/iio/common/st_sensors_spi.h>
