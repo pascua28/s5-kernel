@@ -28,6 +28,7 @@
 #include <linux/mount.h>
 #include <linux/audit.h>
 #include <linux/capability.h>
+#include <linux/kernel.h>
 #include <linux/file.h>
 #include <linux/fcntl.h>
 #include <linux/device_cgroup.h>
