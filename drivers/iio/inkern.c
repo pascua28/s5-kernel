@@ -94,7 +94,8 @@ static const struct iio_chan_spec
 }
 
 
-struct iio_channel *iio_channel_get(const char *name, const char *channel_name)
+static struct iio_channel *iio_channel_get_sys(const char *name,
+					       const char *channel_name)
 {
 	struct iio_map_internal *c_i = NULL, *c = NULL;
 	struct iio_channel *channel;
@@ -138,6 +139,14 @@ error_no_chan:
 	iio_device_put(c->indio_dev);
 	kfree(channel);
 	return ERR_PTR(-EINVAL);
+}
+
+struct iio_channel *iio_channel_get(struct device *dev,
+				    const char *channel_name)
+{
+	const char *name = dev ? dev_name(dev) : NULL;
+
+	return iio_channel_get_sys(name, channel_name);
 }
 EXPORT_SYMBOL_GPL(iio_channel_get);
 
