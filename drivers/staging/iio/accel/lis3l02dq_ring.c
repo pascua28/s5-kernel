@@ -140,24 +140,21 @@ static irqreturn_t lis3l02dq_trigger_handler(int irq, void *p)
 	char *data;
 
 	data = kmalloc(indio_dev->scan_bytes, GFP_KERNEL);
-	if (data == NULL) {
-		dev_err(indio_dev->dev.parent,
-			"memory alloc failed in buffer bh");
-		return -ENOMEM;
-	}
+	if (data == NULL)
+		goto done;
 
 	if (!bitmap_empty(indio_dev->active_scan_mask, indio_dev->masklength))
 		len = lis3l02dq_get_buffer_element(indio_dev, data);
 
 	  /* Guaranteed to be aligned with 8 byte boundary */
 	if (indio_dev->scan_timestamp)
-		*(s64 *)(((phys_addr_t)data + len
-				+ sizeof(s64) - 1) & ~(sizeof(s64) - 1))
+		*(s64 *)((u8 *)data + ALIGN(len, sizeof(s64)))
 			= pf->timestamp;
 	iio_push_to_buffers(indio_dev, (u8 *)data);
 
-	iio_trigger_notify_done(indio_dev->trig);
 	kfree(data);
+done:
+	iio_trigger_notify_done(indio_dev->trig);
 	return IRQ_HANDLED;
 }
 
@@ -236,7 +233,7 @@ static int lis3l02dq_data_rdy_trigger_set_state(struct iio_trigger *trig,
 	u8 t;
 
 	__lis3l02dq_write_data_ready_config(indio_dev, state);
-	if (state == false) {
+	if (!state) {
 		/*
 		 * A possible quirk with the handler is currently worked around
 		 * by ensuring outstanding read events are cleared.
@@ -262,7 +259,7 @@ static int lis3l02dq_trig_try_reen(struct iio_trigger *trig)
 	/* If gpio still high (or high again)
 	 * In theory possible we will need to do this several times */
 	for (i = 0; i < 5; i++)
-		if (gpio_get_value(irq_to_gpio(st->us->irq)))
+		if (gpio_get_value(st->gpio))
 			lis3l02dq_read_all(indio_dev, NULL);
 		else
 			break;
