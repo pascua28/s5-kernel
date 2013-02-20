@@ -44,7 +44,7 @@
 /* CoreSight Component Registers */
 #define CSCR_CLASS	0xff4
 
-#define UNLOCK_MAGIC	0xc5acce55
+#define CS_LAR_KEY	0xc5acce55
 
 /* ETM control register, "ETM Architecture", 3.3.1 */
 #define ETMR_CTRL		0
@@ -172,14 +172,13 @@
 	(__raw_writel((v), (t)->etb_regs + (x)))
 #define etb_readl(t, x) (__raw_readl((t)->etb_regs + (x)))
 
-#define etm_lock(t, id) \
-	do { etm_writel((t), (id), 0, CSMR_LOCKACCESS); } while (0)
-#define etm_unlock(t, id) \
-	do { etm_writel((t), (id), UNLOCK_MAGIC, CSMR_LOCKACCESS); } while (0)
+#define etm_lock(t) do { etm_writel((t), 0, CSMR_LOCKACCESS); } while (0)
+#define etm_unlock(t) \
+	do { etm_writel((t), CS_LAR_KEY, CSMR_LOCKACCESS); } while (0)
 
 #define etb_lock(t) do { etb_writel((t), 0, CSMR_LOCKACCESS); } while (0)
 #define etb_unlock(t) \
-	do { etb_writel((t), UNLOCK_MAGIC, CSMR_LOCKACCESS); } while (0)
+	do { etb_writel((t), CS_LAR_KEY, CSMR_LOCKACCESS); } while (0)
 
 #endif /* __ASM_HARDWARE_CORESIGHT_H */
 
