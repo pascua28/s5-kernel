@@ -165,10 +165,6 @@ void of_device_uevent(struct device *dev, struct kobj_uevent_env *env)
 			seen++;
 		}
 	}
-
-	if (seen)
-		add_uevent_var(env, "OF_ALIAS_N=%d", seen);
-
 	mutex_unlock(&of_aliases_mutex);
 }
 
