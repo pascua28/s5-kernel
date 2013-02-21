@@ -16,8 +16,8 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/regulator/krait-regulator.h>
+#include <linux/irqchip/arm-gic.h>
 
-#include <asm/hardware/gic.h>
 #include <asm/cacheflush.h>
 #include <asm/cputype.h>
 #include <asm/mach-types.h>
@@ -227,7 +227,7 @@ static int __cpuinit release_from_pen(unsigned int cpu)
 	 * the boot monitor to read the system wide flags register,
 	 * and branch to the address found there.
 	 */
-	gic_raise_softirq(cpumask_of(cpu), 0);
+	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
@@ -318,8 +318,6 @@ static void __init msm_smp_init_cpus(void)
 
 	for (i = 0; i < ncores; i++)
 		set_cpu_possible(i, true);
-
-	set_smp_cross_call(gic_raise_softirq);
 }
 
 static void __init arm_smp_init_cpus(void)

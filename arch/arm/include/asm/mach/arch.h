@@ -12,7 +12,6 @@
 
 struct tag;
 struct meminfo;
-struct sys_timer;
 struct pt_regs;
 struct smp_operations;
 #ifdef CONFIG_SMP
@@ -49,7 +48,7 @@ struct machine_desc {
 	void			(*init_very_early)(void);
 	void			(*init_early)(void);
 	void			(*init_irq)(void);
-	struct sys_timer	*timer;		/* system tick timer	*/
+	void			(*init_time)(void);
 	void			(*init_machine)(void);
 	void			(*init_late)(void);
 #ifdef CONFIG_MULTI_IRQ_HANDLER
