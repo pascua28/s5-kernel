@@ -180,6 +180,8 @@ source "drivers/qsc/Kconfig"
 
 source "drivers/memory/Kconfig"
 
+source "drivers/ntb/Kconfig"
+
 source "drivers/vme/Kconfig"
 
 source "drivers/pwm/Kconfig"
