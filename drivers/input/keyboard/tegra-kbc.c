@@ -30,7 +30,7 @@
 #include <linux/clk.h>
 #include <linux/slab.h>
 #include <linux/input/matrix_keypad.h>
-#include <linux/clk/tegra.h>
+#include <mach/clk.h>
 
 #define KBC_MAX_GPIO	24
 #define KBC_MAX_KPENT	8

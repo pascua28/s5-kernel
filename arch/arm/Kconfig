@@ -1777,6 +1777,9 @@ source kernel/Kconfig.hz
 config SCHED_HRTICK
 	def_bool HIGH_RES_TIMERS
 
+config SCHED_HRTICK
+	def_bool HIGH_RES_TIMERS
+
 config THUMB2_KERNEL
 	bool "Compile the kernel in Thumb-2 mode"
 	depends on CPU_V7 && !CPU_V6 && !CPU_V6K
