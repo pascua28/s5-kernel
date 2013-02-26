@@ -1790,6 +1790,7 @@ int __init acpi_scan_init(void)
 	acpi_platform_init();
 	acpi_csrt_init();
 	acpi_container_init();
+	acpi_pci_slot_init();
 
 	mutex_lock(&acpi_scan_lock);
 	/*
@@ -1810,6 +1811,8 @@ int __init acpi_scan_init(void)
 	}
 
 	acpi_update_all_gpes();
+
+	acpi_pci_root_hp_init();
 
  out:
 	mutex_unlock(&acpi_scan_lock);
