@@ -14,3 +14,5 @@ obj-$(CONFIG_PERSISTENT_TRACER)		+= trace_persistent.o
 obj-$(CONFIG_RUNTIME_COMPCACHE)		+= rtcc.o
 
 CFLAGS_REMOVE_trace_persistent.o = -pg
+
+obj-$(CONFIG_SYNC)			+= sync.o
