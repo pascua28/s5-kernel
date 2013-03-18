@@ -93,9 +93,9 @@ extern void store_ttbr0(void);
 #endif
 
 #define MAX_HOLE_ADDRESS    (PHYS_OFFSET + 0x10000000)
-extern unsigned long memory_hole_offset;
-extern unsigned long memory_hole_start;
-extern unsigned long memory_hole_end;
+extern phys_addr_t memory_hole_offset;
+extern phys_addr_t memory_hole_start;
+extern phys_addr_t memory_hole_end;
 extern unsigned long memory_hole_align;
 extern unsigned long virtual_hole_start;
 extern unsigned long virtual_hole_end;
