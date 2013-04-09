@@ -156,3 +156,4 @@ obj-$(CONFIG_IR_REMOCON_MC96FR116)	+= irda/
 obj-$(CONFIG_IRDA_COMMON_LDO)	+= irda/
 
 obj-$(CONFIG_MACH_BAFFIN2_SGLTE) += qsc/
+obj-$(CONFIG_CPU_QUIET)		+= cpuquiet/
