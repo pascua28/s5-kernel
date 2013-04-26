@@ -73,12 +73,45 @@ extern struct cma *dma_contiguous_def_area;
 void dma_contiguous_reserve(phys_addr_t addr_limit);
 
 int dma_contiguous_reserve_area(phys_addr_t size, phys_addr_t *res_base,
-				  phys_addr_t limit, const char *name);
+				  phys_addr_t limit, const char *name,
+				  bool in_system);
 
 int dma_contiguous_add_device(struct device *dev, phys_addr_t base);
 
-int dma_declare_contiguous(struct device *dev, phys_addr_t size,
-			   phys_addr_t base, phys_addr_t limit);
+/**
+ * dma_declare_contiguous() - reserve area for contiguous memory handling
+ *			      for particular device
+ * @dev:   Pointer to device structure.
+ * @size:  Size of the reserved memory.
+ * @base:  Start address of the reserved memory (optional, 0 for any).
+ * @limit: End address of the reserved memory (optional, 0 for any).
+ *
+ * This function reserves memory for specified device. It should be
+ * called by board specific code when early allocator (memblock or bootmem)
+ * is still activate.
+ */
+
+static inline int dma_declare_contiguous(struct device *dev, phys_addr_t size,
+					 phys_addr_t base, phys_addr_t limit)
+{
+	int ret;
+	ret = dma_contiguous_reserve_area(size, &base, limit, NULL, true);
+	if (ret == 0)
+		ret = dma_contiguous_add_device(dev, base);
+	return ret;
+}
+
+static inline int dma_declare_contiguous_reserved(struct device *dev,
+					 phys_addr_t size,
+					 phys_addr_t base,
+					 phys_addr_t limit)
+{
+	int ret;
+	ret = dma_contiguous_reserve_area(size, &base, limit, NULL, false);
+	if (ret == 0)
+		ret = dma_contiguous_add_device(dev, base);
+	return ret;
+}
 
 unsigned long dma_alloc_from_contiguous(struct device *dev, int count,
 				       unsigned int order);
