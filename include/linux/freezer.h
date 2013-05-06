@@ -209,6 +209,14 @@ static inline long freezable_schedule_timeout_interruptible(long timeout)
 	return __retval;
 }
 
+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+#define freezable_schedule_unsafe()					\
+({									\
+	freezer_do_not_count();						\
+	schedule();							\
+	freezer_count_unsafe();						\
+})
+
 /* Like schedule_timeout_killable(), but should not block the freezer. */
 static inline long freezable_schedule_timeout_killable(long timeout)
 {
@@ -242,6 +250,16 @@ static inline int freezable_schedule_hrtimeout_range(ktime_t *expires,
 	freezer_count();
 	return __retval;
 }
+
+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+#define freezable_schedule_timeout_killable_unsafe(timeout)		\
+({									\
+	long __retval;							\
+	freezer_do_not_count();						\
+	__retval = schedule_timeout_killable(timeout);			\
+	freezer_count_unsafe();						\
+	__retval;							\
+})
 
 /*
  * Freezer-friendly wrappers around wait_event_interruptible(),
