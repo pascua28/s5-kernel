@@ -81,7 +81,7 @@ while [ "$1" != "" ] ; do
 	case "$CMD" in
 	--refresh)
 		;;
-	--*-after)
+	--*-after|-E|-D|-M)
 		checkarg "$1"
 		A=$ARG
 		checkarg "$2"
