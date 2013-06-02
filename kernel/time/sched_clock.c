@@ -13,12 +13,7 @@
 #include <linux/sched.h>
 #include <linux/syscore_ops.h>
 #include <linux/timer.h>
-
-#include <asm/sched_clock.h>
-#ifdef CONFIG_SEC_DEBUG
-#include <mach/sec_debug.h>
-extern void sec_debug_save_last_ns(unsigned long long last_ns);
-#endif
+#include <linux/sched_clock.h>
 
 struct clock_data {
 	u64 epoch_ns;
