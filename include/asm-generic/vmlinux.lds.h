@@ -157,8 +157,6 @@
 	*(.data..shared_aligned) /* percpu related */			\
 	DEV_KEEP(init.data)						\
 	DEV_KEEP(exit.data)						\
-	CPU_KEEP(init.data)						\
-	CPU_KEEP(exit.data)						\
 	MEM_KEEP(init.data)						\
 	MEM_KEEP(exit.data)						\
 	*(.data.unlikely)						\
@@ -348,8 +346,6 @@
 		*(.ref.rodata)						\
 		DEV_KEEP(init.rodata)					\
 		DEV_KEEP(exit.rodata)					\
-		CPU_KEEP(init.rodata)					\
-		CPU_KEEP(exit.rodata)					\
 		MEM_KEEP(init.rodata)					\
 		MEM_KEEP(exit.rodata)					\
 	}								\
@@ -392,8 +388,6 @@
 		*(.ref.text)						\
 	DEV_KEEP(init.text)						\
 	DEV_KEEP(exit.text)						\
-	CPU_KEEP(init.text)						\
-	CPU_KEEP(exit.text)						\
 	MEM_KEEP(init.text)						\
 	MEM_KEEP(exit.text)						\
 		*(.text.unlikely)
@@ -478,7 +472,6 @@
 #define INIT_DATA							\
 	*(.init.data)							\
 	DEV_DISCARD(init.data)						\
-	CPU_DISCARD(init.data)						\
 	MEM_DISCARD(init.data)						\
 	KERNEL_CTORS()							\
 	*(.init.rodata)							\
@@ -486,29 +479,24 @@
 	FTRACE_EVENTS()							\
 	TRACE_SYSCALLS()						\
 	DEV_DISCARD(init.rodata)					\
-	CPU_DISCARD(init.rodata)					\
 	MEM_DISCARD(init.rodata)					\
 	KERNEL_DTB()
 
 #define INIT_TEXT							\
 	*(.init.text)							\
 	DEV_DISCARD(init.text)						\
-	CPU_DISCARD(init.text)						\
 	MEM_DISCARD(init.text)
 
 #define EXIT_DATA							\
 	*(.exit.data)							\
 	DEV_DISCARD(exit.data)						\
 	DEV_DISCARD(exit.rodata)					\
-	CPU_DISCARD(exit.data)						\
-	CPU_DISCARD(exit.rodata)					\
 	MEM_DISCARD(exit.data)						\
 	MEM_DISCARD(exit.rodata)
 
 #define EXIT_TEXT							\
 	*(.exit.text)							\
 	DEV_DISCARD(exit.text)						\
-	CPU_DISCARD(exit.text)						\
 	MEM_DISCARD(exit.text)
 
 #define EXIT_CALL							\
