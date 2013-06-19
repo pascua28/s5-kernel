@@ -251,7 +251,7 @@ static unsigned int msm_cpufreq_get_freq(unsigned int cpu)
 	return acpuclk_get_rate(cpu);
 }
 
-static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
+static int msm_cpufreq_init(struct cpufreq_policy *policy)
 {
 	int cur_freq;
 	int index;
@@ -321,7 +321,7 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	return 0;
 }
 
-static int __cpuinit msm_cpufreq_cpu_callback(struct notifier_block *nfb,
+static int msm_cpufreq_cpu_callback(struct notifier_block *nfb,
 		unsigned long action, void *hcpu)
 {
 	unsigned int cpu = (unsigned long)hcpu;
