@@ -1522,8 +1522,7 @@ static int tcp_v6_do_rcv(struct sock *sk, struct sk_buff *skb)
 
 	if (sk->sk_state == TCP_ESTABLISHED) { /* Fast path */
 		sock_rps_save_rxhash(sk, skb);
-		if (tcp_rcv_established(sk, skb, tcp_hdr(skb), skb->len))
-			goto reset;
+		tcp_rcv_established(sk, skb, tcp_hdr(skb), skb->len);
 		if (opt_skb)
 			goto ipv6_pktoptions;
 		return 0;
