@@ -38,8 +38,10 @@ my $show_types = 0;
 my $fix = 0;
 my $root;
 my %debug;
-my %ignore_type = ();
 my %camelcase = ();
+my %use_type = ();
+my @use = ();
+my %ignore_type = ();
 my @ignore = ();
 my $help = 0;
 my $configuration_file = ".checkpatch.conf";
@@ -63,6 +65,7 @@ Options:
   --terse                    one line per report
   -f, --file                 treat FILE as regular source file
   --subjective, --strict     enable more subjective tests
+  --types TYPE(,TYPE2...)    show only these comma separated message types
   --ignore TYPE(,TYPE2...)   ignore various comma separated message types
   --max-line-length=n        set the maximum line length, if exceeded, warn
   --show-types               show the message "types" in the output
@@ -127,6 +130,7 @@ GetOptions(
 	'subjective!'	=> \$check,
 	'strict!'	=> \$check,
 	'ignore=s'	=> \@ignore,
+	'types=s'	=> \@use,
 	'show-types!'	=> \$show_types,
 	'max-line-length=i' => \$max_line_length,
 	'root=s'	=> \$root,
@@ -157,18 +161,37 @@ if ($#ARGV < 0) {
 	exit(1);
 }
 
-@ignore = split(/,/, join(',',@ignore));
-foreach my $word (@ignore) {
-	$word =~ s/\s*\n?$//g;
-	$word =~ s/^\s*//g;
-	$word =~ s/\s+/ /g;
-	$word =~ tr/[a-z]/[A-Z]/;
+sub hash_save_array_words {
+	my ($hashRef, $arrayRef) = @_;
 
-	next if ($word =~ m/^\s*#/);
-	next if ($word =~ m/^\s*$/);
+	my @array = split(/,/, join(',', @$arrayRef));
+	foreach my $word (@array) {
+		$word =~ s/\s*\n?$//g;
+		$word =~ s/^\s*//g;
+		$word =~ s/\s+/ /g;
+		$word =~ tr/[a-z]/[A-Z]/;
 
-	$ignore_type{$word}++;
+		next if ($word =~ m/^\s*#/);
+		next if ($word =~ m/^\s*$/);
+
+		$hashRef->{$word}++;
+	}
 }
+
+sub hash_show_words {
+	my ($hashRef, $prefix) = @_;
+
+	if ($quiet == 0 && keys $hashRef) {
+		print "NOTE: $prefix message types:";
+		foreach my $word (sort keys $hashRef) {
+			print " $word";
+		}
+		print "\n\n";
+	}
+}
+
+hash_save_array_words(\%ignore_type, \@ignore);
+hash_save_array_words(\%use_type, \@use);
 
 my $dbg_values = 0;
 my $dbg_possible = 0;
@@ -1374,7 +1397,9 @@ sub possible {
 my $prefix = '';
 
 sub show_type {
-       return !defined $ignore_type{$_[0]};
+	return defined $use_type{$_[0]} if (scalar keys %use_type > 0);
+
+	return !defined $ignore_type{$_[0]};
 }
 
 sub report {
@@ -4467,13 +4492,8 @@ sub process {
 		}
 	}
 
-	if ($quiet == 0 && keys %ignore_type) {
-	    print "NOTE: Ignored message types:";
-	    foreach my $ignore (sort keys %ignore_type) {
-		print " $ignore";
-	    }
-	    print "\n\n";
-	}
+	hash_show_words(\%use_type, "Used");
+	hash_show_words(\%ignore_type, "Ignored");
 
 	if ($clean == 0 && $fix && "@rawlines" ne "@fixed") {
 		my $newfile = $filename . ".EXPERIMENTAL-checkpatch-fixes";
