@@ -1580,6 +1580,7 @@ sub process {
 	my %suppress_export;
 	my $suppress_statement = 0;
 
+	my %signatures = ();
 
 	# Pre-scan the patch sanitizing the lines.
 	# Pre-scan the patch looking for any __setup documentation.
@@ -1964,6 +1965,17 @@ sub process {
 			if ($line =~ /^\s*signed-off-by:.*(quicinc|qualcomm)\.com/i) {
 				WARN("BAD_SIGN_OFF",
 				     "invalid Signed-off-by identity\n" . $line );
+			}
+
+# Check for duplicate signatures
+			my $sig_nospace = $line;
+			$sig_nospace =~ s/\s//g;
+			$sig_nospace = lc($sig_nospace);
+			if (defined $signatures{$sig_nospace}) {
+				WARN("BAD_SIGN_OFF",
+				     "Duplicate signature\n" . $herecurr);
+			} else {
+				$signatures{$sig_nospace} = 1;
 			}
 		}
 
