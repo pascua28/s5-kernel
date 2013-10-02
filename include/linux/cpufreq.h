@@ -298,6 +298,17 @@ struct freq_attr {
 	ssize_t (*store)(struct cpufreq_policy *, const char *, size_t count);
 };
 
+static inline void
+cpufreq_verify_within_cpu_limits(struct cpufreq_policy *policy)
+{
+	cpufreq_verify_within_limits(policy, policy->cpuinfo.min_freq,
+			policy->cpuinfo.max_freq);
+}
+
+/*********************************************************************
+ *                     CPUFREQ NOTIFIER INTERFACE                    *
+ *********************************************************************/
+
 #define cpufreq_freq_attr_ro(_name)		\
 static struct freq_attr _name =			\
 __ATTR(_name, 0444, show_##_name, NULL)
