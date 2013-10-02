@@ -194,24 +194,23 @@ wait_queue_head_t *bit_waitqueue(void *, int);
 #define wake_up_interruptible_sync_poll(x, m)				\
 	__wake_up_sync_key((x), TASK_INTERRUPTIBLE, 1, (void *) (m))
 
-#define ___wait_cond_timeout(condition, ret)				\
+#define ___wait_cond_timeout(condition)					\
 ({									\
  	bool __cond = (condition);					\
- 	if (__cond && !ret)						\
- 		ret = 1;						\
- 	__cond || !ret;							\
+ 	if (__cond && !__ret)						\
+ 		__ret = 1;						\
+ 	__cond || !__ret;						\
 })
 
 #define ___wait_signal_pending(state)					\
 	((state == TASK_INTERRUPTIBLE && signal_pending(current)) ||	\
 	 (state == TASK_KILLABLE && fatal_signal_pending(current)))
 
-#define ___wait_nop_ret		int ret __always_unused
-
 #define ___wait_event(wq, condition, state, exclusive, ret, cmd)	\
-do {									\
+({									\
 	__label__ __out;						\
 	DEFINE_WAIT(__wait);						\
+	long __ret = ret;						\
 									\
 	for (;;) {							\
 		if (exclusive)						\
@@ -223,7 +222,7 @@ do {									\
 			break;						\
 									\
 		if (___wait_signal_pending(state)) {			\
-			ret = -ERESTARTSYS;				\
+			__ret = -ERESTARTSYS;				\
 			if (exclusive) {				\
 				abort_exclusive_wait(&wq, &__wait, 	\
 						     state, NULL); 	\
@@ -235,12 +234,12 @@ do {									\
 		cmd;							\
 	}								\
 	finish_wait(&wq, &__wait);					\
-__out:	;								\
-} while (0)
+__out:	__ret;								\
+})
 
 #define __wait_event(wq, condition) 					\
-	___wait_event(wq, condition, TASK_UNINTERRUPTIBLE, 0,		\
-		      ___wait_nop_ret, schedule())
+	(void)___wait_event(wq, condition, TASK_UNINTERRUPTIBLE, 0, 0,	\
+			    schedule())
 
 /**
  * wait_event - sleep until a condition gets true
@@ -261,10 +260,10 @@ do {									\
 	__wait_event(wq, condition);					\
 } while (0)
 
-#define __wait_event_timeout(wq, condition, ret)			\
-	___wait_event(wq, ___wait_cond_timeout(condition, ret), 	\
-		      TASK_UNINTERRUPTIBLE, 0, ret,			\
-		      ret = schedule_timeout(ret))
+#define __wait_event_timeout(wq, condition, timeout)			\
+	___wait_event(wq, ___wait_cond_timeout(condition),		\
+		      TASK_UNINTERRUPTIBLE, 0, timeout,			\
+		      __ret = schedule_timeout(__ret))
 
 /**
  * wait_event_timeout - sleep until a condition gets true or a timeout elapses
@@ -287,12 +286,12 @@ do {									\
 ({									\
 	long __ret = timeout;						\
 	if (!(condition)) 						\
-		__wait_event_timeout(wq, condition, __ret);		\
+		__ret = __wait_event_timeout(wq, condition, timeout);	\
 	__ret;								\
 })
 
-#define __wait_event_interruptible(wq, condition, ret)			\
-	___wait_event(wq, condition, TASK_INTERRUPTIBLE, 0, ret,	\
+#define __wait_event_interruptible(wq, condition)			\
+	___wait_event(wq, condition, TASK_INTERRUPTIBLE, 0, 0,		\
 		      schedule())
 
 /**
@@ -314,14 +313,14 @@ do {									\
 ({									\
 	int __ret = 0;							\
 	if (!(condition))						\
-		__wait_event_interruptible(wq, condition, __ret);	\
+		__ret = __wait_event_interruptible(wq, condition);	\
 	__ret;								\
 })
 
-#define __wait_event_interruptible_timeout(wq, condition, ret)		\
-	___wait_event(wq, ___wait_cond_timeout(condition, ret),		\
-		      TASK_INTERRUPTIBLE, 0, ret,			\
-		      ret = schedule_timeout(ret))
+#define __wait_event_interruptible_timeout(wq, condition, timeout)	\
+	___wait_event(wq, ___wait_cond_timeout(condition),		\
+		      TASK_INTERRUPTIBLE, 0, timeout,			\
+		      __ret = schedule_timeout(__ret))
 
 /**
  * wait_event_interruptible_timeout - sleep until a condition gets true or a timeout elapses
@@ -345,7 +344,8 @@ do {									\
 ({									\
 	long __ret = timeout;						\
 	if (!(condition))						\
-		__wait_event_interruptible_timeout(wq, condition, __ret); \
+		__ret = __wait_event_interruptible_timeout(wq, 		\
+						condition, timeout);	\
 	__ret;								\
 })
 
@@ -362,7 +362,7 @@ do {									\
 				       current->timer_slack_ns,		\
 				       HRTIMER_MODE_REL);		\
 									\
-	___wait_event(wq, condition, state, 0, __ret,			\
+	__ret = ___wait_event(wq, condition, state, 0, 0,		\
 		if (!__t.task) {					\
 			__ret = -ETIME;					\
 			break;						\
@@ -424,15 +424,15 @@ do {									\
 	__ret;								\
 })
 
-#define __wait_event_interruptible_exclusive(wq, condition, ret)	\
-	___wait_event(wq, condition, TASK_INTERRUPTIBLE, 1, ret,	\
+#define __wait_event_interruptible_exclusive(wq, condition)		\
+	___wait_event(wq, condition, TASK_INTERRUPTIBLE, 1, 0,		\
 		      schedule())
 
 #define wait_event_interruptible_exclusive(wq, condition)		\
 ({									\
 	int __ret = 0;							\
 	if (!(condition))						\
-		__wait_event_interruptible_exclusive(wq, condition, __ret);\
+		__ret = __wait_event_interruptible_exclusive(wq, condition);\
 	__ret;								\
 })
 
@@ -585,8 +585,8 @@ do {									\
 
 
 
-#define __wait_event_killable(wq, condition, ret)			\
-	___wait_event(wq, condition, TASK_KILLABLE, 0, ret, schedule())
+#define __wait_event_killable(wq, condition)				\
+	___wait_event(wq, condition, TASK_KILLABLE, 0, 0, schedule())
 
 /**
  * wait_event_killable - sleep until a condition gets true
@@ -607,18 +607,17 @@ do {									\
 ({									\
 	int __ret = 0;							\
 	if (!(condition))						\
-		__wait_event_killable(wq, condition, __ret);		\
+		__ret = __wait_event_killable(wq, condition);		\
 	__ret;								\
 })
 
 
 #define __wait_event_lock_irq(wq, condition, lock, cmd)			\
-	___wait_event(wq, condition, TASK_UNINTERRUPTIBLE, 0,		\
-		      ___wait_nop_ret,					\
-		      spin_unlock_irq(&lock);				\
-		      cmd;						\
-		      schedule();					\
-		      spin_lock_irq(&lock))
+	(void)___wait_event(wq, condition, TASK_UNINTERRUPTIBLE, 0, 0,	\
+			    spin_unlock_irq(&lock);			\
+			    cmd;					\
+			    schedule();					\
+			    spin_lock_irq(&lock))
 
 /**
  * wait_event_lock_irq_cmd - sleep until a condition gets true. The
@@ -678,11 +677,11 @@ do {									\
 } while (0)
 
 
-#define __wait_event_interruptible_lock_irq(wq, condition, lock, ret, cmd) \
-	___wait_event(wq, condition, TASK_INTERRUPTIBLE, 0, ret,	   \
-		      spin_unlock_irq(&lock);				   \
-		      cmd;						   \
-		      schedule();					   \
+#define __wait_event_interruptible_lock_irq(wq, condition, lock, cmd)	\
+	___wait_event(wq, condition, TASK_INTERRUPTIBLE, 0, 0,	   	\
+		      spin_unlock_irq(&lock);				\
+		      cmd;						\
+		      schedule();					\
 		      spin_lock_irq(&lock))
 
 /**
@@ -713,10 +712,9 @@ do {									\
 #define wait_event_interruptible_lock_irq_cmd(wq, condition, lock, cmd)	\
 ({									\
 	int __ret = 0;							\
-									\
 	if (!(condition))						\
-		__wait_event_interruptible_lock_irq(wq, condition,	\
-						    lock, __ret, cmd);	\
+		__ret = __wait_event_interruptible_lock_irq(wq, 	\
+						condition, lock, cmd);	\
 	__ret;								\
 })
 
@@ -745,18 +743,18 @@ do {									\
 #define wait_event_interruptible_lock_irq(wq, condition, lock)		\
 ({									\
 	int __ret = 0;							\
-									\
 	if (!(condition))						\
-		__wait_event_interruptible_lock_irq(wq, condition,	\
-						    lock, __ret, );	\
+		__ret = __wait_event_interruptible_lock_irq(wq,		\
+						condition, lock,)	\
 	__ret;								\
 })
 
-#define __wait_event_interruptible_lock_irq_timeout(wq, condition, lock, ret) \
-	___wait_event(wq, ___wait_cond_timeout(condition, ret),		      \
-		      TASK_INTERRUPTIBLE, 0, ret,	      		      \
-		      spin_unlock_irq(&lock);				      \
-		      ret = schedule_timeout(ret);			      \
+#define __wait_event_interruptible_lock_irq_timeout(wq, condition, 	\
+						    lock, timeout) 	\
+	___wait_event(wq, ___wait_cond_timeout(condition),		\
+		      TASK_INTERRUPTIBLE, 0, ret,	      		\
+		      spin_unlock_irq(&lock);				\
+		      __ret = schedule_timeout(__ret);			\
 		      spin_lock_irq(&lock));
 
 /**
@@ -786,11 +784,10 @@ do {									\
 #define wait_event_interruptible_lock_irq_timeout(wq, condition, lock,	\
 						  timeout)		\
 ({									\
-	int __ret = timeout;						\
-									\
+	long __ret = timeout;						\
 	if (!(condition))						\
-		__wait_event_interruptible_lock_irq_timeout(		\
-					wq, condition, lock, __ret);	\
+		__ret = __wait_event_interruptible_lock_irq_timeout(	\
+					wq, condition, lock, timeout);	\
 	__ret;								\
 })
 
