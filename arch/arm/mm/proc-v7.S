@@ -56,9 +56,6 @@ ENTRY(cpu_v7_reset)
 	bic	r1, r1, #0x1			@ ...............m
  THUMB(	bic	r1, r1, #1 << 30 )		@ SCTLR.TE (Thumb exceptions)
 	mcr	p15, 0, r1, c1, c0, 0		@ disable MMU
-	mcr     p15, 0, ip, c8, c7, 0           @ invalidate I & D,flush TLB
-	mcr     p15, 0, ip, c7, c5, 6           @ flush BTC
-	dsb
 	isb
 	bx	r0
 ENDPROC(cpu_v7_reset)
@@ -78,14 +75,13 @@ ENTRY(cpu_v7_do_idle)
 ENDPROC(cpu_v7_do_idle)
 
 ENTRY(cpu_v7_dcache_clean_area)
-	ALT_SMP(W(nop))			@ MP extensions imply L1 PTW
-	ALT_UP_B(1f)
-	mov	pc, lr
-1:	dcache_line_size r2, r3
-2:	mcr	p15, 0, r0, c7, c10, 1		@ clean D entry
+	ALT_SMP(mov	pc, lr)			@ MP extensions imply L1 PTW
+	ALT_UP(W(nop))
+	dcache_line_size r2, r3
+1:	mcr	p15, 0, r0, c7, c10, 1		@ clean D entry
 	add	r0, r0, r2
 	subs	r1, r1, r2
-	bhi	2b
+	bhi	1b
 	dsb
 	mov	pc, lr
 ENDPROC(cpu_v7_dcache_clean_area)
@@ -95,20 +91,24 @@ ENDPROC(cpu_v7_dcache_clean_area)
 
 /* Suspend/resume support: derived from arch/arm/mach-s5pv210/sleep.S */
 .globl	cpu_v7_suspend_size
-.equ	cpu_v7_suspend_size, 4 * 8
+.equ	cpu_v7_suspend_size, 4 * 9
 #ifdef CONFIG_ARM_CPU_SUSPEND
 ENTRY(cpu_v7_do_suspend)
 	stmfd	sp!, {r4 - r10, lr}
 	mrc	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mrc	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
-	stmia	r0!, {r4 - r5}
-	mrc	p15, 0, r6, c3, c0, 0	@ Domain ID
+#ifdef CONFIG_ARM_LPAE
+	mrrc	p15, 1, r6, r7, c2	@ TTB 1
+#else
 	mrc	p15, 0, r7, c2, c0, 1	@ TTB 1
+#endif
+	stmia	r0!,  {r4-r7}
+	mrc	p15, 0, r7, c3, c0, 0	@ Domain ID
 	mrc	p15, 0, r11, c2, c0, 2	@ TTB control register
 	mrc	p15, 0, r8, c1, c0, 0	@ Control register
 	mrc	p15, 0, r9, c1, c0, 1	@ Auxiliary control register
 	mrc	p15, 0, r10, c1, c0, 2	@ Co-processor access control
-	stmia	r0, {r6 - r11}
+	stmia	r0, {r7 - r11}
 	ldmfd	sp!, {r4 - r10, pc}
 ENDPROC(cpu_v7_do_suspend)
 
@@ -117,35 +117,21 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, ip, c8, c7, 0	@ invalidate TLBs
 	mcr	p15, 0, ip, c7, c5, 0	@ invalidate I cache
 	mcr	p15, 0, ip, c13, c0, 1	@ set reserved context ID
-	ldmia	r0!, {r4 - r5}
+	ldmia	r0!, {r4 - r7}
 	mcr	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mcr	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
-	ldmia	r0, {r6 - r11}
-#ifndef CONFIG_TIMA_RKP_EMUL_CP15_INSTR
-	mcr	p15, 0, r6, c3, c0, 0	@ Domain ID
-#endif
-#ifndef CONFIG_ARM_LPAE
+#ifdef CONFIG_ARM_LPAE
+	mcrr	p15, 0, r1, ip, c2	@ TTB 0
+	mcrr	p15, 1, r6, r7, c2	@ TTB 1
+#else
 	ALT_SMP(orr	r1, r1, #TTB_FLAGS_SMP)
 	ALT_UP(orr	r1, r1, #TTB_FLAGS_UP)
-#endif
-#ifndef	CONFIG_TIMA_RKP_EMUL_CP15_INSTR
 	mcr	p15, 0, r1, c2, c0, 0	@ TTB 0
-#endif
 	mcr	p15, 0, r7, c2, c0, 1	@ TTB 1
-#ifndef	CONFIG_TIMA_RKP_EMUL_CP15_INSTR
+#endif
+	ldmia	r0!, {r7 - r11}
+	mcr	p15, 0, r7, c3, c0, 0	@ Domain ID
 	mcr	p15, 0, r11, c2, c0, 2	@ TTB control register
-#endif
-
-#ifdef CONFIG_TIMA_RKP_EMUL_CP15_INSTR
-	mov	r4, r0
-	ldr	r0, =0x3f806221
-	smc	#1
-	mov	r0, r4
-	/* Flush TLB */
-	mcr    p15, 0, r0, c8, c3, 0
-	dsb
-#endif
-
 	mrc	p15, 0, r4, c1, c0, 1	@ Read Auxiliary control register
 	teq	r4, r9			@ Is it already set?
 	mcrne	p15, 0, r9, c1, c0, 1	@ No, so write it
@@ -221,6 +207,7 @@ __v7_pj4b_setup:
 /* Auxiliary Debug Modes Control 1 Register */
 #define PJ4B_STATIC_BP (1 << 2) /* Enable Static BP */
 #define PJ4B_INTER_PARITY (1 << 8) /* Disable Internal Parity Handling */
+#define PJ4B_BCK_OFF_STREX (1 << 5) /* Enable the back off of STREX instr */
 #define PJ4B_CLEAN_LINE (1 << 16) /* Disable data transfer for clean line */
 
 /* Auxiliary Debug Modes Control 2 Register */
@@ -243,6 +230,7 @@ __v7_pj4b_setup:
 	/* Auxiliary Debug Modes Control 1 Register */
 	mrc	p15, 1,	r0, c15, c1, 1
 	orr     r0, r0, #PJ4B_CLEAN_LINE
+	orr     r0, r0, #PJ4B_BCK_OFF_STREX
 	orr     r0, r0, #PJ4B_INTER_PARITY
 	bic	r0, r0, #PJ4B_STATIC_BP
 	mcr	p15, 1,	r0, c15, c1, 1
@@ -347,6 +335,7 @@ __v7_setup:
 
 3:	mov	r10, #0
 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate
+	dsb
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r10, c8, c7, 0		@ invalidate I + D TLBs
 	v7_ttb_setup r10, r4, r8, r5		@ TTBCR, TTBRx setup
@@ -354,19 +343,6 @@ __v7_setup:
 	ldr	r6, =NMRR			@ NMRR
 	mcr	p15, 0, r5, c10, c2, 0		@ write PRRR
 	mcr	p15, 0, r6, c10, c2, 1		@ write NMRR
-#endif
-
-#if defined(CONFIG_ARCH_MSM_SCORPION) && !defined(CONFIG_MSM_SMP)
-	mov     r0, #0x33
-	mcr     p15, 3, r0, c15, c0, 3          @ set L2CR1
-	mrc     p15, 0, r0, c1, c0, 1           @ read ACTLR
-#ifdef CONFIG_CPU_CACHE_ERR_REPORT
-	orr     r0, r0, #0x37                   @ turn on L1/L2 error reporting
-#else
-	bic     r0, r0, #0x37
-#endif
-	mcr     p15, 0, r0, c1, c0, 1           @ write ACTLR
-#endif
 #endif
 
 #if defined(CONFIG_ARCH_MSM_SCORPION) && !defined(CONFIG_MSM_SMP)
