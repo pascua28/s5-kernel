@@ -31,6 +31,10 @@
 #include <tools/be_byteshift.h>
 #include <tools/le_byteshift.h>
 
+#ifndef EM_ARCV2
+#define EM_ARCV2	195
+#endif
+
 static int fd_map;	/* File descriptor for file being modified. */
 static int mmap_failed; /* Boolean flag. */
 static void *ehdr_curr; /* current ElfXX_Ehdr *  for resource cleanup */
@@ -264,6 +268,7 @@ do_file(char const *const fname)
 	case EM_S390:
 		custom_sort = sort_relative_table;
 		break;
+	case EM_ARCV2:
 	case EM_MIPS:
 		break;
 	}  /* end switch */
