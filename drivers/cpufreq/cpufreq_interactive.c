@@ -23,6 +23,7 @@
 #include <linux/moduleparam.h>
 #include <linux/rwsem.h>
 #include <linux/sched.h>
+#include <linux/sched/rt.h>
 #include <linux/tick.h>
 #include <linux/time.h>
 #include <linux/timer.h>
@@ -30,14 +31,10 @@
 #include <linux/kthread.h>
 #include <linux/slab.h>
 #include <linux/kernel_stat.h>
-#include <linux/sched/rt.h>
 #include <asm/cputime.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/cpufreq_interactive.h>
-
-#define CONFIG_MODE_AUTO_CHANGE
-#define CONFIG_RETENTION_CHANGE
 
 static int active_count;
 
@@ -58,8 +55,10 @@ struct cpufreq_interactive_cpuinfo {
 	struct rw_semaphore enable_sem;
 	int governor_enabled;
 	int prev_load;
-	int minfreq_boost;
+	bool limits_changed;
 };
+
+#define MIN_TIMER_JIFFIES 1UL
 
 static DEFINE_PER_CPU(struct cpufreq_interactive_cpuinfo, cpuinfo);
 
@@ -128,66 +127,6 @@ static int timer_slack_val = DEFAULT_TIMER_SLACK;
 
 static bool io_is_busy;
 
-#ifdef CONFIG_MODE_AUTO_CHANGE
-struct cpufreq_loadinfo {
-	unsigned int load;
-	unsigned int freq;
-	u64 timestamp;
-};
-
-static DEFINE_PER_CPU(struct cpufreq_loadinfo, loadinfo);
-
-static spinlock_t mode_lock;
-
-#define MULTI_MODE	2
-#define SINGLE_MODE	1
-#define NO_MODE	0
-
-static unsigned int mode = 0;
-static unsigned int enforced_mode = 0;
-static u64 mode_check_timestamp = 0;
-
-#define DEFAULT_MULTI_ENTER_TIME (4 * DEFAULT_TIMER_RATE)
-static unsigned long multi_enter_time = DEFAULT_MULTI_ENTER_TIME;
-static unsigned long time_in_multi_enter = 0;
-static unsigned int multi_enter_load = 4 * DEFAULT_TARGET_LOAD;
-
-#define DEFAULT_MULTI_EXIT_TIME (16 * DEFAULT_TIMER_RATE)
-static unsigned long multi_exit_time = DEFAULT_MULTI_EXIT_TIME;
-static unsigned long time_in_multi_exit = 0;
-static unsigned int multi_exit_load = 4 * DEFAULT_TARGET_LOAD;
-
-#define DEFAULT_SINGLE_ENTER_TIME (8 * DEFAULT_TIMER_RATE)
-static unsigned long single_enter_time = DEFAULT_SINGLE_ENTER_TIME;
-static unsigned long time_in_single_enter = 0;
-static unsigned int single_enter_load = DEFAULT_TARGET_LOAD;
-
-#define DEFAULT_SINGLE_EXIT_TIME (4 * DEFAULT_TIMER_RATE)
-static unsigned long single_exit_time = DEFAULT_SINGLE_EXIT_TIME;
-static unsigned long time_in_single_exit = 0;
-static unsigned int single_exit_load = DEFAULT_TARGET_LOAD;
-
-static unsigned int param_index = 0;
-static unsigned int cur_param_index = 0;
-
-#define MAX_PARAM_SET 4 /* ((MULTI_MODE | SINGLE_MODE | NO_MODE) + 1) */
-static unsigned int hispeed_freq_set[MAX_PARAM_SET];
-static unsigned long go_hispeed_load_set[MAX_PARAM_SET];
-static unsigned int *target_loads_set[MAX_PARAM_SET];
-static int ntarget_loads_set[MAX_PARAM_SET];
-static unsigned long min_sample_time_set[MAX_PARAM_SET];
-static unsigned long timer_rate_set[MAX_PARAM_SET];
-static unsigned int *above_hispeed_delay_set[MAX_PARAM_SET];
-static int nabove_hispeed_delay_set[MAX_PARAM_SET];
-static unsigned int sampling_down_factor_set[MAX_PARAM_SET];
-#endif /* CONFIG_MODE_AUTO_CHANGE */
-#ifdef CONFIG_RETENTION_CHANGE
-static void do_toggle_retention(struct work_struct *work);
-extern void msm_pm_retention_mode_enable(bool enable);
-static struct workqueue_struct *retention_toggle_wq;
-static struct work_struct retention_toggle_work;
-static int mode_count = 0;
-#endif
 /*
  * If the max load among other CPUs is higher than up_threshold_any_cpu_load
  * and if the highest frequency among the other CPUs is higher than
@@ -224,7 +163,6 @@ static void cpufreq_interactive_timer_resched(
 	pcpu->cputime_speedadj = 0;
 	pcpu->cputime_speedadj_timestamp = pcpu->time_in_idle_timestamp;
 	expires = jiffies + usecs_to_jiffies(timer_rate);
-
 	mod_timer_pinned(&pcpu->cpu_timer, expires);
 
 	if (timer_slack_val >= 0 && pcpu->target_freq > pcpu->policy->min) {
@@ -239,19 +177,21 @@ static void cpufreq_interactive_timer_resched(
  * The cpu_timer and cpu_slack_timer must be deactivated when calling this
  * function.
  */
-static void cpufreq_interactive_timer_start(int cpu)
+static void cpufreq_interactive_timer_start(int cpu, int time_override)
 {
 	struct cpufreq_interactive_cpuinfo *pcpu = &per_cpu(cpuinfo, cpu);
-	unsigned long expires = jiffies + usecs_to_jiffies(timer_rate);
 	unsigned long flags;
+	unsigned long expires;
+	if (time_override)
+		expires = jiffies + time_override;
+	else
+		expires = jiffies + usecs_to_jiffies(timer_rate);
 
 	pcpu->cpu_timer.expires = expires;
-	del_timer_sync(&pcpu->cpu_timer);
 	add_timer_on(&pcpu->cpu_timer, cpu);
 	if (timer_slack_val >= 0 && pcpu->target_freq > pcpu->policy->min) {
 		expires += usecs_to_jiffies(timer_slack_val);
 		pcpu->cpu_slack_timer.expires = expires;
-		del_timer_sync(&pcpu->cpu_slack_timer);
 		add_timer_on(&pcpu->cpu_slack_timer, cpu);
 	}
 
@@ -398,12 +338,6 @@ static u64 update_load(int cpu)
 	unsigned int delta_idle;
 	unsigned int delta_time;
 	u64 active_time;
-#if defined(CONFIG_SEC_PM) || defined(CONFIG_MODE_AUTO_CHANGE)
-	unsigned int cur_load = 0;
-#endif
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	struct cpufreq_loadinfo *cur_loadinfo = &per_cpu(loadinfo, cpu);
-#endif
 
 	now_idle = get_cpu_idle_time(cpu, &now, io_is_busy);
 	delta_idle = (unsigned int)(now_idle - pcpu->time_in_idle);
@@ -418,144 +352,8 @@ static u64 update_load(int cpu)
 
 	pcpu->time_in_idle = now_idle;
 	pcpu->time_in_idle_timestamp = now;
-
-#if defined(CONFIG_SEC_PM) || defined(CONFIG_MODE_AUTO_CHANGE)
-	cur_load = (unsigned int)(active_time * 100) / delta_time;
-#endif
-#ifdef CONFIG_SEC_PM
-	pcpu->policy->load_at_max = (cur_load * pcpu->policy->cur) /
-		pcpu->policy->cpuinfo.max_freq;
-#endif
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	cur_loadinfo->load = (cur_load * pcpu->policy->cur) /
-									pcpu->policy->cpuinfo.max_freq;
-	cur_loadinfo->freq = pcpu->policy->cur;
-	cur_loadinfo->timestamp = now;
-#endif
-
 	return now;
 }
-
-#ifdef CONFIG_MODE_AUTO_CHANGE
-static unsigned int check_mode(int cpu, unsigned int cur_mode, u64 now)
-{
-	int i;
-	unsigned int ret=cur_mode, total_load=0, max_single_load=0;
-	struct cpufreq_loadinfo *cur_loadinfo;
-
-	if (now - mode_check_timestamp < timer_rate - 1000)
-		return ret;
-
-	if (now - mode_check_timestamp > timer_rate + 1000)
-		mode_check_timestamp = now - timer_rate;
-
-	for_each_online_cpu(i) {
-		cur_loadinfo = &per_cpu(loadinfo, i);
-		total_load += cur_loadinfo->load;
-		if (cur_loadinfo->load > max_single_load)
-			max_single_load = cur_loadinfo->load;
-	}
-
-	if (!(cur_mode & SINGLE_MODE)) {
-		if (max_single_load >= single_enter_load)
-			time_in_single_enter += now - mode_check_timestamp;
-		else
-			time_in_single_enter = 0;
-
-		if (time_in_single_enter >= single_enter_time)
-			ret |= SINGLE_MODE;
-	}
-
-	if (!(cur_mode & MULTI_MODE)) {
-		if (total_load >= multi_enter_load)
-			time_in_multi_enter += now - mode_check_timestamp;
-		else
-			time_in_multi_enter = 0;
-
-		if (time_in_multi_enter >= multi_enter_time)
-			ret |= MULTI_MODE;
-	}
-
-	if (cur_mode & SINGLE_MODE) {
-		if (max_single_load < single_exit_load)
-			time_in_single_exit += now - mode_check_timestamp;
-		else
-			time_in_single_exit = 0;
-
-		if (time_in_single_exit >= single_exit_time)
-			ret &= ~SINGLE_MODE;
-	}
-
-	if (cur_mode & MULTI_MODE) {
-		if (total_load < multi_exit_load)
-			time_in_multi_exit += now - mode_check_timestamp;
-		else
-			time_in_multi_exit = 0;
-
-		if (time_in_multi_exit >= multi_exit_time)
-			ret &= ~MULTI_MODE;
-	}
-
-	trace_cpufreq_interactive_mode(cpu, total_load,
-		time_in_single_enter, time_in_multi_enter,
-		time_in_single_exit, time_in_multi_exit, ret);
-
-	if (time_in_single_enter >= single_enter_time)
-		time_in_single_enter = 0;
-	if (time_in_multi_enter >= multi_enter_time)
-		time_in_multi_enter = 0;
-	if (time_in_single_exit >= single_exit_time)
-		time_in_single_exit = 0;
-	if (time_in_multi_exit >= multi_exit_time)
-		time_in_multi_exit = 0;
-	mode_check_timestamp = now;
-
-	return ret;
-}
-
-static void set_new_param_set(unsigned int index)
-{
-	unsigned long flags;
-
-	hispeed_freq = hispeed_freq_set[index];
-	go_hispeed_load = go_hispeed_load_set[index];
-
-	spin_lock_irqsave(&target_loads_lock, flags);
-	target_loads = target_loads_set[index];
-	ntarget_loads =	ntarget_loads_set[index];
-	spin_unlock_irqrestore(&target_loads_lock, flags);
-
-	min_sample_time = min_sample_time_set[index];
-	timer_rate = timer_rate_set[index];
-
-	spin_lock_irqsave(&above_hispeed_delay_lock, flags);
-	above_hispeed_delay = above_hispeed_delay_set[index];
-	nabove_hispeed_delay = nabove_hispeed_delay_set[index];
-	spin_unlock_irqrestore(&above_hispeed_delay_lock, flags);
-
-	cur_param_index = index;
-}
-
-static void enter_mode(void)
-{
-#if 1
-	set_new_param_set(mode);
-#else
-	set_new_param_set(1);
-#endif
-#ifdef CONFIG_RETENTION_CHANGE
-	queue_work(retention_toggle_wq, &retention_toggle_work);
-#endif
-}
-
-static void exit_mode(void)
-{
-	set_new_param_set(0);
-#ifdef CONFIG_RETENTION_CHANGE
-	queue_work(retention_toggle_wq, &retention_toggle_work);
-#endif
-}
-#endif
 
 static void cpufreq_interactive_timer(unsigned long data)
 {
@@ -574,9 +372,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 	int i, max_load;
 	unsigned int max_freq;
 	struct cpufreq_interactive_cpuinfo *picpu;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned int new_mode;
-#endif
+
 	if (!down_read_trylock(&pcpu->enable_sem))
 		return;
 	if (!pcpu->governor_enabled)
@@ -591,40 +387,11 @@ static void cpufreq_interactive_timer(unsigned long data)
 	if (WARN_ON_ONCE(!delta_time))
 		goto rearm;
 
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags);
-	if (enforced_mode)
-		new_mode = enforced_mode;
-	else
-		new_mode = check_mode(data, mode, now);
-	if (new_mode != mode) {
-		mode = new_mode;
-		if (new_mode & MULTI_MODE || new_mode & SINGLE_MODE) {
-#ifdef CONFIG_RETENTION_CHANGE
-			++mode_count;
-#endif
-			pr_info("Governor: enter mode 0x%x\n", mode);
-			enter_mode();
-		} else {
-#ifdef CONFIG_RETENTION_CHANGE
-			mode_count=0;
-#endif
-			pr_info("Governor: exit mode 0x%x\n", mode);
-			exit_mode();
-		}
-	}
-	spin_unlock_irqrestore(&mode_lock, flags);
-#endif
-
 	do_div(cputime_speedadj, delta_time);
 	loadadjfreq = (unsigned int)cputime_speedadj * 100;
 	cpu_load = loadadjfreq / pcpu->target_freq;
 	pcpu->prev_load = cpu_load;
 	boosted = boost_val || now < boostpulse_endtime;
-
-#ifdef CONFIG_SEC_PM
-	pcpu->policy->util = cpu_load;
-#endif
 
 	if (cpu_load >= go_hispeed_load || boosted) {
 		if (pcpu->target_freq < hispeed_freq) {
@@ -683,16 +450,14 @@ static void cpufreq_interactive_timer(unsigned long data)
 	 * Do not scale below floor_freq unless we have been at or above the
 	 * floor frequency for the minimum sample time since last validated.
 	 */
-	if (sampling_down_factor && pcpu->policy->cur == pcpu->policy->max){
+	if (sampling_down_factor && pcpu->policy->cur == pcpu->policy->max)
 		mod_min_sample_time = sampling_down_factor;
-		pcpu->minfreq_boost=0;
-	}
 	else
 		mod_min_sample_time = min_sample_time;
 
-	if (pcpu->minfreq_boost) {
+	if (pcpu->limits_changed) {
 		mod_min_sample_time = 0;
-		pcpu->minfreq_boost = 0;
+		pcpu->limits_changed = false;
 	}
 	if (new_freq < pcpu->floor_freq) {
 		if (now - pcpu->floor_validate_time < mod_min_sample_time) {
@@ -738,11 +503,7 @@ rearm_if_notmax:
 	 * wait until next idle to re-evaluate, don't need timer.
 	 */
 	if (pcpu->target_freq == pcpu->policy->max)
-#ifdef CONFIG_MODE_AUTO_CHANGE
-		goto rearm;
-#else
 		goto exit;
-#endif
 
 rearm:
 	if (!timer_pending(&pcpu->cpu_timer))
@@ -1013,17 +774,11 @@ static ssize_t show_target_loads(
 
 	spin_lock_irqsave(&target_loads_lock, flags);
 
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	for (i = 0; i < ntarget_loads_set[param_index]; i++)
-		ret += sprintf(buf + ret, "%u%s", target_loads_set[param_index][i],
-			       i & 0x1 ? ":" : " ");
-#else
 	for (i = 0; i < ntarget_loads; i++)
 		ret += sprintf(buf + ret, "%u%s", target_loads[i],
 			       i & 0x1 ? ":" : " ");
-#endif
-    ret = ret - 1;
-	ret += sprintf(buf + ret, "\n");
+
+	ret += sprintf(buf + --ret, "\n");
 	spin_unlock_irqrestore(&target_loads_lock, flags);
 	return ret;
 }
@@ -1035,37 +790,17 @@ static ssize_t store_target_loads(
 	int ntokens;
 	unsigned int *new_target_loads = NULL;
 	unsigned long flags;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned long flags2;
-#endif
 
 	new_target_loads = get_tokenized_data(buf, &ntokens);
 	if (IS_ERR(new_target_loads))
 		return PTR_RET(new_target_loads);
 
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags2);
-#endif
 	spin_lock_irqsave(&target_loads_lock, flags);
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	if (target_loads_set[param_index] != default_target_loads)
-		kfree(target_loads_set[param_index]);
-	target_loads_set[param_index] = new_target_loads;
-	ntarget_loads_set[param_index] = ntokens;
-	if (cur_param_index == param_index) {
-		target_loads = new_target_loads;
-		ntarget_loads = ntokens;
-	}
-#else
 	if (target_loads != default_target_loads)
 		kfree(target_loads);
 	target_loads = new_target_loads;
 	ntarget_loads = ntokens;
-#endif
 	spin_unlock_irqrestore(&target_loads_lock, flags);
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_unlock_irqrestore(&mode_lock, flags2);
-#endif
 	return count;
 }
 
@@ -1082,18 +817,11 @@ static ssize_t show_above_hispeed_delay(
 
 	spin_lock_irqsave(&above_hispeed_delay_lock, flags);
 
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	for (i = 0; i < nabove_hispeed_delay_set[param_index]; i++)
-		ret += sprintf(buf + ret, "%u%s", above_hispeed_delay_set[param_index][i],
-			       i & 0x1 ? ":" : " ");
-#else
 	for (i = 0; i < nabove_hispeed_delay; i++)
 		ret += sprintf(buf + ret, "%u%s", above_hispeed_delay[i],
 			       i & 0x1 ? ":" : " ");
-#endif
 
-    ret = ret - 1;
-	ret += sprintf(buf + ret, "\n");
+	ret += sprintf(buf + --ret, "\n");
 	spin_unlock_irqrestore(&above_hispeed_delay_lock, flags);
 	return ret;
 }
@@ -1105,36 +833,17 @@ static ssize_t store_above_hispeed_delay(
 	int ntokens;
 	unsigned int *new_above_hispeed_delay = NULL;
 	unsigned long flags;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned long flags2;
-#endif
 
 	new_above_hispeed_delay = get_tokenized_data(buf, &ntokens);
 	if (IS_ERR(new_above_hispeed_delay))
 		return PTR_RET(new_above_hispeed_delay);
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags2);
-#endif
+
 	spin_lock_irqsave(&above_hispeed_delay_lock, flags);
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	if (above_hispeed_delay_set[param_index] != default_above_hispeed_delay)
-		kfree(above_hispeed_delay_set[param_index]);
-	above_hispeed_delay_set[param_index] = new_above_hispeed_delay;
-	nabove_hispeed_delay_set[param_index] = ntokens;
-	if (cur_param_index == param_index) {
-		above_hispeed_delay = new_above_hispeed_delay;
-		nabove_hispeed_delay = ntokens;
-	}
-#else
 	if (above_hispeed_delay != default_above_hispeed_delay)
 		kfree(above_hispeed_delay);
 	above_hispeed_delay = new_above_hispeed_delay;
 	nabove_hispeed_delay = ntokens;
-#endif
 	spin_unlock_irqrestore(&above_hispeed_delay_lock, flags);
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_unlock_irqrestore(&mode_lock, flags2);
-#endif
 	return count;
 
 }
@@ -1146,11 +855,7 @@ static struct global_attr above_hispeed_delay_attr =
 static ssize_t show_hispeed_freq(struct kobject *kobj,
 				 struct attribute *attr, char *buf)
 {
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	return sprintf(buf, "%u\n", hispeed_freq_set[param_index]);
-#else
 	return sprintf(buf, "%u\n", hispeed_freq);
-#endif
 }
 
 static ssize_t store_hispeed_freq(struct kobject *kobj,
@@ -1159,21 +864,11 @@ static ssize_t store_hispeed_freq(struct kobject *kobj,
 {
 	int ret;
 	long unsigned int val;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned long flags2;
-#endif
+
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags2);
-	hispeed_freq_set[param_index] = val;
-	if (cur_param_index == param_index)
-		hispeed_freq = val;
-	spin_unlock_irqrestore(&mode_lock, flags2);
-#else
 	hispeed_freq = val;
-#endif
 	return count;
 }
 
@@ -1183,11 +878,7 @@ static struct global_attr hispeed_freq_attr = __ATTR(hispeed_freq, 0644,
 static ssize_t show_sampling_down_factor(struct kobject *kobj,
 				struct attribute *attr, char *buf)
 {
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	return sprintf(buf, "%u\n", sampling_down_factor_set[param_index]);
-#else
 	return sprintf(buf, "%u\n", sampling_down_factor);
-#endif
 }
 
 static ssize_t store_sampling_down_factor(struct kobject *kobj,
@@ -1196,21 +887,11 @@ static ssize_t store_sampling_down_factor(struct kobject *kobj,
 {
 	int ret;
 	long unsigned int val;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned long flags2;
-#endif
+
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags2);
-	sampling_down_factor_set[param_index] = val;
-	if (cur_param_index == param_index)
-		sampling_down_factor = val;
-	spin_unlock_irqrestore(&mode_lock, flags2);
-#else
 	sampling_down_factor = val;
-#endif
 	return count;
 }
 
@@ -1221,11 +902,7 @@ static struct global_attr sampling_down_factor_attr =
 static ssize_t show_go_hispeed_load(struct kobject *kobj,
 				     struct attribute *attr, char *buf)
 {
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	return sprintf(buf, "%lu\n", go_hispeed_load_set[param_index]);
-#else
 	return sprintf(buf, "%lu\n", go_hispeed_load);
-#endif
 }
 
 static ssize_t store_go_hispeed_load(struct kobject *kobj,
@@ -1233,22 +910,11 @@ static ssize_t store_go_hispeed_load(struct kobject *kobj,
 {
 	int ret;
 	unsigned long val;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned long flags2;
-#endif
 
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags2);
-	go_hispeed_load_set[param_index] = val;
-	if (cur_param_index == param_index)
-		go_hispeed_load = val;
-	spin_unlock_irqrestore(&mode_lock, flags2);
-#else
 	go_hispeed_load = val;
-#endif
 	return count;
 }
 
@@ -1258,11 +924,7 @@ static struct global_attr go_hispeed_load_attr = __ATTR(go_hispeed_load, 0644,
 static ssize_t show_min_sample_time(struct kobject *kobj,
 				struct attribute *attr, char *buf)
 {
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	return sprintf(buf, "%lu\n", min_sample_time_set[param_index]);
-#else
 	return sprintf(buf, "%lu\n", min_sample_time);
-#endif
 }
 
 static ssize_t store_min_sample_time(struct kobject *kobj,
@@ -1270,22 +932,11 @@ static ssize_t store_min_sample_time(struct kobject *kobj,
 {
 	int ret;
 	unsigned long val;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned long flags2;
-#endif
 
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags2);
-	min_sample_time_set[param_index] = val;
-	if (cur_param_index == param_index)
-		min_sample_time = val;
-	spin_unlock_irqrestore(&mode_lock, flags2);
-#else
 	min_sample_time = val;
-#endif
 	return count;
 }
 
@@ -1295,11 +946,7 @@ static struct global_attr min_sample_time_attr = __ATTR(min_sample_time, 0644,
 static ssize_t show_timer_rate(struct kobject *kobj,
 			struct attribute *attr, char *buf)
 {
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	return sprintf(buf, "%lu\n", timer_rate_set[param_index]);
-#else
 	return sprintf(buf, "%lu\n", timer_rate);
-#endif
 }
 
 static ssize_t store_timer_rate(struct kobject *kobj,
@@ -1307,21 +954,11 @@ static ssize_t store_timer_rate(struct kobject *kobj,
 {
 	int ret;
 	unsigned long val;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	unsigned long flags2;
-#endif
+
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_irqsave(&mode_lock, flags2);
-	timer_rate_set[param_index] = val;
-	if (cur_param_index == param_index)
-		timer_rate = val;
-	spin_unlock_irqrestore(&mode_lock, flags2);
-#else
 	timer_rate = val;
-#endif
 	return count;
 }
 
@@ -1515,98 +1152,6 @@ static struct global_attr up_threshold_any_cpu_freq_attr =
 		show_up_threshold_any_cpu_freq,
 				store_up_threshold_any_cpu_freq);
 
-#ifdef CONFIG_MODE_AUTO_CHANGE
-#define index(obj_name, obj_attr)					\
-static ssize_t show_##obj_name(struct kobject *kobj,			\
-                              struct attribute *attr, char *buf)	\
-{									\
-        return sprintf(buf, "%u\n", obj_name);				\
-}									\
-									\
-static ssize_t store_##obj_name(struct kobject *kobj,			\
-                               struct attribute *attr, const char *buf,	\
-                               size_t count)				\
-{									\
-        int ret;							\
-        long unsigned int val;						\
-									\
-        ret = strict_strtoul(buf, 0, &val);				\
-        if (ret < 0)							\
-                return ret;						\
-									\
-	val &= MULTI_MODE | SINGLE_MODE | NO_MODE;			\
-        obj_name = val;							\
-        return count;							\
-}									\
-									\
-static struct global_attr obj_attr = __ATTR(obj_name, 0644,		\
-                show_##obj_name, store_##obj_name);			\
-
-index(mode, mode_attr);
-index(enforced_mode, enforced_mode_attr);
-index(param_index, param_index_attr);
-
-#define load(obj_name, obj_attr)					\
-static ssize_t show_##obj_name(struct kobject *kobj,			\
-                              struct attribute *attr, char *buf)	\
-{									\
-        return sprintf(buf, "%u\n", obj_name);				\
-}									\
-									\
-static ssize_t store_##obj_name(struct kobject *kobj,			\
-                               struct attribute *attr, const char *buf,	\
-                               size_t count)				\
-{									\
-        int ret;							\
-        long unsigned int val;						\
-									\
-        ret = strict_strtoul(buf, 0, &val);				\
-        if (ret < 0)							\
-                return ret;						\
-									\
-        obj_name = val;							\
-        return count;							\
-}									\
-									\
-static struct global_attr obj_attr = __ATTR(obj_name, 0644,		\
-                show_##obj_name, store_##obj_name);			\
-
-load(multi_enter_load, multi_enter_load_attr);
-load(multi_exit_load, multi_exit_load_attr);
-load(single_enter_load, single_enter_load_attr);
-load(single_exit_load, single_exit_load_attr);
-
-#define time(obj_name, obj_attr)					\
-static ssize_t show_##obj_name(struct kobject *kobj,			\
-                              struct attribute *attr, char *buf)	\
-{									\
-        return sprintf(buf, "%lu\n", obj_name);				\
-}									\
-									\
-static ssize_t store_##obj_name(struct kobject *kobj,			\
-                               struct attribute *attr, const char *buf,	\
-                               size_t count)				\
-{									\
-        int ret;							\
-        unsigned long val;						\
-									\
-        ret = strict_strtoul(buf, 0, &val);				\
-        if (ret < 0)							\
-                return ret;						\
-									\
-        obj_name = val;							\
-        return count;							\
-}									\
-									\
-static struct global_attr obj_attr = __ATTR(obj_name, 0644,		\
-                show_##obj_name, store_##obj_name);			\
-
-time(multi_enter_time, multi_enter_time_attr);
-time(multi_exit_time, multi_exit_time_attr);
-time(single_enter_time, single_enter_time_attr);
-time(single_exit_time, single_exit_time_attr);
-
-#endif
 static struct attribute *interactive_attributes[] = {
 	&target_loads_attr.attr,
 	&above_hispeed_delay_attr.attr,
@@ -1623,19 +1168,6 @@ static struct attribute *interactive_attributes[] = {
 	&sync_freq_attr.attr,
 	&up_threshold_any_cpu_load_attr.attr,
 	&up_threshold_any_cpu_freq_attr.attr,
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	&mode_attr.attr,
-	&enforced_mode_attr.attr,
-	&param_index_attr.attr,
-	&multi_enter_load_attr.attr,
-	&multi_exit_load_attr.attr,
-	&single_enter_load_attr.attr,
-	&single_exit_load_attr.attr,
-	&multi_enter_time_attr.attr,
-	&multi_exit_time_attr.attr,
-	&single_enter_time_attr.attr,
-	&single_exit_time_attr.attr,
-#endif
 	NULL,
 };
 
@@ -1664,30 +1196,6 @@ static struct notifier_block cpufreq_interactive_idle_nb = {
 	.notifier_call = cpufreq_interactive_idle_notifier,
 };
 
-#ifdef CONFIG_MODE_AUTO_CHANGE
-static void cpufreq_param_set_init(void)
-{
-	unsigned int i;
-	unsigned long flags;
-
-	multi_enter_load = DEFAULT_TARGET_LOAD * num_possible_cpus();
-
-	spin_lock_irqsave(&mode_lock, flags);
-	for (i=0 ; i<MAX_PARAM_SET; i++) {
-		hispeed_freq_set[i] = 0;
-		go_hispeed_load_set[i] = go_hispeed_load;
-		target_loads_set[i] = target_loads;
-		ntarget_loads_set[i] = ntarget_loads;
-		min_sample_time_set[i] = min_sample_time;
-		timer_rate_set[i] = timer_rate;
-		above_hispeed_delay_set[i] = above_hispeed_delay;
-		nabove_hispeed_delay_set[i] = nabove_hispeed_delay;
-		sampling_down_factor_set[i] = sampling_down_factor;
-	}
-	spin_unlock_irqrestore(&mode_lock, flags);
-}
-#endif
-
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event)
 {
@@ -1695,6 +1203,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 	unsigned int j;
 	struct cpufreq_interactive_cpuinfo *pcpu;
 	struct cpufreq_frequency_table *freq_table;
+	unsigned long expire_time;
 
 	switch (event) {
 	case CPUFREQ_GOV_START:
@@ -1707,11 +1216,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			cpufreq_frequency_get_table(policy->cpu);
 		if (!hispeed_freq)
 			hispeed_freq = policy->max;
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	        for (j=0 ; j<MAX_PARAM_SET ; j++)
-			if (!hispeed_freq_set[j])
-				hispeed_freq_set[j] = policy->max;
-#endif
+
 		for_each_cpu(j, policy->cpus) {
 			pcpu = &per_cpu(cpuinfo, j);
 			pcpu->policy = policy;
@@ -1725,7 +1230,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			down_write(&pcpu->enable_sem);
 			del_timer_sync(&pcpu->cpu_timer);
 			del_timer_sync(&pcpu->cpu_slack_timer);
-			cpufreq_interactive_timer_start(j);
+			cpufreq_interactive_timer_start(j, 0);
 			pcpu->governor_enabled = 1;
 			up_write(&pcpu->enable_sem);
 		}
@@ -1739,7 +1244,10 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			return 0;
 		}
 
-		rc = sysfs_create_group(cpufreq_global_kobject,
+		if (!have_governor_per_policy())
+			WARN_ON(cpufreq_get_global_kobject());
+
+		rc = sysfs_create_group(get_governor_parent_kobj(policy),
 				&interactive_attr_group);
 		if (rc) {
 			mutex_unlock(&gov_lock);
@@ -1772,8 +1280,10 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		cpufreq_unregister_notifier(
 			&cpufreq_notifier_block, CPUFREQ_TRANSITION_NOTIFIER);
 		idle_notifier_unregister(&cpufreq_interactive_idle_nb);
-		sysfs_remove_group(cpufreq_global_kobject,
+		sysfs_remove_group(get_governor_parent_kobj(policy),
 				&interactive_attr_group);
+		if (!have_governor_per_policy())
+			cpufreq_put_global_kobject();
 		mutex_unlock(&gov_lock);
 
 		break;
@@ -1798,19 +1308,40 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			/* update target_freq firstly */
 			if (policy->max < pcpu->target_freq)
 				pcpu->target_freq = policy->max;
-			else if (policy->min > pcpu->target_freq)
-				pcpu->target_freq = policy->min;
-
-			/* Reschedule timer.
-			 * Delete the timers, else the timer callback may
-			 * return without re-arm the timer when failed
-			 * acquire the semaphore. This race may cause timer
-			 * stopped unexpectedly.
+			/*
+			 * Delete and reschedule timer.
+			 * Else the timer callback may return without
+			 * re-arming the timer when it fails to acquire
+			 * the semaphore. This race condition may cause the
+			 * timer to stop unexpectedly.
 			 */
 			del_timer_sync(&pcpu->cpu_timer);
 			del_timer_sync(&pcpu->cpu_slack_timer);
-			cpufreq_interactive_timer_start(j);
-			pcpu->minfreq_boost = 1;
+			if (policy->min >= pcpu->target_freq) {
+				pcpu->target_freq = policy->min;
+				/*
+				 * Reschedule timer.
+				 * The governor needs more time to evaluate
+				 * the load after changing policy parameters.
+				 */
+				cpufreq_interactive_timer_start(j, 0);
+			} else {
+				/*
+				 * Reschedule timer with variable duration.
+				 * No boost was applied so the governor
+				 * doesn't need extra time to evaluate load.
+				 * The timer can be set to fire quicker if it
+				 * was already going to expire soon.
+				 */
+				expire_time = pcpu->cpu_timer.expires - jiffies;
+				expire_time = min(usecs_to_jiffies(timer_rate),
+						  expire_time);
+				expire_time = max(MIN_TIMER_JIFFIES,
+						  expire_time);
+
+				cpufreq_interactive_timer_start(j, expire_time);
+			}
+			pcpu->limits_changed = true;
 			up_write(&pcpu->enable_sem);
 		}
 		break;
@@ -1843,16 +1374,6 @@ static int __init cpufreq_interactive_init(void)
 	spin_lock_init(&target_loads_lock);
 	spin_lock_init(&speedchange_cpumask_lock);
 	spin_lock_init(&above_hispeed_delay_lock);
-#ifdef CONFIG_MODE_AUTO_CHANGE
-	spin_lock_init(&mode_lock);
-	cpufreq_param_set_init();
-#endif
-#ifdef CONFIG_RETENTION_CHANGE
-	retention_toggle_wq = alloc_workqueue("retentionToggle_wq", WQ_HIGHPRI, 0);
-	if(!retention_toggle_wq)
-		pr_info("retention toggle workqueue init error\n");
-	INIT_WORK(&retention_toggle_work, do_toggle_retention);
-#endif
 	mutex_init(&gov_lock);
 	speedchange_task =
 		kthread_create(cpufreq_interactive_speedchange_task, NULL,
@@ -1868,16 +1389,6 @@ static int __init cpufreq_interactive_init(void)
 
 	return cpufreq_register_governor(&cpufreq_gov_interactive);
 }
-
-#ifdef CONFIG_RETENTION_CHANGE
-static void do_toggle_retention(struct work_struct *work)
-{
-	if(mode_count == 1)
-		msm_pm_retention_mode_enable(0);
-	else if(mode_count == 0)
-		msm_pm_retention_mode_enable(1);
-}
-#endif	// CONFIG_RETENTION_CHANGE
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 fs_initcall(cpufreq_interactive_init);
