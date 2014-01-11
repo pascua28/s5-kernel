@@ -1917,9 +1917,6 @@ config ARCH_POPULATES_NODE_MAP
 config ENABLE_DMM
 	def_bool n
 
-config DONT_MAP_HOLE_AFTER_MEMBANK0
-	def_bool n
-
 config HOLES_IN_ZONE
 	def_bool n
 	depends on SPARSEMEM

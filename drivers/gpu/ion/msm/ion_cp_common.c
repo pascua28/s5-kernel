@@ -12,11 +12,11 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/memory_alloc.h>
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <mach/scm.h>
 #include <linux/highmem.h>
+#include <mach/iommu_domains.h>
 
 #include "../ion_priv.h"
 #include "ion_cp_common.h"
