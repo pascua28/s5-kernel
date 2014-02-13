@@ -1069,6 +1069,8 @@ static int _request_firmware_load(struct firmware_priv *fw_priv, bool uevent,
 	wait_for_completion(&buf->completion);
 
 	cancel_delayed_work_sync(&fw_priv->timeout_work);
+	if (!buf->data)
+		retval = -ENOMEM;
 
 	if (!buf->data && buf->is_paged_buf)
 		retval = -ENOMEM;
