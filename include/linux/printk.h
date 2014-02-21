@@ -400,4 +400,12 @@ extern int get_console_suspended(void);
 		       groupsize, buf, len, ascii)
 #endif /* defined(CONFIG_DYNAMIC_DEBUG) */
 
+#if defined(CONFIG_OOPS_LOG_BUFFER)
+extern void oops_printk_start(void);
+#else
+static inline void oops_printk_start(void)
+{
+}
+#endif
+
 #endif
