@@ -305,6 +305,14 @@ config PM_GENERIC_DOMAINS_RUNTIME
 	def_bool y
 	depends on PM_RUNTIME && PM_GENERIC_DOMAINS
 
+config QUICK_WAKEUP
+	bool "Quick wakeup"
+	depends on SUSPEND
+	default y
+	---help---
+	  Allow kernel driver to do periodic jobs without resuming the full system
+	  This option can increase battery life on android powered smartphone.
+
 config CPU_PM
 	bool
 	depends on SUSPEND || CPU_IDLE
