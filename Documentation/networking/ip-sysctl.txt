@@ -22,6 +22,13 @@ ip_no_pmtu_disc - BOOLEAN
 min_pmtu - INTEGER
 	default 552 - minimum discovered Path MTU
 
+fwmark_reflect - BOOLEAN
+	Controls the fwmark of kernel-generated IPv4 reply packets that are not
+	associated with a socket for example, TCP RSTs or ICMP echo replies).
+	If unset, these packets have a fwmark of zero. If set, they have the
+	fwmark of the packet they are replying to.
+	Default: 0
+
 route/max_size - INTEGER
 	Maximum number of routes allowed in the kernel.  Increase
 	this when using large numbers of interfaces and/or routes.
@@ -478,15 +485,6 @@ tcp_syn_retries - INTEGER
 tcp_timestamps - BOOLEAN
 	Enable timestamps as defined in RFC1323.
 
-tcp_min_tso_segs - INTEGER
-	Minimal number of segments per TSO frame.
-	Since linux-3.12, TCP does an automatic sizing of TSO frames,
-	depending on flow rate, instead of filling 64Kbytes packets.
-	For specific usages, it's possible to force TCP to build big
-	TSO frames. Note that TCP stack might split too big TSO packets
-	if available window is too small.
-	Default: 2
-
 tcp_tso_win_divisor - INTEGER
 	This allows control over what percentage of the congestion window
 	can be consumed by a single TSO frame.
@@ -571,6 +569,9 @@ tcp_limit_output_bytes - INTEGER
 	typical pfifo_fast qdiscs.
 	tcp_limit_output_bytes limits the number of bytes on qdisc
 	or device to reduce artificial RTT/cwnd and reduce bufferbloat.
+	Note: For GSO/TSO enabled flows, we try to have at least two
+	packets in flight. Reducing tcp_limit_output_bytes might also
+	reduce the size of individual GSO packet (64KB being the max)
 	Default: 131072
 
 tcp_challenge_ack_limit - INTEGER
@@ -1090,14 +1091,15 @@ conf/all/forwarding - BOOLEAN
 
 	This referred to as global forwarding.
 
-proxy_ndp - INTEGER
+proxy_ndp - BOOLEAN
 	Do proxy ndp.
 
-	Possible values are:
-		0 Proxy NDP is disabled
-		1 Proxy NDP is enabled
-		2 NDP packets are sent to userspace, where a userspace proxy
-                  can be implemented
+fwmark_reflect - BOOLEAN
+	Controls the fwmark of kernel-generated IPv6 reply packets that are not
+	associated with a socket for example, TCP RSTs or ICMPv6 echo replies).
+	If unset, these packets have a fwmark of zero. If set, they have the
+	fwmark of the packet they are replying to.
+	Default: 0
 
 conf/interface/*:
 	Change special settings per interface.
@@ -1145,18 +1147,6 @@ accept_ra_rt_info_max_plen - INTEGER
 
 accept_ra_rtr_pref - BOOLEAN
 	Accept Router Preference in RA.
-
-	Functional default: enabled if accept_ra is enabled.
-			    disabled if accept_ra is disabled.
-
-accept_ra_prefix_route - BOOLEAN
-	Set the prefix route for the autoconfigured interface address
-
-	Functional default: enabled
-
-accept_ra_mtu - BOOLEAN
-	Apply the MTU value specified in RA option 5 (RFC4861). If
-	disabled, the MTU specified in the RA will be ignored.
 
 	Functional default: enabled if accept_ra is enabled.
 			    disabled if accept_ra is disabled.
