@@ -12,6 +12,9 @@
 
 extern __read_mostly int scheduler_running;
 
+extern unsigned int max_possible_freq;
+extern unsigned int min_max_freq;
+
 /*
  * Convert user-nice values [ -20 ... 0 ... 19 ]
  * to static priority [ MAX_RT_PRIO..MAX_PRIO-1 ],
@@ -480,6 +483,13 @@ struct rq {
 	u64 idle_stamp;
 	u64 avg_idle;
 #endif
+
+	/*
+	 * max_freq = user or thermal defined maximum
+	 * max_possible_freq = maximum supported by hardware
+	 */
+	unsigned int cur_freq, max_freq, min_freq, max_possible_freq;
+	u64 cumulative_runnable_avg;
 
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
 	u64 prev_irq_time;
@@ -1411,16 +1421,3 @@ static inline u64 irq_time_read(int cpu)
 }
 #endif /* CONFIG_64BIT */
 #endif /* CONFIG_IRQ_TIME_ACCOUNTING */
-
-static inline void account_reset_rq(struct rq *rq)
-{
-#ifdef CONFIG_IRQ_TIME_ACCOUNTING
-	rq->prev_irq_time = 0;
-#endif
-#ifdef CONFIG_PARAVIRT
-	rq->prev_steal_time = 0;
-#endif
-#ifdef CONFIG_PARAVIRT_TIME_ACCOUNTING
-	rq->prev_steal_time_rq = 0;
-#endif
-}
