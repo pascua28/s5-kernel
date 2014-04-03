@@ -2101,6 +2101,12 @@ sub process {
 			WARN("BAD_AUTHOR", "invalid author identity\n" . $line );
 		}
 
+# Check for unwanted Gerrit info
+		if ($in_commit_log && $line =~ /^\s*change-id:/i) {
+			ERROR("GERRIT_CHANGE_ID",
+			      "Remove Gerrit Change-Id's before submitting upstream.\n" . $herecurr);
+		}
+
 # Check for wrappage within a valid hunk of the file
 		if ($realcnt != 0 && $line !~ m{^(?:\+|-| |\\ No newline|$)}) {
 			ERROR("CORRUPTED_PATCH",
