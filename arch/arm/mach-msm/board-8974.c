@@ -676,7 +676,7 @@ void __init msm8974_init_very_early(void)
 	msm8974_early_memory();
 }
 
-static const char *msm8974_dt_match[] __initconst = {
+static const char *msm8974_dt_match[] __initdata = {
 	"qcom,msm8974",
 	"qcom,apq8074",
 	NULL
