@@ -2101,7 +2101,7 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		unsigned long, arg4, unsigned long, arg5)
 {
 	struct task_struct *me = current;
-	//struct task_struct *tsk;
+	struct task_struct *tsk;
 	unsigned char comm[sizeof(me->comm)];
 	long error;
 
@@ -2261,11 +2261,8 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		case PR_SET_VMA:
 			error = prctl_set_vma(arg2, arg3, arg4, arg5);
 			break;
-		/* remove this case because of sidesync call mute
+
 		case PR_SET_TIMERSLACK_PID:
-			if (current->pid != (pid_t)arg3 &&
-					!capable(CAP_SYS_NICE))
-				return -EPERM;
 			rcu_read_lock();
 			tsk = find_task_by_pid_ns((pid_t)arg3, &init_pid_ns);
 			if (tsk == NULL) {
@@ -2282,7 +2279,7 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 			put_task_struct(tsk);
 			error = 0;
 			break;
-		*/
+
 		default:
 			error = -EINVAL;
 			break;
