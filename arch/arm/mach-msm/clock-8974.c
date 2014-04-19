@@ -4872,12 +4872,14 @@ static struct clk_lookup msm_clocks_8974pro_only[] __initdata = {
 	CLK_LOOKUP("cal_clk", gcc_sdcc1_cdccal_ff_clk.c, "msm_sdcc.1"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6e.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "20.qcom,camera"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "20.qcom,eeprom"),
 	CLK_LOOKUP("cam_src_clk", mclk2_clk_src.c, "6c.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "90.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "6e.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "20.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk2_clk.c, "6c.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk1_clk.c, "90.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "20.qcom,eeprom"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "0.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "1.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk2_clk_src.c, "2.qcom,camera"),
@@ -4943,6 +4945,17 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9928000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_i2c_apps_clk.c, "f9928000.i2c"),
 
+/*OPPO yuyi 2013-03-22 modify begin for nfc*/	
+#ifdef CONFIG_VENDOR_EDIT
+/*OPPO yuyi 2014-02-24 add begin for nfc pn65T*/
+	CLK_LOOKUP("core_clk", cxo_d1_a.c, "6-0028"),
+	
+	CLK_LOOKUP("core_clk", gcc_blsp2_qup3_spi_apps_clk.c, "f9965000.spi"),
+	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f9965000.spi"),
+/*OPPO yuyi 2014-02-24 add end for nfc pn65T*/
+#endif
+/*OPPO yuyi 2013-03-22 amodify  end */
+
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart2_apps_clk.c, "f991e000.serial"),
@@ -4959,8 +4972,12 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup1_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup2_i2c_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup2_spi_apps_clk.c, ""),
+/*OPPO yuyi 2013-03-22 delete begin for nfc pn65T*/	
+#ifndef CONFIG_VENDOR_EDIT
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup3_i2c_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup3_spi_apps_clk.c, ""),
+#endif
+/*OPPO yuyi 2014-02-24 delete end for nfc pn65T*/
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup4_i2c_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup5_i2c_apps_clk.c, "f9967000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup4_spi_apps_clk.c, "f9966000.spi"),
