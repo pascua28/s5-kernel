@@ -24,6 +24,8 @@
 #include "io.h"
 #include "xhci.h"
 
+#include <linux/pcb_version.h>
+
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(1000))
 #define MAX_INVALID_CHRGR_RETRY 3
 static int max_chgr_retry_count = MAX_INVALID_CHRGR_RETRY;
@@ -519,6 +521,14 @@ static void dwc3_otg_notify_host_mode(struct usb_otg *otg, int host_mode)
 		power_supply_set_scope(dotg->psy, POWER_SUPPLY_SCOPE_DEVICE);
 }
 
+/* OPPO 2013-12-01 wangjc Add begin for non standard charger detect */
+#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_FIND7
+static bool non_standard = false;
+#endif
+#endif
+/* OPPO 2013-12-01 wangjc Add end */
+
 static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 {
 	static int power_supply_type;
@@ -538,7 +548,8 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 	else if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_CDP;
 	else if (dotg->charger->chg_type == DWC3_DCP_CHARGER ||
-			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER)
+			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER || 
+			dotg->charger->chg_type == DWC3_FLOATED_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_DCP;
 	else
 		power_supply_type = POWER_SUPPLY_TYPE_BATTERY;
@@ -547,6 +558,12 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 
 	if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
 		mA = DWC3_IDEV_CHG_MAX;
+/* OPPO 2013-11-05 wangjc Add begin for enable non standard charging */
+#ifdef CONFIG_VENDOR_EDIT
+	if (dotg->charger->chg_type == DWC3_FLOATED_CHARGER)
+		mA = DWC3_IDEV_CHG_FLOATED;
+#endif
+/* OPPO 2013-11-05 wangjc Add end */
 
 	if (dotg->charger->max_power == mA)
 		return 0;
@@ -561,14 +578,32 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 			goto psy_error;
 	} else if (dotg->charger->max_power > 0 && (mA == 0 || mA == 2)) {
 		/* Disable charging */
-		if (power_supply_set_online(dotg->psy, false))
-			goto psy_error;
+/* OPPO 2013-11-20 wangjc Add begin for don't set online to false when usb is still plug in */
+#ifdef CONFIG_VENDOR_EDIT
+		if(power_supply_type != POWER_SUPPLY_TYPE_USB) {
+			if (power_supply_set_online(dotg->psy, false))
+				goto psy_error;
+
 		/* Set max current limit */
 		if (power_supply_set_current_limit(dotg->psy, 0))
 			goto psy_error;
+		}
+#endif
+/* OPPO 2013-11-20 wangjc Add end */
 	}
 
 	power_supply_changed(dotg->psy);
+/* OPPO 2013-12-01 wangjc Add begin for non standard charger detect, HW_VERSION__12 is dvt */
+#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_FIND7
+	if(get_pcb_version() < HW_VERSION__12) {
+		if(mA == 500) {
+			non_standard = false;
+		}
+	}
+#endif
+#endif
+/* OPPO 2013-12-01 wangjc Add end */
 	dotg->charger->max_power = mA;
 	return 0;
 
@@ -681,6 +716,40 @@ void dwc3_otg_init_sm(struct dwc3_otg *dotg)
 			clear_bit(B_SESS_VLD, &dotg->inputs);
 	}
 }
+/* OPPO 2013-10-05 wangjc Add begin for non-standard charger detect */
+#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_FIND7
+static void non_standard_charger_detect_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct dwc3_otg *dotg = container_of(dwork,
+				struct dwc3_otg, non_standard_charger_work);
+	struct usb_phy *phy = dotg->otg.phy;
+
+	if(non_standard == true) {
+		pr_info("%s DWC3_FLOATED_CHARGER\n", __func__);
+		dotg->charger->chg_type = DWC3_FLOATED_CHARGER;
+		dwc3_otg_set_power(phy,
+							DWC3_IDEV_CHG_FLOATED);
+	}
+}
+#endif
+#endif
+/* OPPO 2013-10-05 wangjc Add end */
+
+
+/* OPPO 2013-11-21 wangjc Add begin for delay charger detect */
+#ifdef CONFIG_VENDOR_EDIT
+static void dwc3_otg_detect_work(struct work_struct *w)
+{
+	struct dwc3_otg *dotg = container_of(w, struct dwc3_otg, detect_work.work);
+	struct dwc3_charger *charger = dotg->charger;
+
+	charger->start_detection(charger, true);
+}
+#endif
+/* OPPO 2013-11-21 wangjc Add end */
+
 
 /**
  * dwc3_otg_sm_work - workqueue function.
@@ -769,8 +838,32 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 									1);
 					phy->state = OTG_STATE_B_PERIPHERAL;
 					work = 1;
+/* OPPO 2013-10-05 wangjc Add begin for support non-standard charger, HW_VERSION__12 is dvt */
+#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_FIND7
+					if(get_pcb_version() < HW_VERSION__12) {
+						cancel_delayed_work_sync(&dotg->non_standard_charger_work);
+						non_standard = true;
+
+						schedule_delayed_work(&dotg->non_standard_charger_work,
+							round_jiffies_relative(msecs_to_jiffies
+							(5000)));
+
+					} else {
+						/* jingchun.wang@Onlinerd.Driver, 2014/01/23  Add for notify usb online earlier */
+						power_supply_set_online(dotg->psy, true);
+						power_supply_changed(dotg->psy);
+					}
+#else
+					power_supply_set_online(dotg->psy, true);
+					power_supply_changed(dotg->psy);
+#endif
+#endif
+/* OPPO 2013-10-05 wangjc Add end */
 					break;
 				case DWC3_FLOATED_CHARGER:
+/* OPPO 2013-10-05 wangjc Modify begin for support non-standard charger */
+#ifndef CONFIG_VENDOR_EDIT
 					if (dotg->charger_retry_count <
 							max_chgr_retry_count)
 						dotg->charger_retry_count++;
@@ -791,10 +884,26 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					}
 					charger->start_detection(dotg->charger,
 									false);
+#else
+					dev_dbg(phy->dev, "lpm, FLOATED charger\n");
+					dwc3_otg_set_power(phy,
+							DWC3_IDEV_CHG_FLOATED);
+					pm_runtime_put_sync(phy->dev);
+					break;
+#endif
+/* OPPO 2013-10-05 wangjc Modify end */
 
 				default:
 					dev_dbg(phy->dev, "chg_det started\n");
+/* OPPO 2013-11-18 wangjc Modify begin for detect charger type later */
+#ifndef CONFIG_VENDOR_EDIT
 					charger->start_detection(charger, true);
+#else
+					/* jingchun.wang@Onlinerd.Driver, 2014/02/24  Add for solve usb reboot problem */
+					cancel_delayed_work_sync(&dotg->detect_work);
+					queue_delayed_work(system_nrt_wq, &dotg->detect_work, msecs_to_jiffies(600));
+#endif
+/* OPPO 2013-11-18 wangjc Modify end */
 					break;
 				}
 			} else {
@@ -813,6 +922,20 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				}
 			}
 		} else {
+/* OPPO 2013-12-01 wangjc Add begin for for non standard charger detect, HW_VERSION__12 is dvt */
+#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_FIND7
+			if(get_pcb_version() < HW_VERSION__12) {
+				cancel_delayed_work_sync(&dotg->non_standard_charger_work);
+			}
+#endif
+#endif
+/* OPPO 2013-12-01 wangjc Add end */
+#ifdef CONFIG_VENDOR_EDIT
+/* jingchun.wang@Onlinerd.Driver, 2014/01/06  Add for solve usb reboot problem */
+			cancel_delayed_work_sync(&dotg->detect_work);
+#endif /*CONFIG_VENDOR_EDIT*/
+
 			if (charger)
 				charger->start_detection(dotg->charger, false);
 
@@ -1011,6 +1134,22 @@ int dwc3_otg_init(struct dwc3 *dwc)
 
 	init_completion(&dotg->dwc3_xcvr_vbus_init);
 	INIT_DELAYED_WORK(&dotg->sm_work, dwc3_otg_sm_work);
+/* OPPO 2013-10-05 wangjc Add begin for support non-standard charger, HW_VERSION__12 is dvt */
+#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_FIND7
+	if(get_pcb_version() < HW_VERSION__12) {
+		INIT_DELAYED_WORK(&dotg->non_standard_charger_work,
+								non_standard_charger_detect_work);
+	}
+#endif
+#endif
+/* OPPO 2013-10-05 wangjc Add end */
+/* OPPO 2013-11-21 wangjc Add begin for delay charger detect */
+#ifdef CONFIG_VENDOR_EDIT
+	INIT_DELAYED_WORK(&dotg->detect_work, dwc3_otg_detect_work);
+#endif
+/* OPPO 2013-11-21 wangjc Add end */
+
 
 	ret = request_irq(dotg->irq, dwc3_otg_interrupt, IRQF_SHARED,
 				"dwc3_otg", dotg);
@@ -1025,6 +1164,11 @@ int dwc3_otg_init(struct dwc3 *dwc)
 	return 0;
 
 err3:
+/* OPPO 2013-11-21 wangjc Add begin for delay charger detect */
+#ifdef CONFIG_VENDOR_EDIT
+	cancel_delayed_work_sync(&dotg->detect_work);
+#endif
+/* OPPO 2013-11-21 wangjc Add end */
 	cancel_delayed_work_sync(&dotg->sm_work);
 	usb_set_transceiver(NULL);
 err2:
@@ -1050,6 +1194,11 @@ void dwc3_otg_exit(struct dwc3 *dwc)
 	if (dotg) {
 		if (dotg->charger)
 			dotg->charger->start_detection(dotg->charger, false);
+/* OPPO 2013-11-21 wangjc Add begin for delay charger detect */
+#ifdef CONFIG_VENDOR_EDIT
+		cancel_delayed_work_sync(&dotg->detect_work);
+#endif
+/* OPPO 2013-11-21 wangjc Add end */
 		cancel_delayed_work_sync(&dotg->sm_work);
 		usb_set_transceiver(NULL);
 		pm_runtime_put(dwc->dev);
