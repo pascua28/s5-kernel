@@ -50,6 +50,11 @@
 #define CTRL_DEVICE "wcnss_ctrl"
 #define VERSION "1.01"
 #define WCNSS_PIL_DEVICE "wcnss"
+/*OPPO qiulei 2013-10-28 add begin wifi_devinfo*/
+#ifdef CONFIG_VENDOR_EDIT 
+#include <mach/device_info.h>
+#endif /* VENDOR_EDIT */
+/*OPPO qiulei 2013-10-28 add end wifi_devinfo*/
 
 /* module params */
 #define WCNSS_CONFIG_UNSPECIFIED (-1)
@@ -292,6 +297,14 @@ struct nvbin_dnld_req_params {
 	 */
 };
 
+/*OPPO qiulei 2013-10-24 add begin for wifi_devinfo*/
+#ifdef CONFIG_VENDOR_EDIT 
+struct manufacture_info wcn_info = {
+	.version = "wcn3680",
+	.manufacture = "Qualcomm",
+};
+#endif /* VENDOR_EDIT */
+/*OPPO qiulei 2013-10-24 add end for wifi_devinfo*/
 
 struct nvbin_dnld_req_msg {
 	/*
@@ -2571,6 +2584,11 @@ wcnss_wlan_probe(struct platform_device *pdev)
 
 	/* create an environment to track the device */
 	penv = devm_kzalloc(&pdev->dev, sizeof(*penv), GFP_KERNEL);
+	/*OPPO qiulei 2013-10-24 add begin for wifi_devinfo*/
+	#ifdef CONFIG_OPPO_DEVICE_INFO
+	register_device_proc("wcn", wcn_info.version, wcn_info.manufacture);
+	#endif /* VENDOR_EDIT */
+   /*OPPO qiulei 2013-10-24 add end for wifi_devinfo*/
 	if (!penv) {
 		dev_err(&pdev->dev, "cannot allocate device memory.\n");
 		return -ENOMEM;
