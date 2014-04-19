@@ -1159,7 +1159,8 @@ int msm_isp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	rc = vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev);
 	if (rc <= 0)
-		pr_err("%s: halt timeout rc=%ld\n", __func__, rc);
+		pr_err("%s: halt timeout rc=%ld id %d\n", __func__, rc,
+			vfe_dev->pdev->id);
 
 	vfe_dev->buf_mgr->ops->buf_mgr_deinit(vfe_dev->buf_mgr);
 	vfe_dev->hw_info->vfe_ops.core_ops.release_hw(vfe_dev);
