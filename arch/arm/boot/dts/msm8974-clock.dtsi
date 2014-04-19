@@ -15,8 +15,15 @@
 		qcom,cxo-div = <2>;
 	};
 
-	pm8941_clkdiv2: clkdiv@5c00 {
-	};
+		pm8941_clkdiv2: clkdiv@5c00 {
+		/*VENDOR_EDIT*/
+		/*liuyan 2013-9-12 add for es325*/
+		/*reg = <0x5c00 0x1000>;
+		qcom,cxo-freq = <19200000>;*/
+		qcom,cxo-div = <1>;
+		/*qcom,enable = <1>;*/
+		/*liuyan add end*/
+		};
 
 	pm8941_clkdiv3: clkdiv@5d00 {
 	};

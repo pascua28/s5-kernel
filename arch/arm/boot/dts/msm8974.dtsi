@@ -18,8 +18,14 @@
 	interrupt-parent = <&intc>;
 
 	aliases {
-		spi0 = &spi_0;
+		/*VENDOR_EDIT wangjc del spi0*/
+		/*spi0 = &spi_0;*/
 		spi7 = &spi_7;
+		/*OPPO yuyi 2014-03-18 add end for NFC spi clk*/
+		/*ifdef  CONFIG_VENDOR_EDIT*/
+		spi9 = &spi_9;
+		/*endif*/
+		/*OPPO yuyi 2014-03-18 add end for NFC spi clk*/
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
 		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
 		sdhc3 = &sdhc_3; /* SDC3 SDIO slot */
@@ -269,7 +275,12 @@
 		qcom,vdd-voltage-level = <1 5 7>;
 
 		qcom,hsusb-otg-phy-type = <2>;
-		qcom,hsusb-otg-phy-init-seq = <0x63 0x81 0xffffffff>;
+		/* #ifndef VENDOR_EDIT */
+		/* Zhilong.Zhang@OnlineRd.Driver, 2013/11/13, Modify for tuning USB PHY eye diagram */	
+		/*qcom,hsusb-otg-phy-init-seq = <0x63 0x81 0xffffffff>;*/
+		/* #else */
+		qcom,hsusb-otg-phy-init-seq = <0x44 0x80 0x3F 0x81 0x4D 0x82 0x13 0x83 0xffffffff>;	
+		/* #endif */
 		qcom,hsusb-otg-mode = <1>;
 		qcom,hsusb-otg-otg-control = <1>;
 		qcom,hsusb-otg-disable-reset;
@@ -656,7 +667,30 @@
 		qcom,bam-producer-pipe-index = <19>;
 		qcom,master-id = <84>;
 	};
+	/*OPPO yuyi 2014-03-18 add end for NFC spi clk*/
+	/*ifdef  CONFIG_VENDOR_EDIT*/
+	spi_9: spi@f9965000 {
+		compatible = "qcom,spi-qup-v2";
 
+		cell-index = <9>;
+		reg-names = "spi_physical";
+		reg = <0xf9965000 0x1000>;
+		interrupt-names = "spi9_irq";
+		interrupts = <0 103 0>;
+
+		spi-max-frequency = <19200000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		
+		qcom,gpio-mosi = <&msmgpio 49 0>;
+		qcom,gpio-miso = <&msmgpio 50 0>;
+		qcom,gpio-clk  = <&msmgpio 52 0>;
+		qcom,gpio-cs0  = <&msmgpio 51 0>;
+		
+		qcom,master-id = <84>;
+	};
+	/*endif*/
+	/*OPPO yuyi 2014-03-18 add end for NFC spi clk*/
 	tspp: msm_tspp@f99d8000 {
 		compatible = "qcom,msm_tspp";
 		cell-index = <0>;
@@ -715,6 +749,10 @@
 		qcom,apps-ch-pipes = <0x60000000>;
 		qcom,ea-pc = <0x30>;
 
+              /*VENDOR_EDIT liuyan add 2013-12-18 for dvt*/
+              cdc-es325-supply = <&pm8941_lvs2>;   /*liuyan modify for dvt*/ 
+              adnc,reset-gpio = <&msmgpio 67 0>;
+              /*VENDOR_EDIT liuyan add end*/
 		taiko_codec {
 			compatible = "qcom,taiko-slim-pgd";
 			elemental-addr = [00 01 A0 00 17 02];
@@ -761,11 +799,17 @@
 						   "cdc-vdd-a-1p2v",
 						   "cdc-vddcx-1",
 						   "cdc-vddcx-2";
-
+		/*VENDOR_EDIT liuyan add 2013-11-26,chinese and america hpmic switch*/
+		cdc-hpmic_switch-1-supply = <&pm8941_l24>;
+		/*liuyan add end*/
+		
 			qcom,cdc-micbias-ldoh-v = <0x3>;
 			qcom,cdc-micbias-cfilt1-mv = <1800>;
-			qcom,cdc-micbias-cfilt2-mv = <2700>;
-			qcom,cdc-micbias-cfilt3-mv = <2700>;
+			/* VENDOR_EDIT liuyan 2013-3-15 modify,mic bias*/
+			/*qcom,cdc-micbias-cfilt2-mv = <2700>;*/
+                        qcom,cdc-micbias-cfilt2-mv = <2000>;
+			/*liuyan modify end*/
+			qcom,cdc-micbias-cfilt3-mv = <1800>;
 			qcom,cdc-micbias1-cfilt-sel = <0x0>;
 			qcom,cdc-micbias2-cfilt-sel = <0x1>;
 			qcom,cdc-micbias3-cfilt-sel = <0x2>;
@@ -775,6 +819,39 @@
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
 			qcom,cdc-dmic-sample-rate = <4800000>;
 		};
+/*VENDOR_EDIT liuyan add for es325*/
+	es325_codec_gen0{
+		compatible = "adnc,es325-codec-gen0";
+		elemental-addr = [00 01 02 00 BE 02];
+
+		adnc,es325-codec-gen0 = "es325-codec-gen0";
+		adnc,es325-codec-gen0-eaddr = [00 01  02 00 BE 02];
+
+		/*adnc,reset-gpio = <&msmgpio 67 0>;*/ /* DEFINED BY CUSTOMER */
+		adnc,wakeup-gpio = <&msmgpio 23 0>; /* DEFINED BY CUSTOMER */
+		/*adnc,power-gpio =  <&msmgpio 65 0>;*/
+		
+		/*adnc,es325-mclk-gpios = <&pm8941_gpios 16 0>;*/  
+		es325-mclk-clk =  <&pm8941_clkdiv2>;
+		adnc,es325-mclk-clk-freq = <19200000>;
+	}; 
+
+	es325_codec_intf{
+		compatible = "adnc,es325-codec-intf";
+		elemental-addr =  [00 00 02 00 BE 02];
+
+		adnc,es325-codec-intf ="es325-codec-intf";
+		adnc,es325-codec-intf-eaddr = [00 01 02 00 BE 02];
+
+		/*adnc,reset-gpio = <&msmgpio 67  0>;*/ /* DEFINED BY CUSTOMER */
+		adnc,wakeup-gpio = <&msmgpio 23 0>;/* DEFINED BY CUSTOMER*/
+		/*adnc,power-gpio = <&msmgpio 65 0>;*/
+
+		/*adnc,es325-mclk-gpios = <&pm8941_gpios 16 0>;*/
+		es325-mclk-clk = <&pm8941_clkdiv2>;
+		adnc,es325-mclk-clk-freq = <19200000>;
+	}; 
+/*liuyan add end*/
 	};
 
 	sound {
@@ -797,10 +874,21 @@
 			"MIC BIAS1 Internal1", "Handset Mic",
 			"AMIC2", "MIC BIAS2 External",
 			"MIC BIAS2 External", "Headset Mic",
-			"AMIC3", "MIC BIAS2 External",
-			"MIC BIAS2 External", "ANCRight Headset Mic",
-			"AMIC4", "MIC BIAS2 External",
-			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			
+			/*VENDOR_EDIT liuyan 2013-3-15 modify*/
+			/*"AMIC3", "MIC BIAS2 External",*/
+			/*"MIC BIAS2 External", "ANCRight Headset Mic",*/
+			/*"AMIC4", "MIC BIAS2 External",*/
+			/*"MIC BIAS2 External", "ANCLeft Headset Mic",*/
+			
+			"AMIC3", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Main Mic",
+			"AMIC4", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Second Mic",
+			"AMIC5", "MIC BIAS1 External",
+			"MIC BIAS1 External", "ANC Mic",
+			/*liuyan modify end*/
+			
 			"DMIC1", "MIC BIAS1 External",
 			"MIC BIAS1 External", "Digital Mic1",
 			"DMIC2", "MIC BIAS1 External",
@@ -825,6 +913,13 @@
 		qcom,sec-auxpcm-gpio-sync = <&msmgpio 80 0>;
 		qcom,sec-auxpcm-gpio-din  = <&msmgpio 81 0>;
 		qcom,sec-auxpcm-gpio-dout = <&msmgpio 82 0>;
+		/*VENDOR_EDIT liuyan add 2013-3-14,chinese and america hpmic switch*/
+                qcom,hpmic-switch-gpio = <&msmgpio 87 0>;
+                qcom,yda145_ctr-gpio = <&msmgpio 77 0>;
+                qcom,yda145_boots-gpio = <&msmgpio 67 0>;
+                enable_spk-gpio = <&msmgpio 73 0>; /*liuyan add 2013-8-19,speaker*/
+                cdc_spk-supply = <&pm8941_boost>; /*lvxiaojun add 2014-2-10,14001 yda145 supply*/
+               /*liuyan add end*/
 	};
 
 	spmi_bus: qcom,spmi@fc4c0000 {
@@ -869,7 +964,10 @@
 		qcom,scl-gpio = <&msmgpio 3 0>;
 		qcom,sda-gpio = <&msmgpio 2 0>;
 		qcom,master-id = <86>;
-		status = "disabled";
+		/*VENDOR_EDIT wangjc enable*/
+		/*status = "disabled";*/
+		status = "ok";
+		/*end add*/
 	};
 
 	i2c_2: i2c@f9924000 {
@@ -888,7 +986,29 @@
 		qcom,sda-gpio = <&msmgpio 6 0>;
 	};
 
-	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
+/*OPPO yuyi 2013-03-22 add begin for nfc*/
+/*#ifdef VENDOR_EDIT */
+	i2c_6: i2c@f9928000 {
+		cell-index = <6>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9928000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 100 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,scl-gpio = <&msmgpio 30 0>;
+		qcom,sda-gpio = <&msmgpio 29 0>;
+		qcom,active-only;
+		qcom,master-id = <86>;
+	};
+/*#endif*/
+/*OPPO yuyi 2013-03-22 add end*/
+/*#ifdef VENDOR_EDIT*/
+/*wangjc delete*/
+	/*spi_0: spi@f9923000 {
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -910,7 +1030,8 @@
 		qcom,bam-consumer-pipe-index = <12>;
 		qcom,bam-producer-pipe-index = <13>;
 		qcom,master-id = <86>;
-	};
+	};*/
+/*wangjc del end*/
 
 	qcom,clock-krait@f9016000 {
 		compatible = "qcom,clock-krait-8974";
@@ -2020,8 +2141,9 @@
 		rpm-channel-name = "rpm_requests";
 		rpm-channel-type = <15>; /* SMD_APPS_RPM */
 	};
-
-        qcom,msm-rng@f9bff000 {
+        /*#ifdef VENDOR_EDIT*/
+        /*liuyan 2014-17 fix big at current in ftm sleep mode*/
+        /*qcom,msm-rng@f9bff000 {
 		compatible = "qcom,msm-rng";
 		reg = <0xf9bff000 0x200>;
 		qcom,msm-bus,name = "msm-rng-noc";
@@ -2031,6 +2153,8 @@
 				<88 618 0 0>,
 				<88 618 0 800>;
         };
+        /*liuyan fix end*/
+        /*#endif*/
 
 	qseecom: qcom,qseecom@7b00000 {
 		compatible = "qcom,qseecom";
@@ -2279,11 +2403,18 @@
 		qcom,rx-ring-size = <64>;
 	};
 
+	//#ifdef VENDOR_EDIT
+	//WeiHong.Li@OnLineRD.AirService.Module, 2013/10/24, modify for OEM DATA region 
+	/* NOTICE: 
+           add region(0x05900000 0x100000) for OEM data ram for NV backup.
+         */
         memory_hole: qcom,msm-mem-hole {
                 compatible = "qcom,msm-mem-hole";
                 qcom,memblock-remove = <0x5d00000 0x7d00000
-					0xfa00000 0x500000>; /* Address and Size of Hole */
+					0xfa00000 0x500000
+					0x05900000 0x100000>; /* Address and Size of Hole */
         };
+	//#endif /* VENDOR_EDIT */
 
 	uart7: uart@f995d000 { /*BLSP #2, UART #7 */
 		compatible = "qcom,msm-hsuart-v14";

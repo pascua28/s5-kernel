@@ -830,8 +830,10 @@
 &pm8941_chg {
 	status = "ok";
 	otg-parent-supply = <&ext_5v>;
-
-	qcom,charging-disabled;
+	/*VENDOR_EDIT*/
+	/*wangjc enable charger*/
+	/*qcom,charging-disabled;*/
+	/*wangjc end*/
 
 	qcom,chgr@1000 {
 		status = "ok";

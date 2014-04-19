@@ -10,9 +10,12 @@
  * GNU General Public License for more details.
  */
 
+/include/ "dsi-panel-orise-720p-video.dtsi"
 /include/ "msm8974-leds.dtsi"
 /include/ "msm8974-camera-sensor-cdp.dtsi"
-
+/include/ "dsi-panel-jdi-1080p-video.dtsi"
+/include/ "dsi-panel-truly-1080p-video.dtsi"
+/include/ "dsi-panel-jdi-1440p-video.dtsi"
 / {
 	aliases {
 		serial0 = &blsp1_uart1;
