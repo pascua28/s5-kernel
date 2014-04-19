@@ -461,3 +461,13 @@ config SND_SOC_MSM_HDMI_CODEC_RX
 	help
 	HDMI audio drivers should be built only if the platform
         supports hdmi panel.
+
+#liuyan add fof es325
+config  SND_SOC_ES325
+tristate
+config  SND_SOC_ES325_SLIM
+tristate
+config SND_SOC_ES325_I2C
+tristate
+config  SND_SOC_ES325_I2S
+tristate
