@@ -46,6 +46,12 @@
 
 #include "queue.h"
 
+#ifdef CONFIG_VENDOR_EDIT 
+//Zhilong.Zhang@OnlineRd.Driver, 2013/10/24, Add for eMMC and DDR device information
+#include <mach/device_info.h>
+#include <linux/pcb_version.h>
+#endif /* VENDOR_EDIT */
+
 MODULE_ALIAS("mmc:block");
 #ifdef MODULE_PARAM_PREFIX
 #undef MODULE_PARAM_PREFIX
@@ -1462,6 +1468,11 @@ static inline void mmc_apply_rel_rw(struct mmc_blk_request *brq,
 	}
 }
 
+#ifdef CONFIG_VENDOR_EDIT
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/28, Add for solve QT bug(ID:390597): Bad micro SD card cause the phone to suspend/wakeup abnormal
+static int bad_micro_sd_card = 0;
+#endif /* VENDOR_EDIT */
+
 #define CMD_ERRORS							\
 	(R1_OUT_OF_RANGE |	/* Command argument out of range */	\
 	 R1_ADDRESS_ERROR |	/* Misaligned address */		\
@@ -1491,6 +1502,17 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	 */
 	if (brq->sbc.error || brq->cmd.error || brq->stop.error ||
 	    brq->data.error) {
+
+#ifdef CONFIG_VENDOR_EDIT
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/28, Add for solve QT bug(ID:390597): Bad micro SD card cause the phone to suspend/wakeup abnormal
+		if ((card->host->index == 1) && bad_micro_sd_card) {
+			if (req) {
+				printk(KERN_ERR"%s: bad sd card had been detected, return MMC_BLK_ABORT\n", __func__);
+				return MMC_BLK_ABORT;
+			}
+		}
+#endif /* VENDOR_EDIT */
+		
 		switch (mmc_blk_cmd_recovery(card, req, brq, &ecc_err)) {
 		case ERR_RETRY:
 			return MMC_BLK_RETRY;
@@ -1557,6 +1579,15 @@ static int mmc_blk_err_check(struct mmc_card *card,
 		       (unsigned)blk_rq_pos(req),
 		       (unsigned)blk_rq_sectors(req),
 		       brq->cmd.resp[0], brq->stop.resp[0]);
+
+#ifdef CONFIG_VENDOR_EDIT
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/28, Add for solve QT bug(ID:390597): Bad micro SD card cause the phone to suspend/wakeup abnormal
+		if ((card->host->index == 1) 
+			&& (rq_data_dir(req) == READ)) {
+			bad_micro_sd_card = 1;
+			printk(KERN_ERR"%s: bad sd card had been detected.\n", __func__);
+		}
+#endif /* VENDOR_EDIT */
 
 		if (rq_data_dir(req) == READ) {
 			if (ecc_err)
@@ -2651,6 +2682,18 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 			mmc_stop_bkops(card);
 	}
 
+#ifdef CONFIG_VENDOR_EDIT
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/28, Add for solve QT bug(ID:390597): Bad micro SD card cause the phone to suspend/wakeup abnormal
+	if ((card->host->index == 1) && bad_micro_sd_card) {
+		if (req) {
+			blk_end_request_all(req, -EIO);
+			printk(KERN_ERR"%s: bad sd card had been detected. do nothing.\n", __func__);
+			ret = -EIO;
+			goto out;
+		}
+	}
+#endif /* VENDOR_EDIT */
+
 	ret = mmc_blk_part_switch(card, md);
 	if (ret) {
 		if (req) {
@@ -3115,12 +3158,49 @@ static int mmc_blk_probe(struct mmc_card *card)
 {
 	struct mmc_blk_data *md, *part_md;
 	char cap_str[10];
+#ifdef CONFIG_OPPO_DEVICE_INFO
+//Zhilong.Zhang@OnlineRd.Driver, 2013/10/24, Add for eMMC and DDR device information	
+	char * manufacturerid;
+	struct manufacture_info ddr_info_1 = {
+		.version = "EDFA164A2PB",
+		.manufacture = "ELPIDA",
+	};
+	struct manufacture_info ddr_info_2 = {
+		.version = "K3QF7F70DM",
+		.manufacture = "SAMSUNG",
+	};	
+#endif /* VENDOR_EDIT */
 
 	/*
 	 * Check that the card supports the command class(es) we need.
 	 */
 	if (!(card->csd.cmdclass & CCC_BLOCK_READ))
 		return -ENODEV;
+
+#ifdef CONFIG_OPPO_DEVICE_INFO
+//Zhilong.Zhang@OnlineRd.Driver, 2013/10/24, Add for eMMC and DDR device information
+	switch (card->cid.manfid) {
+		case  0x11:
+			manufacturerid = "TOSHIBA";
+			break;
+		case  0x15:
+			manufacturerid = "SAMSUNG";
+			break;
+		case  0x45:
+			manufacturerid = "SANDISK";
+			break;
+		default:
+			manufacturerid = "unknown";
+			break;
+	}
+	if (!strcmp(mmc_card_id(card), "mmc0:0001")) {
+		register_device_proc("emmc", mmc_card_name(card), manufacturerid);
+		if (get_pcb_version() < HW_VERSION__20)
+			register_device_proc("ddr", ddr_info_1.version, ddr_info_1.manufacture);
+		else
+			register_device_proc("ddr", ddr_info_2.version, ddr_info_2.manufacture);
+	}
+#endif /* VENDOR_EDIT */	
 
 	md = mmc_blk_alloc(card);
 	if (IS_ERR(md))
