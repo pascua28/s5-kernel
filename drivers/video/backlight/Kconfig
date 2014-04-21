@@ -360,6 +360,12 @@ config BACKLIGHT_PANDORA
 	help
 	  If you have a Pandora console, say Y to enable the
 	  backlight driver.
+	  
+config LM3630_BL
+	bool "lcd backlight lm3630 driver"
+	depends on I2C
+	---help---
+	  Support for panel backlight	  
 
 endif # BACKLIGHT_CLASS_DEVICE
 
