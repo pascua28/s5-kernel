@@ -222,7 +222,8 @@ void led_trigger_event(struct led_trigger *trigger,
 	read_lock(&trigger->leddev_list_lock);
 	list_for_each(entry, &trigger->led_cdevs) {
 		struct led_classdev *led_cdev;
-
+             if (brightness==50||brightness==200||brightness==1)
+		printk("led_trigger_event:brightness=%d\n",brightness);	 
 		led_cdev = list_entry(entry, struct led_classdev, trig_list);
 		led_set_brightness(led_cdev, brightness);
 	}

@@ -484,6 +484,12 @@ struct qpnp_led_data {
 };
 
 static int num_kpbl_leds_on;
+/*Added by Jinshui.Liu@Camera 20140207 start for*/
+#ifdef CONFIG_VENDOR_EDIT
+bool flash_blink_state;
+int led_flash_state;
+#endif
+/*Added by Jinshui.Liu@Camera 20140207 end*/
 
 static int
 qpnp_led_masked_write(struct qpnp_led_data *led, u16 addr, u8 mask, u8 val)
@@ -928,7 +934,8 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 	else
 		led->flash_cfg->current_prgm =
 			(val * FLASH_MAX_LEVEL / led->max_current);
-
+         printk("qpnp_flash_set:val=%d,torch_enable=%d,current_prgm=%d,peripheral_subtype =%d\n",
+		 	val,led->flash_cfg->torch_enable,led->flash_cfg->current_prgm,led->flash_cfg->peripheral_subtype);
 	/* Set led current */
 	if (val > 0) {
 		if (led->flash_cfg->torch_enable) {
@@ -1274,8 +1281,13 @@ static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 			dev_err(&led->spmi_dev->dev, "pwm enable failed\n");
 			return rc;
 		}
-
+	/*OPPO yuyi modify begin for button_current */
+	#ifndef CONFIG_VENDOR_EDIT
 		num_kpbl_leds_on++;
+	#else
+		num_kpbl_leds_on = 1;
+	#endif
+	/*OPPO yuyi modify end for button_current */
 
 	} else {
 		led->kpdbl_cfg->pwm_cfg->mode =
@@ -1401,6 +1413,7 @@ static void qpnp_led_set(struct led_classdev *led_cdev,
 
 	led->cdev.brightness = value;
 	schedule_work(&led->work);
+	printk("qpnp_led_set:brightness=%d\n",led->cdev.brightness);
 }
 
 static void __qpnp_led_work(struct qpnp_led_data *led,
@@ -2218,6 +2231,91 @@ static ssize_t blink_store(struct device *dev,
 	return count;
 }
 
+/*Added by Jinshui.Liu@Camera 20140207 start for*/
+#ifdef CONFIG_VENDOR_EDIT
+static void led_flash_blink_work(struct work_struct *work)
+{
+    //int brightness;
+    struct delayed_work *dwork = to_delayed_work(work);
+	struct qpnp_led_data *led = container_of(dwork,
+					struct qpnp_led_data, dwork);
+
+    if (flash_blink_state) {
+        if (led->flash_cfg->torch_enable)
+            led->cdev.brightness = 51;
+        else
+            led->cdev.brightness = 500;
+    } else {
+        led->cdev.brightness = 0;
+    }
+
+	__qpnp_led_work(led, 0);
+	
+    flash_blink_state = !flash_blink_state;
+	
+    schedule_delayed_work(dwork, msecs_to_jiffies(1200));
+	return;
+}
+
+static void led_flash_blink_stop(struct qpnp_led_data *led)
+{
+    
+    if (led_flash_state == 2) {
+        flash_blink_state = false;
+        cancel_delayed_work_sync(&led->dwork);
+        led->cdev.brightness = 0;
+        __qpnp_led_work(led, 0);
+    } else if(led_flash_state == 1) {
+        led->cdev.brightness = 0;
+        __qpnp_led_work(led, 0);
+    } else {
+        return;
+    }
+    
+    led_flash_state = 0;
+}
+
+static ssize_t led_flash_blink_store(struct device *dev,
+	struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	ssize_t ret = -EINVAL;
+	struct qpnp_led_data *led;
+	unsigned long state;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	led = container_of(led_cdev, struct qpnp_led_data, cdev);
+
+	ret = kstrtoul(buf, 10, &state);
+	if (ret)
+		return ret;
+
+    if (state == 2) {
+        /*blink*/
+        led_flash_blink_stop(led);
+        led_flash_state = 2;
+        flash_blink_state = true;
+        INIT_DELAYED_WORK(&led->dwork, led_flash_blink_work);
+    	schedule_delayed_work(&led->dwork, msecs_to_jiffies(500));
+	} else if(state == 1) {
+	    /*lamp*/
+        led_flash_blink_stop(led);
+        led_flash_state = 1;
+        if (led->flash_cfg->torch_enable)
+            led->cdev.brightness = 51;
+        else
+            led->cdev.brightness = 500;
+        __qpnp_led_work(led, 0);
+	} else {
+	    /*off*/
+        led_flash_blink_stop(led);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(flash_blink, 0666, NULL, led_flash_blink_store);
+#endif
+/*Added by Jinshui.Liu@Camera 20140207 end*/
 static DEVICE_ATTR(led_mode, 0664, NULL, led_mode_store);
 static DEVICE_ATTR(strobe, 0664, NULL, led_strobe_type_store);
 static DEVICE_ATTR(pwm_us, 0664, NULL, pwm_us_store);
@@ -2230,6 +2328,11 @@ static DEVICE_ATTR(duty_pcts, 0664, NULL, duty_pcts_store);
 static DEVICE_ATTR(blink, 0664, NULL, blink_store);
 
 static struct attribute *led_attrs[] = {
+/*Added by Jinshui.Liu@Camera 20140207 start for*/
+#ifdef CONFIG_VENDOR_EDIT
+    &dev_attr_flash_blink.attr,
+#endif
+/*Added by Jinshui.Liu@Camera 20140207 end*/
 	&dev_attr_led_mode.attr,
 	&dev_attr_strobe.attr,
 	NULL
