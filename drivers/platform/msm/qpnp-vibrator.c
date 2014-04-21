@@ -18,6 +18,11 @@
 #include <linux/hrtimer.h>
 #include <linux/of_device.h>
 #include <linux/spmi.h>
+/*OPPO yuyi 2013-01-16 add begin for optimizing the response speed of the vibrator*/
+#ifdef CONFIG_VENDOR_EDIT
+#include <linux/delay.h>
+#endif //VENDOR_EDIT
+/*OPPO yuyi 2013-01-16 add end for optimizing the response speed of the vibrator*/
 
 #include <linux/qpnp/vibrator.h>
 #include "../../staging/android/timed_output.h"
@@ -51,6 +56,11 @@ struct qpnp_vib {
 };
 
 static struct qpnp_vib *vib_dev;
+/*OPPO yuyi 2013-01-16 add begin for optimizing the response speed of the vibrator*/
+#ifdef CONFIG_VENDOR_EDIT
+static struct workqueue_struct *vibqueue;
+#endif //VENDOR_EDIT
+/*OPPO yuyi 2013-01-16 add end for optimizing the response speed of the vibrator*/
 
 static int qpnp_vib_read_u8(struct qpnp_vib *vib, u8 *data, u16 reg)
 {
@@ -152,7 +162,6 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 			return rc;
 		vib->reg_en_ctl = val;
 	}
-
 	return rc;
 }
 
@@ -174,8 +183,16 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
 			      HRTIMER_MODE_REL);
 	}
+	/*OPPO yuyi 2013-01-16 modify begin for optimizing the response speed of the vibrator*/
+	#ifndef CONFIG_VENDOR_EDIT
 	mutex_unlock(&vib->lock);
 	schedule_work(&vib->work);
+	#else //#ifdef VENDOR_EDIT
+	queue_work(vibqueue,&vib->work);
+	msleep(1);
+	mutex_unlock(&vib->lock);
+	#endif //VENDOR_EDIT
+	/*OPPO yuyi 2013-01-16 modify end for optimizing the response speed of the vibrator*/
 }
 
 static void qpnp_vib_update(struct work_struct *work)
@@ -203,7 +220,13 @@ static enum hrtimer_restart qpnp_vib_timer_func(struct hrtimer *timer)
 							 vib_timer);
 
 	vib->state = 0;
+	/*OPPO yuyi 2013-01-16 modify begin for optimizing the response speed of the vibrator*/
+	#ifndef CONFIG_VENDOR_EDIT
 	schedule_work(&vib->work);
+	#else //#ifdef VENDOR_EDIT
+	queue_work(vibqueue,&vib->work);
+	#endif //VENDOR_EDIT
+	/*OPPO yuyi 2013-01-16 modify end for optimizing the response speed of the vibrator*/
 
 	return HRTIMER_NORESTART;
 }
@@ -279,6 +302,11 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 	vib->reg_en_ctl = val;
 
 	mutex_init(&vib->lock);
+	/*OPPO yuyi 2013-01-16 add begin for optimizing the response speed of the vibrator*/
+	#ifdef CONFIG_VENDOR_EDIT
+	vibqueue = create_singlethread_workqueue("vibthread");
+	#endif //VENDOR_EDIT
+	/*OPPO yuyi 2013-01-16 add end for optimizing the response speed of the vibrator*/
 	INIT_WORK(&vib->work, qpnp_vib_update);
 
 	hrtimer_init(&vib->vib_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
