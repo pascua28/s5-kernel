@@ -28,6 +28,14 @@
 #include <mach/sps.h>
 #include "slim-msm.h"
 
+//liuyan add for dvt
+#ifdef CONFIG_VENDOR_EDIT
+#include <linux/regulator/consumer.h>
+#include <linux/of_gpio.h>
+#include <linux/pcb_version.h>
+#endif
+//liuyan add end
+
 #define NGD_SLIM_NAME	"ngd_msm_ctrl"
 #define SLIM_LA_MGR	0xFF
 #define SLIM_ROOT_FREQ	24576000
@@ -1189,6 +1197,11 @@ static int __devinit ngd_slim_probe(struct platform_device *pdev)
 	bool			rxreg_access = false;
 	bool			slim_mdm = false;
 
+#ifdef CONFIG_VENDOR_EDIT
+       //liuyan 2013-12-17 modify for at current
+      	int pcb_version;
+#endif
+
 	slim_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"slimbus_physical");
 	if (!slim_mem) {
@@ -1234,6 +1247,33 @@ static int __devinit ngd_slim_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err_ioremap_bam_failed;
 	}
+#ifdef CONFIG_VENDOR_EDIT
+	//liuyan 2013-12-17 modify for at current
+	pcb_version=get_pcb_version();
+	if(pcb_version==HW_VERSION__10){
+	  dev->cdc_es325= regulator_get(&pdev->dev, "cdc-es325");
+	    if (IS_ERR(dev->cdc_es325)) {
+		    pr_err("%s:Failed to get es325 regulator\n",__func__);
+		    dev->cdc_es325= NULL;
+		    //ret = -EINVAL;
+	    }else{
+	           if(regulator_enable(dev->cdc_es325)){
+                      printk("%s enable es325 regulatro faild\n",__func__);
+		    }
+                  printk("%s:enable es325 regulator success\n",__func__);
+	    }
+	    dev->reset_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"adnc,reset-gpio", 0);
+	    if(dev->reset_gpio){
+                if(gpio_request(dev->reset_gpio,"es325_reset")){
+                   pr_err("%s:request es325 reset gpio faild\n",__func__);
+	         }else{
+	            gpio_direction_output(dev->reset_gpio,0);
+                   pr_info("%s: set es325 reset gpio to %d \n",__func__,dev->reset_gpio);
+	         }
+	    }
+       }
+#endif
 	if (pdev->dev.of_node) {
 
 		ret = of_property_read_u32(pdev->dev.of_node, "cell-index",

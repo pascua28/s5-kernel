@@ -266,6 +266,12 @@ struct msm_slim_ctrl {
 	struct msm_slim_qmi	qmi;
 	struct msm_slim_pdata	pdata;
 	struct msm_slim_mdm	mdm;
+#ifdef CONFIG_VENDOR_EDIT
+       //liuyan 2013-12-17 modify for at current
+	struct regulator *cdc_es325;
+	unsigned int	reset_gpio;
+	//liuyan modify end
+#endif
 };
 
 struct msm_sat_chan {
