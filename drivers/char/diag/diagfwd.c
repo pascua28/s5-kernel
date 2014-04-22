@@ -1620,7 +1620,14 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 		return 0;
 	}
 	/* Check for download command */
+
+#ifdef CONFIG_VENDOR_EDIT
+//WenLong.Cai@OnLineRD.AirService.Modem, 2014/01/04, Modify for enabling QPST/QXDM reset UE 
+//when use "user mode" to compile android, QPST/QXDM could not reset UE.
+	else if ((cpu_is_msm8x60() || chk_apps_master()) && (*buf == 0x29)&&(*(buf+1)==0x2)) {
+#else
 	else if ((cpu_is_msm8x60() || chk_apps_master()) && (*buf == 0x3A)) {
+#endif
 		/* send response back */
 		driver->apps_rsp_buf[0] = *buf;
 		encode_rsp_and_send(0);
