@@ -251,22 +251,6 @@ config ARCH_APQ8064
 	select MSM_USE_USER_ACCESSIBLE_TIMERS
 	select MSM_CPU_PWRCTL
 	
-#ifdef VENDOR_EDIT 
-#jiangyg@OnlineRd.PM, 2013/10/18, Add for device selection
-config OPPO_DEVICE_FIND7
-	bool "OPPO_DEVICE_FIND7"
-
-#ouzhengdong@OnlineRd.PM, 2013/12/12 Add for wx device selection
-config OPPO_DEVICE_FIND7WX
-	bool "OPPO_DEVICE_FIND7WX"
-    
-config OPPO_DEVICE_FIND7OP
-	bool "OPPO_DEVICE_FIND7OP"
-	
-config OPPO_DEVICE_N2
-	bool "OPPO_DEVICE_N2"	
-#endif /* VENDOR_EDIT */
-	
 config ARCH_MSM8974
 	bool "MSM8974"
 	select ARCH_MSM_KRAITMP
@@ -714,6 +698,30 @@ config MSM_ADM3
 	bool
 
 menu "MSM Board Selection"
+
+#OPPO 2013-02-19 zhenwx Add begin for distinguish oppo code 
+config VENDOR_EDIT
+	bool "VENDOR_EDIT"
+	default n
+#OPPO 2013-02-19 zhenwxAdd end 
+
+#jiangyg@OnlineRd.PM, 2013/10/18, Add for device selection
+config OPPO_DEVICE_FIND7
+	bool "OPPO_DEVICE_FIND7"
+	select VENDOR_EDIT
+
+#ouzhengdong@OnlineRd.PM, 2013/12/12 Add for wx device selection
+config OPPO_DEVICE_FIND7WX
+	bool "OPPO_DEVICE_FIND7WX"
+	select VENDOR_EDIT
+
+config OPPO_DEVICE_FIND7OP
+	bool "OPPO_DEVICE_FIND7OP"
+	select VENDOR_EDIT
+
+config OPPO_DEVICE_N2
+	bool "OPPO_DEVICE_N2"	
+	select VENDOR_EDIT
 
 config MACH_HALIBUT
 	depends on ARCH_MSM7X01A
