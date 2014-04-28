@@ -372,6 +372,8 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#ifndef CONFIG_VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Driver, 2014/01/10  Modify for rewrite reset function */
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -410,8 +412,7 @@ disp_en_gpio_err:
 	return rc;
 }
 
-#ifndef CONFIG_VENDOR_EDIT
-/* Xinqin.Yang@PhoneSW.Driver, 2014/01/10  Modify for rewrite reset function */
+
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -483,10 +484,38 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	return rc;
 }
 #else
+static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rc = 0;
+
+	if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+		rc = gpio_request(ctrl_pdata->disp_en_gpio,
+						"disp_enable");
+		if (rc) {
+			pr_err("request disp_en gpio failed, rc=%d\n",
+				       rc);
+			goto disp_en_gpio_err;
+		}
+	}
+	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
+	if (rc) {
+		pr_err("request reset gpio failed, rc=%d\n",
+			rc);
+		goto rst_gpio_err;
+	}
+	return rc;
+
+rst_gpio_err:
+	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+		gpio_free(ctrl_pdata->disp_en_gpio);
+disp_en_gpio_err:
+	return rc;
+}
+
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-
+	struct mdss_panel_info *pinfo = NULL;
 	int rc = 0;
 
 	if (pdata == NULL) {
@@ -510,7 +539,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
     
     pr_err("%s: disp_en_gpio = %d,rst_gpio=%d ,and pannel index=%d\n", __func__, ctrl_pdata->disp_en_gpio,ctrl_pdata->rst_gpio,ctrl_pdata->index); 
 	pr_err("%s: enable = %d\n", __func__, enable);
-
+	pinfo = &(ctrl_pdata->panel_data.panel_info);
     if (get_pcb_version() < HW_VERSION__20) { /* For Single DSI: Find7 */
         if (enable) {
 		rc = mdss_dsi_request_gpios(ctrl_pdata);
@@ -518,34 +547,35 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_err("gpio request failed\n");
 			return rc;
 		}
-    		pr_err("%s:lcd power up\n", __func__);
-    		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-    		gpio_direction_output(58,0);
+		if (!pinfo->panel_power_on) {
+		  pr_err("%s:lcd power up\n", __func__);
+		  gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		  gpio_direction_output(ctrl_pdata->disp_en_gpio,0);
 
-    		mdelay(2);
-    	    //	wmb();	
-            if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-    			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-    		gpio_direction_output(58,1);
-    	    //	wmb();	
-    	    mdelay(2);
-    	    gpio_set_value((ctrl_pdata->rst_gpio), 1);
-    	    mdelay(10);
-    	    if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-    		    pr_debug("%s: Panel Not properly turned OFF\n", __func__);
-    		    ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
-    		    pr_debug("%s: Reset panel done\n", __func__);
-    	    }
-    	} else {
-    		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		gpio_free(ctrl_pdata->rst_gpio);
-    		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-    			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-			gpio_free(ctrl_pdata->disp_en_gpio);
+		  mdelay(2);
+		  //	wmb();	
+		  if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+		    gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+		    gpio_direction_output(ctrl_pdata->disp_en_gpio,1);
+		  }
+		  //	wmb();	
+		  mdelay(2);
+		  gpio_set_value((ctrl_pdata->rst_gpio), 1);
+		  mdelay(10);
 		}
-		if (gpio_is_valid(ctrl_pdata->mode_gpio))
-			gpio_free(ctrl_pdata->mode_gpio);
-    		gpio_direction_output(58,0);
+		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
+		  pr_debug("%s: Panel Not properly turned OFF\n", __func__);
+		  ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
+		  pr_debug("%s: Reset panel done\n", __func__);
+		}
+    	} else {
+	  gpio_set_value((ctrl_pdata->rst_gpio), 0);
+	  gpio_free(ctrl_pdata->rst_gpio);
+	  if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+	    gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
+	    gpio_direction_output(ctrl_pdata->disp_en_gpio,0);
+	    gpio_free(ctrl_pdata->disp_en_gpio);
+	  }
     	}
     } else { /* For Dual DSI: Find7S */
         if(ctrl_pdata->index==1){ /* For Find7S DSI 1 */
