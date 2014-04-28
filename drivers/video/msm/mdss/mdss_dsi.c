@@ -1030,12 +1030,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_off(pdata);
 		break;
 	case MDSS_EVENT_CONT_SPLASH_FINISH:
-/* OPPO 2013-10-18 yxq added begin for continous splash */
-#ifdef CONFIG_VENDOR_EDIT
-		pr_err("%s: MDSS_EVENT_CONT_SPLASH_FINISH\n", __func__);
-		mdss_dsi_on(pdata); 
-#endif
-/* OPPO 2013-10-18 yxq added end */
 		ctrl_pdata->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE) {
 			rc = mdss_dsi_cont_splash_on(pdata);
@@ -1065,11 +1059,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			/* Panel is Enabled in Bootloader */
 			rc = mdss_dsi_blank(pdata);
 		}
-/* OPPO 2013-10-18 yxq added begin for continous splash */
-#ifdef CONFIG_VENDOR_EDIT
-		 mdss_dsi_off(pdata); 
-#endif
-/* OPPO 2013-10-18 yxq added end */
 		break;
 	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
 		rc = mdss_dsi_ctl_partial_update(pdata);
