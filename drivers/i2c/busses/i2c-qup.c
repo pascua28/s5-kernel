@@ -199,13 +199,9 @@ struct qup_i2c_dev {
 	struct qup_i2c_clk_path_vote clk_path_vote;
 };
 
-/*OPPO yuyi 2013-11-27 delete begin for restore 2030B*/
-#ifndef CONFIG_VENDOR_EDIT
 #ifdef CONFIG_PM
 static int i2c_qup_pm_resume_runtime(struct device *device);
 #endif
-#endif
-/*OPPO yuyi 2013-11-27 delete end for restore 2030B*/
 
 #ifdef DEBUG
 static void
@@ -995,20 +991,13 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		mutex_unlock(&dev->mlock);
 		return -EIO;
 	}
-
-/*OPPO yuyi 2013-11-27 delete begin for restore 2030B*/
-#ifndef CONFIG_VENDOR_EDIT
-	/* Alternate if runtime power management is disabled */
 	if (!pm_runtime_enabled(dev->dev)) {
 		dev_dbg(dev->dev, "Runtime PM FEATURE is disabled\n");
 		i2c_qup_pm_resume(dev);
 	} else {
 		pm_runtime_get_sync(dev->dev);
 	}
-#else
-	pm_runtime_get_sync(dev->dev);
-#endif
-/*OPPO yuyi 2013-11-27 delete end for restore 2030B*/
+
 
 	if (dev->pdata->clk_ctl_xfer)
 		i2c_qup_pm_resume_clk(dev);
@@ -1797,8 +1786,6 @@ static int i2c_qup_pm_resume_runtime(struct device *device)
 	return 0;
 }
 
-/*OPPO yuyi 2013-11-27 delete begin for restore 2030B*/
-#ifndef CONFIG_VENDOR_EDIT
 static int i2c_qup_pm_suspend_sys(struct device *device)
 {
 	struct platform_device *pdev = to_platform_device(device);
@@ -1834,32 +1821,6 @@ static int i2c_qup_pm_resume_sys(struct device *device)
 	dev->pwr_state = MSM_I2C_PM_SUSPENDED;
 	return 0;
 }
-#else
-static int i2c_qup_pm_suspend_sys(struct device *device)
-{
-	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
-		dev_dbg(device, "system suspend");
-		i2c_qup_pm_suspend_runtime(device);
-	}
-	return 0;
-}
-
-static int i2c_qup_pm_resume_sys(struct device *device)
-{
-	int ret = 0;
-	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
-		dev_dbg(device, "system resume");
-		ret = i2c_qup_pm_resume_runtime(device);
-		if (!ret) {
-			pm_runtime_mark_last_busy(device);
-			pm_request_autosuspend(device);
-		}
-		return ret;
-	}
-	return 0;
-}
-#endif
-/*OPPO yuyi 2013-11-27 delete end for restore 2030B*/
 #endif /* CONFIG_PM */
 
 static const struct dev_pm_ops i2c_qup_dev_pm_ops = {
