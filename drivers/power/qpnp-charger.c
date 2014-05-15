@@ -4431,6 +4431,7 @@ qpnp_chg_adjust_vddmax(struct qpnp_chg_chip *chip, int vbat_mv)
 #endif
 
 #define CONSECUTIVE_COUNT	3
+#define CONSECUTIVE_COUNT_POSITIVE	6
 #define VBATDET_MAX_ERR_MV	50
 /* OPPO 2013-11-07 wangjc Modify begin for use bq charger */
 #ifndef CONFIG_BQ24196_CHARGER
@@ -4633,26 +4634,25 @@ qpnp_eoc_work(struct work_struct *work)
 			pr_debug("Not at EOC, battery current too high\n");
 			count = 0;
 		} else if (ibat_ma >= 0) {
-			count = 0;
-#ifndef CONFIG_VENDOR_EDIT
-/* jingchun.wang@Onlinerd.Driver, 2014/02/12  Modify for misjudge full status */
-			bat_status = get_prop_batt_status(chip);
-			if(bat_status == POWER_SUPPLY_STATUS_FULL) {
-#else /*CONFIG_VENDOR_EDIT*/
-			if (qpnp_ext_charger && qpnp_ext_charger->chg_get_system_status)
-				bat_status = qpnp_ext_charger->chg_get_system_status();
-			if((bat_status & 0x30) == 0x30) {
-#endif /*CONFIG_VENDOR_EDIT*/
-				pr_info("End of Charging when ibat>=0\n");
-				chip->delta_vddmax_mv = 0;
-				qpnp_chg_set_appropriate_vddmax(chip);
-				chip->chg_done = true;
-				chip->chg_display_full = true;//wangjc add for charge full
-				qpnp_chg_charge_en(chip, 0);
-				power_supply_changed(&chip->batt_psy);
-				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
-				count = 0;
-				goto stop_eoc;
+			if (count == CONSECUTIVE_COUNT_POSITIVE) {
+
+				if (qpnp_ext_charger && qpnp_ext_charger->chg_get_system_status)
+					bat_status = qpnp_ext_charger->chg_get_system_status();
+				if((bat_status & 0x30) == 0x30) {
+					pr_info("End of Charging when ibat>=0\n");
+					chip->delta_vddmax_mv = 0;
+					qpnp_chg_set_appropriate_vddmax(chip);
+					chip->chg_done = true;
+					chip->chg_display_full = true;//wangjc add for charge full
+					qpnp_chg_charge_en(chip, 0);
+					power_supply_changed(&chip->batt_psy);
+					qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
+					count = 0;
+					goto stop_eoc;
+				}
+			} else {
+				count += 1;
+				pr_debug("EOC count = %d\n", count);
 			}
 		} else {
 			if (count == CONSECUTIVE_COUNT) {

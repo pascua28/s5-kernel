@@ -1189,11 +1189,11 @@ void adapter_commu_with_mcu(void)
 				//4A: circuit_res = 4 * (155 + 5 * ((mcu_buf[5] << 4)|(mcu_buf[6] << 3)|(mcu_buf[7] << 2)|(mcu_buf[8] << 1)|mcu_buf[9]))
 				//3A: circuit_res = 3 * (155 + 5 *.....)
 				//2A: circuit_res = 2 * (155 + 5 * ....)
-				mcu_buf[5] = 0;
-				mcu_buf[6] = 1;
-				mcu_buf[7] = 0;	
+				mcu_buf[5] = 1;//set to 80ohm(old 55ohm)
+				mcu_buf[6] = 0;
+				mcu_buf[7] = 0;
 				mcu_buf[8] = 0;
-				mcu_buf[9] = 1;
+				mcu_buf[9] = 0;
 			}
 			//mcu_buf[7] = 1;	//just for debug
 			RC0 = mcu_buf[mcu_i];
