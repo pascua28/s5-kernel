@@ -27,6 +27,14 @@ AFLAGS_head.o += -DTEXT_OFFSET=$(TEXT_OFFSET)
 ifeq ($(CONFIG_CRYPTO_FIPS_OLD_INTEGRITY_CHECK),y)
 AFLAGS_head.o += -DFIPS_KERNEL_RAM_BASE=0x00008000
 endif
+
+AFLAGS_head.o += -Wa,-march=armv7-a$(plus_sec)
+AFLAGS_head.o += -Wa,-mcpu=cortex-a15
+AFLAGS_misc.o +=-Wa,-march=armv7-a$(plus_sec)
+AFLAGS_misc.o += -Wa,-mcpu=cortex-a15
+AFLAGS_decompress.o += -Wa,-march=armv7-a$(plus_sec)
+AFLAGS_decompress.o += -Wa,-mcpu=cortex-a15
+
 HEAD	= head.o
 OBJS	+= misc.o decompress.o
 FONTC	= $(srctree)/drivers/video/console/font_acorn_8x8.c
@@ -153,12 +161,15 @@ LDFLAGS_vmlinux += -X
 LDFLAGS_vmlinux += -T
 
 # For __aeabi_uidivmod
+AFLAGS_lib1funcs.o +=-Wa,-march=armv7-a$(plus_sec)
+AFLAGS_lib1funcs.o += -Wa,-mcpu=cortex-a15
 lib1funcs = $(obj)/lib1funcs.o
 
 $(obj)/lib1funcs.S: $(srctree)/arch/$(SRCARCH)/lib/lib1funcs.S
 	$(call cmd,shipped)
 
 # For __aeabi_llsl
+AFLAGS_ashldi3.o +=-Wa,-march=armv7-a$(plus_sec)
 ashldi3 = $(obj)/ashldi3.o
 
 $(obj)/ashldi3.S: $(srctree)/arch/$(SRCARCH)/lib/ashldi3.S
@@ -193,6 +204,8 @@ $(obj)/vmlinux: $(obj)/vmlinux.lds $(obj)/$(HEAD) $(obj)/piggy.$(suffix_y).o \
 $(obj)/piggy.$(suffix_y): $(obj)/../Image FORCE
 	$(call if_changed,$(suffix_y))
 
+AFLAGS_piggy.$(suffix_y).o += -Wa,-march=armv7-a$(plus_sec)
+AFLAGS_piggy.$(suffix_y).o += -Wa,-mcpu=cortex-a15
 $(obj)/piggy.$(suffix_y).o:  $(obj)/piggy.$(suffix_y) FORCE
 
 CFLAGS_font.o := -Dstatic=
