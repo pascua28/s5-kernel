@@ -42,7 +42,9 @@ static int __init suspend_backoff_init(void)
 {
 	wake_lock_init(&suspend_backoff_lock, WAKE_LOCK_SUSPEND,
 		       "suspend_backoff");
+	printk("%s: initialized wakelock\n",__func__);
 	return register_pm_notifier(&backoff_pm_notifier);
+	printk("%s: PM notifier registered\n",__func__);
 }
 device_initcall(suspend_backoff_init);
 

@@ -3122,6 +3122,11 @@ CONFIG_BIF_QPNP=y
 # CONFIG_SENSORS is not set
 
 #
+# Suspend backoff
+#
+CONFIG_SUSPEND_BACKOFF=y
+
+#
 # File systems
 #
 CONFIG_EXT2_FS=y
