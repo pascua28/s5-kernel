@@ -1,0 +1,8 @@
+menu "Suspend backoff"
+
+config SUSPEND_BACKOFF
+	bool "Suspend backoff"
+	help
+          Holds a wakelock if you suspend too often
+
+endmenu
