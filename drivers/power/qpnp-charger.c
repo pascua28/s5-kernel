@@ -3025,6 +3025,8 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 /* OPPO 2013-10-18 wangjc Modify end */
 
 #define DEFAULT_CAPACITY	50
+/* OPPO 2013-10-18 wangjc Modify begin for use bq charger */
+#ifndef CONFIG_BQ24196_CHARGER
 static int
 get_batt_capacity(struct qpnp_chg_chip *chip)
 {
@@ -3042,8 +3044,6 @@ get_batt_capacity(struct qpnp_chg_chip *chip)
 	return DEFAULT_CAPACITY;
 }
 
-/* OPPO 2013-10-18 wangjc Modify begin for use bq charger */
-#ifndef CONFIG_BQ24196_CHARGER
 static int
 get_prop_batt_status(struct qpnp_chg_chip *chip)
 {
