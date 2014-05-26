@@ -4645,6 +4645,9 @@ qpnp_eoc_work(struct work_struct *work)
 					chip->chg_done = true;
 					chip->chg_display_full = true;//wangjc add for charge full
 					qpnp_chg_charge_en(chip, 0);
+					/* sleep for a second before enabling */
+					msleep(2000);
+
 					power_supply_changed(&chip->batt_psy);
 					qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
 					count = 0;
