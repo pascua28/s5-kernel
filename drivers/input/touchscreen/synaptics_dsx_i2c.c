@@ -1161,14 +1161,14 @@ static int synaptics_set_f12ctrl_data(struct synaptics_rmi4_data *rmi4_data, boo
 		
     } else {
     	retval = synaptics_rmi4_i2c_read(syna_rmi4_data,SYNA_ADDR_GESTURE_FLAG,val,sizeof(val));
-		val[0] = syna_rmi4_data->gesture_enable & 0xff ;
+		val[0] = syna_rmi4_data->gesture_flags & 0xff ;
 		retval = synaptics_rmi4_i2c_write(syna_rmi4_data,SYNA_ADDR_GESTURE_FLAG,val,sizeof(val));
 
 		if(enable)
 			reportbuf[2] |= 0x02 ;
 		else {
 			reportbuf[2] &= 0xfd ;
-			syna_use_gesture = (rmi4_data->gesture_enable&0xff)?1:0 ;
+			syna_use_gesture = (rmi4_data->gesture_flags&0xff)?1:0 ;
 		}
     }
 
@@ -1199,7 +1199,7 @@ static int synaptics_enable_gesture(struct synaptics_rmi4_data *rmi4_data, bool 
 		return -1 ;
 	
 	rmi4_data->gesture = enable ;
-	print_ts(TS_DEBUG, KERN_ERR "[syna]:gesture source=0x%x\n", rmi4_data->gesture_enable);
+	print_ts(TS_DEBUG, KERN_ERR "[syna]:gesture source=0x%x\n", rmi4_data->gesture_flags);
 	
 	return 0 ;
 
@@ -1308,36 +1308,107 @@ static int synaptics_rmi4_pdoze_read(char *page, char **start, off_t off,
 	return len ;
 }
 
-static int synaptics_rmi4_proc_read(char *page, char **start, off_t off,
+#define DOUBLE_TAP_FLAG 0x01
+static int synaptics_rmi4_double_tap_read(char *page, char **start, off_t off,
 	int count, int *eof, void *data) {
 	int len = 0 ;
 	unsigned int enable ;
 	
-	enable = (syna_rmi4_data->gesture_enable)?1:0;
+	enable = (syna_rmi4_data->gesture_flags & DOUBLE_TAP_FLAG)?1:0;
 
 	len = sprintf(page, "%d\n", enable);
 	
 	return len ;
 }
 
-static int synaptics_rmi4_proc_write( struct file *filp, const char __user *buff,
+static int synaptics_rmi4_double_tap_write( struct file *filp, const char __user *buff,
 	unsigned long len, void *data ) {
 	unsigned char bak;
-	unsigned int enable ;
 	if(len > 2)
 		return 0 ;
 	
-	enable =(buff[0]==0x30)?0:1 ;
-	bak = syna_rmi4_data->gesture_enable ;
-	syna_rmi4_data->gesture_enable &= 0x00 ;
-	if(enable)
-		syna_rmi4_data->gesture_enable |= 0x6b ;
-	if(bak == syna_rmi4_data->gesture_enable)
+	bak = syna_rmi4_data->gesture_flags ;
+	if(buff[0] != 0x30)
+		syna_rmi4_data->gesture_flags |= DOUBLE_TAP_FLAG;
+	else
+		syna_rmi4_data->gesture_flags &= ~DOUBLE_TAP_FLAG;
+
+	if(bak == syna_rmi4_data->gesture_flags)
 		return len ;
 
     if(!(syna_use_gesture && syna_rmi4_data->gesture))
-	syna_use_gesture = (syna_rmi4_data->gesture_enable&0xff)?1:0 ;
-	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_enable);
+	syna_use_gesture = (syna_rmi4_data->gesture_flags&0xff)?1:0 ;
+	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_flags);
+
+	return len;
+}
+
+#define FLASHLIGHT_FLAG 0x20
+static int synaptics_rmi4_flashlight_read(char *page, char **start, off_t off,
+	int count, int *eof, void *data) {
+	int len = 0 ;
+	unsigned int enable ;
+	
+	enable = (syna_rmi4_data->gesture_flags & FLASHLIGHT_FLAG)?1:0;
+
+	len = sprintf(page, "%d\n", enable);
+	
+	return len ;
+}
+
+static int synaptics_rmi4_flashlight_write( struct file *filp, const char __user *buff,
+	unsigned long len, void *data ) {
+	unsigned char bak;
+	if(len > 2)
+		return 0 ;
+	
+	bak = syna_rmi4_data->gesture_flags ;
+	if(buff[0] != 0x30)
+		syna_rmi4_data->gesture_flags |= FLASHLIGHT_FLAG;
+	else
+		syna_rmi4_data->gesture_flags &= ~FLASHLIGHT_FLAG;
+
+	if(bak == syna_rmi4_data->gesture_flags)
+		return len ;
+
+    if(!(syna_use_gesture && syna_rmi4_data->gesture))
+	syna_use_gesture = (syna_rmi4_data->gesture_flags&0xff)?1:0 ;
+	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_flags);
+
+	return len;
+}
+
+#define CAMERA_FLAG 0x08
+static int synaptics_rmi4_camera_read(char *page, char **start, off_t off,
+	int count, int *eof, void *data) {
+	int len = 0 ;
+	unsigned int enable ;
+	
+	enable = (syna_rmi4_data->gesture_flags & CAMERA_FLAG)?1:0;
+
+	len = sprintf(page, "%d\n", enable);
+	
+	return len ;
+}
+
+static int synaptics_rmi4_camera_write( struct file *filp, const char __user *buff,
+	unsigned long len, void *data ) {
+	unsigned char bak;
+	if(len > 2)
+		return 0 ;
+	
+	bak = syna_rmi4_data->gesture_flags ;
+	if(buff[0] != 0x30)
+		syna_rmi4_data->gesture_flags |= CAMERA_FLAG;
+	else
+		syna_rmi4_data->gesture_flags &= ~CAMERA_FLAG;
+
+	if(bak == syna_rmi4_data->gesture_flags)
+		return len ;
+
+    if(!(syna_use_gesture && syna_rmi4_data->gesture))
+	syna_use_gesture = (syna_rmi4_data->gesture_flags&0xff)?1:0 ;
+	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_flags);
 
 	return len;
 }
@@ -1473,10 +1544,23 @@ static int synaptics_rmi4_init_touchpanel_proc(void)
 		proc_entry->read_proc = synaptics_rmi4_proc_glove_read;
 	}
 	
+	//gestures
 	proc_entry = create_proc_entry("double_tap_enable", 0666, procdir);
 	if (proc_entry) {
-		proc_entry->write_proc = synaptics_rmi4_proc_write;
-		proc_entry->read_proc = synaptics_rmi4_proc_read;
+		proc_entry->write_proc = synaptics_rmi4_double_tap_write;
+		proc_entry->read_proc = synaptics_rmi4_double_tap_read;
+	}
+
+	proc_entry = create_proc_entry("flashlight_enable", 0666, procdir);
+	if (proc_entry) {
+		proc_entry->write_proc = synaptics_rmi4_flashlight_write;
+		proc_entry->read_proc = synaptics_rmi4_flashlight_read;
+	}
+
+	proc_entry = create_proc_entry("camera_enable", 0666, procdir);
+	if (proc_entry) {
+		proc_entry->write_proc = synaptics_rmi4_camera_write;
+		proc_entry->read_proc = synaptics_rmi4_camera_read;
 	}
 
     //for pdoze enable/disable interface
@@ -4510,7 +4594,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if(rmi4_data->pwrrunning)
 		return 0 ;
 
-    print_ts(TS_INFO, KERN_ERR "gesture status[0x%x,0x%x]\n", syna_use_gesture,rmi4_data->gesture_enable);
+    print_ts(TS_INFO, KERN_ERR "gesture status[0x%x,0x%x]\n", syna_use_gesture,rmi4_data->gesture_flags);
 
     rmi4_data->pwrrunning = true ;
 
