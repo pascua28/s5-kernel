@@ -1558,6 +1558,9 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 		pm_stay_awake(chip->dev);
 	}
+	else {
+	  pr_debug("FAST_CHG_ON IRQ not set, not starting eoc_work\n");
+	}
 	qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
 
 	pr_debug("psy changed usb_psy\n");
@@ -4599,6 +4602,7 @@ qpnp_eoc_work(struct work_struct *work)
 			}
 		}
 #endif /*CONFIG_VENDOR_EDIT*/
+		qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
 		pm_relax(chip->dev);
 		return;
 	}
