@@ -49,11 +49,6 @@
 #define MAX_AF_ITERATIONS 3
 #define MAX_NUMBER_OF_STEPS 47
 
-typedef enum sensor_stats_type {
-	YRGB,
-	YYYY,
-} sensor_stats_type_t;
-
 enum flash_type {
 	LED_FLASH = 1,
 	STROBE_FLASH,
@@ -487,7 +482,6 @@ enum msm_actuator_cfg_type_t {
 	CFG_SET_DEFAULT_FOCUS,
 	CFG_SET_POSITION,
 	CFG_MOVE_FOCUS,
-	CFG_ACTUATOR_POWERDOWN,
 };
 
 enum actuator_type {

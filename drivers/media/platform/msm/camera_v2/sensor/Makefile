@@ -15,9 +15,6 @@ obj-$(CONFIG_OV12830) += ov12830.o
 obj-$(CONFIG_OV2720) += ov2720.o
 obj-$(CONFIG_OV9724) += ov9724.o
 obj-$(CONFIG_HI256) += hi256.o
-#added by oppo start
-obj-$(CONFIG_IMX214) += imx214.o
-#added by oppo end
 obj-$(CONFIG_OV5648) += ov5648.o
 obj-$(CONFIG_MT9M114) += mt9m114.o
 obj-$(CONFIG_SP1628) += sp1628.o
