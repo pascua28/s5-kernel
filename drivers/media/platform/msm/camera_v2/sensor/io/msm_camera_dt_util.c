@@ -883,14 +883,8 @@ int msm_camera_get_dt_vreg_data(struct device_node *of_node,
 			vreg[i].type);
 	}
 
-	// lingjianing 2014-3-5 modify for 14001 camera AVDD and DVDD
-#ifdef CONFIG_OPPO_DEVICE_FIND7OP
-	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-min-find7op-voltage",
-		vreg_array, count);
-#else
 	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-min-voltage",
 		vreg_array, count);
-#endif
 	if (rc < 0) {
 		pr_err("%s failed %d\n", __func__, __LINE__);
 		goto ERROR2;
@@ -901,14 +895,8 @@ int msm_camera_get_dt_vreg_data(struct device_node *of_node,
 			i, vreg[i].min_voltage);
 	}
 
-	// lingjianing 2014-3-5 modify for 14001 camera AVDD and DVDD
-#ifdef CONFIG_OPPO_DEVICE_FIND7OP
-	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-max-find7op-voltage",
-		vreg_array, count);
-#else
 	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-max-voltage",
 		vreg_array, count);
-#endif
 	if (rc < 0) {
 		pr_err("%s failed %d\n", __func__, __LINE__);
 		goto ERROR2;
