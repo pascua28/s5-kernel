@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#ifdef CONFIG_VENDOR_EDIT
+#include <media/msmb_isp_oppo.h>
+#else
+
 #ifndef __MSMB_ISP__
 #define __MSMB_ISP__
 
@@ -431,3 +435,4 @@ struct msm_isp_event_data {
 	_IOWR('V', BASE_VIDIOC_PRIVATE+13, struct msm_vfe_axi_stream_update_cmd)
 
 #endif /* __MSMB_ISP__ */
+#endif
