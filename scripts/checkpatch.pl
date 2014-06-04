@@ -31,6 +31,7 @@ my $emacs = 0;
 my $terse = 0;
 my $file = 0;
 my $check = 0;
+my $check_orig = 0;
 my $summary = 1;
 my $mailback = 0;
 my $summary_file = 0;
@@ -153,6 +154,7 @@ GetOptions(
 help(0) if ($help);
 
 $fix = 1 if ($fix_inplace);
+$check_orig = $check;
 
 my $exit = 0;
 
@@ -1857,12 +1859,14 @@ sub process {
 		$here = "#$linenr: " if (!$file);
 		$here = "#$realline: " if ($file);
 
+		my $found_file = 0;
 		# extract the filename as it passes
 		if ($line =~ /^diff --git.*?(\S+)$/) {
 			$realfile = $1;
 			$realfile =~ s@^([^/]*)/@@ if (!$file);
 			$in_commit_log = 0;
 			$exec_file = $realfile;
+			$found_file = 1;
 		} elsif ($line =~ /^\+\+\+\s+(\S+)/) {
 			$realfile = $1;
 			$realfile =~ s@^([^/]*)/@@ if (!$file);
@@ -1880,6 +1884,15 @@ sub process {
 				      "do not modify files in include/asm, change architecture specific files in include/asm-<architecture>\n" . "$here$rawline\n");
 			}
 			$exec_file = "";
+			$found_file = 1;
+		}
+
+		if ($found_file) {
+			if ($realfile =~ m@^(drivers/net/|net/)@) {
+				$check = 1;
+			} else {
+				$check = $check_orig;
+			}
 			next;
 		}
 		elsif ($rawline =~ /^diff.+a\/(.+)\sb\/.+$/) {
