@@ -58,18 +58,14 @@ static int owner_cookie = -1;
 
 int bcm_bt_lock(int cookie)
 {
-	int ret;
 	char cookie_msg[5] = {0};
 
-	ret = down_timeout(&btlock, msecs_to_jiffies(BTLOCK_TIMEOUT*1000));
-	if (ret == 0) {
-		memcpy(cookie_msg, &cookie, sizeof(cookie));
-		owner_cookie = cookie;
-		count--;
-		PR("btlock acquired cookie: %s\n", cookie_msg);
-	}
+	memcpy(cookie_msg, &cookie, sizeof(cookie));
+	owner_cookie = cookie;
+	count--;
+	PR("btlock acquired cookie: %s\n", cookie_msg);
 
-	return ret;
+	return 0;
 }
 
 void bcm_bt_unlock(int cookie)
