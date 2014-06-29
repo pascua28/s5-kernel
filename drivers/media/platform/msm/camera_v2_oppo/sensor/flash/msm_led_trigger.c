@@ -84,7 +84,6 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 				pr_err("LED current clamped to %d\n",
 					curr_l);
 			}
-			printk("MSM_CAMERA_LED_LOW:curr_l=%d\n",curr_l);
 			led_trigger_event(fctrl->torch_trigger,
 				curr_l);
 		}
