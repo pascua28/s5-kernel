@@ -30,7 +30,11 @@
 #endif
 /* OPPO 2013-11-19 yuyi Add end for power up alarm */
 
+#ifndef VENDOR_EDIT //mingqiang.guo@phone.bsp modify for power up at 40s before timing power up time
 #define ALARM_DELTA 120
+#else //VENDOR_EDIT
+#define ALARM_DELTA 40
+#endif //VENDOR_EDIT
 #define ANDROID_ALARM_PRINT_ERROR (1U << 0)
 #define ANDROID_ALARM_PRINT_INIT_STATUS (1U << 1)
 #define ANDROID_ALARM_PRINT_TSET (1U << 2)
