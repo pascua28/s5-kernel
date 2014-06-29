@@ -901,6 +901,13 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 #else
 					/* jingchun.wang@Onlinerd.Driver, 2014/02/24  Add for solve usb reboot problem */
 					cancel_delayed_work_sync(&dotg->detect_work);
+					/* jingchun.wang@Onlinerd.Driver, 2014/03/25  Add for solve usb reboot problem,bug 422328 */
+					if (charger)
+						charger->start_detection(dotg->charger, false);
+
+					dotg->charger_retry_count = 0;
+					dwc3_otg_set_power(phy, 0);
+					
 					queue_delayed_work(system_nrt_wq, &dotg->detect_work, msecs_to_jiffies(600));
 #endif
 /* OPPO 2013-11-18 wangjc Modify end */
