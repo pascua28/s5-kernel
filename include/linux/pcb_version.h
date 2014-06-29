@@ -37,6 +37,8 @@ enum {
 	RF_VERSION__44 = 19,		//
 	RF_VERSION__66 = 30,	//add for 14001 TDD-LTE+FDD-LTE+TDS+W+G
 	RF_VERSION__67,
+	RF_VERSION__76,
+	RF_VERSION__77,
 };
 
 extern int get_pcb_version(void);
