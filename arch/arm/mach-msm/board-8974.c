@@ -124,7 +124,10 @@ int __init board_rf_version_init(void)
 		current_rf_version_num = RF_VERSION__66;
 	else if (strstr(boot_command_line,"oppo.rf_version=67"))
 		current_rf_version_num = RF_VERSION__67;
-
+	else if (strstr(boot_command_line,"oppo.rf_version=76"))
+		current_rf_version_num = RF_VERSION__76;
+	else if (strstr(boot_command_line,"oppo.rf_version=77"))
+		current_rf_version_num = RF_VERSION__77;
 
 	//printk("yuyi, rf_version num %d \n",current_pcb_version_num);
 	
@@ -216,6 +219,42 @@ struct kobj_attribute ftmmode_attr = {
     .show = &ftmmode_show,
 };
 
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
+int gamma_index = 0;
+int __init  board_gamma_index_init(void)
+{
+	if (strstr(boot_command_line," gamma_index=1"))
+		gamma_index = 1;
+	else if (strstr(boot_command_line," gamma_index=2"))
+		gamma_index = 2;
+	else if (strstr(boot_command_line," gamma_index=3"))
+		gamma_index = 3;
+	else if (strstr(boot_command_line," gamma_index=4"))
+		gamma_index = 4;
+	pr_err("board_gamma_index_init, " "gamma_index = %d yxr\n", gamma_index);
+	return 0;
+}
+int get_gamma_index(void)
+{
+	return gamma_index;
+}
+
+static ssize_t gamma_index_show(struct kobject *kobj, struct kobj_attribute *attr,
+								char *buf)
+{
+	return sprintf(buf, "%d\n", gamma_index);
+}
+
+static struct kobj_attribute gamma_index_attr = {
+	.attr = {
+			.name = "gamma_index",
+			.mode = 0444,
+		},
+	.show = gamma_index_show,
+};
+#endif /*CONFIG_VENDOR_EDIT*/
+
 /* OPPO 2013-01-04 Van add start for ftm close modem*/
 #define mdm_drv_ap2mdm_pmic_pwr_en_gpio  27
 
@@ -239,6 +278,19 @@ static ssize_t closemodem_store(struct kobject *kobj, struct kobj_attribute *att
 	return count;
 }
 
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/15  Add for find7s swap DSI port */
+int LCD_id = 0;
+int __init  board_LCD_id_index_init(void)
+{
+	if (strstr(boot_command_line," LCD_id<4"))
+		LCD_id = 2;
+	else if (strstr(boot_command_line," LCD_id=4"))
+		LCD_id = 4;
+	pr_err("board_LCD_id_init, " "LCD_id= %d yxr\n", LCD_id);
+	return 0;
+}
+#endif /*CONFIG_VENDOR_EDIT*/
 
 struct kobj_attribute closemodem_attr = {
   .attr = {"closemodem", 0644},
@@ -257,6 +309,11 @@ static struct attribute * g[] = {
 	&rf_version_attr.attr,
 #endif
 /*OPPO yuyi 2013-07-15 add end*/
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma_correction */
+	&gamma_index_attr.attr,
+#endif /*CONFIG_VENDOR_EDIT*/
 	NULL,
 };
 
@@ -452,6 +509,17 @@ void __init msm8974_init(void)
 
 #endif
 /*OPPO yuyi 2013-07-15 add end for version*/
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
+	board_gamma_index_init();
+#endif /*CONFIG_VENDOR_EDIT*/
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/15  Add for find7s swap port */
+board_LCD_id_index_init();
+#endif /*CONFIG_VENDOR_EDIT*/
+
 	
 #ifdef CONFIG_VENDOR_EDIT	
 	/* OPPO 2013.07.09 hewei add begin for factory mode*/

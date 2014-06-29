@@ -361,14 +361,16 @@ static struct gpiomux_setting hsic_act_cfg = {
 	.drv = GPIOMUX_DRV_12MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
-
+/*OPPO yuyi 2013-04-03 delete begin for nfc_spi*/
+#ifndef CONFIG_VENDOR_EDIT
 static struct gpiomux_setting hsic_hub_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_UP,
 	.dir = GPIOMUX_IN,
 };
-
+#endif
+/*OPPO yuyi 2013-04-03 delete end for nfc_spi*/
 static struct gpiomux_setting hsic_resume_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -406,6 +408,8 @@ static struct msm_gpiomux_config msm_hsic_configs[] = {
 	},
 };
 
+/*OPPO yuyi 2013-04-03 delete begin for nfc_spi*/
+#ifndef CONFIG_VENDOR_EDIT
 static struct msm_gpiomux_config msm_hsic_hub_configs[] = {
 	{
 		.gpio = 50,               /* HSIC_HUB_INT_N */
@@ -415,7 +419,8 @@ static struct msm_gpiomux_config msm_hsic_hub_configs[] = {
 		},
 	},
 };
-
+#endif
+/*OPPO yuyi 2013-04-03 delete end for nfc_spi*/
 static struct gpiomux_setting mhl_suspend_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -625,7 +630,8 @@ static struct gpiomux_setting gpio_blsp6_spi3_config = {
 static struct gpiomux_setting gpio_blsp6_spi2_config = {
 	.func = GPIOMUX_FUNC_2, 
 	.drv = GPIOMUX_DRV_8MA, 
-	.pull = GPIOMUX_PULL_NONE, 
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
 };
 static struct gpiomux_setting gpio_blsp6_spi1_config = {
 	.func = GPIOMUX_FUNC_2, 
@@ -1474,6 +1480,8 @@ static struct msm_gpiomux_config wcnss_5gpio_interface[] = {
 };
 
 static struct msm_gpiomux_config ath_gpio_configs[] = {
+/*OPPO yuyi 2013-04-03 delete begin for nfc_spi*/
+#ifndef CONFIG_VENDOR_EDIT
 	{
 		.gpio = 51,
 		.settings = {
@@ -1481,6 +1489,8 @@ static struct msm_gpiomux_config ath_gpio_configs[] = {
 			[GPIOMUX_SUSPENDED] = &ath_gpio_suspend_cfg,
 		},
 	},
+#endif
+/*OPPO yuyi 2013-04-03 delete end for nfc_spi*/
 	{
 		.gpio = 79,
 		.settings = {
@@ -1765,8 +1775,12 @@ void __init msm_8974_init_gpiomux(void)
 	msm_gpiomux_install(msm_taiko_config, ARRAY_SIZE(msm_taiko_config));
 
 	msm_gpiomux_install(msm_hsic_configs, ARRAY_SIZE(msm_hsic_configs));
+/*OPPO yuyi 2013-04-03 delete begin for nfc_spi*/
+#ifndef CONFIG_VENDOR_EDIT
 	msm_gpiomux_install(msm_hsic_hub_configs,
 				ARRAY_SIZE(msm_hsic_hub_configs));
+#endif
+/*OPPO yuyi 2013-04-03 delete begin for nfc_spi*/
 
 	msm_gpiomux_install(msm_hdmi_configs, ARRAY_SIZE(msm_hdmi_configs));
 	if (of_board_is_fluid())

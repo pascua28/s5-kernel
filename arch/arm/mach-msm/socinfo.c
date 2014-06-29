@@ -536,6 +536,12 @@ char * socinfo_get_hw_rf_version(void)
 		case RF_VERSION__67:
 			rf_version = "67";
 			break;
+		case RF_VERSION__76:
+			rf_version = "76";
+			break;
+		case RF_VERSION__77:
+			rf_version = "77";
+			break;
 		default:
 			rf_version = "UNKOWN";
 		}
