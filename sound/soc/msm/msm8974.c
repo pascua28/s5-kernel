@@ -1789,7 +1789,7 @@ static int msm8974_snd_startup(struct snd_pcm_substream *substream)
 		 substream->name, substream->stream);
 	return 0;
 }
-#ifndef CONFIG_OPPO_DEVICE_FIND7OP
+#ifndef CONFIG_VENDOR_EDIT
 /* xiaojun.lv@Prd.AudioDrv,2014/3/7,modify for 14001 headset input key's voltage range*/
 //liuyan 2013-3-13 change no_mic form 30 to 100,hs_max from 2400 to 2000
 //liuyan 2013-7-22 change button0 threshold form -50 to -70
@@ -1876,7 +1876,7 @@ void *def_taiko_mbhc_cal(void)
 
 	return taiko_cal;
 }
-#else /* CONFIG_OPPO_DEVICE_FIND7OP */
+#else /* CONFIG_VENDOR_EDIT */
 void *def_taiko_mbhc_cal(void)
 {
 	void *taiko_cal;
@@ -1960,7 +1960,7 @@ void *def_taiko_mbhc_cal(void)
 
 	return taiko_cal;
 }
-#endif /* CONFIG_OPPO_DEVICE_FIND7OP */
+#endif /* CONFIG_VENDOR_EDIT */
 static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params)
 {
@@ -3267,7 +3267,6 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 		if(pdata->cdc_spk)
         {
     	    printk("%s regulator_enable(pdata->cdc_spk);\n",__func__);
-            regulator_enable(pdata->cdc_spk);
 		    mbhc_cfg.cdc_spk = pdata->cdc_spk;
 		}
 #endif

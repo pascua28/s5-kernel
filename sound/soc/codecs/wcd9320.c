@@ -1630,12 +1630,12 @@ static int spkr_put_control(struct snd_kcontrol *kcontrol,
         gpio_set_value(taiko->mbhc.mbhc_cfg->yda145_ctr_gpio,1);
 		pr_debug("%s:gpio:%d %d\n",__func__,taiko->mbhc.mbhc_cfg->yda145_ctr_gpio,
 			    gpio_get_value(taiko->mbhc.mbhc_cfg->yda145_ctr_gpio));
-		msleep(50);
-		gpio_set_value(taiko->mbhc.mbhc_cfg->yda145_ctr_gpio,0);
-		printk("%s:gpio:%d %d add for YDA145 NONCLIP-OFF mode\n",__func__,taiko->mbhc.mbhc_cfg->yda145_ctr_gpio,
-			    gpio_get_value(taiko->mbhc.mbhc_cfg->yda145_ctr_gpio));			    
 
 	}else{
+		gpio_set_value(taiko->mbhc.mbhc_cfg->yda145_ctr_gpio,0);
+		pr_debug("%s:gpio:%d %d\n",__func__,taiko->mbhc.mbhc_cfg->yda145_ctr_gpio,
+			    gpio_get_value(taiko->mbhc.mbhc_cfg->yda145_ctr_gpio));	
+			    
 		gpio_set_value(taiko->mbhc.mbhc_cfg->enable_spk_gpio,0);
 		pr_debug("%s:gpio:%d %d\n",__func__,taiko->mbhc.mbhc_cfg->enable_spk_gpio,
 			     gpio_get_value(taiko->mbhc.mbhc_cfg->enable_spk_gpio));
@@ -7761,16 +7761,6 @@ static struct snd_soc_codec_driver soc_codec_dev_taiko = {
 #ifdef CONFIG_PM
 static int taiko_suspend(struct device *dev)
 {
-#ifdef CONFIG_OPPO_DEVICE_FIND7OP
-/* xiaojun.lv@Prd.AudioDrv,2014/2/22,add for 14001 spk control*/
-    struct platform_device *pdev = to_platform_device(dev);
-    struct taiko_priv *taiko = platform_get_drvdata(pdev);
-    if(taiko->mbhc.mbhc_cfg->cdc_spk)
-    {
-        pr_debug("%s regulator_disable(taiko->mbhc.mbhc_cfg->cdc_spk);\n",__func__);
-        regulator_disable(taiko->mbhc.mbhc_cfg->cdc_spk);
-	}
-#endif
 	dev_dbg(dev, "%s: system suspend\n", __func__);
 	return 0;
 }
@@ -7787,14 +7777,6 @@ static int taiko_resume(struct device *dev)
 	dev_dbg(dev, "%s: system resume\n", __func__);
 	/* Notify */
 	wcd9xxx_resmgr_notifier_call(&taiko->resmgr, WCD9XXX_EVENT_POST_RESUME);
-#ifdef CONFIG_OPPO_DEVICE_FIND7OP
-/* xiaojun.lv@Prd.AudioDrv,2014/2/22,add for 14001 spk control*/
-    if(taiko->mbhc.mbhc_cfg->cdc_spk)
-    {
-	    pr_debug("%s regulator_enable(taiko->mbhc.mbhc_cfg->cdc_spk);\n",__func__);
-        regulator_enable(taiko->mbhc.mbhc_cfg->cdc_spk);
-	}
-#endif
 
 	return 0;
 }
