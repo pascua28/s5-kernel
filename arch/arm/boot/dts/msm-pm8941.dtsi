@@ -201,7 +201,7 @@
 		status = "disabled";
 
 		/*vendor_edit wangjc change*/
-		qcom,vddmax-mv = <4350>;
+		qcom,vddmax-mv = <4352>;
 		qcom,vddsafe-mv = <4350>;
 		qcom,vinmin-mv = <4400>;
 		qcom,ibatmax-ma = <2000>;

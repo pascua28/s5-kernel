@@ -1,10 +1,4 @@
-/************************************************************
-* Copyright (c) 2013-2013 OPPO Mobile communication Corp.ltd.,
-* VENDOR_EDIT
-* Description: device tree for jdi cmd panel.
-* Version    : 1.0
-* Date       : 2013-12-12
-* Author     : yangxinqin
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,13 +16,13 @@
  * VERSION = "1.0"
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
-	dsi_jdi_1080_cmd: qcom,mdss_dsi_jdi_1080p_cmd {
+	dsi_sharp_1080_cmd: qcom,mdss_dsi_sharp_1080p_cmd {
 		compatible = "qcom,mdss-dsi-panel";
 		status = "ok";
 		qcom,cont-splash-enabled;
-		qcom,mdss-dsi-panel-name = "jdi 1080p cmd mode dsi panel";
-		qcom,mdss-dsi-panel-manufacture = "JDI";
-		qcom,mdss-dsi-panel-version = "R63417";
+		qcom,mdss-dsi-panel-name = "sharp 1080p cmd mode dsi panel";
+		qcom,mdss-dsi-panel-manufacture = "sharp";
+		qcom,mdss-dsi-panel-version = "R63315";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
@@ -49,31 +43,30 @@
 		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = <0>;
 		qcom,mdss-dsi-underflow-color = <0x00>;
 		qcom,mdss-dsi-border-color = <0>;
-		qcom,mdss-dsi-on-command = [39 01 00 00 01 00 05 2a 00 00 04 37
-                                    39 01 00 00 01 00 05 2b 00 00 07 7f
-                                    23 01 00 00 01 00 02 b0 04
-									29 01 00 00 01 00 1f c7 00 0B 10 19 27 33 3D 4C 32 39 45 57 6A 74 7F 00 0B 10 19 27 33 3D 4C 32 39 45 57 6A 74 7F
-                                    29 01 00 00 01 00 14 c8 01 0A FD 03 01 E8 00 00 03 FC F5 A1 00 00 01 FD 06 FC 00
-                                    29 01 00 00 01 00 21 ca 01 80 89 90 C0 80 90 90 10 3F 14 89 0A 4A 37 A0 55 F8 0C 0C 20 10 3F 3F 00 E6 06 0C 0C 0C 0C 0C
-									29 01 00 00 01 00 18 CE 75 40 43 49 55 62 71 82 94 A8 B9 CB DB E9 F5 FC FF 04 00 04 04 44 20
-									29 01 00 00 01 00 07 B8 03 90 1E 10 1E 32
-									29 01 00 00 01 00 07 B9 03 82 3C 10 3C 87
-									29 01 00 00 01 00 07 BA 03 78 64 10 64 B4
-                                    23 01 00 00 00 00 02 d6 01
-                                    23 01 00 00 01 00 02 b0 03
+		qcom,mdss-dsi-on-command = [23 01 00 00 01 00 02 b0 04
+									29 01 00 00 01 00 07 b3 04 00 00 22 00 00
+									29 01 00 00 01 00 1f c7 02 12 1A 25 34 45 51 60 42 4C 55 60 64 6D 76 02 13 1B 25 31 3C 42 51 35 3D 45 57 5E 69 74
+									29 01 00 00 01 00 14 c8 01 00 00 00 02 FC 00 00 00 00 02 FC 00 00 00 00 02 FC 00
+									29 01 00 00 01 00 21 ca 01 80 90 80 80 80 A0 80 08 20 00 80 0A 4A 00 FF 00 FF 0C 0C 20 10 3F 3F 00 DF 10 10 3F 3F 3F 3F
+									29 01 00 00 01 00 1a d3 1B 33 BB BB B3 33 33 33 00 01 00 A0 D8 A0 00 4D 39 33 3B 37 72 57 3D BF 99
+									23 01 00 00 01 00 02 d6 01
+									23 01 00 00 01 00 02 3a 77
+									29 01 00 00 01 00 05 2a 00 00 04 37
+									29 01 00 00 01 00 05 2b 00 00 07 7f
+									15 01 00 00 01 00 02 35 00
+									15 01 00 00 01 00 02 2c 00
+									05 01 00 00 78 00 02 11 00
+									05 01 00 00 78 00 02 29 00
 									39 01 00 00 01 00 02 51 ff
 									15 01 00 00 01 00 02 55 03
-                                    15 01 00 00 01 00 02 53 2c
-                                    05 01 00 00 78 00 02 11 00
-                                    15 01 00 00 11 00 02 36 00
-                                    15 01 00 00 01 00 02 3a 77
-                                    39 01 00 00 01 00 03 44 00 00
-                                    15 01 00 00 01 00 02 35 00                                                                                       
-                                    05 01 00 00 01 00 02 29 00];
-		qcom,mdss-dsi-off-command = [05 01 00 00 32 00 02 28 00
-                                     05 01 00 00 78 00 02 10 00];
+									15 01 00 00 01 00 02 53 2c
+									];
+		qcom,mdss-dsi-off-command = [15 01 00 00 01 00 02 53 00
+									 05 01 00 00 32 00 02 28 00
+									 05 01 00 00 78 00 02 10 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
@@ -91,17 +84,14 @@
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
 		qcom,mdss-dsi-panel-timings = [f9 3d 34 00 58 4d 36 3f 53 03 04 00];
-		/* qcom,mdss-dsi-t-clk-post = <0x1e>; */
-		/* qcom,mdss-dsi-t-clk-pre = <0x38>; */
-		qcom,mdss-dsi-t-clk-post = <0x20>;
-		qcom,mdss-dsi-t-clk-pre = <0x3e>;
+		qcom,mdss-dsi-t-clk-post = <0x1e>;
+		qcom,mdss-dsi-t-clk-pre = <0x38>;
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "trigger_sw";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-reset-sequence = <1 20>, <0 200>, <1 20>;
-		/*yxr add begin for CABC*/
 		qcom,mdss-dsi-cabc-off-command = [15 01 00 00 10 00 02 55 00
 										  05 01 00 00 10 00 02 29 00];
 		qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 10 00 02 55 01
@@ -130,6 +120,5 @@
 								23 01 00 00 00 00 02 d6 01
 								23 01 00 00 01 00 02 b0 03
 								];
-		/*yxr add end*/
 	};
 };

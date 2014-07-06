@@ -11,7 +11,9 @@
  * GNU General Public License for more details.
  */
 
-&pm8941_lsid1 {
+&pm8941_lsid1 {	
+/*OPPO yuyi 2013-09-27 modify begin for RGB-leds*/
+/*#ifdef VENDOR_EDIT_CONFIG*/
 	qcom,leds@d000 {
 		status = "okay";
 		qcom,rgb_0 {
@@ -22,12 +24,12 @@
 			qcom,duty-ms = <200>;
 			qcom,start-idx = <1>;
 			qcom,idx-len = <10>;
-			qcom,duty-pcts = [00 00 00 00 01 03 05 07 09 0B 0D 0F 
-							11 13 16 19 1C 1F 23 26 29 2B 2E 
-							32 39 42 4B 57 64 64
-					 64 64 57 4B 42 39 32 
-					 2E 2B 29 26 23 1F 1C 19 16 13 11 
-					 0F 0D 0B 09 07 05 03 01 00 00 00 00];
+			qcom,duty-pcts = [00 00 00 00 00 00 00 00 00 00 00 
+							01 03 05 08 0B 10 14 19 1E 24 2A
+							30 38 40 49 52 5B 64 64 
+							64 64 64 5B 52 49 40 38 30  
+							2A 24 1E 19 14 10 0B 08 05 03 01
+							00 00 00 00 00 00 00 00 00 00 00];
 			qcom,max-current = <6>;
 			qcom,pause-lo = <0>;
 			qcom,pause-hi = <0>;
@@ -46,12 +48,12 @@
 			qcom,duty-ms = <200>;
 			qcom,start-idx = <1>;
 			qcom,idx-len = <10>;
-			qcom,duty-pcts = [00 00 00 00 01 03 05 07 09 0B 0D 0F 
-							11 13 16 19 1C 1F 23 26 29 2B 2E 
-							32 39 42 4B 57 64 64
-					 64 64 57 4B 42 39 32 
-					 2E 2B 29 26 23 1F 1C 19 16 13 11 
-					 0F 0D 0B 09 07 05 03 01 00 00 00 00];
+			qcom,duty-pcts = [00 00 00 00 00 00 00 00 00 00 00 
+							01 03 05 08 0B 10 14 19 1E 24 2A
+							30 38 40 49 52 5B 64 64 
+							64 64 64 5B 52 49 40 38 30  
+							2A 24 1E 19 14 10 0B 08 05 03 01
+							00 00 00 00 00 00 00 00 00 00 00];
 			qcom,max-current = <6>;
 			qcom,pause-lo = <0>;
 			qcom,pause-hi = <0>;
@@ -70,12 +72,12 @@
 			qcom,duty-ms = <200>;
 			qcom,start-idx = <1>;
 			qcom,idx-len = <10>;
-			qcom,duty-pcts = [00 00 00 00 01 03 05 07 09 0B 0D 0F 
-							11 13 16 19 1C 1F 23 26 29 2B 2E 
-							32 39 42 4B 57 64 64
-					 64 64 57 4B 42 39 32 
-					 2E 2B 29 26 23 1F 1C 19 16 13 11 
-					 0F 0D 0B 09 07 05 03 01 00 00 00 00];
+			qcom,duty-pcts = [00 00 00 00 00 00 00 00 00 00 00 
+							01 03 05 08 0B 10 14 19 1E 24 2A
+							30 38 40 49 52 5B 64 64 
+							64 64 64 5B 52 49 40 38 30  
+							2A 24 1E 19 14 10 0B 08 05 03 01
+							00 00 00 00 00 00 00 00 00 00 00];
 			qcom,max-current = <6>;
 			qcom,pause-lo = <0>;
 			qcom,pause-hi = <0>;
@@ -86,6 +88,8 @@
 			qcom,use-blink;
 		};
 	};
+/*#endif*/	
+/*OPPO yuyi 2013-09-27 modify end for RGB-leds*/
 
 	qcom,leds@d100 {
 		status = "disabled";
@@ -139,7 +143,7 @@
 			label = "flash";
 			qcom,id = <2>;
 			linux,name = "led:flash_torch";
-			qcom,current = <80>;// 200
+			qcom,current = <53>;// 200
 			qcom,torch-enable;
 		};
 	};

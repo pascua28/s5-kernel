@@ -15,8 +15,14 @@
 
 &pm8941_lsid1 {
 	pm8941_boost: regulator@a000 {
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
+/* #ifndef VENDOR_EDIT*/	
+/* xiaojun.lv@PhoneDpt.AudioDrv, 2014/03/25, modify pm8941_boost from 5V to 4.5V for 14001 */
+		//regulator-min-microvolt = <5000000>;
+		//regulator-max-microvolt = <5000000>;
+/* #else */
+		regulator-min-microvolt = <4500000>;
+		regulator-max-microvolt = <4500000>;
+/* #endif */
 		qcom,enable-time = <500>;
 		status = "okay";
 	};

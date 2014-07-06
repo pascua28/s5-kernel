@@ -390,8 +390,8 @@
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana",
 				     "cam_vaf";
 		qcom,cam-vreg-type = <0 1 0 0>;
-		qcom,cam-vreg-min-voltage = <1000000 0 2700000 2800000>;
-		qcom,cam-vreg-max-voltage = <1000000 0 2700000 2800000>;
+		qcom,cam-vreg-min-voltage = <1000000 0 2800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1000000 0 2800000 2800000>;
 		// lingjianing 2014-3-5 modify for 14001 camera AVDD and DVDD
 		qcom,cam-vreg-min-find7op-voltage = <1050000 0 2800000 2800000>;
 		qcom,cam-vreg-max-find7op-voltage = <1050000 0 2800000 2800000>;

@@ -16,6 +16,7 @@
 /include/ "dsi-panel-jdi-1080p-video.dtsi"
 /include/ "dsi-panel-jdi-1440p-video.dtsi"
 /include/ "dsi-panel-jdi-1080p-cmd.dtsi"
+/include/ "dsi-panel-sharp-1080p-cmd.dtsi"
 / {
 	aliases {
 		serial0 = &blsp1_uart1;
@@ -28,14 +29,8 @@
 	};
 
 	qcom,mdss_dsi@fd922800 {
-/*VENDOR_EDIT*/
-/* OPPO 2013-11-05 yxq modified begin for compatible with truly panel */
 		/*qcom,dsi-pref-prim-pan = <&dsi_tosh_720_vid>;*/
-		qcom,dsi-pref-jdi-video-pan = <&dsi_jdi_1080_vid>;
-		qcom,dsi-pref-jdi-cmd-pan = <&dsi_jdi_1080_cmd>;
-		qcom,dsi-pref-truly-pan = <&dsi_truly_1080_vid>;
-		qcom,dsi-pref-find7s-jdi-pan = <&dsi_jdi_1440_vid>;
-/* OPPO 2013-11-05 yxq modified end */
+		qcom,dsi-pref-prim-pan = <&dsi_jdi_1080_cmd>;
 	};
 /* OPPO 2014-02-10 yxq added begin for Find7S */
 	qcom,mdss_dsi@fd922e00 {
@@ -262,7 +257,7 @@
 		p61-nxp-nfc@0 { //Slave driver and CS ID
 			compatible = "p61,nxp-nfc"; //Manufacture, and Model
 			reg = <0>; //Same as CS ID
-			spi-max-frequency = <4800000>; //Max Frequency for Device
+			spi-max-frequency = <4000000>; //Max Frequency for Device
 			spi-cs-high; //CS Active High
 			interrupt-parent = <&msmgpio>; //GPIO Handler
 			interrupts = <34 0>; //GPIO # and flags
@@ -303,6 +298,7 @@
 			gpios = <&pm8941_gpios 5 0x1>;
 			linux,input-type = <1>;
 			linux,code = <115>;
+			/* gpio-key,wakeup; mingqiang.guo@bsp.phone remove volume_key wakeup phone,because remove Track gestures */
 			debounce-interval = <15>;
 		};
 /*VENDOR_EDIT*/
@@ -312,6 +308,7 @@
 			gpios = <&pm8941_gpios 2 0x1>;
 			linux,input-type = <1>;
 			linux,code = <114>;
+			/* gpio-key,wakeup; mingqiang.guo@bsp.phone remove volume_key wakeup phone,because remove Track gestures */
 			debounce-interval = <15>;
 		};
 /*OPPO yuyi 2013-11-05 add end for vol_down*/	
