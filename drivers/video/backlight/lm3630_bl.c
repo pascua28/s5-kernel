@@ -109,7 +109,11 @@ static int lm3630_chip_init(struct lm3630_chip_data *pchip)
 #ifdef CONGIF_OPPO_CMCC_OPTR
     reg_val = 0x12; /* For 13077 CMCC */
 #else
-    reg_val = 0x16; /* For 13077 pvt panel */
+    if (get_pcb_version() >= 20) {
+        reg_val = 0x12; /* For 13097 low power version */
+    } else {
+        reg_val = 0x16; /* For 13077 pvt panel */
+    }
 #endif
 	regmap_write(pchip->regmap, REG_MAXCU_A, reg_val);
 	regmap_write(pchip->regmap, REG_MAXCU_B, reg_val);
@@ -402,7 +406,7 @@ static void lm3630_backlight_unregister(struct lm3630_chip_data *pchip)
 #else
 
 /* update and get brightness */
- int lm3630_bank_a_update_status(u32 bl_level)
+int lm3630_bank_a_update_status(u32 bl_level)
 {
 	int ret;
 	struct lm3630_chip_data *pchip = lm3630_pchip;
@@ -413,6 +417,11 @@ static void lm3630_backlight_unregister(struct lm3630_chip_data *pchip)
 		return -ENOMEM;
 		}
 	
+
+	if (!pchip->regmap || !lm3630_pchip->regmap) {
+	  pr_err("%s YXQ pchip->regmap is NULL.\n", __func__);
+	  return bl_level;
+	}
 	/* brightness 0 means disable */
 	if (!bl_level) {
         ret = regmap_write(lm3630_pchip->regmap, REG_BRT_A, 0);
@@ -429,8 +438,21 @@ static void lm3630_backlight_unregister(struct lm3630_chip_data *pchip)
 		if (ret < 0)
 			goto out;
 		mdelay(1);
+#ifndef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/24  Modify for backlight flick when disable pwm */
 		ret = regmap_write(pchip->regmap,
 				   REG_BRT_A, bl_level);
+#else /*VENDOR_EDIT*/
+		if(bl_level>20)
+			ret = regmap_write(pchip->regmap,
+				   REG_BRT_A, bl_level);
+		else if(get_pcb_version() < 20)
+			ret = regmap_write(pchip->regmap,
+				   REG_BRT_A, 2+(bl_level-1)*7/18);
+		else
+			ret = regmap_write(pchip->regmap,
+				   REG_BRT_A, 2+(bl_level-1)*9/18);
+#endif /*VENDOR_EDIT*/
 		if (ret < 0)
 			goto out;
 #ifdef CONFIG_VENDOR_EDIT
@@ -787,6 +809,24 @@ static int lm3630_resume(struct i2c_client *client)
 
 	return 0;
 }
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/05/22  Add for reduce current when charge */
+void lm3630_reduce_max_current(void)
+{
+	if(lm3630_pchip == NULL) return;
+	regmap_write(lm3630_pchip->regmap, REG_MAXCU_A, 0x0D);
+	regmap_write(lm3630_pchip->regmap, REG_MAXCU_B, 0x0D);
+}
+
+void lm3630_recover_max_current(void)
+{
+	if(lm3630_pchip == NULL) return;
+	regmap_write(lm3630_pchip->regmap, REG_MAXCU_A, 0x12);
+	regmap_write(lm3630_pchip->regmap, REG_MAXCU_B, 0x12);
+}
+#endif /*VENDOR_EDIT*/
+
 
 #ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
