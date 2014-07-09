@@ -26,6 +26,12 @@
 #include "mdss_panel.h"
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/11  Add for AT current for find7s */
+#include <linux/boot_mode.h>
+#endif /*CONFIG_VENDOR_EDIT*/
+
 /* OPPO 2014-02-10 yxq Added begin for Find7S */
 #include <linux/pcb_version.h>
 /* OPPO 2014-02-10 yxq Added end */
@@ -92,11 +98,9 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 		}
 	} else {
 		ret = mdss_dsi_panel_reset(pdata, 0);
-		if (ret) {
-			pr_err("%s: Panel reset failed. rc=%d\n",
-					__func__, ret);
-			goto error;
-		}
+
+#ifndef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/02  Modify for probabilistic blurred screen for find7s */
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data.vreg_config,
 			ctrl_pdata->power_data.num_vreg, 0);
@@ -104,6 +108,20 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			pr_err("%s: Failed to disable vregs.rc=%d\n",
 				__func__, ret);
 		}
+#else /*CONFIG_VENDOR_EDIT*/
+	if(get_pcb_version() >= HW_VERSION__20 && get_boot_mode()!= MSM_BOOT_MODE__FACTORY){
+		ret = 0;
+	}
+	else{
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->power_data.vreg_config,
+			ctrl_pdata->power_data.num_vreg, 0);
+		if (ret) {
+			pr_err("%s: Failed to disable vregs.rc=%d\n",
+				__func__, ret);
+		}
+	}
+#endif /*CONFIG_VENDOR_EDIT*/
 	}
 error:
 	return ret;
@@ -705,8 +723,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_phy_init(pdata);
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-
 	__mdss_dsi_ctrl_setup(pdata);
 	mdss_dsi_sw_reset(pdata);
 	mdss_dsi_host_init(pdata);
@@ -1195,12 +1211,6 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 	struct device_node *dsi_pan_node = NULL, *mdss_node = NULL;
 
 	len = strlen(panel_cfg);
-#ifdef CONFIG_VENDOR_EDIT
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/10  Add for Find7s */
-    if (get_pcb_version() >= HW_VERSION__20) {
-        len = 0;
-    }
-#endif /*CONFIG_VENDOR_EDIT*/
 	if (!len) {
 		/* no panel cfg chg, parse dt */
 		pr_debug("%s:%d: no cmd line cfg present\n",
@@ -1218,6 +1228,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		stream += 2;
 
 		pan = strnchr(stream, strlen(stream), ':');
+	pr_err("%s %d YXQ pan=%s\n", __func__, __LINE__, pan);
 		if (!pan) {
 			strlcpy(panel_name, stream, MDSS_MAX_PANEL_LEN);
 		} else {
@@ -1609,7 +1620,8 @@ ctrl_pdata->index=index;
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/03/13  Add for Find7s enable display -5v */
 	if(get_pcb_version() >= HW_VERSION__20){
 		if(gpio_is_valid(46)){
-			
+			pr_err("config gpio 46 LCD -5v \n");
+			rc = gpio_request(46, "LCD_enable_-5v");
 			rc = gpio_tlmm_config(GPIO_CFG(
 					46, 0,
 					GPIO_CFG_OUTPUT,

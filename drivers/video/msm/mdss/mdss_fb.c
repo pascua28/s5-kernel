@@ -53,6 +53,11 @@
 
 #include "mdss_fb.h"
 
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/11  Add for AT current for find7s */
+#include "mdss_dsi.h"
+#endif /*VENDOR_EDIT*/
+
 /* OPPO 2014-02-10 yxq added begin for Find7S */
 #include <linux/pcb_version.h>
 /* OPPO 2014-02-10 yxq added end */
@@ -313,7 +318,8 @@ static void mdss_fb_parse_dt(struct msm_fb_data_type *mfd)
 	} else { /* Find7S */
         if (of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split-find7s",
 				       data, 2))
-		    pr_err("%s:[beom] panelf info xres =%d \n",__func__, mfd->panel_info->xres);
+		    //pr_err("%s:[beom] panelf info xres =%d \n",__func__, mfd->panel_info->xres);
+			return;
         if (data[0] && data[1]) {
     	    mfd->split_fb_left = data[0];
     		mfd->split_fb_right = data[1];
@@ -354,18 +360,69 @@ static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 
 /* OPPO 2013-11-26 yxq Add begin for suspend the device */
 #ifdef CONFIG_VENDOR_EDIT
+
+extern struct mdss_dsi_ctrl_pdata *panel_data;
 static ssize_t mdss_mdp_lcdoff_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct fb_info *fbi = dev_get_drvdata(dev);
+	if(get_pcb_version() >= HW_VERSION__20){
+		struct mdss_panel_data * pdata;
+		int rc;
+		pr_err("find7s yxr\n");
+		pdata = &panel_data->panel_data;
+		do {
+			pr_err("pdata = %x yxr\n",(u32)pdata);
+			if (pdata->event_handler)
+				rc = pdata->event_handler(pdata, MDSS_EVENT_PANEL_OFF, NULL);
+			pdata = pdata->next;
+		} while (rc == 0 && pdata);
+		return rc;
+	}else{
+		struct fb_info *fbi = dev_get_drvdata(dev);
     struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
     pr_err("%s YXQ mfd=0x%p\n", __func__, mfd);
 	if (!mfd)
 		return -ENODEV;
 	return mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_OFF, NULL);
+	}
 }
 #endif
 /* OPPO 2013-11-26 yxq Add end */
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
+extern int set_gamma(int index);
+
+extern int gamma_index;
+extern void send_user_defined_gamma(char * buf);
+
+static ssize_t mdss_set_gamma(struct device *dev,
+                               struct device_attribute *attr,
+                               const char *buf, size_t count)
+{
+    int index = 0;
+	char a[100];
+    sscanf(buf, "%du", &index);
+	pr_err("strlen = %d \n",strlen(buf));
+	if(strlen(buf)<=2)
+    set_gamma(index);
+	else{
+		strcpy(a,buf);
+		pr_err("%s \n",a);
+		if(get_pcb_version() < 20)
+		send_user_defined_gamma(a);
+	}
+    return count;
+}
+
+static ssize_t mdss_get_gamma(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	printk(KERN_INFO "get fix resume gamma index = %d\n",gamma_index);
+    return sprintf(buf, "%d\n", gamma_index);
+}
+
+#endif /*VENDOR_EDIT*/
 
 #ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
@@ -376,7 +433,6 @@ static ssize_t mdss_get_cabc(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	printk(KERN_INFO "get cabc mode = %d\n",cabc_mode);
-
     return sprintf(buf, "%d\n", cabc_mode);
 }
 
@@ -392,7 +448,6 @@ static ssize_t mdss_set_cabc(struct device *dev,
 
 #endif /*VENDOR_EDIT*/
 
-
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO, mdss_fb_get_split, NULL);
 static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
@@ -403,7 +458,12 @@ static DEVICE_ATTR(lcdoff, S_IRUGO, mdss_mdp_lcdoff_event, NULL);
 /* OPPO 2013-11-26 yxq Add end */
 #ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
-static DEVICE_ATTR(cabc, S_IRWXUGO, mdss_get_cabc, mdss_set_cabc);
+static DEVICE_ATTR(cabc, S_IRUGO|S_IWUSR, mdss_get_cabc, mdss_set_cabc);
+#endif /*VENDOR_EDIT*/
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
+static DEVICE_ATTR(gamma, S_IRUGO|S_IWUSR, mdss_get_gamma, mdss_set_gamma);
 #endif /*VENDOR_EDIT*/
 
 static struct attribute *mdss_fb_attrs[] = {
@@ -418,6 +478,11 @@ static struct attribute *mdss_fb_attrs[] = {
 #ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
 	&dev_attr_cabc.attr,
+#endif /*VENDOR_EDIT*/
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
+	&dev_attr_gamma.attr,
 #endif /*VENDOR_EDIT*/
 	NULL,
 };
@@ -2426,7 +2491,10 @@ int mdss_register_panel(struct platform_device *pdev,
 	struct platform_device *fb_pdev, *mdss_pdev;
 	struct device_node *node;
 	int rc = 0;
-	bool master_panel = true;
+#ifdef CONFIG_VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Driver, 2014/03/11  Add for Find7S continuous display can't close mdp clocks */
+    bool master_panel = true;
+#endif /*CONFIG_VENDOR_EDIT*/
 
 	if (!pdev || !pdev->dev.of_node) {
 		pr_err("Invalid device node\n");
@@ -2454,8 +2522,11 @@ int mdss_register_panel(struct platform_device *pdev,
 	fb_pdev = of_find_device_by_node(node);
 	if (fb_pdev) {
 		rc = mdss_fb_register_extra_panel(fb_pdev, pdata);
-		if (rc == 0)
-			master_panel = false;
+#ifdef CONFIG_VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Driver, 2014/03/11  Add for Find7S continuous display can't close mdp clocks */
+        if (rc == 0)
+            master_panel = false;
+#endif /*CONFIG_VENDOR_EDIT*/
 	} else {
 		pr_info("adding framebuffer device %s\n", dev_name(&pdev->dev));
 		fb_pdev = of_platform_device_create(node, NULL,
@@ -2463,8 +2534,14 @@ int mdss_register_panel(struct platform_device *pdev,
 		fb_pdev->dev.platform_data = pdata;
 	}
 
-	if (master_panel && mdp_instance->panel_register_done)
+#ifndef CONFIG_VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Driver, 2014/03/11  Modify for Find7S continuous can't close mdp clocks */
+	if (mdp_instance->panel_register_done)
 		mdp_instance->panel_register_done(pdata);
+#else /*VENDOR_EDIT*/
+	if (master_panel && mdp_instance->panel_register_done)
+        mdp_instance->panel_register_done(pdata);
+#endif /*VENDOR_EDIT*/
 
 mdss_notfound:
 	of_node_put(node);

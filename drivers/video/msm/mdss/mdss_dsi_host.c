@@ -83,6 +83,10 @@ void mdss_dsi_ctrl_init(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	ctrl_list[ctrl->ndx] = ctrl;	/* keep it */
 
+	if (ctrl->shared_pdata.broadcast_enable)
+		if (ctrl->ndx == DSI_CTRL_1)
+			ctrl->flags |= DSI_FLAG_CLOCK_MASTER;
+
 	if (mdss_register_irq(ctrl->dsi_hw))
 		pr_err("%s: mdss_register_irq failed.\n", __func__);
 
@@ -106,6 +110,22 @@ void mdss_dsi_ctrl_init(struct mdss_dsi_ctrl_pdata *ctrl)
 						"mdss_dsi_event");
 		dsi_event.inited  = 1;
 	}
+}
+
+struct mdss_dsi_ctrl_pdata *mdss_dsi_ctrl_slave(
+				struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int ndx;
+	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+
+	/* only two controllers */
+	ndx = ctrl->ndx;
+	ndx += 1;
+	ndx %= DSI_CTRL_MAX;
+	sctrl = ctrl_list[ndx];
+
+	return sctrl;
+
 }
 
 void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl, int enable)

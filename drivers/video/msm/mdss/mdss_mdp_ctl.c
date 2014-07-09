@@ -23,6 +23,11 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/11  Add for blue screen before recovery mode */
+#include <linux/boot_mode.h>
+#endif /*VENDOR_EDIT*/
+
 static inline u64 fudge_factor(u64 val, u32 numer, u32 denom)
 {
 	u64 result = (val * (u64)numer);
@@ -1376,6 +1381,11 @@ static int mdss_mdp_ctl_setup_wfd(struct mdss_mdp_ctl *ctl)
 
 	return 0;
 }
+
+#ifdef CONFIG_VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/15  Add for find7s swap DSI port */
+extern int LCD_id;
+#endif /*VENDOR_EDIT*/
 
 struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 				       struct msm_fb_data_type *mfd)

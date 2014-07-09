@@ -896,12 +896,12 @@ static int mdp3_overlay_set(struct msm_fb_data_type *mfd,
 	mdp3_session->overlay = *req;
 	if (req->id == MSMFB_NEW_REQUEST) {
 		if (dma->source_config.stride != stride ||
-				dma->source_config.format != format) {
+			dma->source_config.format != format) {
 			dma->source_config.format = format;
 			dma->source_config.stride = stride;
-			dma->output_config.pack_pattern =
-				mdp3_ctrl_get_pack_pattern(req->src.format);
-			dma->update_src_cfg = true;
+			mdp3_clk_enable(1, 0);
+			mdp3_session->dma->dma_config_source(dma);
+			mdp3_clk_enable(0, 0);
 		}
 		mdp3_session->overlay.id = 1;
 		req->id = 1;
@@ -925,6 +925,12 @@ static int mdp3_overlay_unset(struct msm_fb_data_type *mfd, int ndx)
 	mutex_lock(&mdp3_session->lock);
 
 	if (mdp3_session->overlay.id == ndx && ndx == 1) {
+		struct mdp3_dma *dma = mdp3_session->dma;
+		dma->source_config.format = format;
+		dma->source_config.stride = fix->line_length;
+		mdp3_clk_enable(1, 0);
+		mdp3_session->dma->dma_config_source(dma);
+		mdp3_clk_enable(0, 0);
 		mdp3_session->overlay.id = MSMFB_NEW_REQUEST;
 		mdp3_bufq_deinit(&mdp3_session->bufq_in);
 	} else {
@@ -1040,8 +1046,7 @@ static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
 					MDP_NOTIFY_FRAME_DONE);
 			}
 		}
-		mdp3_session->dma_active = 1;
-		init_completion(&mdp3_session->dma_completion);
+
 		mdp3_ctrl_notify(mdp3_session, MDP_NOTIFY_FRAME_FLUSHED);
 		mdp3_bufq_push(&mdp3_session->bufq_out, data);
 	}
@@ -1135,8 +1140,6 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd,
 					MDP_NOTIFY_FRAME_DONE);
 			}
 		}
-		mdp3_session->dma_active = 1;
-		init_completion(&mdp3_session->dma_completion);
 		mdp3_ctrl_notify(mdp3_session, MDP_NOTIFY_FRAME_FLUSHED);
 	} else {
 		pr_debug("mdp3_ctrl_pan_display no memory, stop interface");

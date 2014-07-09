@@ -200,6 +200,8 @@ int mdp3_get_cont_spash_en(void);
 int mdp3_get_mdp_dsi_clk(void);
 int mdp3_put_mdp_dsi_clk(void);
 void mdp3_batfet_ctrl(int enable);
+int mdp3_get_mdp_dsi_clk(void);
+int mdp3_put_mdp_dsi_clk(void);
 
 int mdp3_misr_set(struct mdp_misr *misr_req);
 int mdp3_misr_get(struct mdp_misr *misr_resp);
