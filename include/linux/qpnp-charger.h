@@ -35,6 +35,9 @@ struct qpnp_battery_gauge {
 	int (*get_fast_chg_allow) (void);
 	int (*fast_normal_to_warm)	(void);	
 	int (*set_normal_to_warm_false)	(void);
+	int	(*get_fast_chg_ing)	(void);
+	int	(*get_fast_low_temp_full)	(void);
+	int	(*set_low_temp_full_false)	(void);
 	//lfc add for fastchg end
 };
 
@@ -48,6 +51,7 @@ struct qpnp_external_charger {
 	int (*chg_charge_en) (int enable);
 	int (*check_charge_timeout) (int hours);
 	int (*chg_get_system_status) (void);
+	int (*chg_get_charge_en) (void);
 	int (*chg_usb_suspend_enable) (int enable);
 	int (*chg_otg_current_set) (int mA);
 	int (*chg_wdt_set) (int seconds);

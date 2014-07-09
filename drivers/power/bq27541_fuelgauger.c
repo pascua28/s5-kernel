@@ -49,7 +49,7 @@ extern unsigned char Pic16F_firmware_data[];
 extern int pic_fw_ver_count;
 extern int pic_need_to_up_fw;
 extern int pic_have_updated;
-extern int pic16f_fw_update(void);
+extern int pic16f_fw_update(bool pull96);
 #endif
 /* OPPO 2013-12-20 liaofuchun add end */
 
@@ -118,13 +118,12 @@ extern int pic16f_fw_update(void);
 #define BQ27541_INIT_DELAY   ((HZ)*1)
 /* OPPO 2013-08-24 wangjc Add begin for filter soc. */
 #ifdef CONFIG_VENDOR_EDIT
-#define CAPACITY_SALTATE_COUNTER 12
-#define CAPACITY_SALTATE_COUNTER_NOT_CHARGING	48
-#define CAPACITY_SALTATE_COUNTER_HIGH	72
-#define CAPACITY_SALTATE_COUNTER_90		60
-#define CAPACITY_SALTATE_COUNTER_95		100
-#define CAPACITY_SALTATE_COUNTER_99		120
-#define CAPACITY_SALTATE_COUNTER_FULL		144
+#define CAPACITY_SALTATE_COUNTER 4
+#define CAPACITY_SALTATE_COUNTER_NOT_CHARGING	20
+#define CAPACITY_SALTATE_COUNTER_80		30
+#define CAPACITY_SALTATE_COUNTER_90		40
+#define CAPACITY_SALTATE_COUNTER_95		60
+#define CAPACITY_SALTATE_COUNTER_FULL		120
 #endif
 /* OPPO 2013-08-24 wangjc Add end */
 /* If the system has several batteries we need a different name for each
@@ -169,6 +168,7 @@ struct bq27541_device_info {
 	struct timer_list watchdog;
 	struct wake_lock fastchg_wake_lock;
 	bool fast_chg_allow;
+	bool fast_low_temp_full;
 /* jingchun.wang@Onlinerd.Driver, 2014/02/12  Add for retry when config fail */
 	int retry_count;
 /* jingchun.wang@Onlinerd.Driver, 2014/02/27  Add for get right soc when sleep long time */
@@ -176,6 +176,7 @@ struct bq27541_device_info {
 	unsigned long rtc_suspend_time;
 	atomic_t suspended;
 #endif
+	bool fast_chg_ing;
 /* OPPO 2013-08-24 wangjc Add end */
 };
 
@@ -278,14 +279,18 @@ static int bq27541_soc_calibrate(struct bq27541_device_info *di, int soc)
 			else
 				di->saltate_counter = 0;
 		
-			if(soc > di->soc_pre)
+			if(soc > di->soc_pre) {
 				soc_calib = di->soc_pre + 1;
-			else
+			} else if(soc < (di->soc_pre - 2)) {
+				/* jingchun.wang@Onlinerd.Driver, 2013/04/14  Add for allow soc fail when charging. */
+				soc_calib = di->soc_pre - 1;
+			} else {
 				soc_calib = di->soc_pre;
+			}
 			
 			/* jingchun.wang@Onlinerd.Driver, 2013/12/12  Add for set capacity to 100 when full in normal temp */
 			if(ret.intval == POWER_SUPPLY_STATUS_FULL) {
-				if(soc > 95) {
+				if(soc > 94) {
 					soc_calib = 100;
 				}
 			}
@@ -294,17 +299,15 @@ static int bq27541_soc_calibrate(struct bq27541_device_info *di, int soc)
 			if((abs(soc - di->soc_pre) >= 2) || (di->soc_pre > 80)) {
 				di->saltate_counter++;
 				if(di->soc_pre == 100) {
-					counter_temp = CAPACITY_SALTATE_COUNTER_FULL;
-				} else if (di->soc_pre == 99) {
-					counter_temp = CAPACITY_SALTATE_COUNTER_99;//6
+					counter_temp = CAPACITY_SALTATE_COUNTER_FULL;//6
 				} else if (di->soc_pre > 95) {
-					counter_temp = CAPACITY_SALTATE_COUNTER_95;//5
+					counter_temp = CAPACITY_SALTATE_COUNTER_95;///3
 				} else if (di->soc_pre > 90) {
-					counter_temp = CAPACITY_SALTATE_COUNTER_90;///3
-				//} else if(soc > 90) {
-				//	counter_temp = CAPACITY_SALTATE_COUNTER_HIGH;
+					counter_temp = CAPACITY_SALTATE_COUNTER_90;///2
+				} else if(di->soc_pre > 80) {
+					counter_temp = CAPACITY_SALTATE_COUNTER_80;///1.5
 				} else {
-					counter_temp = CAPACITY_SALTATE_COUNTER_NOT_CHARGING;
+					counter_temp = CAPACITY_SALTATE_COUNTER_NOT_CHARGING;///1
 				}
 				if(di->saltate_counter < counter_temp)
 					return di->soc_pre;
@@ -616,6 +619,21 @@ static int bq27541_set_switch_to_noraml_false(void)
 	return 0;
 }
 
+static int bq27541_get_fast_low_temp_full(void)
+{
+	if(bq27541_di) {
+		return bq27541_di->fast_low_temp_full;
+	}
+	return false;
+}
+
+static int bq27541_set_fast_low_temp_full_false(void)
+{
+	if(bq27541_di) {
+		return bq27541_di->fast_low_temp_full = false;
+	}
+	return 0;
+}
 #endif
 /* OPPO 2013-08-24 wangjc Add end */
 
@@ -654,6 +672,15 @@ static int bq27541_get_fast_chg_allow(void)
 	}
 	return 0;
 }
+
+static int bq27541_get_fast_chg_ing(void)
+{
+	if(bq27541_di) {
+			return bq27541_di->fast_chg_ing;
+		}
+	return 0;
+}
+
 /* OPPO 2013-12-12 liaofuchun add for set/get fastchg allow end */
 
 static struct qpnp_battery_gauge bq27541_batt_gauge = {
@@ -676,6 +703,9 @@ static struct qpnp_battery_gauge bq27541_batt_gauge = {
 	.get_fast_chg_allow			= bq27541_get_fast_chg_allow,
 	.fast_normal_to_warm		= bq27541_fast_normal_to_warm,
 	.set_normal_to_warm_false	= bq27541_set_fast_normal_to_warm_false,
+	.get_fast_chg_ing			= bq27541_get_fast_chg_ing,
+	.get_fast_low_temp_full		= bq27541_get_fast_low_temp_full,
+	.set_low_temp_full_false	= bq27541_set_fast_low_temp_full_false,
 #endif
 /* OPPO 2013-09-30 wangjc Add end */
 };
@@ -1040,6 +1070,7 @@ static irqreturn_t irq_rx_handler(int irq, void *dev_id)
 }
 
 #define AP_SWITCH_USB	GPIO_CFG(96, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+
 static void fastcg_work_func(struct work_struct *work)
 {
 	int data = 0;
@@ -1074,6 +1105,7 @@ static void fastcg_work_func(struct work_struct *work)
 				bq27541_di->fast_chg_allow = false;
 				bq27541_di->fast_switch_to_normal = false;
 				bq27541_di->fast_normal_to_warm = false;
+				bq27541_di->fast_chg_ing = false;
 				gpio_set_value(96, 0);
 				retval = gpio_tlmm_config(AP_SWITCH_USB, GPIO_CFG_ENABLE);
 				if (retval) {
@@ -1112,6 +1144,7 @@ static void fastcg_work_func(struct work_struct *work)
 		bq27541_di->fast_chg_allow = false;
 		bq27541_di->fast_switch_to_normal = false;
 		bq27541_di->fast_normal_to_warm = false;
+		bq27541_di->fast_chg_ing = false;
 		//switch off fast chg
 		pr_info("%s fastchg stop unexpectly,switch off fastchg\n", __func__);
 		
@@ -1126,13 +1159,15 @@ static void fastcg_work_func(struct work_struct *work)
 		//tell ap can read i2c
 		bq27541_di->alow_reading = true;
 		//reading
+		bq27541_di->fast_chg_ing = true;
 		volt = bq27541_get_battery_mvolts();
 		temp = bq27541_get_battery_temperature();
 		remain_cap = bq27541_get_batt_remaining_capacity();
 		soc = bq27541_get_battery_soc();
 		current_now = bq27541_get_average_current();
 		pr_err("%s volt:%d,temp:%d,remain_cap:%d,soc:%d,current:%d\n",__func__,volt,temp,
-			remain_cap,soc,current_now);
+			remain_cap,soc,current_now);	
+		
 		//don't read
 		bq27541_di->alow_reading = false;
 		mod_timer(&bq27541_di->watchdog,
@@ -1155,12 +1190,27 @@ static void fastcg_work_func(struct work_struct *work)
 		}
 		del_timer(&bq27541_di->watchdog);
 		ret_info = 0x2;
+	} else if(data == 0x53){
+		if (bq27541_di->battery_type == BATTERY_3000MA){	//13097 ATL battery
+			//if temp:10~20 decigec,vddmax = 4250mv
+			//switch off fast chg
+			pr_info("%s fastchg low temp full,switch off fastchg,set GPIO96 0\n", __func__);
+			gpio_set_value(96, 0);
+			retval = gpio_tlmm_config(AP_SWITCH_USB, GPIO_CFG_ENABLE);
+			if (retval) {
+				pr_err("%s switch usb error %d\n", __func__, retval);
+			}
+		}
+		del_timer(&bq27541_di->watchdog);
+		ret_info = 0x2;
 	} else if(data == 0x59){
 		//usb bad connected,stop fastchg
+#if 0	//lfc modify for it(set fast_switch_to_normal ture) is earlier than usb_plugged_out irq(set it false)
 		bq27541_di->alow_reading = true;
 		bq27541_di->fast_chg_started = false;
 		bq27541_di->fast_chg_allow = false;
 		bq27541_di->fast_switch_to_normal = true;
+#endif
 		//switch off fast chg
 		pr_info("%s usb bad connect,switch off fastchg\n", __func__);
 		gpio_set_value(96, 0);
@@ -1197,6 +1247,23 @@ static void fastcg_work_func(struct work_struct *work)
 		pr_info("local_fw:0x%x,need_to_up_fw:%d\n",Pic16F_firmware_data[pic_fw_ver_count - 4],pic_need_to_up_fw);
 		fw_ver_info = 0;
 	} else {
+		gpio_set_value(96, 0);
+		retval = gpio_tlmm_config(AP_SWITCH_USB, GPIO_CFG_ENABLE);
+		if (retval) {
+			pr_err("%s data err(101xxxx) switch usb error %d\n", __func__, retval);
+			goto out;	//avoid i2c conflict
+		}
+		msleep(500);	//avoid i2c conflict
+		//data err
+		bq27541_di->alow_reading = true;
+		bq27541_di->fast_chg_started = false;
+		bq27541_di->fast_chg_allow = false;
+		bq27541_di->fast_switch_to_normal = false;
+		bq27541_di->fast_normal_to_warm = false;
+		bq27541_di->fast_chg_ing = false;
+		//data err
+		pr_info("%s data err(101xxxx),switch off fastchg\n", __func__);
+		power_supply_changed(bq27541_di->batt_psy);
 		goto out;
 	}
 
@@ -1225,27 +1292,46 @@ out:
 	gpio_tlmm_config(GPIO_CFG(1,0,GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),1);
 	gpio_direction_input(1);
 	
-	//lfc add for it is faster than usb_plugged_out irq to send 0x5a(fast_chg full) to AP
-	if(data == 0x5a){
-		usleep_range(120000,120000);
+	//lfc add for it is faster than usb_plugged_out irq to send 0x5a(fast_chg full and usb bad connected) to AP
+	if(data == 0x5a || data == 0x59){
+		usleep_range(180000,180000);
 		bq27541_di->fast_switch_to_normal = true;
 		bq27541_di->alow_reading = true;
 		bq27541_di->fast_chg_started = false;
 		bq27541_di->fast_chg_allow = false;
+		bq27541_di->fast_chg_ing = false;
 	}
 	//fastchg temp over( > 45 or < 20)
+
+	//lfc add to set fastchg vddmax = 4250mv during 10 ~ 20 decigec for ATL 3000mAH battery
+	if(data == 0x53){
+		if(bq27541_di->battery_type == BATTERY_3000MA){	//13097 ATL battery
+			usleep_range(180000,180000);
+			bq27541_di->fast_low_temp_full = true;
+			bq27541_di->alow_reading = true;
+			bq27541_di->fast_chg_started = false;
+			bq27541_di->fast_chg_allow = false;
+			bq27541_di->fast_chg_ing = false;
+		}
+	}
+	//lfc add to set fastchg vddmax = 4250mv end
+	
 	if(data == 0x5c){
-		usleep_range(120000,120000);
+		usleep_range(180000,180000);
 		bq27541_di->fast_normal_to_warm = true;
 		bq27541_di->alow_reading = true;
 		bq27541_di->fast_chg_started = false;
 		bq27541_di->fast_chg_allow = false;
+		bq27541_di->fast_chg_ing = false;
 	}
 	
 	if(pic_need_to_up_fw){
 		msleep(500);
-		pic16f_fw_update();
+		del_timer(&bq27541_di->watchdog);
+		pic16f_fw_update(false);
 		pic_need_to_up_fw = 0;
+		mod_timer(&bq27541_di->watchdog,
+			  jiffies + msecs_to_jiffies(10000));
 	}
 	
 	retval = request_irq(bq27541_di->irq, irq_rx_handler, IRQF_TRIGGER_RISING, "mcu_data", bq27541_di);	//0X01:rising edge,0x02:falling edge
@@ -1256,12 +1342,17 @@ out:
 		power_supply_changed(bq27541_di->batt_psy);
 	}
 
+	if(data == 0x53){
+		if(bq27541_di->battery_type == BATTERY_3000MA){
+			power_supply_changed(bq27541_di->batt_psy);
+			wake_unlock(&bq27541_di->fastchg_wake_lock);
+		}
+	}
+		
 	if((data == 0x54) || (data == 0x5a) || (data == 0x59) || (data == 0x5c)){
 		power_supply_changed(bq27541_di->batt_psy);
 		wake_unlock(&bq27541_di->fastchg_wake_lock);
 	}
-	
-	
 }
 
 void di_watchdog(unsigned long data)
@@ -1273,9 +1364,10 @@ void di_watchdog(unsigned long data)
 	di->alow_reading = true;
 	di->fast_chg_started = false;
 	di->fast_switch_to_normal = false;
+	di->fast_low_temp_full = false;
 	di->fast_chg_allow = false;
 	di->fast_normal_to_warm = false;
-	
+	di->fast_chg_ing = false;
 	//switch off fast chg
 	pr_info("%s switch off fastchg\n", __func__);
 
@@ -1289,7 +1381,7 @@ void di_watchdog(unsigned long data)
 #endif
 /* OPPO 2013-12-12 liaofuchun add for fastchg */
 
-#define MAX_RETRY_COUNT	3
+#define MAX_RETRY_COUNT	5
 
 static int bq27541_battery_probe(struct i2c_client *client,
 				 const struct i2c_device_id *id)
@@ -1349,6 +1441,8 @@ static int bq27541_battery_probe(struct i2c_client *client,
 #endif
 /* OPPO 2013-08-19 wangjc Add end */
 	di->alow_reading = true;
+	di->fast_chg_ing = false;
+	di->fast_low_temp_full = false;
 #ifdef CONFIG_VENDOR_EDIT
 /* jingchun.wang@Onlinerd.Driver, 2014/02/12  Add for retry when config fail */
 	di->retry_count = MAX_RETRY_COUNT;
