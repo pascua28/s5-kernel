@@ -106,6 +106,7 @@
 /* OPPO 2014-02-12 yxq modified begin for Find7S */
 			/* qcom,memory-reservation-size = <0x800000>; */
 			qcom,memory-reservation-size = <0x2a30000>;
+			qcom,mdss-mixer-swap;
 			qcom,mdss-fb-split-find7s =<720 720>;
 /* OPPO 2014-02-12 yxq modified end */
 			qcom,memblock-reserve = <0x03200000 0x01E00000>;
