@@ -11,6 +11,15 @@
 #include <linux/ioctl.h>
 #include <linux/irqnr.h>
 
+/*
+ * Flags for getrandom(2)
+ *
+ * GRND_NONBLOCK	Don't block and return EAGAIN instead
+ * GRND_RANDOM		Use the /dev/random pool instead of /dev/urandom
+ */
+#define GRND_NONBLOCK	0x0001
+#define GRND_RANDOM	0x0002
+
 /* ioctl()'s for the random number generator */
 
 /* Get the entropy count. */
