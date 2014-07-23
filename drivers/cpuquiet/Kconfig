@@ -1,0 +1,72 @@
+menu "CPUQUIET Framework"
+
+config CPUQUIET_FRAMEWORK
+	bool "Cpuquiet framework"
+	help
+	  Cpuquiet implements pluggable policies for forcing cpu cores into a
+	  quiescent state. Appropriate policies will save power without hurting
+	  performance.
+
+if CPUQUIET_FRAMEWORK
+
+choice
+	prompt "Default CPUQuiet governor"
+	help
+	  This option sets which CPUQuiet governor shall be loaded at
+	  startup. If in doubt, select 'balanced'
+
+config CPUQUIET_DEFAULT_GOV_BALANCED
+	bool "balanced"
+	select CPUQUIET_GOVERNOR_BALANCED
+	depends on CPU_FREQ
+	help
+	  Use the CPUQuiet governor 'balanced' as default. This dynamically
+	  scales the number of cpus online in the system based on the cpu
+	  load
+
+config CPUQUIET_DEFAULT_GOV_RUNNABLE
+	bool "runnable"
+	select CPUQUIET_GOVERNOR_RUNNABLE
+	help
+	  Use the CPUQuiet governor 'runnable' as default. This uses
+	  the number of running threads ato scale the number of cpus  
+	  online in the system
+	  
+config CPUQUIET_DEFAULT_GOV_RQ_STATS
+	bool "rq_stats"
+	select CPUQUIET_GOVERNOR_RQ_STATS
+	help
+	  Use the CPUQuiet governor 'rq_stats' as default. This uses
+	  rq information to scale the number of cpus online in the system
+
+config CPUQUIET_DEFAULT_GOV_LOAD_STATS
+	bool "load_stats"
+	select CPUQUIET_GOVERNOR_LOAD_STATS
+	help
+	  Use the CPUQuiet governor 'load_stats' as default
+	  
+endchoice
+
+config CPUQUIET_GOVERNOR_BALANCED
+	bool "balanced"
+	depends on CPU_FREQ
+	help
+	  Add the CPUQuiet governor 'balanced'
+
+config CPUQUIET_GOVERNOR_RUNNABLE
+	bool "runnable"
+	help
+	  Add the CPUQuiet governor 'runnable'
+
+config CPUQUIET_GOVERNOR_RQ_STATS
+	bool "rq_stats"
+	help
+	  Add the CPUQuiet governor 'rq_stats'
+
+config CPUQUIET_GOVERNOR_LOAD_STATS
+	bool "load_stats"
+	help
+	  Add the CPUQuiet governor 'load_stats'
+
+endif
+endmenu

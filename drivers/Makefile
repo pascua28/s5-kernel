@@ -147,3 +147,5 @@ obj-$(CONFIG_BIF)		+= bif/
 obj-$(CONFIG_SENSORS)		+= sensors/
 
 obj-y += backoff/
+
+obj-$(CONFIG_CPUQUIET_FRAMEWORK)		+= cpuquiet/
