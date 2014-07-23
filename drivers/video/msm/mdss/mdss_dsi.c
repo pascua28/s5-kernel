@@ -723,6 +723,8 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_phy_init(pdata);
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+
 	__mdss_dsi_ctrl_setup(pdata);
 	mdss_dsi_sw_reset(pdata);
 	mdss_dsi_host_init(pdata);
@@ -1228,7 +1230,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		stream += 2;
 
 		pan = strnchr(stream, strlen(stream), ':');
-	pr_err("%s %d YXQ pan=%s\n", __func__, __LINE__, pan);
+		pr_err("%s %d YXQ pan=%s\n", __func__, __LINE__, pan);
 		if (!pan) {
 			strlcpy(panel_name, stream, MDSS_MAX_PANEL_LEN);
 		} else {
