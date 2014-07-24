@@ -298,20 +298,17 @@
 			gpios = <&pm8941_gpios 5 0x1>;
 			linux,input-type = <1>;
 			linux,code = <115>;
-			/* gpio-key,wakeup; mingqiang.guo@bsp.phone remove volume_key wakeup phone,because remove Track gestures */
+			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
-/*VENDOR_EDIT*/
-/*OPPO yuyi 2013-11-05 add begin for vol_down*/		
 		vol_down {
 			label = "volume_down";
 			gpios = <&pm8941_gpios 2 0x1>;
 			linux,input-type = <1>;
 			linux,code = <114>;
-			/* gpio-key,wakeup; mingqiang.guo@bsp.phone remove volume_key wakeup phone,because remove Track gestures */
+			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
-/*OPPO yuyi 2013-11-05 add end for vol_down*/	
 /* OPPO zhengzk 2013-04-18 add begin for hallsensor */
 /* #if 1 //#ifdef CONFIG_VENDOR_EDIT */
 		hallsensor_key {
