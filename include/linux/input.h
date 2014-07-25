@@ -1657,5 +1657,19 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
 int input_ff_create_memless(struct input_dev *dev, void *data,
 		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
 
+
+#ifdef CONFIG_INPUT_MEDIATOR
+struct input_mediator_handler {
+	void (*event)(struct input_handle *handle, unsigned int type,
+		unsigned int code, int value);
+
+	struct list_head node;
+};
+
+void input_register_mediator_primary(struct input_mediator_handler* handler);
+void input_unregister_mediator_primary(struct input_mediator_handler* handler);
+void input_register_mediator_secondary(struct input_mediator_handler* handler);
+void input_unregister_mediator_secondary(struct input_mediator_handler* handler);
+#endif
 #endif
 #endif
