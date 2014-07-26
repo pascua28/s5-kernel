@@ -318,6 +318,59 @@ static void __init msm8974_early_memory(void)
 	of_scan_flat_dt(dt_scan_for_memory_hole, msm8974_reserve_table);
 }
 
+#ifdef CONFIG_LCD_KCAL
+#include <linux/module.h>
+#include "../../../drivers/video/msm/mdss/mdss_fb.h"
+#include <mach/msm_lcd_kcal.h>
+extern int update_preset_lcdc_lut(void);
+#endif
+
+#ifdef CONFIG_LCD_KCAL
+int g_kcal_r = 255;
+int g_kcal_g = 255;
+int g_kcal_b = 255;
+
+int kcal_set_values(int kcal_r, int kcal_g, int kcal_b)
+{
+	g_kcal_r = kcal_r;
+	g_kcal_g = kcal_g;
+	g_kcal_b = kcal_b;
+	return 0;
+}
+
+static int kcal_get_values(int *kcal_r, int *kcal_g, int *kcal_b)
+{
+	*kcal_r = g_kcal_r;
+	*kcal_g = g_kcal_g;
+	*kcal_b = g_kcal_b;
+	return 0;
+}
+
+static int kcal_refresh_values(void)
+{
+	return update_preset_lcdc_lut();
+}
+
+static struct kcal_platform_data kcal_pdata = {
+	.set_values = kcal_set_values,
+	.get_values = kcal_get_values,
+	.refresh_display = kcal_refresh_values
+};
+
+static struct platform_device kcal_platrom_device = {
+	.name = "kcal_ctrl",
+	.dev = {
+		.platform_data = &kcal_pdata,
+	}
+};
+
+void __init msm_add_lcd_kcal_devices(void)
+{
+	pr_info ("LCD_KCAL_DEBUG : %s \n", __func__);
+	platform_device_register(&kcal_platrom_device);
+};
+#endif
+
 /*
  * Used to satisfy dependencies for devices that need to be
  * run early or in a particular order. Most likely your device doesn't fall
@@ -340,6 +393,9 @@ void __init msm8974_add_drivers(void)
 		msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+#ifdef CONFIG_LCD_KCAL
+	msm_add_lcd_kcal_devices();
+#endif
 }
 
 static struct of_dev_auxdata msm_hsic_host_adata[] = {
