@@ -6835,7 +6835,7 @@ static void qpnp_check_charger_uovp(struct qpnp_chg_chip *chip)
 
 	vchg_mv = get_prop_charger_voltage_now(chip);
 
-	pr_info("%s %d %d\n", __func__, vchg_mv, chip->charger_status);
+	pr_debug("%s %d %d\n", __func__, vchg_mv, chip->charger_status);
 
 	if(chip->charger_status == CHARGER_STATUS_GOOD) {
 		if(vchg_mv > CHARGER_SOFT_OVP_VOLTAGE || 
@@ -6874,7 +6874,7 @@ static void qpnp_check_battery_uovp(struct qpnp_chg_chip *chip)
 	battery_status_pre = qpnp_battery_status_get(chip);	
 
 	battery_voltage = get_prop_battery_voltage_now(chip);
-	pr_info("%s bat vol:%d\n", __func__, battery_voltage);
+	pr_debug("%s bat vol:%d\n", __func__, battery_voltage);
 	if(battery_voltage > BATTERY_SOFT_OVP_VOLTAGE) {
 		if (battery_status_pre == BATTERY_STATUS_GOOD) {
 			qpnp_battery_status_set(chip, BATTERY_STATUS_BAD);
@@ -6900,7 +6900,7 @@ static int qpnp_check_battery_temp(struct qpnp_chg_chip *chip)
 	if (!qpnp_chg_is_usb_chg_plugged_in(chip))
 		return rc;
 	temperature = get_prop_batt_temp(chip);
-	pr_info("%s temp:%d\n", __func__, temperature);
+	pr_debug("%s temp:%d\n", __func__, temperature);
 	
 	if(temperature < chip->mBatteryTempBoundT0) /* battery is cold */
 	{
@@ -7150,7 +7150,7 @@ static void update_heartbeat(struct work_struct *work)
 	qpnp_check_battery_uovp(chip);
 	qpnp_check_battery_temp(chip);
 
-	pr_info("%s current:%d\n", __func__, get_prop_current_now(chip));
+	pr_debug("%s current:%d\n", __func__, get_prop_current_now(chip));
 	
 	qpnp_check_recharging(chip);
 

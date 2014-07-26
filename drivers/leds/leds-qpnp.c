@@ -1413,7 +1413,7 @@ static void qpnp_led_set(struct led_classdev *led_cdev,
 
 	led->cdev.brightness = value;
 	schedule_work(&led->work);
-	printk("qpnp_led_set:brightness=%d\n",led->cdev.brightness);
+	pr_debug("%s:brightness=%d\n",__func__, led->cdev.brightness);
 }
 
 static void __qpnp_led_work(struct qpnp_led_data *led,

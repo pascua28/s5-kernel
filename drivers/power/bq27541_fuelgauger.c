@@ -329,7 +329,7 @@ static int bq27541_soc_calibrate(struct bq27541_device_info *di, int soc)
 	if(soc >= 100)
 		soc_calib = 100;
 	di->soc_pre = soc_calib;
-	pr_info("soc:%d, soc_calib:%d\n", soc, soc_calib);
+	pr_debug("%s:%d, soc_calib:%d\n", __func__, soc, soc_calib);
 	return soc_calib;
 }
 
