@@ -399,6 +399,8 @@ struct mdss_dsi_ctrl_pdata {
 	int mdp_tg_on;
 
 	bool ulps;
+	struct mutex ulps_lock;
+	unsigned int ulps_ref_count;
 
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
