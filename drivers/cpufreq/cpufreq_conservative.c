@@ -563,11 +563,11 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 					&dbs_cpufreq_notifier_block,
 					CPUFREQ_TRANSITION_NOTIFIER);
 
-		mutex_unlock(&dbs_mutex);
 		if (!dbs_enable)
 			sysfs_remove_group(cpufreq_global_kobject,
 					   &dbs_attr_group);
 
+		mutex_unlock(&dbs_mutex);
 		break;
 
 	case CPUFREQ_GOV_LIMITS:
