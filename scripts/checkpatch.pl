@@ -1600,6 +1600,27 @@ sub fix_inserted_deleted_lines {
 	return @lines;
 }
 
+sub fix_insert_line {
+	my ($linenr, $line) = @_;
+
+	my $inserted = {
+		LINENR => $linenr,
+		LINE => $line,
+	};
+	push(@fixed_inserted, $inserted);
+}
+
+sub fix_delete_line {
+	my ($linenr, $line) = @_;
+
+	my $deleted = {
+		LINENR => $linenr,
+		LINE => $line,
+	};
+
+	push(@fixed_deleted, $deleted);
+}
+
 sub ERROR {
 	my ($type, $msg) = @_;
 
@@ -2625,11 +2646,7 @@ sub process {
 			if (CHK("LINE_SPACING",
 				"Please use a blank line after function/struct/union/enum declarations\n" . $hereprev) &&
 			    $fix) {
-			my $inserted = {
-				LINENR => $fixlinenr,
-				LINE => "\+",
-			};
-			push(@fixed_inserted, $inserted);
+				fix_insert_line($fixlinenr, "\+");
 			}
 		}
 
@@ -2640,11 +2657,7 @@ sub process {
 			if (CHK("LINE_SPACING",
 				"Please don't use multiple blank lines\n" . $hereprev) &&
 			    $fix) {
-			my $deleted = {
-				LINENR => $fixlinenr,
-				LINE => $rawline,
-			};
-			push(@fixed_deleted, $deleted);
+				fix_delete_line($fixlinenr, $rawline);
 			}
 
 			$last_blank_line = $linenr;
@@ -2687,11 +2700,7 @@ sub process {
 			if (WARN("LINE_SPACING",
 				 "Missing a blank line after declarations\n" . $hereprev) &&
 			    $fix) {
-			my $inserted = {
-				LINENR => $fixlinenr,
-				LINE => "\+",
-			};
-			push(@fixed_inserted, $inserted);
+				fix_insert_line($fixlinenr, "\+");
 			}
 		}
 
@@ -3046,31 +3055,15 @@ sub process {
 		    $prevline =~ /(?:^|[^=])=\s*$/) {
 			if (ERROR("OPEN_BRACE",
 				  "that open brace { should be on the previous line\n" . $hereprev) &&
-			    $fix && $prevline =~ /^\+/) {
-				my $deleted = {
-					LINENR => $fixlinenr - 1,
-					LINE => $prevrawline,
-				};
-				push(@fixed_deleted, $deleted);
-				$deleted = {
-					LINENR => $fixlinenr,
-					LINE => $rawline,
-				};
-				push(@fixed_deleted, $deleted);
+			    $fix && $prevline =~ /^\+/ && $line =~ /^\+/) {
+				fix_delete_line($fixlinenr - 1, $prevrawline);
+				fix_delete_line($fixlinenr, $rawline);
 				my $fixedline = $prevrawline;
 				$fixedline =~ s/\s*=\s*$/ = {/;
-				my $inserted = {
-					LINENR => $fixlinenr,
-					LINE => $fixedline,
-				};
-				push(@fixed_inserted, $inserted);
+				fix_insert_line($fixlinenr, $fixedline);
 				$fixedline = $line;
 				$fixedline =~ s/^(.\s*){\s*/$1/;
-				$inserted = {
-					LINENR => $fixlinenr,
-					LINE => $fixedline,
-				};
-				push(@fixed_inserted, $inserted);
+				fix_insert_line($fixlinenr, $fixedline);
 			}
 		}
 
