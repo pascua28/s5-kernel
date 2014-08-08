@@ -4829,8 +4829,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	unsigned char val=0;
-	const struct synaptics_dsx_platform_data *platform_data =
-		rmi4_data->board;
 
 	if(rmi4_data->pwrrunning)
 		return 0 ;
@@ -4839,7 +4837,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 	if(rmi4_data->smartcover_enable)
 	    synaptics_rmi4_close_smartcover();
-		//synaptics_rmi4_i2c_write(syna_rmi4_data,SYNA_ADDR_SMARTCOVER_EXT,&val,sizeof(val));
 
 	if(rmi4_data->glove_enable)
 		synaptics_rmi4_i2c_write(syna_rmi4_data,SYNA_ADDR_GLOVE_FLAG,&val,sizeof(val));
@@ -4864,13 +4861,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		synaptics_rmi4_irq_enable(rmi4_data, false);
 		synaptics_rmi4_sensor_sleep(rmi4_data);
 		synaptics_rmi4_free_fingers(rmi4_data);
-
-		//when suspend, close tp's vdd power
-		if (platform_data->regulator_en) {
-			//			regulator_disable(rmi4_data->regulator);
-		}
 	}
-
 
 	rmi4_data->pwrrunning = false ;
 	return 0;
@@ -4904,36 +4895,20 @@ static int synaptics_rmi4_resume(struct device *dev)
 	int retval;
 	unsigned char val=1;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	const struct synaptics_dsx_platform_data *platform_data =
-			rmi4_data->board;
 
 	if(rmi4_data->pwrrunning)
 		return 0 ;
 
-	print_ts(TS_INFO, KERN_ERR "gesture status[0x%x,0x%x]\n", syna_use_gesture,rmi4_data->gesture_flags);
-
-	//reset it
-	//synaptics_rmi4_i2c_write(rmi4_data,rmi4_data->f01_cmd_base_addr,&val,sizeof(val));
-	//msleep(200);
-	retval = synaptics_rmi4_reset_device(rmi4_data, rmi4_data->f01_cmd_base_addr);
-	if (retval < 0) {
-		dev_err(dev,
-				"%s: Failed to issue TP reset command, error = %d\n",
-				__func__, retval);
-		return retval;
-	}
-
 	rmi4_data->pwrrunning = true ;
 
 	if(rmi4_data->smartcover_enable)
-	        synaptics_rmi4_open_smartcover();
-	//synaptics_rmi4_i2c_write(syna_rmi4_data,SYNA_ADDR_SMARTCOVER_EXT,&val,sizeof(val));
+		synaptics_rmi4_open_smartcover();
 
 	if(rmi4_data->glove_enable)
 		synaptics_rmi4_i2c_write(syna_rmi4_data,SYNA_ADDR_GLOVE_FLAG,&val,sizeof(val));
 
 	if(rmi4_data->gesture || rmi4_data->pdoze_enable) {
-	  synaptics_enable_gesture(rmi4_data,false);
+		synaptics_enable_gesture(rmi4_data,false);
 		synaptics_enable_pdoze(rmi4_data,false);
 		synaptics_enable_irqwake(rmi4_data,false);
 		rmi4_data->pwrrunning = false ;
@@ -4949,13 +4924,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if (!rmi4_data->sensor_sleep) {
 		rmi4_data->pwrrunning = false ;
 		return 0;
-	}
-
-	//resume tp's vdd power
-	if (platform_data->regulator_en) {
-		//		regulator_enable(rmi4_data->regulator);
-		//		msleep(platform_data->reset_delay_ms);
-		//		rmi4_data->current_page = MASK_8BIT;
 	}
 
 	synaptics_rmi4_sensor_wake(rmi4_data);
