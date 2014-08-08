@@ -404,6 +404,7 @@
 #define __NR_setns			(__NR_SYSCALL_BASE+375)
 #define __NR_process_vm_readv		(__NR_SYSCALL_BASE+376)
 #define __NR_process_vm_writev		(__NR_SYSCALL_BASE+377)
+#define __NR_getrandom			(__NR_SYSCALL_BASE+384)
 					/* 378 for kcmp */
 
 /*
@@ -420,6 +421,14 @@
 #define __ARM_NR_usr26			(__ARM_NR_BASE+3)
 #define __ARM_NR_usr32			(__ARM_NR_BASE+4)
 #define __ARM_NR_set_tls		(__ARM_NR_BASE+5)
+
+/*
+ * This may need to be greater than __NR_last_syscall+1 in order to
+ * account for the padding in the syscall table
+ */
+#ifdef __KERNEL__
+#define __NR_syscalls  (379)
+#endif
 
 /*
  * *NOTE*: This is a ghost syscall private to the kernel.  Only the
