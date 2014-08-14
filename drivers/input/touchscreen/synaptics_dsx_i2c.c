@@ -1097,7 +1097,7 @@ static void vk_calculate_area(void)  //added by liujun
 	int vk_height = syna_ts_data->virtual_key_height;
 	int vk_width = tp_max_x/TP_VKEY_COUNT;
 	int margin_x = 85;
-	printk("[syna]maxx=%d,maxy=%d,vkh=%d\n",syna_ts_data->sensor_max_x,syna_ts_data->sensor_max_y,syna_ts_data->virtual_key_height);
+	print_ts(TS_DEBUG, KERN_ERR "maxx=%d,maxy=%d,vkh=%d\n",syna_ts_data->sensor_max_x,syna_ts_data->sensor_max_y,syna_ts_data->virtual_key_height);
 
 	syna_ts_data->vk_prop_width = LCD_MULTI_RATIO(190);
 	if (get_pcb_version() <= HW_VERSION__20) {
@@ -4288,7 +4288,7 @@ static void synaptics_rmi4_get_vendorid(struct synaptics_rmi4_data *rmi4_data) {
 
 	rmi4_data->vendor_id = vendor_id;
 	synaptics_rmi4_get_vendorstring(rmi4_data->vendor_id);
-	print_ts(TS_INFO, KERN_ERR "[syna] vendor id: %x\n", vendor_id);
+	print_ts(TS_INFO, KERN_ERR "[syna] vendor id: %x version: %s\n", vendor_id, synaptics_vendor_str);
 
 }
 
