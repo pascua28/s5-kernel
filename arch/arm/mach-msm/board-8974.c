@@ -25,6 +25,7 @@
 #include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
 #ifdef CONFIG_VENDOR_EDIT
+#include <linux/boot_mode.h>
 //Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
 #include <linux/persistent_ram.h>
 #endif
@@ -165,42 +166,7 @@ static struct kobj_attribute rf_version_attr = {
 
 static struct kobject *systeminfo_kobj;
 
-enum{
-	MSM_BOOT_MODE__NORMAL,
-	MSM_BOOT_MODE__RECOVERY = 2, //the number adapt system/core/init/init.c
-	MSM_BOOT_MODE__FACTORY,
-	MSM_BOOT_MODE__RF,
-	MSM_BOOT_MODE__WLAN,
-};
-
 static int ftm_mode = MSM_BOOT_MODE__NORMAL;
-
-
-
-int __init  board_mfg_mode_init(void)
-{	
-    char *substr;
-
-    substr = strstr(boot_command_line, "oppo_ftm_mode=");
-    if(substr) {
-        substr += strlen("oppo_ftm_mode=");
-
-        if(strncmp(substr, "factory2", 5) == 0)
-            ftm_mode = MSM_BOOT_MODE__FACTORY;
-        else if(strncmp(substr, "ftmwifi", 5) == 0)
-            ftm_mode = MSM_BOOT_MODE__WLAN;
-        else if(strncmp(substr, "ftmrf", 5) == 0)
-            ftm_mode = MSM_BOOT_MODE__RF;
-        else if(strncmp(substr, "ftmrecovery", 5) == 0)
-            ftm_mode = MSM_BOOT_MODE__RECOVERY;
-    } 	
-
-	pr_err("board_mfg_mode_init, " "ftm_mode=%d\n", ftm_mode);
-	
-	return 0;
-
-}
-//__setup("oppo_ftm_mode=", board_mfg_mode_init);
 
 int get_boot_mode(void)
 {
@@ -355,6 +321,20 @@ static int __init boot_mode_init(void)
     boot_mode[i] = '\0';
 
     printk(KERN_INFO "%s: parse boot_mode is %s\n", __func__, boot_mode);
+
+	if (!strcmp(boot_mode, "normal"))
+		ftm_mode = MSM_BOOT_MODE__NORMAL;
+	else if (!strcmp(boot_mode, "factory"))
+		ftm_mode = MSM_BOOT_MODE__FACTORY;
+	else if (!strcmp(boot_mode, "recovery"))
+		ftm_mode = MSM_BOOT_MODE__RECOVERY;
+	else if (!strcmp(boot_mode, "charger"))
+		ftm_mode = MSM_BOOT_MODE__CHARGE;
+	else
+		ftm_mode = MSM_BOOT_MODE__NORMAL;
+
+    printk(KERN_INFO "%s: parse ftm_mode is %d\n", __func__, ftm_mode);
+
     return 1;
 }
 //__setup("androidboot.mode=", boot_mode_setup);
@@ -485,11 +465,6 @@ void __init msm8974_init(void)
 
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
-#ifdef CONFIG_VENDOR_EDIT		
-	/* OPPO 2013.07.09 hewei add begin for factory mode*/
-	board_mfg_mode_init();
-	/* OPPO 2013.07.09 hewei add end */
-#endif //CONFIG_VENDOR_EDIT
 
 #ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2013-09-03 zhanglong add for add interface start reason and boot_mode begin */

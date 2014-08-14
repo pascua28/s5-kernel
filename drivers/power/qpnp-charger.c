@@ -46,6 +46,7 @@
 #ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2014-05-22 sjc Add for Find7s temp rising problem */
 #include <linux/pcb_version.h>
+#include <linux/boot_mode.h>
 #endif
 
 /* Interrupt offsets */
@@ -1031,13 +1032,6 @@ qpnp_chg_iusb_trim_set(struct qpnp_chg_chip *chip, int trim)
 
 	return rc;
 }
-
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode */
-#ifdef CONFIG_VENDOR_EDIT
-#define MSM_BOOT_MODE__NORMAL 0
-extern int get_boot_mode(void);
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
 
 /* OPPO 2013-10-17 wangjc Modify begin for use bq charger */
 #ifndef CONFIG_BQ24196_CHARGER
