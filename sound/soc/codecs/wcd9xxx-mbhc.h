@@ -11,11 +11,7 @@
  */
 #ifndef __WCD9XXX_MBHC_H__
 #define __WCD9XXX_MBHC_H__
-#ifdef CONFIG_VENDOR_EDIT
-//liuyan add 2013-3-1, headset report
-#include<linux/switch.h>
-//liuyan add end
-#endif
+
 #include "wcd9xxx-resmgr.h"
 
 #define WCD9XXX_CFILT_FAST_MODE 0x00
@@ -113,7 +109,6 @@ enum wcd9xx_mbhc_cs_enable_bits {
 	MBHC_CS_ENABLE_POLLING,
 	MBHC_CS_ENABLE_INSERTION,
 	MBHC_CS_ENABLE_REMOVAL,
-	MBHC_CS_ENABLE_DET_ANC,
 };
 
 enum wcd9xxx_mbhc_state {
@@ -239,22 +234,9 @@ struct wcd9xxx_mbhc_config {
 	unsigned int mclk_rate;
 	unsigned int gpio;
 	unsigned int gpio_irq;
-//liuyan add 2013-3-14,hpmic switch gpio
 #ifdef CONFIG_VENDOR_EDIT
-       int hpmic_switch_gpio; 
-	struct regulator	*cdc_hpmic_switch;
-	int hpmic_regulator_count;
-	int count_regulator;
-#ifdef CONFIG_OPPO_DEVICE_FIND7OP
-/* xiaojun.lv@Prd.AudioDrv,2014/2/10,add for 14001 regulator*/ 
-	struct regulator	*cdc_spk;
-#endif /* CONFIG_OPPO_DEVICE_FIND7OP */	
-	int enable_spk_gpio;
-	int yda145_ctr_gpio;
-	int yda145_boost_gpio;
-    int headset_type;
+	void (*set_gnd_mic_gpio) (struct snd_soc_codec *, int);
 #endif
-//liuyan add end
 	int gpio_level_insert;
 	bool insert_detect; /* codec has own MBHC_INSERT_DETECT */
 	bool detect_extn_cable;
@@ -384,9 +366,7 @@ struct wcd9xxx_mbhc {
 	/* Holds codec specific interrupt mapping */
 	const struct wcd9xxx_mbhc_intr *intr_ids;
 #ifdef CONFIG_VENDOR_EDIT
-	//liuyan 2013-3-1,add for headset report
-	struct switch_dev wcd9xxx_sdev;
-	//liuyan add end
+	bool is_hs_inserted;
 #endif
 
 #ifdef CONFIG_DEBUG_FS

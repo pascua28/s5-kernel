@@ -900,7 +900,9 @@
 			"DMIC5", "MIC BIAS4 External",
 			"MIC BIAS4 External", "Digital Mic5",
 			"DMIC6", "MIC BIAS4 External",
-			"MIC BIAS4 External", "Digital Mic6";
+			"MIC BIAS4 External", "Digital Mic6",
+			"Lineout_1 amp", "LINEOUT1",
+			"Lineout_3 amp", "LINEOUT3";
 
 		qcom,cdc-mclk-gpios = <&pm8941_gpios 15 0>;
 		qcom,taiko-mclk-clk-freq = <9600000>;
@@ -914,11 +916,10 @@
 		qcom,sec-auxpcm-gpio-din  = <&msmgpio 81 0>;
 		qcom,sec-auxpcm-gpio-dout = <&msmgpio 82 0>;
 		/*VENDOR_EDIT liuyan add 2013-3-14,chinese and america hpmic switch*/
-                qcom,hpmic-switch-gpio = <&msmgpio 87 0>;
+                qcom,us-euro-gpios = <&msmgpio 87 0>;
                 qcom,yda145_ctr-gpio = <&msmgpio 77 0>;
-                qcom,yda145_boots-gpio = <&msmgpio 67 0>;
+                qcom,yda145_boost-gpio = <&msmgpio 67 0>;
                 enable_spk-gpio = <&msmgpio 73 0>; /*liuyan add 2013-8-19,speaker*/
-                cdc_spk-supply = <&pm8941_boost>; /*lvxiaojun add 2014-2-10,14001 yda145 supply*/
                /*liuyan add end*/
 	};
 
