@@ -824,6 +824,7 @@ static void cpufreq_interactive_idle_start(void)
 		 * the CPUFreq driver.
 		 */
 		if (!pending) {
+			pcpu->last_evaluated_jiffy = get_jiffies_64();
 			cpufreq_interactive_timer_resched(pcpu);
 
 			now = ktime_to_us(ktime_get());
