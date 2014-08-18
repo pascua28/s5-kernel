@@ -861,7 +861,7 @@ int msm_pm_wait_cpu_shutdown(unsigned int cpu)
 			return 0;
 		udelay(100);
 #if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
-		WARN(++timeout == 20, "CPU%u didn't collapse in 2 ms\n", cpu);
+		WARN(++timeout == 50, "CPU%u didn't collapse in 5 ms\n", cpu);
 #endif
 	}
 #if !(defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO))
