@@ -32,6 +32,7 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #include <mach/device_info.h>
+#include <linux/boot_mode.h>
 #include <linux/pcb_version.h>
 
 #include "synaptics_dsx.h"
@@ -1020,16 +1021,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 #define SYNA_ADDR_F54_ANALOG_CTRL113 0x136
 extern int rmi4_fw_module_init(bool insert);
-extern int get_boot_mode(void);
-enum{
-	MSM_BOOT_MODE__NORMAL,
-	MSM_BOOT_MODE__FASTBOOT,
-	MSM_BOOT_MODE__RECOVERY,
-	MSM_BOOT_MODE__FACTORY,
-	MSM_BOOT_MODE__RF,
-	MSM_BOOT_MODE__WLAN,
-	MSM_BOOT_MODE__CHARGE,
-};
 
 #define F54_CTRL_BASE_ADDR		(syna_rmi4_data->f54_ctrl_base_addr)
 #define F54_CMD_BASE_ADDR		(syna_rmi4_data->f54_cmd_base_addr)
@@ -4520,10 +4511,8 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		exp_data.initialized = true;
 	}
 
-
-	if(!(get_boot_mode() == MSM_BOOT_MODE__FACTORY ||
-				get_boot_mode() == MSM_BOOT_MODE__RF ||
-				get_boot_mode() == MSM_BOOT_MODE__WLAN) ) {
+	// firmware flash only in normal mode
+	if(get_boot_mode() == MSM_BOOT_MODE__NORMAL) {
 		exp_data.workqueue = create_singlethread_workqueue("dsx_exp_workqueue");
 		INIT_DELAYED_WORK(&exp_data.work, synaptics_rmi4_exp_fn_work);
 		exp_data.rmi4_data = rmi4_data;
