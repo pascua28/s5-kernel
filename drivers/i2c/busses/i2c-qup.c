@@ -985,7 +985,7 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	 */
 	mutex_lock(&dev->mlock);
 	if (dev->pwr_state >= MSM_I2C_SYS_SUSPENDING) {
-		dev_err(dev->dev,
+		dev_dbg(dev->dev,
 			"xfer not allowed when ctrl is suspended addr:0x%x\n",
 			msgs->addr);
 		mutex_unlock(&dev->mlock);

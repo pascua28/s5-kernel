@@ -699,7 +699,7 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
-	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
+	pr_info("mdss_fb suspend index=%d\n", mfd->index);
 
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);
@@ -734,7 +734,7 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 
 	INIT_COMPLETION(mfd->power_set_comp);
 	mfd->is_power_setting = true;
-	pr_debug("mdss_fb resume index=%d\n", mfd->index);
+	pr_info("mdss_fb resume index=%d\n", mfd->index);
 
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_RESUME, NULL);
@@ -767,7 +767,7 @@ static int mdss_fb_suspend(struct platform_device *pdev, pm_message_t state)
 	if (!mfd)
 		return -ENODEV;
 
-	dev_dbg(&pdev->dev, "display suspend\n");
+	dev_info(&pdev->dev, "display suspend\n");
 
 	return mdss_fb_suspend_sub(mfd);
 }
@@ -778,7 +778,7 @@ static int mdss_fb_resume(struct platform_device *pdev)
 	if (!mfd)
 		return -ENODEV;
 
-	dev_dbg(&pdev->dev, "display resume\n");
+	dev_info(&pdev->dev, "display resume\n");
 
 	return mdss_fb_resume_sub(mfd);
 }
@@ -795,7 +795,7 @@ static int mdss_fb_pm_suspend(struct device *dev)
 	if (!mfd)
 		return -ENODEV;
 
-	dev_dbg(dev, "display pm suspend\n");
+	dev_info(dev, "display pm suspend\n");
 
 	return mdss_fb_suspend_sub(mfd);
 }
@@ -806,7 +806,7 @@ static int mdss_fb_pm_resume(struct device *dev)
 	if (!mfd)
 		return -ENODEV;
 
-	dev_dbg(dev, "display pm resume\n");
+	dev_info(dev, "display pm resume\n");
 
 	return mdss_fb_resume_sub(mfd);
 }

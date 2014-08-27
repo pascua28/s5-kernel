@@ -228,7 +228,7 @@ static unsigned int ignore_nice;
 
 static unsigned int dbs_enable; /* number of CPUs using this policy */
 
-static void do_dbs_timer(struct work_struct *work);
+static void smartmax_do_dbs_timer(struct work_struct *work);
 
 struct smartmax_info_s {
 	struct cpufreq_policy *cur_policy;
@@ -417,7 +417,7 @@ static inline unsigned int get_timer_delay(void) {
 	return delay;
 }
 
-static inline void dbs_timer_exit(struct smartmax_info_s *this_smartmax) {
+static inline void smartmax_dbs_timer_exit(struct smartmax_info_s *this_smartmax) {
 	cancel_delayed_work_sync(&this_smartmax->work);
 }
 
@@ -468,7 +468,7 @@ inline static void target_freq(struct cpufreq_policy *policy,
 	this_smartmax->freq_change_time = ktime_to_us(ktime_get());
 }
 
-static inline void dbs_timer_init(struct smartmax_info_s *this_smartmax) {
+static inline void smartmax_dbs_timer_init(struct smartmax_info_s *this_smartmax) {
 	int delay = get_timer_delay();
 
 	if (this_smartmax->cur_policy->cur < boost_freq) {
@@ -481,7 +481,7 @@ static inline void dbs_timer_init(struct smartmax_info_s *this_smartmax) {
 				this_smartmax->cur_policy->cur, CPUFREQ_RELATION_H);
 	}
 
-	INIT_DELAYED_WORK_DEFERRABLE(&this_smartmax->work, do_dbs_timer);
+	INIT_DELAYED_WORK_DEFERRABLE(&this_smartmax->work, smartmax_do_dbs_timer);
 	queue_delayed_work_on(this_smartmax->cpu, smartmax_wq, &this_smartmax->work, delay);
 }
 
@@ -685,7 +685,7 @@ static void cpufreq_smartmax_timer(struct smartmax_info_s *this_smartmax) {
 	cpufreq_smartmax_freq_change(this_smartmax);
 }
 
-static void do_dbs_timer(struct work_struct *work) {
+static void smartmax_do_dbs_timer(struct work_struct *work) {
 	struct smartmax_info_s *this_smartmax =
 			container_of(work, struct smartmax_info_s, work.work);
 	unsigned int cpu = this_smartmax->cpu;
@@ -1397,7 +1397,7 @@ static int cpufreq_governor_smartmax(struct cpufreq_policy *new_policy,
 		}
 
 		mutex_unlock(&dbs_mutex);
-		dbs_timer_init(this_smartmax);
+		smartmax_dbs_timer_init(this_smartmax);
 
 		break;
 	case CPUFREQ_GOV_LIMITS:
@@ -1418,7 +1418,7 @@ static int cpufreq_governor_smartmax(struct cpufreq_policy *new_policy,
 		break;
 
 	case CPUFREQ_GOV_STOP:
-		dbs_timer_exit(this_smartmax);
+		smartmax_dbs_timer_exit(this_smartmax);
 
 		mutex_lock(&dbs_mutex);
 		this_smartmax->cur_policy = NULL;

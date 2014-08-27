@@ -404,6 +404,7 @@ void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 	}
 }
 
+#ifndef CONFIG_VENDOR_EDIT
 static void mdss_dsi_panel_bklt_pwm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	int ret;
@@ -447,7 +448,6 @@ static void mdss_dsi_panel_bklt_pwm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		pr_err("%s: pwm_enable() failed err=%d\n", __func__, ret);
 	ctrl->pwm_enabled = 1;
 }
-#ifndef CONFIG_VENDOR_EDIT
 static char dcs_cmd[2] = {0x54, 0x00}; /* DTYPE_DCS_READ */
 static struct dsi_cmd_desc dcs_read_cmd = {
 	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(dcs_cmd)},
@@ -502,6 +502,8 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#ifndef CONFIG_VENDOR_EDIT
+
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
@@ -526,7 +528,6 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-#ifndef CONFIG_VENDOR_EDIT
 /* Xinqin.Yang@PhoneSW.Driver, 2014/01/10  Modify for rewrite reset function */
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -910,42 +911,8 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		break;
 	}
 #else
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	if(0){
-	        if (pdata == NULL) {
-		        pr_err("%s: Invalid input data\n", __func__);
-	     	    return;
-	         } 
-
- 	       ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-
-	/*
-	 * Some backlight controllers specify a minimum duty cycle
-	 * for the backlight brightness. If the brightness is less
-	 * than it, the controller can malfunction.
-	 */
-
-	if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
-		bl_level = pdata->panel_info.bl_min;
-
-	switch (ctrl_pdata->bklt_ctrl) {
-	case BL_WLED:
-		led_trigger_event(bl_led_trigger, bl_level);
-		break;
-	case BL_PWM:
-		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
-		break;
-	case BL_DCS_CMD:
-		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
-		break;
-	default:
-		pr_err("%s: Unknown bl_ctrl configuration\n",
-			__func__);
-		break;
-	    }
-    }
-lm3630_bank_a_update_status(bl_level);
+	pr_debug("%s: %d\n", __func__, bl_level);
+	lm3630_bank_a_update_status(bl_level);
 #endif
 }
 

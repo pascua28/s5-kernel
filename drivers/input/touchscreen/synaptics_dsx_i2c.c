@@ -4299,11 +4299,11 @@ static int fb_notifier_callback(struct notifier_block *p,
 				break;
 
 			if(new_status != UNBLANK) {
-				print_ts(TS_DEBUG, KERN_ERR "[syna]:suspend tp\n");
+				print_ts(TS_INFO, KERN_ERR "[syna]:suspend start\n");
 				synaptics_rmi4_suspend(&(syna_rmi4_data->input_dev->dev));
 			}
 			else {
-				print_ts(TS_DEBUG, KERN_ERR "[syna]:resume tp\n");
+				print_ts(TS_INFO, KERN_ERR "[syna]:resume start\n");
 				synaptics_rmi4_resume(&(syna_rmi4_data->input_dev->dev));
 			}
 			syna_rmi4_data->old_status = new_status;
