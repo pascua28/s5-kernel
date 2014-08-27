@@ -547,11 +547,6 @@ static void dpm_resume_early(pm_message_t state)
 	}
 	mutex_unlock(&dpm_list_mtx);
 	dpm_show_time(starttime, state, "early");
-/* OPPO 2013-09-17 wangjc Add begin for print wakeup source */
-#ifdef CONFIG_VENDOR_EDIT
-	print_active_wakeup_sources();
-#endif
-/* OPPO 2013-09-17 wangjc Add end */
 }
 
 /**
