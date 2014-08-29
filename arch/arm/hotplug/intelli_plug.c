@@ -58,8 +58,8 @@ module_param(intelli_plug_active, uint, 0644);
 static unsigned int touch_boost_active = 0;
 module_param(touch_boost_active, uint, 0644);
 
-static unsigned int nr_run_profile_sel = 0;
-module_param(nr_run_profile_sel, uint, 0644);
+unsigned int intelli_plug_nr_run_profile_sel = 0;
+module_param(intelli_plug_nr_run_profile_sel, uint, 0644);
 
 //default to something sane rather than zero
 static unsigned int sampling_time = DEF_SAMPLING_MS;
@@ -168,9 +168,9 @@ static unsigned int calculate_thread_stats(void)
 	unsigned int threshold_size;
 	unsigned int *current_profile;
 
-	current_profile = nr_run_profiles[nr_run_profile_sel];
+	current_profile = nr_run_profiles[intelli_plug_nr_run_profile_sel];
 	if (num_possible_cpus() > 2) {
-		if (nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
+		if (intelli_plug_nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
 			threshold_size =
 				ARRAY_SIZE(nr_run_thresholds_eco);
 		else
@@ -180,7 +180,7 @@ static unsigned int calculate_thread_stats(void)
 		threshold_size =
 			ARRAY_SIZE(nr_run_thresholds_eco);
 
-	if (nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
+	if (intelli_plug_nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
 		nr_fshift = 1;
 	else
 		nr_fshift = num_possible_cpus() - 1;
@@ -547,10 +547,10 @@ int __init intelli_plug_init(void)
 
 	if (nr_possible_cores > 2) {
 		nr_run_hysteresis = NR_RUN_HYSTERESIS_QUAD;
-		nr_run_profile_sel = 0;
+		intelli_plug_nr_run_profile_sel = 0;
 	} else {
 		nr_run_hysteresis = NR_RUN_HYSTERESIS_DUAL;
-		nr_run_profile_sel = NR_RUN_ECO_MODE_PROFILE;
+		intelli_plug_nr_run_profile_sel = NR_RUN_ECO_MODE_PROFILE;
 	}
 
 #if defined (CONFIG_POWERSUSPEND) || defined(CONFIG_HAS_EARLYSUSPEND)
