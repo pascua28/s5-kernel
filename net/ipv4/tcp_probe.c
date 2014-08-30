@@ -75,7 +75,6 @@ static struct {
 	struct tcp_log	*log;
 } tcp_probe;
 
-
 static inline int tcp_probe_used(void)
 {
 	return (tcp_probe.head - tcp_probe.tail) & (bufsize - 1);
@@ -157,8 +156,8 @@ static int tcpprobe_sprint(char *tbuf, int n)
 
 	return scnprintf(tbuf, n,
 			"%lu.%09lu %pI4:%u %pI4:%u %d %#x %#x %u %u %u %u\n",
-			(unsigned long) tv.tv_sec,
-			(unsigned long) tv.tv_nsec,
+			(unsigned long)tv.tv_sec,
+			(unsigned long)tv.tv_nsec,
 			&p->saddr, ntohs(p->sport),
 			&p->daddr, ntohs(p->dport),
 			p->length, p->snd_nxt, p->snd_una,
