@@ -109,6 +109,7 @@ struct cpu_dbs_info_s {
 	wait_queue_head_t sync_wq;
 	atomic_t src_sync_cpu;
 	atomic_t sync_enabled;
+	atomic_t thread_stopped;
 };
 static DEFINE_PER_CPU(struct cpu_dbs_info_s, od_cpu_dbs_info);
 
@@ -1101,6 +1102,11 @@ static int sync_pending(struct cpu_dbs_info_s *this_dbs_info)
 	return atomic_read(&this_dbs_info->src_sync_cpu) >= 0;
 }
 
+static int thread_stop_pending(struct cpu_dbs_info_s *this_dbs_info)
+{
+	return atomic_read(&this_dbs_info->thread_stopped) == 1;
+}
+
 static int dbs_sync_thread(void *data)
 {
 	int src_cpu, cpu = (int)data;
@@ -1114,11 +1120,16 @@ static int dbs_sync_thread(void *data)
 	while (1) {
 		wait_event(this_dbs_info->sync_wq,
 			   sync_pending(this_dbs_info) ||
+			   thread_stop_pending(this_dbs_info) ||
 			   kthread_should_stop());
 
 		if (kthread_should_stop())
 			break;
 
+		if (thread_stop_pending(this_dbs_info)) {
+			pr_info("%s: kthread stopped %d %p\n", __func__, cpu, this_dbs_info->sync_thread);
+			break;
+		}
 		get_online_cpus();
 
 		src_cpu = atomic_read(&this_dbs_info->src_sync_cpu);
@@ -1270,6 +1281,44 @@ static struct input_handler dbs_input_handler = {
 	.id_table	= dbs_ids,
 };
 
+static void  sync_threads_start(void)
+{
+	unsigned int i;
+
+	for_each_possible_cpu(i) {
+		struct cpu_dbs_info_s *this_dbs_info =
+			&per_cpu(od_cpu_dbs_info, i);
+
+		int thread_stopped = atomic_read(&this_dbs_info->thread_stopped);
+		if (thread_stopped) {
+			atomic_set(&this_dbs_info->thread_stopped, 0);
+			atomic_set(&this_dbs_info->src_sync_cpu, -1);
+			this_dbs_info->sync_thread = kthread_run(dbs_sync_thread,
+						 (void *)i,
+						 "dbs_sync/%d", i);
+			pr_info("%s: kthread_start %d %p\n", __func__, i, this_dbs_info->sync_thread);
+			set_cpus_allowed(this_dbs_info->sync_thread,
+				 *cpumask_of(i));
+		}
+	}
+}
+
+static void sync_threads_stop(void)
+{
+	unsigned int i;
+
+	for_each_possible_cpu(i) {
+		struct cpu_dbs_info_s *this_dbs_info =
+			&per_cpu(od_cpu_dbs_info, i);
+		int thread_stopped = atomic_read(&this_dbs_info->thread_stopped);
+		if (!thread_stopped) {
+			pr_info("%s: kthread stopping %d %p\n", __func__, i, this_dbs_info->sync_thread);
+			atomic_set(&this_dbs_info->thread_stopped, 1);
+			wake_up(&this_dbs_info->sync_wq);
+		}
+	}
+}
+
 static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 				   unsigned int event)
 {
@@ -1288,6 +1337,9 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		mutex_lock(&dbs_mutex);
 
 		dbs_enable++;
+		if (dbs_enable == 1)
+			sync_threads_start();
+
 		for_each_cpu(j, policy->cpus) {
 			struct cpu_dbs_info_s *j_dbs_info;
 			j_dbs_info = &per_cpu(od_cpu_dbs_info, j);
@@ -1298,8 +1350,6 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			if (dbs_tuners_ins.ignore_nice)
 				j_dbs_info->prev_cpu_nice =
 						kcpustat_cpu(j).cpustat[CPUTIME_NICE];
-			set_cpus_allowed(j_dbs_info->sync_thread,
-					 *cpumask_of(j));
 			if (!dbs_tuners_ins.powersave_bias)
 				atomic_set(&j_dbs_info->sync_enabled, 1);
 		}
@@ -1378,6 +1428,9 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 				&dbs_migration_nb);
 		}
 
+		if (!dbs_enable)
+			sync_threads_stop();
+
 		mutex_unlock(&dbs_mutex);
 
 		break;
@@ -1444,9 +1497,7 @@ static int __init cpufreq_gov_dbs_init(void)
 		atomic_set(&this_dbs_info->src_sync_cpu, -1);
 		init_waitqueue_head(&this_dbs_info->sync_wq);
 
-		this_dbs_info->sync_thread = kthread_run(dbs_sync_thread,
-							 (void *)i,
-							 "dbs_sync/%d", i);
+		atomic_set(&this_dbs_info->thread_stopped, 1);
 	}
 
 	return cpufreq_register_governor(&cpufreq_gov_ondemand);
@@ -1455,13 +1506,18 @@ static int __init cpufreq_gov_dbs_init(void)
 static void __exit cpufreq_gov_dbs_exit(void)
 {
 	unsigned int i;
+	int thread_stopped;
 
 	cpufreq_unregister_governor(&cpufreq_gov_ondemand);
 	for_each_possible_cpu(i) {
 		struct cpu_dbs_info_s *this_dbs_info =
 			&per_cpu(od_cpu_dbs_info, i);
 		mutex_destroy(&this_dbs_info->timer_mutex);
-		kthread_stop(this_dbs_info->sync_thread);
+		thread_stopped = atomic_read(&this_dbs_info->thread_stopped);
+		if (!thread_stopped) {
+			pr_info("%s: kthread_stop %d %p\n", __func__, i, this_dbs_info->sync_thread);
+			kthread_stop(this_dbs_info->sync_thread);
+		}
 	}
 	destroy_workqueue(dbs_wq);
 }
