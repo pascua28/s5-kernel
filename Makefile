@@ -142,13 +142,7 @@ PHONY += $(MAKECMDGOALS) sub-make
 $(filter-out _all sub-make $(CURDIR)/Makefile, $(MAKECMDGOALS)) _all: sub-make
 	@:
 
-# Fake the "Entering directory" message once, so that IDEs/editors are
-# able to understand relative filenames.
-       echodir := @echo
- quiet_echodir := @echo
-silent_echodir := @:
 sub-make: FORCE
-	$($(quiet)echodir) "make[1]: Entering directory \`$(KBUILD_OUTPUT)'"
 	$(Q)$(MAKE) -C $(KBUILD_OUTPUT) KBUILD_SRC=$(CURDIR) \
 	-f $(CURDIR)/Makefile $(filter-out _all sub-make,$(MAKECMDGOALS))
 
