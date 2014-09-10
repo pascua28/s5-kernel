@@ -2147,7 +2147,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 		chip->usb_present = usb_present;
 /* OPPO 2013-12-16 sjc Add begin for log */
 #ifdef CONFIG_VENDOR_EDIT
-		pr_info("!!!!!usb_present[%d]\n", usb_present);
+		pr_info("%s: usb_present=%d\n", __func__, usb_present);
 #endif
 /* OPPO 2013-12-16 sjc Add end */
 		if (!usb_present) {
@@ -3183,13 +3183,22 @@ static int
 get_prop_batt_status(struct qpnp_chg_chip *chip)
 {
 	int status;
+	int usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
+
 /* OPPO 2013-12-22 liaofuchun add for fastchg*/
 #ifdef CONFIG_PIC1503_FASTCG
-	if(get_prop_fast_chg_started(chip) == true)
-		return POWER_SUPPLY_STATUS_CHARGING;
-#endif	
+	if(get_prop_fast_chg_started(chip) == true){
+		if (usb_present)
+			return POWER_SUPPLY_STATUS_CHARGING;
+		else {
+			pr_info("%s: get_prop_fast_chg_started = true but usb_present = false\n", __func__);
+			// TODO should be do something when we discover this?
+			return POWER_SUPPLY_STATUS_DISCHARGING;
+		}
+    }
+#endif
 /* OPPO 2013-12-22 liaofuchun add end*/
-	if (qpnp_chg_is_usb_chg_plugged_in(chip) && chip->chg_display_full) {//wangjc add for charge full
+	if (usb_present && chip->chg_display_full) {//wangjc add for charge full
 		return POWER_SUPPLY_STATUS_FULL;
 	}
 
@@ -3208,19 +3217,22 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 	}
 
 	if((status & 0x30) == 0x10) {
-		return POWER_SUPPLY_STATUS_CHARGING;
+		if (usb_present)
+			return POWER_SUPPLY_STATUS_CHARGING;
 	} else if((status & 0x30) == 0x20) {
-		return POWER_SUPPLY_STATUS_CHARGING;
+		if (usb_present)
+			return POWER_SUPPLY_STATUS_CHARGING;
 	} else if((status & 0x30) == 0x30) {
+		if (usb_present)
 #ifndef CONFIG_VENDOR_EDIT
 /* jingchun.wang@Onlinerd.Driver, 2014/02/12  Modify for msjudge full status */
-		return POWER_SUPPLY_STATUS_FULL;
+			return POWER_SUPPLY_STATUS_FULL;
 #else /*CONFIG_VENDOR_EDIT*/
-		return POWER_SUPPLY_STATUS_CHARGING;
+			return POWER_SUPPLY_STATUS_CHARGING;
 #endif /*CONFIG_VENDOR_EDIT*/
-	}else {
-		return POWER_SUPPLY_STATUS_DISCHARGING;
 	}
+
+	return POWER_SUPPLY_STATUS_DISCHARGING;
 }
 #endif
 /* OPPO 2013-10-18 wangjc Modify end */
