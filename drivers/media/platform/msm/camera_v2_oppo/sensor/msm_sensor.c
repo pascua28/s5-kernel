@@ -789,6 +789,15 @@ static int32_t msm_sensor_get_dt_data(struct device_node *of_node,
 		rc = 0;
 	}
 
+#ifdef CONFIG_OPPO_DEVICE_FIND7OP
+	/* for back camera only 1+1 mount angle is 270 - OPPO one is 90 */
+	if (!strcmp(sensordata->sensor_name, "imx214")) {
+		sensordata->sensor_init_params->sensor_mount_angle = 270;
+		CDBG("%s qcom,mount-angle %d\n", __func__,
+			sensordata->sensor_init_params->sensor_mount_angle);
+	}
+#endif
+
 	rc = of_property_read_u32(of_node, "qcom,cci-master",
 		&s_ctrl->cci_i2c_master);
 	CDBG("%s qcom,cci-master %d, rc %d\n", __func__, s_ctrl->cci_i2c_master,
