@@ -1042,12 +1042,6 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 	int rc = 0;
 	u8 usb_reg = 0, temp = 8;
 
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode. */
-#ifdef CONFIG_VENDOR_EDIT
-	if(get_boot_mode() != MSM_BOOT_MODE__NORMAL)
-		return -EINVAL;
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
 	if (mA < 0 || mA > QPNP_CHG_I_MAX_MAX_MA) {
 		pr_err("bad mA=%d asked to set\n", mA);
 		return -EINVAL;
@@ -1101,12 +1095,6 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 static int
 qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 {
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode. */
-#ifdef CONFIG_VENDOR_EDIT
-	if(get_boot_mode() != MSM_BOOT_MODE__NORMAL)
-		return -EINVAL;
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
 	if (mA < QPNP_CHG_I_MAX_MIN_100
 			|| mA > QPNP_CHG_I_MAX_MAX_MA) {
 		pr_err("bad mA=%d asked to set\n", mA);
@@ -1305,13 +1293,6 @@ switch_parallel_ovp_mode(struct qpnp_chg_chip *chip, bool enable)
 static int
 qpnp_chg_usb_suspend_enable(struct qpnp_chg_chip *chip, int enable)
 {
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode. */
-#ifdef CONFIG_VENDOR_EDIT
-	if(get_boot_mode() != MSM_BOOT_MODE__NORMAL)
-		return -EINVAL;
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
-
 	/* Turn off DC OVP FET when going into USB suspend */
 	if (chip->parallel_ovp_mode && enable)
 		switch_parallel_ovp_mode(chip, 0);
@@ -1325,16 +1306,6 @@ qpnp_chg_usb_suspend_enable(struct qpnp_chg_chip *chip, int enable)
 static int
 qpnp_chg_usb_suspend_enable(struct qpnp_chg_chip *chip, int enable)
 {
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode. */
-#ifdef CONFIG_VENDOR_EDIT
-	if(get_boot_mode() != MSM_BOOT_MODE__NORMAL) {
-		if(!enable) {
-			return -EINVAL;
-		}
-	}
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
-
 	if (qpnp_ext_charger && qpnp_ext_charger->chg_usb_suspend_enable)
 		return qpnp_ext_charger->chg_usb_suspend_enable(enable);
 	else {
@@ -1349,13 +1320,6 @@ qpnp_chg_usb_suspend_enable(struct qpnp_chg_chip *chip, int enable)
 static int
 qpnp_chg_charge_en(struct qpnp_chg_chip *chip, int enable)
 {
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode. */
-#ifdef CONFIG_VENDOR_EDIT
-	if(get_boot_mode() != MSM_BOOT_MODE__NORMAL)
-		return -EINVAL;
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
-
 	if (chip->insertion_ocv_uv == 0 && enable) {
 		pr_debug("Battery not present, skipping\n");
 		return 0;
@@ -1369,13 +1333,6 @@ qpnp_chg_charge_en(struct qpnp_chg_chip *chip, int enable)
 static int
 qpnp_chg_charge_en(struct qpnp_chg_chip *chip, int enable)
 {
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode. */
-#ifdef CONFIG_VENDOR_EDIT
-	if(get_boot_mode() != MSM_BOOT_MODE__NORMAL)
-		return -EINVAL;
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
-
 	if (qpnp_ext_charger && qpnp_ext_charger->chg_charge_en)
 		return qpnp_ext_charger->chg_charge_en(enable);
 	else {
@@ -7744,14 +7701,6 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	qpnp_chg_charge_en(chip, !chip->charging_disabled);
 #endif
 /* OPPO 2013-11-21 wangjc Delete end */
-
-/* OPPO 2013-08-19 wangjc Add begin for ftm test mode. */
-#ifdef CONFIG_VENDOR_EDIT
-	if(get_boot_mode() != MSM_BOOT_MODE__NORMAL) {
-		qpnp_chg_usb_suspend_enable(chip, 1);
-	}
-#endif
-/* OPPO 2013-08-19 wangjc Add end */
 
 /* OPPO 2013-10-16 wangjc Delete begin for use bq charger */
 #ifndef CONFIG_BQ24196_CHARGER
