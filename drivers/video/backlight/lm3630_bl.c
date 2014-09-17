@@ -72,7 +72,7 @@ static const char * const bled_name[] = {
 	[BLED_1] = "lm3630_bled1",	/*Bank1 controls bled1 */
 	[BLED_2] = "lm3630_bled2",	/*Bank1 or 2 controls bled2 */
 };
-#endif 
+#endif
 
 struct lm3630_chip_data {
 	struct device *dev;
@@ -411,12 +411,12 @@ int lm3630_bank_a_update_status(u32 bl_level)
 	int ret;
 	struct lm3630_chip_data *pchip = lm3630_pchip;
 	pr_debug("%s: bl=%d\n", __func__,bl_level);
-	
+
 	if(!pchip){
 		dev_err(pchip->dev, "lm3630_bank_a_update_status pchip is null\n");
 		return -ENOMEM;
 		}
-	
+
 
 	if (!pchip->regmap || !lm3630_pchip->regmap) {
 	  pr_err("%s YXQ pchip->regmap is NULL.\n", __func__);
@@ -438,7 +438,7 @@ int lm3630_bank_a_update_status(u32 bl_level)
 		if (ret < 0)
 			goto out;
 		mdelay(1);
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/24  Modify for backlight flick when disable pwm */
 		ret = regmap_write(pchip->regmap,
 				   REG_BRT_A, bl_level);
@@ -484,9 +484,9 @@ static int lm3630_dt(struct device *dev, struct lm3630_platform_data *pdata)
 {
 	u32 temp_val;
 	int rc;
-	struct device_node *np = dev->of_node;	
+	struct device_node *np = dev->of_node;
 //		dev_err(dev, "yanghai read \n");
-		
+
 		rc = of_property_read_u32(np, "ti,bank-a-ctrl", &temp_val);
 		if (rc) {
 			dev_err(dev, "Unable to read bank-a-ctrl\n");
@@ -544,7 +544,7 @@ static int lm3630_dt(struct device *dev, struct lm3630_platform_data *pdata)
 		} else{
 			pdata->pwm_period=temp_val;
 			}
-#if 0														
+#if 0
 	pdata->bank_b_ctrl=BANK_B_CTRL_DISABLE;
 	pdata->init_brt_led1=200;
 	pdata->init_brt_led2=200;
@@ -614,7 +614,7 @@ static int lm3630_probe(struct i2c_client *client,
 			return ret;
 	} else
 		pdata = client->dev.platform_data;
-	
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "fail : i2c functionality check...\n");
 		return -EOPNOTSUPP;
@@ -630,10 +630,10 @@ static int lm3630_probe(struct i2c_client *client,
 	if (!pchip)
 		return -ENOMEM;
 	lm3630_pchip=pchip;
-	
+
 	pchip->pdata = pdata;
 	pchip->dev = &client->dev;
-//HW enable 
+//HW enable
 	ret = gpio_request(LM3630_ENABLE_GPIO, "lm3528_enable");
 	if (ret) {
 		pr_err("lm3528_enable gpio_request failed: %d\n", ret);
@@ -721,7 +721,7 @@ static int lm3630_probe(struct i2c_client *client,
 err_bl_reg:
 	dev_err(&client->dev, "fail : backlight register.\n");
 	lm3630_backlight_unregister(pchip);
-#endif	
+#endif
 err_chip_init:
 	return ret;
 
@@ -729,7 +729,6 @@ err_gpio_req:
 	if (gpio_is_valid(LM3630_ENABLE_GPIO))
 		gpio_free(LM3630_ENABLE_GPIO);
 	return ret;
-	
 }
 
 static int lm3630_remove(struct i2c_client *client)
@@ -755,7 +754,7 @@ static int lm3630_remove(struct i2c_client *client)
 #endif
 	if (gpio_is_valid(LM3630_ENABLE_GPIO))
 		gpio_free(LM3630_ENABLE_GPIO);
-	
+
 	if (pchip->irq) {
 		free_irq(pchip->irq, pchip);
 		flush_workqueue(pchip->irqthread);
@@ -774,7 +773,7 @@ MODULE_DEVICE_TABLE(i2c, lm3630_id);
 static int lm3630_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	int rc ;
-	
+
 	pr_debug("%s:backlight suspend.\n", __func__);
     rc = regmap_write(lm3630_pchip->regmap, REG_BRT_A, 0);
 	rc  = regmap_update_bits(lm3630_pchip->regmap, REG_CTRL, 0x80, 0x80);
@@ -800,7 +799,7 @@ static int lm3630_resume(struct i2c_client *client)
 	if (rc  < 0)
 	{
 		pr_err("%s: unable to shotdown !!!!!!!!!!!!\n", __func__);
-	}	
+	}
 //	rc = gpio_direction_output(LM3630_ENABLE_GPIO, 1);
 //	if (rc) {
 //		pr_err("%s: unable to enable!!!!!!!!!!!!\n", __func__);
@@ -866,7 +865,7 @@ static struct i2c_driver lm3630_i2c_driver = {
 	.driver = {
 		  .name = LM3630_NAME,
 		  .owner	= THIS_MODULE,
-		  .of_match_table = lm3630_table,		   	
+		  .of_match_table = lm3630_table,
 		   },
 	.probe = lm3630_probe,
 	.remove = lm3630_remove,
