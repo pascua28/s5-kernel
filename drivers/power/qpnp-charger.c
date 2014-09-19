@@ -2788,6 +2788,7 @@ qpnp_power_get_property_mains(struct power_supply *psy,
 {
 	struct qpnp_chg_chip *chip = container_of(psy, struct qpnp_chg_chip,
 								dc_psy);
+	int usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -2807,7 +2808,7 @@ qpnp_power_get_property_mains(struct power_supply *psy,
 		else
 			val->intval = 0;
 #else /*CONFIG_BATTERY_BQ27541*/
-		if((get_prop_fast_chg_started(chip) == true)
+		if((usb_present && get_prop_fast_chg_started(chip) == true)
 			|| (get_prop_fast_switch_to_normal(chip) == true)
 			|| (get_prop_fast_normal_to_warm(chip) == true)) {
 			val->intval = 1;
@@ -2827,9 +2828,12 @@ qpnp_power_get_property_mains(struct power_supply *psy,
 /* OPPO 2013-12-22 wangjc add for fastchg*/
 #ifdef CONFIG_PIC1503_FASTCG
 	case POWER_SUPPLY_PROP_FASTCHARGER://wangjc add for fast charger
-		val->intval = get_prop_fast_chg_started(chip);
+		if (!usb_present)
+			val->intval = 0;
+		else
+			val->intval = get_prop_fast_chg_started(chip);
 #if 0
-//Fuchun.Liao@EXP.driver,delete for mistakenly show fastchg mode "YES" 
+//Fuchun.Liao@EXP.driver,delete for mistakenly show fastchg mode "YES"
 		if(val->intval == 0) {
 			if(get_prop_fast_switch_to_normal(chip) == true) {
 				val->intval = 1;
@@ -3000,7 +3004,8 @@ static int
 get_prop_batt_health(struct qpnp_chg_chip *chip)
 {
 	int temp;
-	
+	int usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
+
 	temp = get_prop_batt_temp(chip);
 /* jingchun.wang@Onlinerd.Driver, 2014/05/08  Add for recognize miss battery  */
 	if(temp == AUTO_CHARGING_BATT_REMOVE_TEMP) {
@@ -3013,7 +3018,7 @@ get_prop_batt_health(struct qpnp_chg_chip *chip)
 		return POWER_SUPPLY_HEALTH_DEAD;
 	} else if(chip->charger_status == CHARGER_STATUS_OVER) {
 /* jingchun.wang@Onlinerd.Driver, 2014/04/04  Add for don't display overvoltage when fast chg */
-		if(get_prop_fast_chg_started(chip) == true) {
+		if(usb_present && get_prop_fast_chg_started(chip) == true) {
 			return POWER_SUPPLY_HEALTH_GOOD;
 		}
 		return POWER_SUPPLY_HEALTH_OVERVOLTAGE;
@@ -4076,7 +4081,9 @@ static void qpnp_chg_ext_charger_hwinit(struct qpnp_chg_chip *chip)
 {
 /* OPPO 2014-05-21 liaofuchun modify begin for vph_pwr pulled down unexpectly when soc is 1% ~ 2%*/
 #ifdef CONFIG_PIC1503_FASTCG
-	if(get_prop_fast_chg_started(chip) == true){
+	int usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
+
+	if(usb_present && get_prop_fast_chg_started(chip) == true){
 		pr_info("%s fast chg started,don't init bq24196\n",__func__);
 		return ;
 	}
@@ -7081,12 +7088,13 @@ static void update_heartbeat(struct work_struct *work)
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct qpnp_chg_chip *chip = container_of(dwork,
 				struct qpnp_chg_chip, update_heartbeat_work);
-	
-/* OPPO 2013-12-22 liaofuchun add for fastchg */
-#ifdef CONFIG_PIC1503_FASTCG	
-	int charge_type = qpnp_charger_type_get(chip);
 
-	if(get_prop_fast_chg_started(chip) == true) {
+/* OPPO 2013-12-22 liaofuchun add for fastchg */
+#ifdef CONFIG_PIC1503_FASTCG
+	int charge_type = qpnp_charger_type_get(chip);
+	int usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
+
+	if(usb_present && get_prop_fast_chg_started(chip) == true) {
 		switch_fast_chg(chip);
 		pr_info("%s fast chg started,GPIO96:%d\n", __func__,gpio_get_value(96));
 		//lfc move it to fastcg_work_func in bq27541.c
