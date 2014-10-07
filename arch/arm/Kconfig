@@ -700,6 +700,7 @@ config ARCH_MSM
 	select GENERIC_ALLOCATOR
 	select HAVE_SCHED_CLOCK
 	select HAVE_CLK_PREPARE
+	select ARCH_HAS_OPP
 	select NEED_MACH_MEMORY_H
 	select NEED_MACH_IO_H
 	select SOC_BUS
