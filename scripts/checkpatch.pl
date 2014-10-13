@@ -432,7 +432,9 @@ foreach my $entry (@mode_permission_funcs) {
 
 our $allowed_asm_includes = qr{(?x:
 	irq|
-	memory
+	memory|
+	time|
+	reboot
 )};
 # memory.h: ARM has a custom one
 
