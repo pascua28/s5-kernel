@@ -4529,6 +4529,12 @@ sub process {
 			     "Use of volatile is usually wrong: see Documentation/volatile-considered-harmful.txt\n" . $herecurr);
 		}
 
+# concatenated string without spaces between elements
+		if ($line =~ /"X+"[A-Z_]+/ || $line =~ /[A-Z_]+"X+"/) {
+			CHK("CONCATENATED_STRING",
+			    "Concatenated strings should use spaces between elements\n" . $herecurr);
+		}
+
 # sys_open/read/write/close are not allowed in the kernel
 		if ($line =~ /\b(sys_(?:open|read|write|close))\b/) {
 			ERROR("FILE_OPS", "$1 is inappropriate in kernel code.\n" .
