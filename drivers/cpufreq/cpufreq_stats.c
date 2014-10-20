@@ -185,24 +185,21 @@ static int __cpufreq_stats_create_table(struct cpufreq_policy *policy,
 {
 	unsigned int i, j, count = 0, ret = 0;
 	struct cpufreq_stats *stat;
-	struct cpufreq_policy *current_policy;
 	unsigned int alloc_size;
 	unsigned int cpu = policy->cpu;
 	if (per_cpu(cpufreq_stats_table, cpu))
 		return -EBUSY;
 	stat = kzalloc(sizeof(*stat), GFP_KERNEL);
-	if ((stat) == NULL)
+	if ((stat) == NULL) {
+		pr_err("Failed to alloc cpufreq_stats table\n");
 		return -ENOMEM;
-
-	current_policy = cpufreq_cpu_get(cpu);
-	if (current_policy == NULL) {
-		ret = -EINVAL;
-		goto error_get_fail;
 	}
 
-	ret = sysfs_create_group(&current_policy->kobj, &stats_attr_group);
-	if (ret)
+	ret = sysfs_create_group(&policy->kobj, &stats_attr_group);
+	if (ret) {
+		pr_err("Failed to create cpufreq_stats sysfs\n");
 		goto error_out;
+	}
 
 	stat->cpu = cpu;
 	per_cpu(cpufreq_stats_table, cpu) = stat;
@@ -223,6 +220,7 @@ static int __cpufreq_stats_create_table(struct cpufreq_policy *policy,
 	stat->time_in_state = kzalloc(alloc_size, GFP_KERNEL);
 	if (!stat->time_in_state) {
 		ret = -ENOMEM;
+		pr_err("Failed to alloc cpufreq_stats table\n");
 		goto error_alloc;
 	}
 	stat->freq_table = (unsigned int *)(stat->time_in_state + count);
@@ -243,13 +241,10 @@ static int __cpufreq_stats_create_table(struct cpufreq_policy *policy,
 	stat->last_time = get_jiffies_64();
 	stat->last_index = freq_table_get_index(stat, policy->cur);
 	spin_unlock(&cpufreq_stats_lock);
-	cpufreq_cpu_put(current_policy);
 	return 0;
 error_alloc:
 	sysfs_remove_group(&policy->kobj, &stats_attr_group);
 error_out:
-	cpufreq_cpu_put(current_policy);
-error_get_fail:
 	kfree(stat);
 	per_cpu(cpufreq_stats_table, cpu) = NULL;
 	return ret;
@@ -380,9 +375,6 @@ static int __init cpufreq_stats_init(void)
 			cpufreq_stats_free_table(cpu);
 		return ret;
 	}
-
-	for_each_online_cpu(cpu)
-		cpufreq_update_policy(cpu);
 
 	return 0;
 }
