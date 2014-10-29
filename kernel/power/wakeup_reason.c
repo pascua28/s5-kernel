@@ -30,7 +30,9 @@
 
 #define MAX_WAKEUP_REASON_IRQS 32
 static int irq_list[MAX_WAKEUP_REASON_IRQS];
-static int irq_count;
+static int irqcount;
+static bool suspend_abort;
+static char abort_reason[MAX_SUSPEND_ABORT_LEN];
 static struct kobject *wakeup_reason;
 static spinlock_t resume_reason_lock;
 
@@ -40,14 +42,18 @@ static ssize_t last_resume_reason_show(struct kobject *kobj, struct kobj_attribu
 	int irq_no, buf_offset = 0;
 	struct irq_desc *desc;
 	spin_lock(&resume_reason_lock);
-	for (irq_no = 0; irq_no < irq_count; irq_no++) {
-		desc = irq_to_desc(irq_list[irq_no]);
-		if (desc && desc->action && desc->action->name)
-			buf_offset += sprintf(buf + buf_offset, "%d %s\n",
-					irq_list[irq_no], desc->action->name);
-		else
-			buf_offset += sprintf(buf + buf_offset, "%d\n",
-					irq_list[irq_no]);
+	if (suspend_abort) {
+		buf_offset = sprintf(buf, "Abort: %s", abort_reason);
+	} else {
+		for (irq_no = 0; irq_no < irqcount; irq_no++) {
+			desc = irq_to_desc(irq_list[irq_no]);
+			if (desc && desc->action && desc->action->name)
+				buf_offset += sprintf(buf + buf_offset, "%d %s\n",
+						irq_list[irq_no], desc->action->name);
+			else
+				buf_offset += sprintf(buf + buf_offset, "%d\n",
+						irq_list[irq_no]);
+		}
 	}
 	spin_unlock(&resume_reason_lock);
 	return buf_offset;
@@ -78,14 +84,33 @@ void log_wakeup_reason(int irq)
 		printk(KERN_INFO "Resume caused by IRQ %d\n", irq);
 
 	spin_lock(&resume_reason_lock);
-	if (irq_count == MAX_WAKEUP_REASON_IRQS) {
+	if (irqcount == MAX_WAKEUP_REASON_IRQS) {
 		spin_unlock(&resume_reason_lock);
 		printk(KERN_WARNING "Resume caused by more than %d IRQs\n",
 				MAX_WAKEUP_REASON_IRQS);
 		return;
 	}
 
-	irq_list[irq_count++] = irq;
+	irq_list[irqcount++] = irq;
+	spin_unlock(&resume_reason_lock);
+}
+
+void log_suspend_abort_reason(const char *fmt, ...)
+{
+	va_list args;
+
+	spin_lock(&resume_reason_lock);
+
+	//Suspend abort reason has already been logged.
+	if (suspend_abort) {
+		spin_unlock(&resume_reason_lock);
+		return;
+	}
+
+	suspend_abort = true;
+	va_start(args, fmt);
+	snprintf(abort_reason, MAX_SUSPEND_ABORT_LEN, fmt, args);
+	va_end(args);
 	spin_unlock(&resume_reason_lock);
 }
 
@@ -96,7 +121,8 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		spin_lock(&resume_reason_lock);
-		irq_count = 0;
+		irqcount = 0;
+		suspend_abort = false;
 		spin_unlock(&resume_reason_lock);
 		break;
 	default:
