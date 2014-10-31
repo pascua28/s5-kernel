@@ -26,4 +26,6 @@ void update_wakeup_reason_stats(int irq);
 
 void log_wakeup_reason(int irq);
 void log_suspend_abort_reason(const char *fmt, ...);
+int check_wakeup_reason(int irq);
+
 #endif /* _LINUX_WAKEUP_REASON_H */
