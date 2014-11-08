@@ -191,6 +191,20 @@ enum usb_vdd_value {
 };
 
 /**
+ * Maintain state for hvdcp external charger status
+ * DEFAULT	This is used when DCP is detected
+ * ACTIVE	This is used when ioctl is called to block LPM
+ * INACTIVE	This is used when ioctl is called to unblock LPM
+ */
+
+enum usb_ext_chg_status {
+	DEFAULT = 1,
+	ACTIVE,
+	INACTIVE,
+};
+
+
+/**
  * struct msm_otg_platform_data - platform device data
  *              for msm_otg driver.
  * @phy_init_seq: PHY configuration sequence. val, reg pairs
@@ -324,6 +338,10 @@ struct msm_otg_platform_data {
  * @regs: ioremapped register base address.
  * @inputs: OTG state machine inputs(Id, SessValid etc).
  * @sm_work: OTG state machine work.
+ * @pm_suspended: OTG device is system(PM) suspended.
+ * @pm_notify: Notifier to receive system wide PM transition events.
+		It is used to defer wakeup events processing until
+		system is RESUMED.
  * @in_lpm: indicates low power mode (LPM) state.
  * @async_int: IRQ line on which ASYNC interrupt arrived in LPM.
  * @cur_power: The amount of mA available from downstream port.
@@ -346,7 +364,10 @@ struct msm_otg_platform_data {
  * @chg_check_timer: The timer used to implement the workaround to detect
  *               very slow plug in of wall charger.
  * @ui_enabled: USB Intterupt is enabled or disabled.
- * @pm_done: Indicates whether USB is PM resumed
+ * @pm_done: It is used to increment the pm counter using pm_runtime_get_sync.
+	     This handles the race case when PM resume thread returns before
+	     the charger detection starts. When USB is disconnected pm_done
+	     is set to true.
  */
 struct msm_otg {
 	struct usb_phy phy;
@@ -384,6 +405,7 @@ struct msm_otg {
 	struct work_struct sm_work;
 	bool sm_work_pending;
 	atomic_t pm_suspended;
+	struct notifier_block pm_notify;
 	atomic_t in_lpm;
 	int async_int;
 	unsigned cur_power;
@@ -460,7 +482,7 @@ struct msm_otg {
 	struct class *ext_chg_class;
 	struct device *ext_chg_device;
 	bool ext_chg_opened;
-	bool ext_chg_active;
+	enum usb_ext_chg_status ext_chg_active;
 	struct completion ext_chg_wait;
 	int ui_enabled;
 	bool pm_done;

@@ -39,7 +39,11 @@
 
 			qcom,pon_1 {
 				qcom,pon-type = <0>;
+				qcom,support-reset = <1>;
 				qcom,pull-up = <1>;
+				qcom,s1-timer = <10256>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <1>;
 				linux,code = <116>;
 			};
 
@@ -275,10 +279,6 @@
 				label = "internal_rsense";
 				reg = <0>;
 				qcom,decimation = <0>;
-				qcom,pre-div-channel-scaling = <1>;
-				qcom,calibration-type = "absolute";
-				qcom,scale-function = <0>;
-				qcom,hw-settle-time = <0>;
 				qcom,fast-avg-setup = <0>;
 			};
 		};
@@ -338,6 +338,10 @@
 			qcom,bms-vadc = <&pm8110_vadc>;
 			qcom,bms-iadc = <&pm8110_iadc>;
 			qcom,bms-adc_tm = <&pm8110_adc_tm>;
+
+			qcom,batt-pres-status@1208 {
+				reg = <0x1208 0x1>;
+			};
 
 			qcom,bms-iadc@3800 {
 				reg = <0x3800 0x100>;

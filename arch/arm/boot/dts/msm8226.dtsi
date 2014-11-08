@@ -300,6 +300,7 @@
 		reg = <0xfe8050c8 0xc8>;
 		qcom,android-usb-swfi-latency = <1>;
 		qcom,streaming-func = "rndis";
+		qcom,android-usb-uicc-nluns = <1>;
 	};
 
 	smsc_hub: hsic_hub {
@@ -1060,7 +1061,7 @@
 			<  300000 1525 >,
 			<  384000 1525 >,
 			<  600000 1525 >,
-			<  787200 3051 >,
+			<  787200 1525 >,
 			<  998400 4066 >,
 			< 1094400 4066 >,
 			< 1190400 4066 >,
@@ -1385,6 +1386,12 @@
 		compatible = "arm,cortex-a7-pmu";
 		qcom,irq-is-percpu;
 		interrupts = <1 7 0xf00>;
+	};
+
+	bimc_sharedmem {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0xfc380000 0x00100000>;
+		reg-names = "bimc";
 	};
 };
 

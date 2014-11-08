@@ -386,14 +386,14 @@ int mdp3_ppp_turnon(struct msm_fb_data_type *mfd, int on_off)
 			ab = req_bw;
 	}
 	mdp3_clk_set_rate(MDP3_CLK_CORE, rate, MDP3_CLIENT_PPP);
-	rc = mdp3_clk_enable(on_off, 0);
+	rc = mdp3_res_update(on_off, 0, MDP3_CLIENT_PPP);
 	if (rc < 0) {
 		pr_err("%s: mdp3_clk_enable failed\n", __func__);
 		return rc;
 	}
 	rc = mdp3_bus_scale_set_quota(MDP3_CLIENT_PPP, ab, ib);
 	if (rc < 0) {
-		mdp3_clk_enable(!on_off, 0);
+		mdp3_res_update(!on_off, 0, MDP3_CLIENT_PPP);
 		pr_err("%s: scale_set_quota failed\n", __func__);
 		return rc;
 	}
@@ -401,9 +401,18 @@ int mdp3_ppp_turnon(struct msm_fb_data_type *mfd, int on_off)
 	return 0;
 }
 
-bool mdp3_optimal_bw(int req_cnt)
+bool mdp3_optimal_bw(struct blit_req_list *req)
 {
-	if (req_cnt == 1 && ppp_stat->req_q.count == 1)
+	int i, solid_fill = 0;
+
+	if (!req || (ppp_stat->req_q.count > 1))
+		return false;
+
+	for (i = 0; i < req->count; i++) {
+		if (req->req_list[i].flags & MDP_SOLID_FILL)
+			solid_fill++;
+	}
+	if ((req->count - solid_fill) <= 1)
 		return true;
 	return false;
 }
@@ -863,24 +872,6 @@ int mdp3_ppp_start_blit(struct msm_fb_data_type *mfd,
 	if (unlikely(req->dst_rect.h == 0 || req->dst_rect.w == 0))
 		return 0;
 
-	if (req->flags & MDP_ROT_90) {
-		if (((req->dst_rect.h == 1) && ((req->src_rect.w != 1) ||
-			(req->dst_rect.w != req->src_rect.h))) ||
-			((req->dst_rect.w == 1) && ((req->src_rect.h != 1) ||
-			(req->dst_rect.h != req->src_rect.w)))) {
-			pr_err("mdp_ppp: error scaling when size is 1!\n");
-			return -EINVAL;
-		}
-	} else {
-		if (((req->dst_rect.w == 1) && ((req->src_rect.w != 1) ||
-			(req->dst_rect.h != req->src_rect.h))) ||
-			((req->dst_rect.h == 1) && ((req->src_rect.h != 1) ||
-			(req->dst_rect.w != req->src_rect.w)))) {
-			pr_err("mdp_ppp: error scaling when size is 1!\n");
-			return -EINVAL;
-		}
-	}
-
 	/* MDP width split workaround */
 	remainder = (req->dst_rect.w) % 16;
 	ret = ppp_get_bpp(req->dst.format, mfd->fb_imgType);
@@ -1039,14 +1030,10 @@ void mdp3_free_fw_timer_func(unsigned long arg)
 static void mdp3_free_bw_wq_handler(struct work_struct *work)
 {
 	struct msm_fb_data_type *mfd = ppp_stat->mfd;
-	int rc;
 
 	mutex_lock(&ppp_stat->config_ppp_mutex);
 	if (ppp_stat->bw_on) {
 		mdp3_ppp_turnon(mfd, 0);
-		rc = mdp3_iommu_disable(MDP3_CLIENT_PPP);
-		if (rc < 0)
-			WARN(1, "Unable to disable ppp iommu\n");
 	}
 	mutex_unlock(&ppp_stat->config_ppp_mutex);
 }
@@ -1065,16 +1052,9 @@ static void mdp3_ppp_blit_wq_handler(struct work_struct *work)
 	}
 
 	if (!ppp_stat->bw_on) {
-		rc = mdp3_iommu_enable(MDP3_CLIENT_PPP);
-		if (rc < 0) {
-			mutex_unlock(&ppp_stat->config_ppp_mutex);
-			pr_err("%s: mdp3_iommu_enable failed\n", __func__);
-			return;
-		}
-		ppp_stat->bw_optimal = mdp3_optimal_bw(req->count);
+		ppp_stat->bw_optimal = mdp3_optimal_bw(req);
 		mdp3_ppp_turnon(mfd, 1);
 		if (rc < 0) {
-			mdp3_iommu_disable(MDP3_CLIENT_PPP);
 			mutex_unlock(&ppp_stat->config_ppp_mutex);
 			pr_err("%s: Enable ppp resources failed\n", __func__);
 			return;
@@ -1105,7 +1085,7 @@ static void mdp3_ppp_blit_wq_handler(struct work_struct *work)
 		if (ppp_stat->wait_for_pop)
 			complete(&ppp_stat->pop_q_comp);
 		mutex_unlock(&ppp_stat->req_mutex);
-		if (req && (ppp_stat->bw_optimal != mdp3_optimal_bw(req->count))) {
+		if (req && (ppp_stat->bw_optimal != mdp3_optimal_bw(req))) {
 			ppp_stat->bw_optimal = !ppp_stat->bw_optimal;
 			mdp3_ppp_vote_update(mfd);
 		}

@@ -64,7 +64,8 @@ int mdss_dsi_clk_init(struct platform_device *pdev,
 		goto mdss_dsi_clk_err;
 	}
 
-	if (ctrl_pdata->panel_data.panel_info.type == MIPI_CMD_PANEL) {
+	if ((ctrl_pdata->panel_data.panel_info.type == MIPI_CMD_PANEL) ||
+		ctrl_pdata->panel_data.panel_info.mipi.dynamic_switch_enabled) {
 		ctrl_pdata->mmss_misc_ahb_clk = clk_get(dev, "core_mmss_clk");
 		if (IS_ERR(ctrl_pdata->mmss_misc_ahb_clk)) {
 			rc = PTR_ERR(ctrl_pdata->mmss_misc_ahb_clk);
@@ -216,7 +217,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 	}
 
 	/* find the mnd settings from mnd_table entry */
-	for (; mnd_entry != mnd_table + ARRAY_SIZE(mnd_table); ++mnd_entry) {
+	for (; mnd_entry < mnd_table + ARRAY_SIZE(mnd_table); ++mnd_entry) {
 		if (((mnd_entry->lanes) == lanes) &&
 			((mnd_entry->bpp) == bpp))
 			break;
@@ -512,6 +513,11 @@ static int mdss_dsi_clk_ctrl_sub(struct mdss_dsi_ctrl_pdata *ctrl,
 {
 	int rc = 0;
 
+	if (!ctrl) {
+		pr_err("%s: Invalid arg\n", __func__);
+		return -EINVAL;
+	}
+
 	pr_debug("%s: ndx=%d clk_type=%08x enable=%d\n", __func__,
 		ctrl->ndx, clk_type, enable);
 
@@ -640,7 +646,8 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 error_mctrl_stop:
 	mdss_dsi_clk_ctrl_sub(ctrl, clk_type, enable ? 0 : 1);
 error_ctrl:
-	mdss_dsi_clk_ctrl_sub(mctrl, clk_type, 0);
+	if (enable && m_changed)
+		mdss_dsi_clk_ctrl_sub(mctrl, clk_type, 0);
 error_mctrl_start:
 	if (clk_type & DSI_BUS_CLKS) {
 		if (mctrl)

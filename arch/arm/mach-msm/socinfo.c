@@ -175,16 +175,23 @@ struct socinfo_v8 {
 	uint32_t pmic_model_2;
 	uint32_t pmic_die_revision_2;
 };
-/*OPPO yuyi 2013-10-18 add begin for pcb_version in sys/devices/system/soc/soc0*/
-#ifdef CONFIG_VENDOR_EDIT
+
 struct socinfo_v9 {
+	struct socinfo_v8 v8;
+
+	/* only valid when format==9*/
+	uint32_t foundry_id;
 	char hw_pcb_version[10];
 };
+
+/*OPPO yuyi 2013-10-18 add begin for pcb_version in sys/devices/system/soc/soc0*/
+#ifdef CONFIG_VENDOR_EDIT
 struct socinfo_v10 {
 	char hw_rf_version[10];
 };
 #endif
 /*OPPO yuyi 2013-10-18 add end for pcb_version in sys/devices/system/soc/soc0*/
+
 static union {
 	struct socinfo_v1 v1;
 	struct socinfo_v2 v2;
@@ -194,9 +201,9 @@ static union {
 	struct socinfo_v6 v6;
 	struct socinfo_v7 v7;
 	struct socinfo_v8 v8;
+	struct socinfo_v9 v9;
 /*OPPO yuyi 2013-10-18 add begin for pcb_version in sys/devices/system/soc/soc0*/
 #ifdef CONFIG_VENDOR_EDIT
-	struct socinfo_v9 v9;
 	struct socinfo_v10 v10;
 #endif
 /*OPPO yuyi 2013-10-18 add end for pcb_version in sys/devices/system/soc/soc0*/
@@ -631,6 +638,14 @@ uint32_t socinfo_get_platform_subtype(void)
 		: 0;
 }
 
+static uint32_t socinfo_get_foundry_id(void)
+{
+	return socinfo ?
+		(socinfo->v1.format >= 9 ? socinfo->v9.foundry_id : 0)
+		: 0;
+}
+
+
 enum pmic_model socinfo_get_pmic_model(void)
 {
 	return socinfo ?
@@ -1017,6 +1032,15 @@ msm_get_platform_subtype_id(struct device *dev,
 }
 
 static ssize_t
+msm_get_foundry_id(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+		socinfo_get_foundry_id());
+}
+
+static ssize_t
 msm_get_pmic_model(struct device *dev,
 			struct device_attribute *attr,
 			char *buf)
@@ -1267,6 +1291,10 @@ static struct device_attribute msm_soc_attr_platform_subtype_id =
 	__ATTR(platform_subtype_id, S_IRUGO,
 			msm_get_platform_subtype_id, NULL);
 
+static struct device_attribute msm_soc_attr_foundry_id =
+	__ATTR(foundry_id, S_IRUGO,
+			msm_get_foundry_id, NULL);
+
 static struct device_attribute msm_soc_attr_pmic_model =
 	__ATTR(pmic_model, S_IRUGO,
 			msm_get_pmic_model, NULL);
@@ -1358,6 +1386,9 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 	device_create_file(msm_soc_device, &select_image);
 
 	switch (legacy_format) {
+	case 9:
+		device_create_file(msm_soc_device,
+					&msm_soc_attr_foundry_id);
 	case 8:
 	case 7:
 		device_create_file(msm_soc_device,
@@ -1580,6 +1611,23 @@ static void socinfo_print(void)
 			socinfo->v7.pmic_model,
 			socinfo->v7.pmic_die_revision);
 		break;
+	case 9:
+		pr_info("%s: v%u, id=%u, ver=%u.%u, raw_id=%u, raw_ver=%u ,"
+			"hw_plat=%u, hw_plat_ver=%u\n accessory_chip=%u,"
+			"hw_plat_subtype=%u, pmic_model=%u, pmic_die_revision=%u,"
+			"foundry_id=%u\n", __func__,
+			socinfo->v1.format,
+			socinfo->v1.id,
+			SOCINFO_VERSION_MAJOR(socinfo->v1.version),
+			SOCINFO_VERSION_MINOR(socinfo->v1.version),
+			socinfo->v2.raw_id, socinfo->v2.raw_version,
+			socinfo->v3.hw_platform, socinfo->v4.platform_version,
+			socinfo->v5.accessory_chip,
+			socinfo->v6.hw_platform_subtype,
+			socinfo->v7.pmic_model,
+			socinfo->v7.pmic_die_revision,
+			socinfo->v9.foundry_id);
+		break;
 	default:
 		pr_err("%s: Unknown format found\n", __func__);
 		break;
@@ -1588,7 +1636,10 @@ static void socinfo_print(void)
 
 int __init socinfo_init(void)
 {
-	socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID, sizeof(struct socinfo_v8));
+	socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID, sizeof(struct socinfo_v9));
+	if (!socinfo)
+		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v8));
 
 	if (!socinfo)
 		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
