@@ -103,6 +103,7 @@ exit:
 	return cnt;
 }
 
+
 static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_ctl *ctl,
 				      struct mdss_mdp_mixer *mixer)
 {

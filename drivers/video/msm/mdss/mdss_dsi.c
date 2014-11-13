@@ -28,16 +28,13 @@
 #include "mdss_debug.h"
 
 #ifdef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/11  Add for AT current for find7s */
-#include <linux/boot_mode.h>
-#endif /*CONFIG_VENDOR_EDIT*/
-
 /* OPPO 2014-02-10 yxq Added begin for Find7S */
 #include <linux/pcb_version.h>
 /* OPPO 2014-02-10 yxq Added end */
 /* OPPO 2013-11-20 yxq Add begin for compatible cmd mode and video mode */
 #define COMMAND_MODE_ENABLE
 /* OPPO 2013-11-20 yxq Add end */
+#endif /*CONFIG_VENDOR_EDIT*/
 
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
@@ -103,16 +100,13 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 		ret = mdss_dsi_panel_reset(pdata, 0);
 
 #ifndef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/02  Modify for probabilistic blurred screen for find7s */
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config,
-			ctrl_pdata->power_data.num_vreg, 0);
 		if (ret) {
-			pr_err("%s: Failed to disable vregs.rc=%d\n",
-				__func__, ret);
+			pr_err("%s: Panel reset failed. rc=%d\n",
+					__func__, ret);
+			goto error;
 		}
 #else /*CONFIG_VENDOR_EDIT*/
-	if(get_pcb_version() >= HW_VERSION__20 && get_boot_mode()!= MSM_BOOT_MODE__FACTORY){
+	if(get_pcb_version() >= HW_VERSION__20){
 		ret = 0;
 	}
 	else{
@@ -785,11 +779,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	pr_debug("%s-:\n", __func__);
 	return 0;
 }
-/* OPPO 2013-10-18 yxq added begin for debug */
-#ifdef CONFIG_VENDOR_EDIT
-void mmss_dump_j(void);
-#endif
-/* OPPO 2013-10-18 yxq added end */
+
 static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -825,6 +815,7 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 				mdss_dsi_set_tear_on(ctrl_pdata);
 		}
 	}
+
 	pr_debug("%s-:\n", __func__);
 
 	return ret;
@@ -919,11 +910,8 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
 
-#ifndef CONFIG_VENDOR_EDIT
-/* Xinqin.Yang@PhoneSW.Driver, 2013/12/26  Delete for panel had initialized */
 	WARN((ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT),
 		"Incorrect Ctrl state=0x%x\n", ctrl_pdata->ctrl_state);
-#endif /*CONFIG_VENDOR_EDIT*/
 
 	mdss_dsi_sw_reset(pdata);
 	mdss_dsi_host_init(pdata);
@@ -1243,7 +1231,6 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 	return dsi_pan_node;
 }
 
-
 /**
  * mdss_dsi_find_panel_of_node(): find device node of dsi panel
  * @pdev: platform_device of the dsi ctrl node
@@ -1286,7 +1273,6 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		stream += 2;
 
 		pan = strnchr(stream, strlen(stream), ':');
-		pr_err("%s %d YXQ pan=%s\n", __func__, __LINE__, pan);
 		if (!pan) {
 			strlcpy(panel_name, stream, MDSS_MAX_PANEL_LEN);
 		} else {
@@ -1667,7 +1653,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	pinfo->panel_max_fps = mdss_panel_get_framerate(pinfo);
 	pinfo->panel_max_vtotal = mdss_panel_get_vtotal(pinfo);
 
-ctrl_pdata->index=index;
+	ctrl_pdata->index=index;
 	if (index == 0)
 		{
 /* OPPO 2014-02-11 yxq add end */
@@ -1742,62 +1728,10 @@ ctrl_pdata->index=index;
 			gpio_free(ctrl_pdata->disp_te_gpio);
 			return -ENODEV;
 		}
-//yanghai end for esd test
-	if (gpio_is_valid(28)) {
-
-		rc = gpio_tlmm_config(GPIO_CFG(
-				28, 0,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_DOWN,
-				GPIO_CFG_2MA),
-				GPIO_CFG_ENABLE);
-
-		if (rc) {
-			pr_err("%s: unable to config esd to 28\n",
-				__func__);
-			gpio_free(28);
-			
-		}
-
-		}
-//yanghai end for esd test end
-		pr_err("%s: te_gpio=%d\n", __func__,
+		pr_debug("%s: te_gpio=%d\n", __func__,
 					ctrl_pdata->disp_te_gpio);
 	}
 
-//yanghai add for cmd panel patch
-#ifdef CONFIG_VENDOR_EDIT
-// conifg msm gpio 28 to display ESDPIN
-		rc = gpio_request(28, "disp_esd");
-		if (rc) {
-			pr_err("yanghai request ESD gpio failed, rc=%d\n",
-			       rc);
-			gpio_free(28);
-			return -ENODEV;
-		}
-		rc = gpio_tlmm_config(GPIO_CFG(
-				28, 0,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_DOWN,
-				GPIO_CFG_2MA),
-				GPIO_CFG_ENABLE);
-
-		if (rc) {
-			pr_err("%s: unable to ESD config tlmm = 28\n",
-				__func__);
-			gpio_free(28);
-			return -ENODEV;
-		}
-
-		rc = gpio_direction_input(28);
-		if (rc) {
-			pr_err("set_direction for ESD GPIO failed, rc=%d\n",
-			       rc);
-			gpio_free(28);
-			return -ENODEV;
-		}
-#endif
-//yanghai add end
 	ctrl_pdata->rst_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
 			 "qcom,platform-reset-gpio", 0);
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio))
@@ -1838,8 +1772,16 @@ ctrl_pdata->index=index;
 	}
 
 	ctrl_pdata->panel_data.event_handler = mdss_dsi_event_handler;
-	ctrl_pdata->check_status = mdss_dsi_bta_status_check;
 
+	if (ctrl_pdata->status_mode == ESD_REG)
+		ctrl_pdata->check_status = mdss_dsi_reg_status_check;
+	else if (ctrl_pdata->status_mode == ESD_BTA)
+		ctrl_pdata->check_status = mdss_dsi_bta_status_check;
+
+	if (ctrl_pdata->status_mode == ESD_MAX) {
+		pr_err("%s: Using default BTA for ESD check\n", __func__);
+		ctrl_pdata->check_status = mdss_dsi_bta_status_check;
+	}
 	if (ctrl_pdata->bklt_ctrl == BL_PWM)
 		mdss_dsi_panel_pwm_cfg(ctrl_pdata);
 

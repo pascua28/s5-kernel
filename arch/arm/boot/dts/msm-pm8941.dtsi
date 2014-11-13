@@ -571,10 +571,8 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		qcom,qpnp-rtc-write = <0>;
-		/*OPPO yuyi 2013-09-27  modify begin for alarm_powerup*/
-		/*qcom,qpnp-rtc-alarm-pwrup = <0>;*/
-		qcom,qpnp-rtc-alarm-pwrup = <1>;
-		/*OPPO yuyi 2013-09-27  modify end for alarm_powerup*/
+		qcom,qpnp-rtc-alarm-pwrup = <0>;
+
 		qcom,pm8941_rtc_rw@6000 {
 			reg = <0x6000 0x100>;
 		};

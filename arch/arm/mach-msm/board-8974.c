@@ -185,42 +185,6 @@ struct kobj_attribute ftmmode_attr = {
     .show = &ftmmode_show,
 };
 
-#ifdef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
-int gamma_index = 0;
-int __init  board_gamma_index_init(void)
-{
-	if (strstr(boot_command_line," gamma_index=1"))
-		gamma_index = 1;
-	else if (strstr(boot_command_line," gamma_index=2"))
-		gamma_index = 2;
-	else if (strstr(boot_command_line," gamma_index=3"))
-		gamma_index = 3;
-	else if (strstr(boot_command_line," gamma_index=4"))
-		gamma_index = 4;
-	pr_err("board_gamma_index_init, " "gamma_index = %d yxr\n", gamma_index);
-	return 0;
-}
-int get_gamma_index(void)
-{
-	return gamma_index;
-}
-
-static ssize_t gamma_index_show(struct kobject *kobj, struct kobj_attribute *attr,
-								char *buf)
-{
-	return sprintf(buf, "%d\n", gamma_index);
-}
-
-static struct kobj_attribute gamma_index_attr = {
-	.attr = {
-			.name = "gamma_index",
-			.mode = 0444,
-		},
-	.show = gamma_index_show,
-};
-#endif /*CONFIG_VENDOR_EDIT*/
-
 /* OPPO 2013-01-04 Van add start for ftm close modem*/
 #define mdm_drv_ap2mdm_pmic_pwr_en_gpio  27
 
@@ -244,20 +208,6 @@ static ssize_t closemodem_store(struct kobject *kobj, struct kobj_attribute *att
 	return count;
 }
 
-#ifdef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/15  Add for find7s swap DSI port */
-int LCD_id = 0;
-int __init  board_LCD_id_index_init(void)
-{
-	if (strstr(boot_command_line," LCD_id<4"))
-		LCD_id = 2;
-	else if (strstr(boot_command_line," LCD_id=4"))
-		LCD_id = 4;
-	pr_err("board_LCD_id_init, " "LCD_id= %d yxr\n", LCD_id);
-	return 0;
-}
-#endif /*CONFIG_VENDOR_EDIT*/
-
 struct kobj_attribute closemodem_attr = {
   .attr = {"closemodem", 0644},
   //.show = &closemodem_show,
@@ -275,70 +225,63 @@ static struct attribute * g[] = {
 	&rf_version_attr.attr,
 #endif
 /*OPPO yuyi 2013-07-15 add end*/
-
-#ifdef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma_correction */
-	&gamma_index_attr.attr,
-#endif /*CONFIG_VENDOR_EDIT*/
 	NULL,
 };
 
 static struct attribute_group attr_group = {
 	.attrs = g,
 };
-/* OPPO 2013.07.09 hewei add end for factory modes*/
-#endif // CONFIG_VENDOR_EDIT
 
-#ifdef CONFIG_VENDOR_EDIT
-/* OPPO 2013-09-03 zhanglong add for add interface start reason and boot_mode begin */
-char pwron_event[16];
-
-static int __init start_reason_init(void)
+#define DISP_ESD_GPIO 28
+#define DISP_LCD_UNK_GPIO 62
+static void __init oppo_config_display(void)
 {
-    int i;
-    char * substr = strstr(boot_command_line, "androidboot.startupmode="); 
-    substr += strlen("androidboot.startupmode=");
-    for(i=0; substr[i] != ' '; i++) {
-        pwron_event[i] = substr[i];
-    }
-    pwron_event[i] = '\0';
-    
-    printk(KERN_INFO "%s: parse poweron reason %s\n", __func__, pwron_event);
-	
-	return 1;
+	int rc;
+
+	rc = gpio_request(DISP_ESD_GPIO, "disp_esd");
+	if (rc) {
+		pr_err("%s: request DISP_ESD GPIO failed, rc: %d",
+				__func__, rc);
+		return;
+	}
+
+	rc = gpio_tlmm_config(GPIO_CFG(DISP_ESD_GPIO, 0,
+				GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_DOWN,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+	if (rc) {
+		pr_err("%s: unable to configure DISP_ESD GPIO, rc: %d",
+				__func__, rc);
+		gpio_free(DISP_ESD_GPIO);
+		return;
+	}
+
+	rc = gpio_direction_input(DISP_ESD_GPIO);
+	if (rc) {
+		pr_err("%s: set direction for DISP_ESD GPIO failed, rc: %d",
+				__func__, rc);
+		gpio_free(DISP_ESD_GPIO);
+		return;
+	}
+
+	if (get_pcb_version() >= HW_VERSION__20) {
+		rc = gpio_request(DISP_LCD_UNK_GPIO, "lcd_unk");
+		if (rc) {
+			pr_err("%s: request DISP_UNK GPIO failed, rc: %d",
+					__func__, rc);
+			return;
+		}
+
+		rc = gpio_direction_output(DISP_LCD_UNK_GPIO, 0);
+		if (rc) {
+			pr_err("%s: set direction for DISP_LCD_UNK GPIO failed, rc: %d",
+					__func__, rc);
+			gpio_free(DISP_LCD_UNK_GPIO);
+			return;
+		}
+	}
 }
-//__setup("androidboot.startupmode=", start_reason_setup);
-
-char boot_mode[16];
-static int __init boot_mode_init(void)
-{
-    int i;
-    char *substr = strstr(boot_command_line, "androidboot.mode=");
-    substr += strlen("androidboot.mode=");
-    for(i=0; substr[i] != ' '; i++) {
-        boot_mode[i] = substr[i];
-    }
-    boot_mode[i] = '\0';
-
-    printk(KERN_INFO "%s: parse boot_mode is %s\n", __func__, boot_mode);
-
-	if (!strcmp(boot_mode, "normal"))
-		ftm_mode = MSM_BOOT_MODE__NORMAL;
-	else if (!strcmp(boot_mode, "factory"))
-		ftm_mode = MSM_BOOT_MODE__FACTORY;
-	else if (!strcmp(boot_mode, "recovery"))
-		ftm_mode = MSM_BOOT_MODE__RECOVERY;
-	else if (!strcmp(boot_mode, "charger"))
-		ftm_mode = MSM_BOOT_MODE__CHARGE;
-	else
-		ftm_mode = MSM_BOOT_MODE__NORMAL;
-
-    printk(KERN_INFO "%s: parse ftm_mode is %d\n", __func__, ftm_mode);
-
-    return 1;
-}
-//__setup("androidboot.mode=", boot_mode_setup);
-/* OPPO 2013-09-03 zhanglong add for add interface start reason and boot_mode end */
 #endif //CONFIG_VENDOR_EDIT
 
 static struct memtype_reserve msm8974_reserve_table[] __initdata = {
@@ -463,13 +406,6 @@ void __init msm8974_init(void)
 
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
-
-#ifdef CONFIG_VENDOR_EDIT
-/* OPPO 2013-09-03 zhanglong add for add interface start reason and boot_mode begin */
-    start_reason_init();
-    boot_mode_init();
-/* OPPO 2013-09-03 zhanglong add for add interface start reason and boot_mode end */
-#endif //CONFIG_VENDOR_EDIT
 	
 	msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
@@ -477,21 +413,12 @@ void __init msm8974_init(void)
 	msm8974_add_drivers();
 /*OPPO yuyi 2013-07-15 add begin for version */
 #ifdef CONFIG_VENDOR_EDIT
+    oppo_config_display();
 	board_pcb_verison_init();
 	board_rf_version_init();
 
 #endif
 /*OPPO yuyi 2013-07-15 add end for version*/
-
-#ifdef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
-	board_gamma_index_init();
-#endif /*CONFIG_VENDOR_EDIT*/
-
-#ifdef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/15  Add for find7s swap port */
-board_LCD_id_index_init();
-#endif /*CONFIG_VENDOR_EDIT*/
 
 	
 #ifdef CONFIG_VENDOR_EDIT	

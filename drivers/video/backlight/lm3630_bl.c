@@ -460,7 +460,7 @@ int lm3630_bank_a_update_status(u32 bl_level)
 		backlight_level =  bl_level;
 		if(bl_level <= 0x14 && pwm_flag==true){
 			set_backlight_pwm(0);
-		}else if(bl_level > 0x14 && pwm_flag==false && cabc_mode >0){
+		}else if(bl_level > 0x14 && pwm_flag==false){
 			set_backlight_pwm(1);
 		}
 #endif /*VENDOR_EDIT*/

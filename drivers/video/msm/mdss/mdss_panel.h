@@ -356,6 +356,16 @@ struct mdss_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
+
+#ifdef CONFIG_VENDOR_EDIT
+	int cabc_available;
+	int cabc_mode;
+	int cabc_bl_max;
+	bool cabc_active;
+
+	int gamma_index;
+	int gamma_count;
+#endif
 };
 
 struct mdss_panel_data {
