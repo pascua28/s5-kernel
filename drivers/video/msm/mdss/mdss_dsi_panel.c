@@ -27,7 +27,6 @@
 /* OPPO 2014-02-11 yxq add begin for Find7s */
 #include <linux/pcb_version.h>
 /* OPPO 2014-02-11 yxq add end */
-#include <linux/boot_mode.h>
 #endif
 
 #define DT_CMD_HDR 6
@@ -36,10 +35,7 @@ DEFINE_LED_TRIGGER(bl_led_trigger);
 
 #ifdef CONFIG_VENDOR_EDIT
 extern  int lm3630_bank_a_update_status(u32 bl_level);
-#endif /*VENDOR_EDIT*/
 
-
-#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
 struct dsi_panel_cmds cabc_off_sequence;
 struct dsi_panel_cmds cabc_user_interface_image_sequence;
@@ -386,9 +382,16 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#endif
+
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
+
+#ifdef CONFIG_VENDOR_EDIT
+	if(ctrl_pdata->index == 1)
+	  return rc;
+#endif
 
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 		rc = gpio_request(ctrl_pdata->disp_en_gpio,
@@ -405,6 +408,8 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			rc);
 		goto rst_gpio_err;
 	}
+
+#ifndef CONFIG_VENDOR_EDIT
 	if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 		rc = gpio_request(ctrl_pdata->mode_gpio, "panel_mode");
 		if (rc) {
@@ -413,16 +418,23 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			goto mode_gpio_err;
 		}
 	}
+#endif
+
 	return rc;
 
+#ifndef CONFIG_VENDOR_EDIT
 mode_gpio_err:
 	gpio_free(ctrl_pdata->rst_gpio);
+#endif	
 rst_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 		gpio_free(ctrl_pdata->disp_en_gpio);
 disp_en_gpio_err:
 	return rc;
 }
+
+#ifndef CONFIG_VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Driver, 2014/01/10  Modify for rewrite reset function */
 
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
@@ -494,37 +506,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	}
 	return rc;
 }
+
 #else
-static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int rc = 0;
-
-	if(ctrl_pdata->index == 1)
-	  return rc;
-
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-		rc = gpio_request(ctrl_pdata->disp_en_gpio,
-						"disp_enable");
-		if (rc) {
-			pr_err("request disp_en gpio failed, rc=%d\n",
-				       rc);
-			goto disp_en_gpio_err;
-		}
-	}
-	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
-	if (rc) {
-		pr_err("request reset gpio failed, rc=%d\n",
-			rc);
-		goto rst_gpio_err;
-	}
-	return rc;
-
-rst_gpio_err:
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-		gpio_free(ctrl_pdata->disp_en_gpio);
-disp_en_gpio_err:
-	return rc;
-}
 
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
@@ -551,7 +534,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		return rc;
 	}
     
-    pr_err("%s: enable = %d, panel index=%d\n", __func__, enable, ctrl_pdata->index);
+    pr_debug("%s: enable = %d, panel index=%d\n", __func__, enable, ctrl_pdata->index);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
     if (get_pcb_version() < HW_VERSION__20) { /* For Single DSI: Find7 */
         if (enable) {
@@ -591,10 +574,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	  		}
     	}
     } else {		 /* For Dual DSI: Find7S */
-        if(ctrl_pdata->index==1 && get_boot_mode()!= MSM_BOOT_MODE__FACTORY){ /* For Find7S DSI 1 */
-        	if (enable) {
-        		pr_err("%s:lcd virtual power up\n", __func__);
-                
+        if(ctrl_pdata->index==1){ /* For Find7S DSI 1 */
+        	if (enable) {                
         		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
         			pr_err("%s: Panel Not properly turned OFF\n", __func__);
         			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
@@ -609,7 +590,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 					return rc;
 				}
 				if (!pinfo->panel_power_on) {
-        			pr_err("%s:lcd power up\n", __func__);
         			gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 ---> 1 */
                 	mdelay(5);
                 	gpio_set_value((ctrl_pdata->rst_gpio), 0); /* GPIO_19 ---> 0 */
@@ -654,9 +634,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
         	}
     	}
     }
-    
-	//pr_err("%s: gpio 19=%d", __func__,gpio_get_value(ctrl_pdata->rst_gpio));
-	//pr_err("%s:---\n", __func__);
 	return rc;
 }
 //yanghai modify end

@@ -104,10 +104,10 @@
 			cell-index = <0>;
 			compatible = "qcom,mdss-fb";
 			qcom,memory-reservation-type = "EBI1";
+			qcom,memory-reservation-size = <0x800000>;
 /* OPPO 2014-02-12 yxq modified begin for Find7S */
-			/* qcom,memory-reservation-size = <0x800000>; */
-			qcom,memory-reservation-size = <0x2a30000>;
 			qcom,mdss-fb-split-find7s =<720 720>;
+			qcom,mdss-mixer-swap-find7s;
 /* OPPO 2014-02-12 yxq modified end */
 			qcom,memblock-reserve = <0x03200000 0x01E00000>;
 		};

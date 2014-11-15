@@ -273,61 +273,30 @@ static ssize_t mdss_fb_get_type(struct device *dev,
 static void mdss_fb_parse_dt(struct msm_fb_data_type *mfd)
 {
 	u32 data[2] = {0};
-#ifndef CONFIG_VENDOR_EDIT
-	u32 panel_xres;
-#endif
+	u32 panel_xres = mfd->panel_info->xres;
 	struct platform_device *pdev = mfd->pdev;
 
-#ifndef CONFIG_VENDOR_EDIT
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/10  Modify for Find7S */
-	if (of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split",
-				       data, 2))
-		return;
-	panel_xres = mfd->panel_info->xres;
-	if (data[0] && data[1]) {
-		if (mfd->split_display)
-			panel_xres *= 2;
+	if (mfd->split_display)
+		panel_xres *= 2;
 
-		if (panel_xres == data[0] + data[1]) {
-			mfd->split_fb_left = data[0];
-			mfd->split_fb_right = data[1];
-		}
+	of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split",
+				       data, 2);
+#ifdef CONFIG_VENDOR_EDIT
+	if (get_pcb_version() >= HW_VERSION__20) { /* Find7s */
+        of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split-find7s",
+				       data, 2);
+	}
+#endif
+    if (data[0] && data[1] &&
+	    panel_xres == (data[0] + data[1])) {
+		mfd->split_fb_left = data[0];
+		mfd->split_fb_right = data[1];
+		pr_info("split framebuffer left=%d right=%d\n",
+			mfd->split_fb_left, mfd->split_fb_right);
 	} else {
-		if (mfd->split_display)
-			mfd->split_fb_left = mfd->split_fb_right = panel_xres;
-		else
-			mfd->split_fb_left = mfd->split_fb_right = 0;
+		mfd->split_fb_left = 0;
+		mfd->split_fb_right = 0;
 	}
-#else /*CONFIG_VENDOR_EDIT*/
-	if (get_pcb_version() < HW_VERSION__20) { /* Find7 */
-        if (of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split",
-				       data, 2))
-		    return;
-        if (data[0] && data[1] &&
-	        (mfd->panel_info->xres == (data[0] + data[1]))) {
-		    mfd->split_fb_left = data[0];
-		    mfd->split_fb_right = data[1];
-	    } else {
-		    mfd->split_fb_left = 0;
-		    mfd->split_fb_right = 0;
-	    }
-	} else { /* Find7S */
-        if (of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split-find7s",
-				       data, 2))
-		    //pr_err("%s:[beom] panelf info xres =%d \n",__func__, mfd->panel_info->xres);
-			return;
-        if (data[0] && data[1]) {
-    	    mfd->split_fb_left = data[0];
-    		mfd->split_fb_right = data[1];
-    	} else {
-    	    mfd->split_fb_left = 0;
-    	    mfd->split_fb_right = 0;
-    	}
-	}
-#endif /*CONFIG_VENDOR_EDIT*/
-
-	pr_info("split framebuffer left=%d right=%d\n",
-		mfd->split_fb_left, mfd->split_fb_right);
 }
 
 static ssize_t mdss_fb_get_split(struct device *dev,

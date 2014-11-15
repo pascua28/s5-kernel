@@ -30,14 +30,9 @@
 	};
 
 	qcom,mdss_dsi@fd922800 {
-		/*qcom,dsi-pref-prim-pan = <&dsi_tosh_720_vid>;*/
-		qcom,dsi-pref-prim-pan = <&dsi_jdi_1080_cmd>;
+		qcom,dsi-pref-prim-pan = <&dsi_tosh_720_vid>;
 	};
-/* OPPO 2014-02-10 yxq added begin for Find7S */
-	qcom,mdss_dsi@fd922e00 {
-		qcom,dsi-pref-find7s-jdi-pan = <&dsi_jdi_1440_vid2>;
-	}; 
-/* OPPO 2014-02-10 yxq added end */
+
 	qcom,mdss_mdp@fd900000 {
 		qcom,mdss-pref-prim-intf = "dsi";
 		batfet-supply = <&pm8941_chg_batif>;

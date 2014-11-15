@@ -35,6 +35,12 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
 
+#ifdef CONFIG_VENDOR_EDIT
+/* OPPO 2014-02-11 yxq add begin for Find7S */
+#include <linux/pcb_version.h>
+/* OPPO 2014-02-11 yxq add end */
+#endif /*VENDOR_EDIT*/
+
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
 #define CHECK_BOUNDS(offset, size, max_size) \
@@ -3376,6 +3382,12 @@ static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd)
 
 	mdp5_mdata->mixer_swap = of_property_read_bool(pdev->dev.of_node,
 					   "qcom,mdss-mixer-swap");
+#ifdef CONFIG_VENDOR_EDIT
+	if (get_pcb_version() >= HW_VERSION__20) {
+		mdp5_mdata->mixer_swap = of_property_read_bool(pdev->dev.of_node,
+						   "qcom,mdss-mixer-swap-find7s");
+	}
+#endif
 	if (mdp5_mdata->mixer_swap) {
 		pr_info("mixer swap is enabled for fb device=%s\n",
 			pdev->name);
