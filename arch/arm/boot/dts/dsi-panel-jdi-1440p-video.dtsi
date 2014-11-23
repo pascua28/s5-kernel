@@ -19,7 +19,7 @@
 	dsi_jdi_1440_vid: qcom,dsi_jdi_1440p_video_0 {
 		compatible = "qcom,mdss-dsi-panel";
 		status = "ok";
-		qcom,cont-splash-enabled;
+		//qcom,cont-splash-enabled;
 		qcom,mdss-dsi-panel-name = "jdi 1440p video mode dsi panel1";
 		qcom,mdss-dsi-panel-manufacture = "JDI";
 		qcom,mdss-dsi-panel-version = "R63319";
@@ -44,7 +44,7 @@
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-color-order = <0>;
-		qcom,mdss-dsi-underflow-color = <0x00>;
+		qcom,mdss-dsi-underflow-color = <0xff1493>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-on-command = [29 01 00 00 01 00 06 F0 55 AA 52 08 00
 									15 01 00 00 01 00 02 C1 64
@@ -195,7 +195,7 @@
 	dsi_jdi_1440_vid2: qcom,dsi_jdi_1440p_video_1 {
 		compatible = "qcom,mdss-dsi-panel2";
 		status = "ok";
-		qcom,cont-splash-enabled;
+		//qcom,cont-splash-enabled;
 		qcom,mdss-dsi-panel-name = "jdi 1440p video mode dsi panel2";
 		qcom,mdss-dsi-panel-manufacture = "JDI";
 		qcom,mdss-dsi-panel-version = "R63319";
@@ -268,7 +268,7 @@
 		/*qcom,mdss-dsi-off-command = [
 			05 01 00 00 32 00 02 28 00
 			05 01 00 00 78 00 02 10 00];*/
-		qcom,mdss-dsi-underflow-color = <0x00>;
+		qcom,mdss-dsi-underflow-color = <0xff1493>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-h-sync-pulse = <0>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
