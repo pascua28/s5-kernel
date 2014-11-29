@@ -984,8 +984,8 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 	else
 		led->flash_cfg->current_prgm =
 			(val * FLASH_MAX_LEVEL / led->max_current);
-         printk("qpnp_flash_set:val=%d,torch_enable=%d,current_prgm=%d,peripheral_subtype =%d\n",
-		 	val,led->flash_cfg->torch_enable,led->flash_cfg->current_prgm,led->flash_cfg->peripheral_subtype);
+	dev_dbg(&led->spmi_dev->dev, "qpnp_flash_set:val=%d,torch_enable=%d,current_prgm=%d,peripheral_subtype =%d\n",
+		val,led->flash_cfg->torch_enable,led->flash_cfg->current_prgm,led->flash_cfg->peripheral_subtype);
 	/* Set led current */
 	if (val > 0) {
 		if (led->flash_cfg->torch_enable) {
