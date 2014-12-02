@@ -584,6 +584,9 @@ again:			remove_next = 1 + (end > next->vm_end);
 		if (exporter && exporter->anon_vma && !importer->anon_vma) {
 			int error;
 
+			error = anon_vma_clone(importer, exporter);
+			if (error)
+				return error;
 			importer->anon_vma = exporter->anon_vma;
 			error = anon_vma_clone(importer, exporter);
 			if (error)
@@ -2186,7 +2189,8 @@ static int __split_vma(struct mm_struct * mm, struct vm_area_struct * vma,
 	if (err)
 		goto out_free_vma;
 
-	if (anon_vma_clone(new, vma))
+	err = anon_vma_clone(new, vma);
+	if (err)
 		goto out_free_mpol;
 
 	if (new->vm_file) {
