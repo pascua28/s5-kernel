@@ -54,9 +54,7 @@
 #endif
 
 #define NO_0D_WHILE_2D
-/*
 #define REPORT_2D_Z
-*/
 #define REPORT_2D_W
 
 /*
@@ -387,6 +385,19 @@ static ssize_t synaptics_attr_loglevel_store(struct device *dev,
 static ssize_t synaptics_attr_loglevel_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t synaptics_rmi4_double_tap_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf);
+static ssize_t synaptics_rmi4_double_tap_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count);
+static ssize_t synaptics_rmi4_flashlight_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf);
+static ssize_t synaptics_rmi4_flashlight_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count);
+static ssize_t synaptics_rmi4_camera_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf);
+static ssize_t synaptics_rmi4_camera_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count);
+
 static struct device_attribute attrs[] = {
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	__ATTR(full_pm_cycle, (S_IRUGO | S_IWUSR),
@@ -423,9 +434,34 @@ static struct device_attribute attrs[] = {
 	__ATTR(log_level, (S_IRUGO | S_IWUSR),
 			synaptics_attr_loglevel_show,
 			synaptics_attr_loglevel_store),
-	__ATTR(holstere_open_or_close, (S_IRUGO | S_IWUSR),
+	__ATTR(holster_open_or_close, (S_IRUGO | S_IWUSR),
 			synaptics_rmi4_open_or_close_holster_mode_show,
 			synaptics_rmi4_open_or_close_holster_mode_store),
+};
+
+static struct kobject *gesture_group_kobj;
+
+static struct kobj_attribute double_tap_attribute = __ATTR(double_tap_enable, (S_IRUGO | S_IWUSR),
+			synaptics_rmi4_double_tap_show,
+			synaptics_rmi4_double_tap_store);
+
+static struct kobj_attribute flashlight_attribute = __ATTR(flashlight_enable, (S_IRUGO | S_IWUSR),
+			synaptics_rmi4_flashlight_show,
+			synaptics_rmi4_flashlight_store);
+
+static struct kobj_attribute camera_attribute = __ATTR(camera_enable, (S_IRUGO | S_IWUSR),
+			synaptics_rmi4_camera_show,
+			synaptics_rmi4_camera_store);
+
+static struct attribute *gesture_attrs[] = {
+	&double_tap_attribute.attr,
+	&flashlight_attribute.attr,
+	&camera_attribute.attr,
+	NULL
+};
+
+static struct attribute_group gesture_attr_group = {
+	.attrs = gesture_attrs,
 };
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -615,20 +651,20 @@ static ssize_t synaptics_rmi4_open_or_close_holster_mode_store(struct device *de
 
 	if (input == 1)
 	{
-		rmi4_data->holstere_mode_open_or_close= 1;//open holstere mode 
-		synaptics_rmi4_i2c_write(rmi4_data,rmi4_data->holstere_mode_control_addr,(unsigned char*)&(rmi4_data->holstere_mode_open_or_close),1);
+		rmi4_data->holster_mode_open_or_close= 1;//open holster mode
+		synaptics_rmi4_i2c_write(rmi4_data,rmi4_data->holster_mode_control_addr,(unsigned char*)&(rmi4_data->holster_mode_open_or_close),1);
 	}
 	else if (input == 0)
 	{
-		rmi4_data->holstere_mode_open_or_close = 0;//close holstere mode 
-		synaptics_rmi4_i2c_write(rmi4_data,rmi4_data->holstere_mode_control_addr,(unsigned char*)&(rmi4_data->holstere_mode_open_or_close),1);
+		rmi4_data->holster_mode_open_or_close = 0;//close holster mode
+		synaptics_rmi4_i2c_write(rmi4_data,rmi4_data->holster_mode_control_addr,(unsigned char*)&(rmi4_data->holster_mode_open_or_close),1);
 	}
 	else
 		return -EINVAL;
 
-    synaptics_rmi4_i2c_read(rmi4_data, rmi4_data->holstere_mode_control_addr, &databuf,1) ;
-	printk("%s holstere mode %s\n",input ? "open" : "close",
-			(databuf == (rmi4_data->holstere_mode_open_or_close) ) ? "success" : "fail");
+    synaptics_rmi4_i2c_read(rmi4_data, rmi4_data->holster_mode_control_addr, &databuf,1) ;
+	printk("%s holster mode %s\n",input ? "open" : "close",
+			(databuf == (rmi4_data->holster_mode_open_or_close) ) ? "success" : "fail");
 
 	return count;
 }
@@ -639,8 +675,8 @@ static ssize_t synaptics_rmi4_open_or_close_holster_mode_show(struct device *dev
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
     uint8_t  databuf;
 
-    synaptics_rmi4_i2c_read(rmi4_data, rmi4_data->holstere_mode_control_addr, &databuf,1) ;
-	return sprintf(buf, " holstere mode is %s \n",databuf ? "open" : "close" );
+    synaptics_rmi4_i2c_read(rmi4_data, rmi4_data->holster_mode_control_addr, &databuf,1) ;
+	return sprintf(buf, " holster mode is %s \n",databuf ? "open" : "close" );
 }
 /**
  * synaptics_rmi4_set_page()
@@ -1362,108 +1398,114 @@ static int synaptics_rmi4_pdoze_read(char *page, char **start, off_t off,
 }
 
 #define DOUBLE_TAP_FLAG 0x01
-static int synaptics_rmi4_double_tap_read(char *page, char **start, off_t off,
-	int count, int *eof, void *data) {
+static ssize_t synaptics_rmi4_double_tap_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf) {
 	int len = 0 ;
 	unsigned int enable ;
 
 	enable = (syna_rmi4_data->gesture_flags & DOUBLE_TAP_FLAG)?1:0;
 
-	len = sprintf(page, "%d\n", enable);
+	len = sprintf(buf, "%d\n", enable);
 
 	return len ;
 }
 
-static int synaptics_rmi4_double_tap_write( struct file *filp, const char __user *buff,
-	unsigned long len, void *data ) {
+static ssize_t synaptics_rmi4_double_tap_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count) {
 	unsigned char bak;
-	if(len > 2)
-		return 0 ;
+	unsigned int enable;
+
+	if (sscanf(buf, "%u", &enable) != 1)
+		return -EINVAL;
 
 	bak = syna_rmi4_data->gesture_flags ;
-	if(buff[0] != 0x30)
+	if(enable)
 		syna_rmi4_data->gesture_flags |= DOUBLE_TAP_FLAG;
 	else
 		syna_rmi4_data->gesture_flags &= ~DOUBLE_TAP_FLAG;
 
 	if(bak == syna_rmi4_data->gesture_flags)
-		return len ;
+		return count;
 
 	if(!(syna_use_gesture && syna_rmi4_data->gesture))
 		syna_use_gesture = (syna_rmi4_data->gesture_flags&0xff)?1:0 ;
 	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_flags);
 
-	return len;
+	return count;
 }
 
 #define FLASHLIGHT_FLAG 0x20
-static int synaptics_rmi4_flashlight_read(char *page, char **start, off_t off,
-	int count, int *eof, void *data) {
+static ssize_t synaptics_rmi4_flashlight_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf) {
 	int len = 0 ;
 	unsigned int enable ;
 
 	enable = (syna_rmi4_data->gesture_flags & FLASHLIGHT_FLAG)?1:0;
 
-	len = sprintf(page, "%d\n", enable);
+	len = sprintf(buf, "%d\n", enable);
 
 	return len ;
 }
 
-static int synaptics_rmi4_flashlight_write( struct file *filp, const char __user *buff,
-	unsigned long len, void *data ) {
+static ssize_t synaptics_rmi4_flashlight_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count) {
 	unsigned char bak;
-	if(len > 2)
-		return 0 ;
+	unsigned int enable;
+
+	if (sscanf(buf, "%u", &enable) != 1)
+		return -EINVAL;
 
 	bak = syna_rmi4_data->gesture_flags ;
-	if(buff[0] != 0x30)
+	if(enable)
 		syna_rmi4_data->gesture_flags |= FLASHLIGHT_FLAG;
 	else
 		syna_rmi4_data->gesture_flags &= ~FLASHLIGHT_FLAG;
 
 	if(bak == syna_rmi4_data->gesture_flags)
-		return len ;
+		return count;
 
 	if(!(syna_use_gesture && syna_rmi4_data->gesture))
 		syna_use_gesture = (syna_rmi4_data->gesture_flags&0xff)?1:0 ;
 	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_flags);
 
-	return len;
+	return count;
 }
 
 #define CAMERA_FLAG 0x08
-static int synaptics_rmi4_camera_read(char *page, char **start, off_t off,
-	int count, int *eof, void *data) {
+static ssize_t synaptics_rmi4_camera_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf) {
 	int len = 0 ;
 	unsigned int enable ;
 
 	enable = (syna_rmi4_data->gesture_flags & CAMERA_FLAG)?1:0;
 
-	len = sprintf(page, "%d\n", enable);
+	len = sprintf(buf, "%d\n", enable);
 
 	return len ;
 }
 
-static int synaptics_rmi4_camera_write( struct file *filp, const char __user *buff,
-	unsigned long len, void *data ) {
+static ssize_t synaptics_rmi4_camera_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count) {
 	unsigned char bak;
-	if(len > 2)
-		return 0 ;
+	unsigned int enable;
+
+	if (sscanf(buf, "%u", &enable) != 1)
+		return -EINVAL;
 
 	bak = syna_rmi4_data->gesture_flags ;
-	if(buff[0] != 0x30)
+	if(enable)
 		syna_rmi4_data->gesture_flags |= CAMERA_FLAG;
 	else
 		syna_rmi4_data->gesture_flags &= ~CAMERA_FLAG;
 
 	if(bak == syna_rmi4_data->gesture_flags)
-		return len ;
+		return count;
 
 	if(!(syna_use_gesture && syna_rmi4_data->gesture))
 		syna_use_gesture = (syna_rmi4_data->gesture_flags&0xff)?1:0 ;
 	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_flags);
 
-	return len;
+	return count;
 }
 
 //smartcover proc read function
@@ -1573,7 +1615,7 @@ static int synaptics_rmi4_proc_smartcover_write( struct file *filp, const char _
 }
 
 //glove proc read function
-static int synaptics_rmi4_proc_glove_read(char *page, char **start, off_t off,
+/*static int synaptics_rmi4_proc_glove_read(char *page, char **start, off_t off,
 		int count, int *eof, void *data) {
 	int len = 0 ;
 	unsigned int enable ;
@@ -1583,10 +1625,10 @@ static int synaptics_rmi4_proc_glove_read(char *page, char **start, off_t off,
 	len = sprintf(page, "%d\n", enable);
 
 	return len ;
-}
+}*/
 
 //glove proc write function
-static int synaptics_rmi4_proc_glove_write( struct file *filp, const char __user *buff,
+/*static int synaptics_rmi4_proc_glove_write( struct file *filp, const char __user *buff,
 		unsigned long len, void *data ) {
 	int retval;
 	unsigned char val[1];
@@ -1613,7 +1655,7 @@ static int synaptics_rmi4_proc_glove_write( struct file *filp, const char __user
 	retval = synaptics_rmi4_i2c_write(syna_rmi4_data,SYNA_ADDR_GLOVE_FLAG,val,sizeof(val));
 
 	return (retval==sizeof(val))?len:0;
-}
+}*/
 
 //pdoze proc read function
 static int synaptics_rmi4_proc_pdoze_read(char *page, char **start, off_t off,
@@ -1654,30 +1696,11 @@ static int synaptics_rmi4_init_touchpanel_proc(void)
 	struct proc_dir_entry *procdir = proc_mkdir( "touchpanel", NULL );
 
 	//glove mode inteface
-//	proc_entry = create_proc_entry("glove_mode_enable", 0666, procdir);
+	/*proc_entry = create_proc_entry("glove_mode_enable", 0666, procdir);
 	if (proc_entry) {
 		proc_entry->write_proc = synaptics_rmi4_proc_glove_write;
 		proc_entry->read_proc = synaptics_rmi4_proc_glove_read;
-	}
-
-	//gestures
-	proc_entry = create_proc_entry("double_tap_enable", 0666, procdir);
-	if (proc_entry) {
-		proc_entry->write_proc = synaptics_rmi4_double_tap_write;
-		proc_entry->read_proc = synaptics_rmi4_double_tap_read;
-	}
-
-	proc_entry = create_proc_entry("flashlight_enable", 0666, procdir);
-	if (proc_entry) {
-		proc_entry->write_proc = synaptics_rmi4_flashlight_write;
-		proc_entry->read_proc = synaptics_rmi4_flashlight_read;
-	}
-
-	proc_entry = create_proc_entry("camera_enable", 0666, procdir);
-	if (proc_entry) {
-		proc_entry->write_proc = synaptics_rmi4_camera_write;
-		proc_entry->read_proc = synaptics_rmi4_camera_read;
-	}
+	}*/
 
 	//for pdoze enable/disable interface
 	proc_entry = create_proc_entry("pdoze_mode_enable", 0666, procdir);
@@ -2500,6 +2523,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int temp;
+#ifdef REPORT_2D_Z
+	int z;
+#endif
 	struct synaptics_rmi4_f12_extra_data *extra_data;
 	struct synaptics_rmi4_f12_finger_data *data;
 	struct synaptics_rmi4_f12_finger_data *finger_data;
@@ -2604,6 +2630,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		if (finger_status) {
 			x = (finger_data->x_msb << 8) | (finger_data->x_lsb);
 			y = (finger_data->y_msb << 8) | (finger_data->y_lsb);
+#ifdef REPORT_2D_Z
+			// The presssure from the sensor is weak, *4
+			z = finger_data->z << 2;
+#endif
 #ifdef REPORT_2D_W
 			wx = finger_data->wx;
 			wy = finger_data->wy;
@@ -2646,6 +2676,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_POSITION_X, x);
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_Y, y);
+#ifdef REPORT_2D_Z
+			input_report_abs(rmi4_data->input_dev,
+					ABS_MT_PRESSURE, z);
+#endif
 #ifdef REPORT_2D_W
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MAJOR, max(wx, wy));
@@ -4540,6 +4574,10 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 			goto err_sysfs;
 		}
 	}
+
+	gesture_group_kobj = kobject_create_and_add("touchscreen", kernel_kobj);
+	if (gesture_group_kobj)
+		 retval = sysfs_create_group(gesture_group_kobj, &gesture_attr_group);
 
 	return retval;
 
