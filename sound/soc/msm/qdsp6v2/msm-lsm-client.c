@@ -19,6 +19,7 @@
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
+#include <linux/freezer.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -153,12 +154,12 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 		 * for event
 		 */
 		mutex_unlock(&prtd->lsm_api_lock);
-		rc = wait_event_interruptible(prtd->event_wait,
+		rc = wait_event_freezable(prtd->event_wait,
 				(cmpxchg(&prtd->event_avail, 1, 0) ||
 				 (xchg = atomic_cmpxchg(&prtd->event_wait_stop,
 							1, 0))));
 		mutex_lock(&prtd->lsm_api_lock);
-		pr_debug("%s: wait_event_interruptible %d event_wait_stop %d\n",
+		pr_debug("%s: wait_event_freezable %d event_wait_stop %d\n",
 			 __func__, rc, xchg);
 		if (!rc && !xchg) {
 			pr_debug("%s: New event available %ld\n", __func__,
