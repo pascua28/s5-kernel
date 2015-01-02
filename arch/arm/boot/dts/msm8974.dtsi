@@ -93,6 +93,13 @@
 			label = "qseecom_mem";
 		};
 
+		oem_data_mem: oem_data_region@5900000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x5900000 0x100000>;
+			label = "oem_data";
+		};
 	};
 
 	soc: soc { };
@@ -299,6 +306,12 @@
 		compatible = "qcom,sharedmem-uio";
 		reg = <0x0fd80000 0x00180000>;
 		reg-names = "rmtfs";
+	};
+
+	oem_data_sharedmem {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x5900000 0x100000>;
+		reg-names = "oem_data";
 	};
 
 	dsp_sharedmem {
