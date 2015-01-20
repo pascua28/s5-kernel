@@ -143,7 +143,12 @@ n	[A-Za-z0-9_]
 	}
 	#.*	/* comment */
 	\\\n	;
-	.
+	[[:blank:]]+
+	.	{
+		fprintf(stderr,
+		        "%s:%d:warning: ignoring unsupported character '%c'\n",
+		        zconf_curname(), zconf_lineno(), *yytext);
+	}
 	<<EOF>> {
 		BEGIN(INITIAL);
 	}
