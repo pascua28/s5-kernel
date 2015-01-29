@@ -982,7 +982,8 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	src_xy = (src.y << 16) | src.x;
 	dst_size = (dst.h << 16) | dst.w;
 #if defined(CONFIG_MDSS_UD_FLIP)
-	dst_xy = (((pipe->mixer->height - pipe->dst.y - pipe->dst.h) << 16) | pipe->dst.x);
+	dst_xy = (((pipe->mixer->height - pipe->dst.y - pipe->dst.h) << 16) |
+		(pipe->mixer->width - pipe->dst.x - pipe->dst.w);
 #else
 	dst_xy = (dst.y << 16) | dst.x;
 #endif
