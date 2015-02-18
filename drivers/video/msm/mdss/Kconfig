@@ -154,6 +154,13 @@ config FB_MSM_MDSS_S6E8AA0A_HD_PANEL
 	---help---
 	The MDSS S6E8AA0A LCD Panel support
 
+config FB_MSM_MDSS_KCAL_CTRL
+	depends on FB_MSM_MDSS
+	bool "MDSS color control"
+	---help---
+	  Enable sysfs for rgb/lut control for mdss-mdp display controllers
+	  in the MDSS sub-system.
+
 config MIPI_LCD_S6E3FA0_FORCE_VIDEO_MODE
 	bool "Enforce DSI VIDEO Mode on S6E3FA0 panel"
 	default n
