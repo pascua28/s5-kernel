@@ -4928,6 +4928,12 @@ config SEC_SMART_MGR_RUNQUEUE_AVG
 	bool "Samsung added for read current run queue"
 	help
 	  Support for Smart MGR function.
+
+config CHARGE_LEVEL
+	bool "Charge level interface"
+	default y
+	help
+	  Allows configuration of ac, usb and wireless charging levels	
 endif
 
 config KERNEL_TEXT_MPU_PROT
