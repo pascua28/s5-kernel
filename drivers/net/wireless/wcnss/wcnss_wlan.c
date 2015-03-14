@@ -885,6 +885,22 @@ void wcnss_pronto_log_debug_regs(void)
 }
 EXPORT_SYMBOL(wcnss_pronto_log_debug_regs);
 
+int wcnss_get_mux_control(void)
+{
+	void __iomem *pmu_conf_reg;
+	u32 reg = 0;
+
+	if (NULL == penv)
+		return 0;
+
+	pmu_conf_reg = penv->msm_wcnss_base + PRONTO_PMU_OFFSET;
+	writel_relaxed(0, pmu_conf_reg);
+	reg = readl_relaxed(pmu_conf_reg);
+	reg |= WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
+	writel_relaxed(reg, pmu_conf_reg);
+	return 1;
+}
+
 #ifdef CONFIG_WCNSS_REGISTER_DUMP_ON_BITE
 static void wcnss_log_iris_regs(void)
 {
@@ -900,22 +916,6 @@ static void wcnss_log_iris_regs(void)
 		reg_val = wcnss_rf_read_reg(regs_array[i]);
 		pr_info("[0x%08x] : 0x%08x\n", regs_array[i], reg_val);
 	}
-}
-
-int wcnss_get_mux_control(void)
-{
-	void __iomem *pmu_conf_reg;
-	u32 reg = 0;
-
-	if (NULL == penv)
-		return 0;
-
-	pmu_conf_reg = penv->msm_wcnss_base + PRONTO_PMU_OFFSET;
-	writel_relaxed(0, pmu_conf_reg);
-	reg = readl_relaxed(pmu_conf_reg);
-	reg |= WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
-	writel_relaxed(reg, pmu_conf_reg);
-	return 1;
 }
 
 void wcnss_log_debug_regs_on_bite(void)
