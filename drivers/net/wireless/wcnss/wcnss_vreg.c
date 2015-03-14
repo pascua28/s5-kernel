@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013,2015 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,7 +37,6 @@ static int auto_detect;
 #define MSM_PRONTO_PHYS         0xfb21b000
 
 #define RIVA_PMU_OFFSET         0x28
-#define PRONTO_PMU_OFFSET       0x1004
 
 #define RIVA_SPARE_OFFSET       0x0b4
 #define PRONTO_SPARE_OFFSET     0x1088
@@ -48,7 +47,6 @@ static int auto_detect;
 
 #define WCNSS_PMU_CFG_IRIS_XO_CFG          BIT(3)
 #define WCNSS_PMU_CFG_IRIS_XO_EN           BIT(4)
-#define WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP   BIT(5)
 #define WCNSS_PMU_CFG_IRIS_XO_CFG_STS      BIT(6) /* 1: in progress, 0: done */
 
 #define WCNSS_PMU_CFG_IRIS_RESET           BIT(7)
@@ -100,7 +98,7 @@ static struct vregs_info iris_vregs_pronto[] = {
 	{"qcom,iris-vddrfa", VREG_NULL_CONFIG, 1300000, 0,
 		1300000, 100000, NULL},
 	{"qcom,iris-vddpa",  VREG_NULL_CONFIG, 2900000, 0,
-		3000000, 515000, NULL},
+		3350000, 515000, NULL},
 	{"qcom,iris-vdddig", VREG_NULL_CONFIG, 1225000, 0,
 		1800000, 10000,  NULL},
 };

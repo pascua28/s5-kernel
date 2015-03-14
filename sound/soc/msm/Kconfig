@@ -186,6 +186,7 @@ config SND_SOC_MSM8974
 	#liuyan add for es325
 	select SND_SOC_ES325
 	select SND_SOC_ES325_SLIM
+	select SND_HWDEP
 	help
 	 To add support for SoC audio on MSM8974.
 	 This will enable sound soc drivers which

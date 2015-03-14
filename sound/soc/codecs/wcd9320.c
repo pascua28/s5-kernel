@@ -19,7 +19,6 @@
 #include <linux/ratelimit.h>
 #include <linux/debugfs.h>
 #include <linux/wait.h>
-#include <linux/bitops.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/mfd/wcd9xxx/wcd9xxx_registers.h>
 #include <linux/mfd/wcd9xxx/wcd9320_registers.h>
@@ -41,6 +40,8 @@
 #include "wcd9320.h"
 #include "wcd9xxx-resmgr.h"
 #include "wcd9xxx-common.h"
+#include "wcdcal-hwdep.h"
+
 
 #define TAIKO_MAD_SLIMBUS_TX_PORT 12
 #define TAIKO_MAD_AUDIO_FIRMWARE_PATH "wcd9320/wcd9320_mad_audio.bin"
@@ -453,6 +454,8 @@ struct taiko_priv {
 	 */
 	struct list_head reg_save_restore;
 	struct pm_qos_request pm_qos_req;
+	/* cal info for codec */
+	struct fw_info *fw_data;
 };
 
 /* OPPO 2013-11-12 xuzhaoan Add begin for American Headset Detect */
@@ -2848,8 +2851,11 @@ static int taiko_codec_config_mad(struct snd_soc_codec *codec)
 	int ret;
 	const struct firmware *fw;
 	struct mad_audio_cal *mad_cal;
+	struct firmware_cal *hwdep_cal = NULL;
+	const void *data;
 	const char *filename = TAIKO_MAD_AUDIO_FIRMWARE_PATH;
 	struct taiko_priv *taiko = snd_soc_codec_get_drvdata(codec);
+	size_t cal_size;
 
 	pr_debug("%s: enter\n", __func__);
 	/* wakeup for codec calibration access */
@@ -2858,24 +2864,46 @@ static int taiko_codec_config_mad(struct snd_soc_codec *codec)
 			   PM_QOS_DEFAULT_VALUE);
 	pm_qos_update_request(&taiko->pm_qos_req,
 			      msm_cpuidle_get_deep_idle_latency());
-	ret = request_firmware(&fw, filename, codec->dev);
-	if (ret != 0) {
-		pr_err("Failed to acquire MAD firwmare data %s: %d\n", filename,
-		       ret);
+	if (!taiko->fw_data) {
+		dev_err(codec->dev, "%s: invalid cal data\n",
+				 __func__);
 		return -ENODEV;
 	}
-
-	if (fw->size < sizeof(struct mad_audio_cal)) {
-		pr_err("%s: incorrect firmware size %u\n", __func__, fw->size);
-		release_firmware(fw);
-		return -ENOMEM;
+	hwdep_cal = wcdcal_get_fw_cal(taiko->fw_data, WCD9XXX_MAD_CAL);
+	if (hwdep_cal) {
+		data = hwdep_cal->data;
+		cal_size = hwdep_cal->size;
+		dev_dbg(codec->dev, "%s: using hwdep calibration\n",
+				__func__);
+	} else {
+		ret = request_firmware(&fw, filename, codec->dev);
+		if (ret != 0) {
+			pr_err("Failed to acquire MAD firwmare data %s: %d\n",
+				filename, ret);
+			return -ENODEV;
+		}
+		if (!fw) {
+			dev_err(codec->dev, "failed to get mad fw");
+			return -ENODEV;
+		}
+		data = fw->data;
+		cal_size = fw->size;
+		dev_dbg(codec->dev, "%s: using request_firmware calibration\n",
+				__func__);
+	}
+	if (cal_size < sizeof(struct mad_audio_cal)) {
+		pr_err("%s: incorrect hwdep cal size %zu\n",
+			__func__, cal_size);
+		ret = -ENOMEM;
+		goto err;
 	}
 
-	mad_cal = (struct mad_audio_cal *)(fw->data);
+	mad_cal = (struct mad_audio_cal *)(data);
 	if (!mad_cal) {
-		pr_err("%s: Invalid calibration data\n", __func__);
-		release_firmware(fw);
-		return -EINVAL;
+		dev_err(codec->dev, "%s: Invalid calibration data\n",
+				__func__);
+		ret =  -EINVAL;
+		goto err;
 	}
 
 	snd_soc_write(codec, TAIKO_A_CDC_MAD_MAIN_CTL_2,
@@ -2925,11 +2953,13 @@ static int taiko_codec_config_mad(struct snd_soc_codec *codec)
 	snd_soc_write(codec, TAIKO_A_CDC_MAD_ULTR_CTL_6,
 		      mad_cal->ultrasound_info.rms_threshold_msb);
 
-	release_firmware(fw);
 	pr_debug("%s: leave ret %d\n", __func__, ret);
 	pm_qos_update_request(&taiko->pm_qos_req,
 			      PM_QOS_DEFAULT_VALUE);
 	pm_qos_remove_request(&taiko->pm_qos_req);
+err:
+	if (!hwdep_cal)
+		release_firmware(fw);
 	return ret;
 }
 
@@ -3486,15 +3516,18 @@ static int taiko_codec_enable_anc(struct snd_soc_dapm_widget *w,
 	const char *filename;
 	const struct firmware *fw;
 	int i;
-	int ret;
+	int ret =0;
 	int num_anc_slots;
 	struct wcd9xxx_anc_header *anc_head;
 	struct taiko_priv *taiko = snd_soc_codec_get_drvdata(codec);
+	struct firmware_cal *hwdep_cal = NULL;
 	u32 anc_writes_size = 0;
 	int anc_size_remaining;
 	u32 *anc_ptr;
 	u16 reg;
 	u8 mask, val, old_val;
+	size_t cal_size;
+	const void *data;
 
 
 	if (taiko->anc_func == 0)
@@ -3503,38 +3536,53 @@ static int taiko_codec_enable_anc(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		filename = "wcd9320/wcd9320_anc.bin";
+		hwdep_cal = wcdcal_get_fw_cal(taiko->fw_data, WCD9XXX_ANC_CAL);
+		if (hwdep_cal) {
+			data = hwdep_cal->data;
+			cal_size = hwdep_cal->size;
+			dev_dbg(codec->dev, "%s: using hwdep calibration\n",
+				__func__);
+		} else {
+			ret = request_firmware(&fw, filename, codec->dev);
+			if (ret != 0) {
+				dev_err(codec->dev, "Failed to acquire ANC data: %d\n",
+					ret);
+				return -ENODEV;
+			}
+			if (!fw) {
+				dev_err(codec->dev, "failed to get anc fw");
+				return -ENODEV;
+			}
+			data = fw->data;
+			cal_size = fw->size;
+			dev_dbg(codec->dev, "%s: using request_firmware calibration\n",
+					 __func__);
 
-		ret = request_firmware(&fw, filename, codec->dev);
-		if (ret != 0) {
-			dev_err(codec->dev, "Failed to acquire ANC data: %d\n",
-				ret);
-			return -ENODEV;
 		}
 
-		if (fw->size < sizeof(struct wcd9xxx_anc_header)) {
+		if (cal_size < sizeof(struct wcd9xxx_anc_header)) {
 			dev_err(codec->dev, "Not enough data\n");
-			release_firmware(fw);
-			return -ENOMEM;
+			goto err;
 		}
 
 		/* First number is the number of register writes */
-		anc_head = (struct wcd9xxx_anc_header *)(fw->data);
-		anc_ptr = (u32 *)((u32)fw->data +
+		anc_head = (struct wcd9xxx_anc_header *)(data);
+		anc_ptr = (u32 *)(data +
 				  sizeof(struct wcd9xxx_anc_header));
-		anc_size_remaining = fw->size -
+		anc_size_remaining = cal_size -
 				     sizeof(struct wcd9xxx_anc_header);
 		num_anc_slots = anc_head->num_anc_slots;
 
 		if (taiko->anc_slot >= num_anc_slots) {
 			dev_err(codec->dev, "Invalid ANC slot selected\n");
-			release_firmware(fw);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 		for (i = 0; i < num_anc_slots; i++) {
 			if (anc_size_remaining < TAIKO_PACKED_REG_SIZE) {
 				dev_err(codec->dev, "Invalid register format\n");
-				release_firmware(fw);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto err;
 			}
 			anc_writes_size = (u32)(*anc_ptr);
 			anc_size_remaining -= sizeof(u32);
@@ -3543,8 +3591,8 @@ static int taiko_codec_enable_anc(struct snd_soc_dapm_widget *w,
 			if (anc_writes_size * TAIKO_PACKED_REG_SIZE
 				> anc_size_remaining) {
 				dev_err(codec->dev, "Invalid register format\n");
-				release_firmware(fw);
-				return -ENOMEM;
+				ret = -EINVAL;
+				goto err;
 			}
 
 			if (taiko->anc_slot == i)
@@ -3556,8 +3604,8 @@ static int taiko_codec_enable_anc(struct snd_soc_dapm_widget *w,
 		}
 		if (i == num_anc_slots) {
 			dev_err(codec->dev, "Selected ANC slot not present\n");
-			release_firmware(fw);
-			return -ENOMEM;
+			ret = -EINVAL;
+			goto err;
 		}
 		for (i = 0; i < anc_writes_size; i++) {
 			TAIKO_CODEC_UNPACK_ENTRY(anc_ptr[i], reg,
@@ -3566,7 +3614,8 @@ static int taiko_codec_enable_anc(struct snd_soc_dapm_widget *w,
 			snd_soc_write(codec, reg, (old_val & ~mask) |
 				(val & mask));
 		}
-		release_firmware(fw);
+		if (!hwdep_cal)
+			release_firmware(fw);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		msleep(40);
@@ -3579,6 +3628,11 @@ static int taiko_codec_enable_anc(struct snd_soc_dapm_widget *w,
 		break;
 	}
 	return 0;
+err:
+	if (!hwdep_cal)
+		release_firmware(fw);
+	return ret;
+
 }
 
 static int taiko_hph_pa_event(struct snd_soc_dapm_widget *w,
@@ -5614,6 +5668,24 @@ static int taiko_codec_enable_anc_ear(struct snd_soc_dapm_widget *w,
 	return ret;
 }
 
+static int taiko_codec_set_iir_gain(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	int value = 0;
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		value = snd_soc_read(codec, TAIKO_A_CDC_IIR1_GAIN_B1_CTL);
+		snd_soc_write(codec, TAIKO_A_CDC_IIR1_GAIN_B1_CTL, value);
+		break;
+	default:
+		pr_info("%s: event = %d not expected\n", __func__, event);
+		break;
+	}
+	return 0;
+}
+
 /* Todo: Have seperate dapm widgets for I2S and Slimbus.
  * Might Need to have callbacks registered only for slimbus
  */
@@ -6067,6 +6139,9 @@ static const struct snd_soc_dapm_widget taiko_dapm_widgets[] = {
 		&iir1_inp1_mux,  taiko_codec_iir_mux_event,
 		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
 
+	SND_SOC_DAPM_PGA_E("IIR1", TAIKO_A_CDC_CLK_SD_CTL, 0, 0, NULL, 0,
+		taiko_codec_set_iir_gain, SND_SOC_DAPM_POST_PMU),
+
 	SND_SOC_DAPM_MUX_E("IIR1 INP2 MUX", TAIKO_A_CDC_IIR1_GAIN_B2_CTL, 0, 0,
 		&iir1_inp2_mux,  taiko_codec_iir_mux_event,
 		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
@@ -6079,7 +6154,6 @@ static const struct snd_soc_dapm_widget taiko_dapm_widgets[] = {
 		&iir1_inp4_mux,  taiko_codec_iir_mux_event,
 		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
 
-	SND_SOC_DAPM_MIXER("IIR1", TAIKO_A_CDC_CLK_SD_CTL, 0, 0, NULL, 0),
 
 	SND_SOC_DAPM_MUX_E("IIR2 INP1 MUX", TAIKO_A_CDC_IIR2_GAIN_B1_CTL, 0, 0,
 		&iir2_inp1_mux,  taiko_codec_iir_mux_event,
@@ -6771,6 +6845,27 @@ static void taiko_cleanup_irqs(struct taiko_priv *taiko)
 
 	wcd9xxx_free_irq(core_res, WCD9XXX_IRQ_SLIMBUS, taiko);
 }
+static
+struct firmware_cal *taiko_get_hwdep_fw_cal(struct snd_soc_codec *codec,
+			enum wcd_cal_type type)
+{
+	struct taiko_priv *taiko;
+	struct firmware_cal *hwdep_cal;
+
+	if (!codec) {
+		pr_err("%s: NULL codec pointer\n", __func__);
+		return NULL;
+	}
+	taiko = snd_soc_codec_get_drvdata(codec);
+	hwdep_cal = wcdcal_get_fw_cal(taiko->fw_data, type);
+	if (!hwdep_cal) {
+		dev_err(codec->dev, "%s: cal not sent by %d\n",
+				 __func__, type);
+		return NULL;
+	}
+
+	return hwdep_cal;
+}
 
 int taiko_hs_detect(struct snd_soc_codec *codec,
 		    struct wcd9xxx_mbhc_config *mbhc_cfg)
@@ -7028,6 +7123,7 @@ static const struct wcd9xxx_mbhc_cb mbhc_cb = {
 #ifdef CONFIG_VENDOR_EDIT
 	.enable_mb_source = taiko_enable_ext_mb_source,
 #endif
+	.get_hwdep_fw_cal = taiko_get_hwdep_fw_cal,
 };
 
 static const struct wcd9xxx_mbhc_intr cdc_intr_ids = {
@@ -7282,7 +7378,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 				  WCD9XXX_CDC_TYPE_TAIKO);
 	if (ret) {
 		pr_err("%s: wcd9xxx init failed %d\n", __func__, ret);
-		goto err_init;
+		goto err_nomem_slimch;
 	}
 
 	taiko->clsh_d.buck_mv = taiko_codec_get_buck_mv(codec);
@@ -7294,7 +7390,20 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 		rco_clk_rate = TAIKO_MCLK_CLK_12P288MHZ;
 	else
 		rco_clk_rate = TAIKO_MCLK_CLK_9P6MHZ;
-
+	taiko->fw_data = kzalloc(sizeof(*(taiko->fw_data)), GFP_KERNEL);
+	if (!taiko->fw_data) {
+		dev_err(codec->dev, "Failed to allocate fw_data\n");
+		goto err_nomem_slimch;
+	}
+	set_bit(WCD9XXX_ANC_CAL, taiko->fw_data->cal_bit);
+	set_bit(WCD9XXX_MAD_CAL, taiko->fw_data->cal_bit);
+	set_bit(WCD9XXX_MBHC_CAL, taiko->fw_data->cal_bit);
+	ret = wcd_cal_create_hwdep(taiko->fw_data,
+					WCD9XXX_CODEC_HWDEP_NODE, codec);
+	if (ret < 0) {
+		dev_err(codec->dev, "%s hwdep failed %d\n", __func__, ret);
+		goto err_hwdep;
+	}
 	/* init and start mbhc */
 	ret = wcd9xxx_mbhc_init(&taiko->mbhc, &taiko->resmgr, codec,
 				taiko_enable_mbhc_micbias,
@@ -7303,7 +7412,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 
 	if (ret) {
 		pr_err("%s: mbhc init failed %d\n", __func__, ret);
-		goto err_init;
+		goto err_hwdep;
 	}
 #ifdef CONFIG_VENDOR_EDIT
 	taiko_micbias_supply_init(codec->dev);
@@ -7329,7 +7438,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	ret = taiko_handle_pdata(taiko);
 	if (IS_ERR_VALUE(ret)) {
 		pr_err("%s: bad pdata\n", __func__);
-		goto err_pdata;
+		goto err_hwdep;
 	}
 
 	taiko->spkdrv_reg = taiko_codec_find_regulator(codec,
@@ -7347,7 +7456,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	if (!ptr) {
 		pr_err("%s: no mem for slim chan ctl data\n", __func__);
 		ret = -ENOMEM;
-		goto err_nomem_slimch;
+		goto err_hwdep;
 	}
 
 	if (taiko->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
@@ -7426,11 +7535,11 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 
 err_irq:
 	taiko_cleanup_irqs(taiko);
-err_pdata:
-	kfree(ptr);
+        kfree(ptr);
+err_hwdep:
+	kfree(taiko->fw_data);
 err_nomem_slimch:
 	kfree(taiko);
-err_init:
 	return ret;
 }
 static int taiko_codec_remove(struct snd_soc_codec *codec)
@@ -7458,6 +7567,7 @@ static int taiko_codec_remove(struct snd_soc_codec *codec)
 
 	taiko->spkdrv_reg = NULL;
 
+	kfree(taiko->fw_data);
 	kfree(taiko);
 	return 0;
 }

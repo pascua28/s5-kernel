@@ -364,7 +364,7 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 	 * no need to account for these lines in MDP clock or request bus
 	 * bandwidth to fetch them.
 	 */
-	src_h = src.h >> pipe->vert_deci;
+	src_h = DECIMATED_DIMENSION(src.h, pipe->vert_deci);
 
 	quota = fps * src.w * src_h;
 
@@ -733,7 +733,8 @@ static void mdss_mdp_perf_calc_ctl(struct mdss_mdp_ctl *ctl,
 			left_plist, (left_plist ? MDSS_MDP_MAX_STAGE : 0),
 			right_plist, (right_plist ? MDSS_MDP_MAX_STAGE : 0));
 
-	if (ctl->is_video_mode || mdss_mdp_video_mode_intf_connected(ctl)) {
+	if (ctl->is_video_mode || ((ctl->intf_type != MDSS_MDP_NO_INTF) &&
+		mdss_mdp_video_mode_intf_connected(ctl))) {
 		perf->bw_ctl =
 			max(apply_fudge_factor(perf->bw_overlap,
 				&mdss_res->ib_factor_overlap),
