@@ -26,6 +26,7 @@
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
+#include <linux/kt_wake_funcs.h>
 
 #define PMIC_VER_8941           0x01
 #define PMIC_VERSION_REG        0x0105
@@ -143,15 +144,16 @@ struct qpnp_pon_config {
 	bool use_bark;
 };
 
-struct qpnp_pon {
-	struct spmi_device *spmi;
-	struct input_dev *pon_input;
-	struct qpnp_pon_config *pon_cfg;
-	int num_pon_config;
-	int powerkey_state;
-	u16 base;
-	struct delayed_work bark_work;
-};
+// AP: this has been moved to qpnp-power-on.h
+//struct qpnp_pon {
+//	struct spmi_device *spmi;
+//	struct input_dev *pon_input;
+//	struct qpnp_pon_config *pon_cfg;
+//	int num_pon_config;
+//	int powerkey_state;
+//	u16 base;
+//	struct delayed_work bark_work;
+//};
 
 static struct qpnp_pon *sys_reset_dev;
 #ifdef CONFIG_SEC_PM_DEBUG
@@ -194,6 +196,8 @@ static const char * const qpnp_poff_reason[] = {
 	[14] = "Triggered from OTST3 (Overtemp)",
 	[15] = "Triggered from STAGE3 (Stage 3 reset)",
 };
+
+extern void screenwake_setdev(struct qpnp_pon * pon);
 
 static int
 qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
@@ -1604,7 +1608,8 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 			dev_attr_sec_powerkey_pressed.attr.name);
 	}
 	dev_set_drvdata(sec_powerkey, pon);
-
+	screenwake_setdev(pon);
+	
 	return rc;
 }
 
