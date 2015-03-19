@@ -467,7 +467,6 @@
  */
 #endif
 
-#define SYN_I2C_RETRY_TIMES 10
 #define MAX_F11_TOUCH_WIDTH 15
 
 #define CHECK_STATUS_TIMEOUT_MS 100

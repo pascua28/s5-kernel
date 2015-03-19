@@ -9,6 +9,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#include <linux/kt_wake_funcs.h>
+unsigned int prev_cable_state;
+unsigned int is_charging;
+
 #include <linux/battery/sec_battery.h>
 #if defined(CONFIG_SENSORS_QPNP_ADC_VOLTAGE)
 #include <linux/qpnp/qpnp-adc.h>
@@ -2403,6 +2407,13 @@ skip_monitor:
 
 	dev_dbg(battery->dev, "%s: End\n", __func__);
 
+	if (battery->cable_type != prev_cable_state)
+	{
+		if (battery->cable_type == POWER_SUPPLY_TYPE_BATTERY)
+			is_charging = 0;
+		else
+			is_charging = 1;
+	}
 	return;
 }
 
