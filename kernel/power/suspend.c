@@ -25,6 +25,9 @@
 #include <linux/suspend.h>
 #include <linux/syscore_ops.h>
 #include <linux/ftrace.h>
+#include <linux/rtc.h>
+#include <linux/wakeup_reason.h>
+#include <linux/partialresume.h>
 #include <trace/events/power.h>
 #include <linux/wakeup_reason.h>
 
@@ -253,6 +256,59 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	return error;
 }
 
+#ifdef CONFIG_PARTIALRESUME
+static bool suspend_again(bool *drivers_resumed)
+{
+	const struct list_head *irqs;
+	struct list_head unfinished;
+
+	*drivers_resumed = false;
+
+	/* If a platform suspend_again handler is defined, when it decides to
+	 * not suspend again, this takes precedence over drivers.  If a
+	 * platform's suspend_again callback returns true, then we proceed to
+	 * check the drivers as well.
+	 */
+	if (suspend_ops->suspend_again && !suspend_ops->suspend_again())
+		return false;
+
+	/* TODO: resume only the drivers associated with the wakeup interrupts!
+	 */
+	dpm_resume_end(PMSG_RESUME);
+	*drivers_resumed = true;
+
+	/* Thaw kernel threads opportunistically, to allow get_wakeup_reasons
+	 * to block while the wakeup interrupt list is being assembled.  Calls
+	 * schedule() internally.
+	 */
+	thaw_kernel_threads();
+
+	/* Look for a match between the wakeup reasons and the registered
+	 * callbacks.  Don't bother thawing the kernel threads if a match is
+	 * not found.
+         */
+	irqs = get_wakeup_reasons(HZ, &unfinished);
+	if (!suspend_again_match(irqs, &unfinished))
+		return false;
+
+	if (suspend_again_consensus() &&
+		       !freeze_kernel_threads()) {
+		clear_wakeup_reasons();
+		dpm_suspend_start(PMSG_SUSPEND);
+		*drivers_resumed = false;
+		return true;
+	}
+
+	return false;
+}
+#else
+static __always_inline bool
+suspend_again(bool *drivers_resumed __attribute__((unused)))
+{
+	return suspend_ops->suspend_again && suspend_ops->suspend_again();
+}
+#endif /* CONFIG_PARTIALRESUME */
+
 /**
  * suspend_devices_and_enter - Suspend devices and enter system sleep state.
  * @state: System sleep state to enter.
@@ -261,6 +317,7 @@ int suspend_devices_and_enter(suspend_state_t state)
 {
 	int error;
 	bool wakeup = false;
+	bool resumed = false;
 
 	if (need_suspend_ops(state) && !suspend_ops)
 		return -ENOSYS;
@@ -286,12 +343,12 @@ int suspend_devices_and_enter(suspend_state_t state)
 
 	do {
 		error = suspend_enter(state, &wakeup);
-	} while (!error && !wakeup && need_suspend_ops(state)
-		&& suspend_ops->suspend_again && suspend_ops->suspend_again());
+	} while (!error && !wakeup && need_suspend_ops(state) && suspend_again(&resumed));
 
  Resume_devices:
 	suspend_test_start();
-	dpm_resume_end(PMSG_RESUME);
+	if (!resumed)
+		dpm_resume_end(PMSG_RESUME);
 	suspend_test_finish("resume devices");
 	ftrace_start();
 	resume_console();
@@ -374,6 +431,18 @@ static int enter_state(suspend_state_t state)
 	return error;
 }
 
+static void pm_suspend_marker(char *annotation)
+{
+	struct timespec ts;
+	struct rtc_time tm;
+
+	getnstimeofday(&ts);
+	rtc_time_to_tm(ts.tv_sec, &tm);
+	pr_info("PM: suspend %s %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+		annotation, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
+}
+
 /**
  * pm_suspend - Externally visible function for suspending the system.
  * @state: System sleep state to enter.
@@ -388,6 +457,7 @@ int pm_suspend(suspend_state_t state)
 	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
 		return -EINVAL;
 
+	pm_suspend_marker("entry");
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -395,6 +465,7 @@ int pm_suspend(suspend_state_t state)
 	} else {
 		suspend_stats.success++;
 	}
+	pm_suspend_marker("exit");
 	return error;
 }
 EXPORT_SYMBOL(pm_suspend);
