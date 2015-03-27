@@ -57,8 +57,6 @@
 #ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2013.07.09 hewei add begin for factory mode*/
 #include <linux/gpio.h>
-/*OPPO yuyi 2013-07-15 add for version*/
-#ifdef  CONFIG_VENDOR_EDIT
 #include <linux/pcb_version.h>
 static char *saved_command_line_pcb_version = NULL;
 static char *saved_command_line_rf_version = NULL;
@@ -161,10 +159,10 @@ static struct kobj_attribute rf_version_attr = {
 		},
 	.show = rf_version_show,
 };
-#endif
 /* OPPO 2013-07-15 yuyi  add end */
 
 static struct kobject *systeminfo_kobj;
+#endif
 
 static int ftm_mode = MSM_BOOT_MODE__NORMAL;
 
@@ -173,6 +171,7 @@ int get_boot_mode(void)
 	return ftm_mode;
 }
 
+#ifdef CONFIG_VENDOR_EDIT
 static ssize_t ftmmode_show(struct kobject *kobj, struct kobj_attribute *attr,
 			     char *buf)
 {
@@ -220,10 +219,8 @@ static struct attribute * g[] = {
 	&closemodem_attr.attr,
 /* OPPO 2013-01-04 Van add end for ftm close modem*/
 /*OPPO yuyi 2013-7-15 add begin for version*/
-#ifdef CONFIG_VENDOR_EDIT
 	&pcb_version_attr.attr,
 	&rf_version_attr.attr,
-#endif
 /*OPPO yuyi 2013-07-15 add end*/
 	NULL,
 };
@@ -231,6 +228,36 @@ static struct attribute * g[] = {
 static struct attribute_group attr_group = {
 	.attrs = g,
 };
+
+static char boot_mode[16];
+static int __init boot_mode_init(void)
+{
+	int i;
+	char *substr = strstr(boot_command_line, "androidboot.mode=");
+	substr += strlen("androidboot.mode=");
+	for(i=0; substr[i] != ' '; i++) {
+		boot_mode[i] = substr[i];
+	}
+	boot_mode[i] = '\0';
+
+	printk(KERN_INFO "%s: parse boot_mode is %s\n", __func__, boot_mode);
+
+	if (!strcmp(boot_mode, "normal"))
+		ftm_mode = MSM_BOOT_MODE__NORMAL;
+	else if (!strcmp(boot_mode, "factory"))
+		ftm_mode = MSM_BOOT_MODE__FACTORY;
+	else if (!strcmp(boot_mode, "recovery"))
+		ftm_mode = MSM_BOOT_MODE__RECOVERY;
+	else if (!strcmp(boot_mode, "charger"))
+		ftm_mode = MSM_BOOT_MODE__CHARGE;
+	else
+		ftm_mode = MSM_BOOT_MODE__NORMAL;
+
+	printk(KERN_INFO "%s: parse ftm_mode is %d\n", __func__, ftm_mode);
+
+	return 1;
+}
+//__setup("androidboot.mode=", boot_mode_setup);
 
 #define DISP_ESD_GPIO 28
 #define DISP_LCD_UNK_GPIO 62
@@ -462,29 +489,33 @@ void __init msm8974_init(void)
 
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
-	
+
+#ifdef CONFIG_VENDOR_EDIT
+	boot_mode_init();
+#endif //CONFIG_VENDOR_EDIT
+
 	msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
 	board_dt_populate(adata);
 	msm8974_add_drivers();
 /*OPPO yuyi 2013-07-15 add begin for version */
 #ifdef CONFIG_VENDOR_EDIT
-    oppo_config_display();
+	oppo_config_display();
 	board_pcb_verison_init();
 	board_rf_version_init();
 
 #endif
 /*OPPO yuyi 2013-07-15 add end for version*/
 
-	
-#ifdef CONFIG_VENDOR_EDIT	
+
+#ifdef CONFIG_VENDOR_EDIT
 	/* OPPO 2013.07.09 hewei add begin for factory mode*/
 	systeminfo_kobj = kobject_create_and_add("systeminfo", NULL);
 	printk("songxh create systeminto node suscess!\n");
 	if (systeminfo_kobj)
 		rc = sysfs_create_group(systeminfo_kobj, &attr_group);
 	/* OPPO 2013.07.09 hewei add end */
-#endif //CONFIG_VENDOR_EDIT	
+#endif //CONFIG_VENDOR_EDIT
 }
 
 #ifdef CONFIG_VENDOR_EDIT
