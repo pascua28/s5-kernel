@@ -684,8 +684,8 @@
 		qcom,output-type = <0>;
 		qcom,pull = <5>;
 		qcom,vin-sel = <2>;
-		qcom,out-strength = <1>;	/*liuyan 2013-9-11-2 change it fores325*/
-		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_2  *//*for es325*/
+		qcom,out-strength = <1>;
+		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_2  */
 		qcom,master-en = <1>;
 	};
 
@@ -877,9 +877,6 @@
 	};
 };
 
-/*ifndef VENDOR_EDIT */
-/*#jiangyg@OnlineRd.PM, 2013/11/04, delete for display */
-/*
 &dsi_tosh_720_vid {
        qcom,cont-splash-enabled;
 };
@@ -891,5 +888,3 @@
 &dsi_jdi_1080_vid {
        qcom,cont-splash-enabled;
 };
-/*endif VENDOR_EDIT*/
-

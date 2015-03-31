@@ -10,15 +10,14 @@
  * GNU General Public License for more details.
  */
 
-&pm8941_lsid0 {
-        pm8941_clkdiv1: clkdiv@5b00 {
-                qcom,cxo-div = <2>;
-        };
+&cci {
+	qcom,camera@20 {
+		qcom,cam-vreg-min-voltage = <1050000 0 2800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1050000 0 2800000 2800000>;
+	};
 
-        pm8941_clkdiv2: clkdiv@5c00 {
-        };
-
-        pm8941_clkdiv3: clkdiv@5d00 {
-        };
+	qcom,camera@6c {
+		qcom,cam-vreg-min-voltage = < 2800000 0>;
+		qcom,cam-vreg-max-voltage = < 2800000 0>;
+	};
 };
-

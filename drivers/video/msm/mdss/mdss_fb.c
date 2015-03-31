@@ -55,10 +55,6 @@
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
 
-/* OPPO 2014-02-10 yxq added begin for Find7S */
-#include <linux/pcb_version.h>
-/* OPPO 2014-02-10 yxq added end */
-
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -285,12 +281,6 @@ static void mdss_fb_parse_dt(struct msm_fb_data_type *mfd)
 
 	of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split",
 				       data, 2);
-#ifdef CONFIG_VENDOR_EDIT
-	if (get_pcb_version() >= HW_VERSION__20) { /* Find7s */
-        of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split-find7s",
-				       data, 2);
-	}
-#endif
     if (data[0] && data[1] &&
 	    panel_xres == (data[0] + data[1])) {
 		mfd->split_fb_left = data[0];

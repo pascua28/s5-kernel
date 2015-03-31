@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,15 +10,14 @@
  * GNU General Public License for more details.
  */
 
-&pm8941_lsid0 {
-        pm8941_clkdiv1: clkdiv@5b00 {
-                qcom,cxo-div = <2>;
-        };
+&soc {
+	qcom,mdss_mdp@fd900000 {
+		qcom,mdss-ib-factor = <15 5>;	/* 3 times */
 
-        pm8941_clkdiv2: clkdiv@5c00 {
-        };
-
-        pm8941_clkdiv3: clkdiv@5d00 {
-        };
+		qcom,mdss_fb_primary {
+			qcom,mdss-mixer-swap;
+			qcom,mdss-fb-split = <720 720>;
+		};
+	};
 };
 

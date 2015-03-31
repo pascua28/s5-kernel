@@ -10,15 +10,17 @@
  * GNU General Public License for more details.
  */
 
-&pm8941_lsid0 {
-        pm8941_clkdiv1: clkdiv@5b00 {
-                qcom,cxo-div = <2>;
-        };
-
-        pm8941_clkdiv2: clkdiv@5c00 {
-        };
-
-        pm8941_clkdiv3: clkdiv@5d00 {
-        };
+&pm8941_l3 {
+	regulator-min-microvolt = <1000000>;
+	qcom,init-voltage = <1000000>;
 };
 
+&pm8941_l17 {
+	regulator-min-microvolt = <2700000>;
+	qcom,init-voltage = <2700000>;
+};
+
+&pm8941_l23 {
+	regulator-min-microvolt = <2800000>;
+	qcom,init-voltage = <2800000>;
+};

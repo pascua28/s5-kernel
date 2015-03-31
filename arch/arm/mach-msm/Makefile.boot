@@ -48,8 +48,13 @@ endif
 # MSM8974
    zreladdr-$(CONFIG_ARCH_MSM8974)	:= 0x00008000
 ifeq ($(CONFIG_VENDOR_EDIT),y)
-        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-pm8941-mtp.dtb
-        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-mtp.dtb
+ifeq ($(CONFIG_OPPO_DEVICE_FIND7),y)
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-find7.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-find7s.dtb
+endif
+ifeq ($(CONFIG_OPPO_DEVICE_FIND7OP),y)
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-find7op.dtb
+endif
 endif
 ifneq ($(CONFIG_VENDOR_EDIT),y)
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-cdp.dtb
