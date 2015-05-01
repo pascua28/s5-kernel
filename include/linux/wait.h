@@ -966,7 +966,7 @@ int wake_bit_function(wait_queue_t *wait, unsigned mode, int sync, void *key);
  * but has no intention of setting it.
  */
 static inline int
-wait_on_bit(void *word, int bit, int (*action)(void *), unsigned mode)
+wait_on_bit(unsigned long *word, int bit, int (*action)(void *), unsigned mode)
 {
 	might_sleep();
 	if (!test_bit(bit, word))
@@ -991,7 +991,7 @@ wait_on_bit(void *word, int bit, int (*action)(void *), unsigned mode)
  * clear with the intention of setting it, and when done, clearing it.
  */
 static inline int
-wait_on_bit_lock(void *word, int bit, int (*action)(void *), unsigned mode)
+wait_on_bit_lock(unsigned long *word, int bit, int (*action)(void *), unsigned mode)
 {
 	might_sleep();
 	if (!test_and_set_bit(bit, word))
