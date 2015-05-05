@@ -104,7 +104,7 @@ config register 04h
 #define GREEN_SLED 1
 #define BLUE_SLED 2
 #define SN3193_POWER_ON 1
-#define shine_debug 1
+#define shine_debug 0
 
 struct SN3193_sled{
 	struct miscdevice SN3193_miscdev;
