@@ -94,7 +94,7 @@
 		};
 
 		oem_data_mem: oem_data_region@5900000 {
-			linux,reserve-contiguous-region;
+			linux,contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
 			reg = <0x5900000 0x100000>;
@@ -2386,18 +2386,11 @@
 		qcom,rx-ring-size = <64>;
 	};
 
-	//#ifdef VENDOR_EDIT
-	//WeiHong.Li@OnLineRD.AirService.Module, 2013/10/24, modify for OEM DATA region 
-	/* NOTICE: 
-           add region(0x05900000 0x100000) for OEM data ram for NV backup.
-         */
         memory_hole: qcom,msm-mem-hole {
                 compatible = "qcom,msm-mem-hole";
                 qcom,memblock-remove = <0x5d00000 0x7d00000
-					0xfa00000 0x500000
-					0x05900000 0x100000>; /* Address and Size of Hole */
+					0xfa00000 0x500000 >; /* Address and Size of Hole */
         };
-	//#endif /* VENDOR_EDIT */
 
 	uart7: uart@f995d000 { /*BLSP #2, UART #7 */
 		compatible = "qcom,msm-hsuart-v14";
