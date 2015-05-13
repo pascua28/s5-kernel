@@ -76,3 +76,10 @@ config ARM_EXYNOS5250_CPUFREQ
 	help
 	  This adds the CPUFreq driver for Samsung EXYNOS5250
 	  SoC.
+
+config ARM_TEGRA20_CPUFREQ
+	bool "Tegra20 CPUFreq support"
+	depends on ARCH_TEGRA
+	default y
+	help
+	  This adds the CPUFreq driver support for Tegra20 SOCs.
