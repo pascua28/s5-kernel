@@ -1321,12 +1321,13 @@ static void __ref do_freq_control(long temp)
 		return;
 
 	/* Update new limits */
+	pr_info("Limiting CPU max frequency to %u. Temp:%ld\n",
+			max_freq, temp);
+
 	get_online_cpus();
 	for_each_possible_cpu(cpu) {
 		if (!(msm_thermal_info.bootup_freq_control_mask & BIT(cpu)))
 			continue;
-		pr_info("Limiting CPU%d max frequency to %u. Temp:%ld\n",
-			cpu, max_freq, temp);
 		cpus[cpu].limited_max_freq = max_freq;
 		update_cpu_freq(cpu);
 	}
@@ -1342,12 +1343,13 @@ static void clear_freq_limit(void)
 		cpus[0].limited_min_freq == 0)
 		return;
 
+	pr_info("CPU max frequency limit cleared\n");
+
 	get_online_cpus();
 	for_each_possible_cpu(cpu) {
 		if (cpus[cpu].limited_max_freq == UINT_MAX &&
 			cpus[cpu].limited_min_freq == 0)
 			continue;
-		pr_info("Max frequency reset for CPU%d\n", cpu);
 		cpus[cpu].limited_max_freq = UINT_MAX;
 		cpus[cpu].limited_min_freq = 0;
 		update_cpu_freq(cpu);
