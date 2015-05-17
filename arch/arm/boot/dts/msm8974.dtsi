@@ -93,13 +93,6 @@
 			label = "qseecom_mem";
 		};
 
-		oem_data_mem: oem_data_region@5900000 {
-			linux,contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x5900000 0x100000>;
-			label = "oem_data";
-		};
 	};
 
 	soc: soc { };
@@ -306,12 +299,6 @@
 		compatible = "qcom,sharedmem-uio";
 		reg = <0x0fd80000 0x00180000>;
 		reg-names = "rmtfs";
-	};
-
-	oem_data_sharedmem {
-		compatible = "qcom,sharedmem-uio";
-		reg = <0x5900000 0x100000>;
-		reg-names = "oem_data";
 	};
 
 	dsp_sharedmem {
@@ -2386,10 +2373,12 @@
 		qcom,rx-ring-size = <64>;
 	};
 
-        memory_hole: qcom,msm-mem-hole {
+	memory_hole: qcom,msm-mem-hole {
                 compatible = "qcom,msm-mem-hole";
                 qcom,memblock-remove = <0x5d00000 0x7d00000
-					0xfa00000 0x500000 >; /* Address and Size of Hole */
+					0xfa00000 0x500000 
+					/* VENDOR_EDIT for OEM data ram for NV backup - rmt_storage */
+					0x5900000 0x100000>; /* Address and Size of Hole */
         };
 
 	uart7: uart@f995d000 { /*BLSP #2, UART #7 */
