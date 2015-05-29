@@ -65,6 +65,11 @@
 #define IGNORE_FN_INIT_FAILURE
 */
 
+char *tp_firmware_strings[TP_TYPE_MAX][LCD_TYPE_MAX] = {
+	{"WINTEK", "WINTEK", "WINTEK"},
+	{"TPK", "TPK", "TPK"}
+};
+
 #define RPT_TYPE (1 << 0)
 #define RPT_X_LSB (1 << 1)
 #define RPT_X_MSB (1 << 2)
@@ -1013,12 +1018,12 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #define SYNA_ONE_FINGER_W_OR_M		    0x0b
 
 
-#define KEY_F3			61   //åŒå‡»å”¤é†’å±å¹•, 
-#define KEY_F4			62   //å¯åŠ¨ç›¸æœºï¼Œåˆ’åœˆ
-#define KEY_F5			63   // å¯åŠ¨æ‰‹ç”µç­’ï¼Œæ­£V
-#define KEY_F6			64   // æš‚åœæ­Œæ›²ï¼Œä¸¤ä¸¨ä¸¨
-#define KEY_F7			65  // ä¸Šä¸€é¦–ï¼Œ<
-#define KEY_F8			66  // ä¸‹ä¸€é¦–, >
+#define KEY_F3			61   //¿¿¿¿¿¿, 
+#define KEY_F4			62   //¿¿¿¿¿¿¿
+#define KEY_F5			63   // ¿¿¿¿¿¿¿V
+#define KEY_F6			64   // ¿¿¿¿¿¿¿¿
+#define KEY_F7			65  // ¿¿¿¿<
+#define KEY_F8			66  // ¿¿¿, >
 #define KEY_F9			67  // M or W
 
 #define UnkownGestrue       0
@@ -1043,7 +1048,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #define SYNA_SMARTCOVER_MAN     750
 
 
-//ä»¥ä¸‹å¯„å­˜å™¨æ€»æ˜¯ä¿®æ”¹ï¼Œå› æ­¤æŠ½å‡ºæ¥å®šä¹‰åœ¨è¿™é‡Œ
+//¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿
 #define SYNA_ADDR_REPORT_FLAG        0x1b  //report mode register
 #define SYNA_ADDR_GESTURE_FLAG       0x20  //gesture enable register
 #define SYNA_ADDR_GLOVE_FLAG       	 0x1f  //glove enable register
@@ -2045,7 +2050,7 @@ static ssize_t synaptics_rmi4_baseline_data(char *buf, bool savefile)
 	synaptics_rmi4_i2c_write(syna_ts_data, F54_CMD_BASE_ADDR, &tmp_new,1);
 	wait_test_cmd_finished();
 
-	//é«˜é˜»æµ‹è¯•é¡¹ï¼Œä¸»è¦çš„æµ‹è¯•æ•°æ®ç”±3ä¸ªWORDç»„æˆï¼Œè¯»å›æ•°æ®é™¤ä»¥1000åï¼Œ Limit åˆ†åˆ«ä¸ºï¼šï¼ˆ-1,0.45ï¼‰ï¼Œï¼ˆ-1,0.45ï¼‰ï¼Œï¼ˆ-0.43,0.02ï¼‰
+	//¿¿¿¿¿¿¿¿¿¿¿¿¿¿3¿WORD¿¿¿¿¿¿¿¿¿1000¿¿ Limit ¿¿¿¿¿-1,0.45¿¿¿-1,0.45¿¿¿-0.43,0.02¿
 	for(i = 0;i < 3; i++)
 	{
 		int iTemp[2];
@@ -4274,30 +4279,34 @@ int synaptics_rmi4_get_vendorid2(int id1, int id2, int id3) {
 }
 
 //return firmware version and string
-extern int synaptics_rmi4_get_firmware_version(int vendor_id);
-char* synaptics_rmi4_get_vendorstring(int id) {
+extern int synaptics_rmi4_get_firmware_version(int vendor, int lcd_type);
+
+static char * synaptics_rmi4_get_vendorstring(int tp_type, int lcd_type) {
 	char *pconst = "UNKNOWN";
 
-	switch(id) {
-		case TP_VENDOR_WINTEK:
-			pconst= "WINTEK" ;
-			break ;
-		case TP_VENDOR_TPK:
-			pconst= "TPK" ;
-			break ;
-		case TP_VENDOR_TRULY:
-			pconst= "TRULY" ;
-			break ;
-		case TP_VENDOR_YOUNGFAST:
-			pconst= "YOUNGFAST" ;
-			break ;
-	}
-
-	sprintf(synaptics_vendor_str,"%s(%x)",pconst,synaptics_rmi4_get_firmware_version(id));
+	pconst = tp_firmware_strings[tp_type - 1][lcd_type];
+	sprintf(synaptics_vendor_str, "%s(%x)", pconst,
+			synaptics_rmi4_get_firmware_version(tp_type, lcd_type));
 
 	return synaptics_vendor_str;
-
 }
+
+int lcd_type_id;
+
+static int __init lcd_type_id_setup(char *str)
+{
+	if (!strcmp("1:dsi:0:qcom,mdss_dsi_jdi_1080p_cmd", str))
+		lcd_type_id = LCD_VENDOR_JDI;
+	else if (!strcmp("1:dsi:0:qcom,mdss_dsi_truly_1080p_cmd", str))
+		lcd_type_id = LCD_VENDOR_TRULY;
+	else if (!strcmp("1:dsi:0:qcom,mdss_dsi_sharp_1080p_cmd", str))
+		lcd_type_id = LCD_VENDOR_SHARP;
+	else
+		lcd_type_id = -1;
+
+	return 1;
+}
+__setup("mdss_mdp.panel=", lcd_type_id_setup);
 
 static void synaptics_rmi4_get_vendorid(struct synaptics_rmi4_data *rmi4_data) {
 	int vendor_id = 0;
@@ -4312,7 +4321,7 @@ static void synaptics_rmi4_get_vendorid(struct synaptics_rmi4_data *rmi4_data) {
 #endif
 
 	rmi4_data->vendor_id = vendor_id;
-	synaptics_rmi4_get_vendorstring(rmi4_data->vendor_id);
+	synaptics_rmi4_get_vendorstring(rmi4_data->vendor_id, lcd_type_id);
 	print_ts(TS_INFO, KERN_ERR "[syna] vendor id: %x version: %s\n", vendor_id, synaptics_vendor_str);
 
 }
