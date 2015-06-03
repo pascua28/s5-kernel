@@ -2279,6 +2279,17 @@ static int wcnss_ctrl_open(struct inode *inode, struct file *file)
 	return rc;
 }
 
+static int wcnss_ctrl_release(struct inode *inode, struct file *file)
+{
+	int rc = 0;
+
+	if (!penv || !penv->ctrl_device_opened)
+		return -EFAULT;
+
+	penv->ctrl_device_opened = 0;
+
+	return rc;
+}
 
 void process_usr_ctrl_cmd(u8 *buf, size_t len)
 {
@@ -2342,6 +2353,7 @@ static ssize_t wcnss_ctrl_write(struct file *fp, const char __user
 static const struct file_operations wcnss_ctrl_fops = {
 	.owner = THIS_MODULE,
 	.open = wcnss_ctrl_open,
+	.release = wcnss_ctrl_release,
 	.write = wcnss_ctrl_write,
 };
 
