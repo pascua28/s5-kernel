@@ -1256,6 +1256,14 @@ unsigned int __read_mostly sched_enable_hmp = 0;
 unsigned int __read_mostly sysctl_sched_spill_nr_run = 10;
 
 /*
+ * A cpu is considered practically idle, if:
+ *
+ *	rq->nr_running <= sysctl_sched_mostly_idle_nr_run &&
+ *	rq->cumulative_runnable_avg <= sched_mostly_idle_load
+ */
+unsigned int __read_mostly sysctl_sched_mostly_idle_nr_run = 3;
+
+/*
  * Control whether or not individual CPU power consumption is used to
  * guide task placement.
  */
@@ -1267,6 +1275,16 @@ unsigned int __read_mostly sched_enable_power_aware = 0;
  * power characteristics (i.e. they are in the same power band).
  */
 unsigned int __read_mostly sysctl_sched_powerband_limit_pct = 20;
+
+/*
+ * Conversion of *_pct to absolute form is based on max_task_load().
+ *
+ * For example:
+ *	sched_mostly_idle_load =
+ *	(sysctl_sched_mostly_idle_load_pct * max_task_load()) / 100;
+ */
+unsigned int __read_mostly sched_mostly_idle_load;
+unsigned int __read_mostly sysctl_sched_mostly_idle_load_pct = 20;
 
 /*
  * CPUs with load greater than the sched_spill_load_threshold are not
@@ -1342,10 +1360,16 @@ static inline int available_cpu_capacity(int cpu)
 	return rq->capacity;
 }
 
+#define pct_to_real(tunable)	\
+		(div64_u64((u64)tunable * (u64)max_task_load(), 100))
+
 void set_hmp_defaults(void)
 {
 	sched_spill_load =
 		pct_to_real(sysctl_sched_spill_load_pct);
+
+	sched_mostly_idle_load =
+		pct_to_real(sysctl_sched_mostly_idle_load_pct);
 
 	sched_small_task =
 		pct_to_real(sysctl_sched_small_task_pct);
@@ -1370,78 +1394,6 @@ void set_hmp_defaults(void)
 			  (u64)sched_ravg_window, 100);
 
 	sched_upmigrate_min_nice = sysctl_sched_upmigrate_min_nice;
-}
-
-int sched_set_cpu_mostly_idle_load(int cpu, int mostly_idle_pct)
-{
-	struct rq *rq = cpu_rq(cpu);
-
-	if (mostly_idle_pct < 0 || mostly_idle_pct > 100)
-		return -EINVAL;
-
-	rq->mostly_idle_load = pct_to_real(mostly_idle_pct);
-
-	return 0;
-}
-
-int sched_set_cpu_mostly_idle_freq(int cpu, unsigned int mostly_idle_freq)
-{
-	struct rq *rq = cpu_rq(cpu);
-
-	if (mostly_idle_freq > rq->max_possible_freq)
-		return -EINVAL;
-
-	rq->mostly_idle_freq = mostly_idle_freq;
-
-	return 0;
-}
-
-unsigned int sched_get_cpu_mostly_idle_freq(int cpu)
-{
-	struct rq *rq = cpu_rq(cpu);
-
-	return rq->mostly_idle_freq;
-}
-
-int sched_get_cpu_mostly_idle_load(int cpu)
-{
-	struct rq *rq = cpu_rq(cpu);
-	int mostly_idle_pct;
-
-	mostly_idle_pct = real_to_pct(rq->mostly_idle_load);
-
-	return mostly_idle_pct;
-}
-
-int sched_set_cpu_mostly_idle_nr_run(int cpu, int nr_run)
-{
-	struct rq *rq = cpu_rq(cpu);
-
-	rq->mostly_idle_nr_run = nr_run;
-
-	return 0;
-}
-
-int sched_get_cpu_mostly_idle_nr_run(int cpu)
-{
-	struct rq *rq = cpu_rq(cpu);
-
-	return rq->mostly_idle_nr_run;
-}
-
-/*
- * 'load' is in reference to "best cpu" at its best frequency.
- * Scale that in reference to a given cpu, accounting for how bad it is
- * in reference to "best cpu".
- */
-u64 scale_load_to_cpu(u64 task_load, int cpu)
-{
-	struct rq *rq = cpu_rq(cpu);
-
-	task_load *= (u64)rq->load_scale_factor;
-	task_load /= 1024;
-
-	return task_load;
 }
 
 /* Is a task "big" on its current cpu */
@@ -1508,12 +1460,9 @@ spill_threshold_crossed(u64 task_load, u64 cpu_load, struct rq *rq)
 int mostly_idle_cpu(int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
-	int mostly_idle;
 
-	mostly_idle = (cpu_load(cpu) <= rq->mostly_idle_load
-				&& rq->nr_running <= rq->mostly_idle_nr_run);
-
-	return mostly_idle;
+	return (cpu_load(cpu) <= sched_mostly_idle_load
+		&& rq->nr_running <= sysctl_sched_mostly_idle_nr_run);
 }
 
 static int mostly_idle_cpu_sync(int cpu, u64 load, int sync)
@@ -1530,8 +1479,8 @@ static int mostly_idle_cpu_sync(int cpu, u64 load, int sync)
 	if (sync && cpu == smp_processor_id())
 		nr_running--;
 
-	return (load <= rq->mostly_idle_load
-		&& nr_running <= rq->mostly_idle_nr_run);
+	return (load <= sched_mostly_idle_load
+		&& nr_running <= sysctl_sched_mostly_idle_nr_run);
 }
 
 static int boost_refcount;
@@ -1927,42 +1876,6 @@ static int skip_cpu(struct rq *task_rq, struct rq * rq, int cpu, int reason)
 	return rq == task_rq;
 }
 
-/*
- * Select a single cpu in cluster as target for packing, iff cluster frequency
- * is less than a threshold level
- */
-static int select_packing_target(struct task_struct *p, int best_cpu)
-{
-	struct rq *rq = cpu_rq(best_cpu);
-	struct cpumask search_cpus;
-	int i;
-	int min_cost = INT_MAX;
-	int target = best_cpu;
-
-	if (rq->cur_freq >= rq->mostly_idle_freq)
-		return best_cpu;
-
-	/* Don't pack if current freq is low because of throttling */
-	if (rq->max_freq <= rq->mostly_idle_freq)
-		return best_cpu;
-
-	cpumask_and(&search_cpus, tsk_cpus_allowed(p), cpu_online_mask);
-	cpumask_and(&search_cpus, &search_cpus, &rq->freq_domain_cpumask);
-
-	/* Pick the first lowest power cpu as target */
-	for_each_cpu(i, &search_cpus) {
-		int cost = power_cost(p, i);
-
-		if (cost < min_cost) {
-			target = i;
-			min_cost = cost;
-		}
-	}
-
-	return target;
-}
-
-
 /* return cheapest cpu that can fit this task */
 static int select_best_cpu(struct task_struct *p, int target, int reason,
 			   int sync)
@@ -2132,9 +2045,6 @@ done:
 			best_cpu = fallback_idle_cpu;
 	}
 
-	if (cpu_rq(best_cpu)->mostly_idle_freq)
-		best_cpu = select_packing_target(p, best_cpu);
-
 	return best_cpu;
 }
 
@@ -2281,9 +2191,10 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 		return 0;
 
 	if ((sysctl_sched_downmigrate_pct > sysctl_sched_upmigrate_pct) ||
-				*data > 100) {
-		*data = old_val;
-		return -EINVAL;
+		(sysctl_sched_mostly_idle_load_pct >
+			sysctl_sched_spill_load_pct) || *data > 100) {
+			*data = old_val;
+			return -EINVAL;
 	}
 
 	if (data == (unsigned int *)&sysctl_sched_upmigrate_min_nice)
@@ -6930,13 +6841,11 @@ out_one_pinned:
 
 	ld_moved = 0;
 out:
-#if 0
 	trace_sched_load_balance(this_cpu, idle, *balance,
 				 group ? group->cpumask[0] : 0,
 				 busiest ? busiest->nr_running : 0,
 				 env.imbalance, env.flags, ld_moved,
 				 sd->balance_interval);
-#endif
 	return ld_moved;
 }
 
@@ -7441,13 +7350,9 @@ static inline int _nohz_kick_needed_hmp(struct rq *rq, int cpu, int *type)
 	struct sched_domain *sd;
 	int i;
 
-	if (rq->mostly_idle_freq && rq->cur_freq < rq->mostly_idle_freq
-		 && rq->max_freq > rq->mostly_idle_freq)
-			return 0;
-
 	if (rq->nr_running >= 2 && (rq->nr_running - rq->nr_small_tasks >= 2 ||
-	     rq->nr_running > rq->mostly_idle_nr_run ||
-		cpu_load(cpu) > rq->mostly_idle_load)) {
+	     rq->nr_running > sysctl_sched_mostly_idle_nr_run ||
+		cpu_load(cpu) > sched_mostly_idle_load)) {
 
 		if (rq->capacity == max_capacity)
 			return 1;
@@ -7713,15 +7618,15 @@ static void switched_from_fair(struct rq *rq, struct task_struct *p)
 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
 
 	/*
-	 * Ensure the task's vruntime is normalized, so that when its
+	 * Ensure the task's vruntime is normalized, so that when it's
 	 * switched back to the fair class the enqueue_entity(.flags=0) will
 	 * do the right thing.
 	 *
-	 * If it was on_rq, then the dequeue_entity(.flags=0) will already
-	 * have normalized the vruntime, if it was !on_rq, then only when
+	 * If it's on_rq, then the dequeue_entity(.flags=0) will already
+	 * have normalized the vruntime, if it's !on_rq, then only when
 	 * the task is sleeping will it still have non-normalized vruntime.
 	 */
-	if (!se->on_rq && p->state != TASK_RUNNING) {
+	if (!p->on_rq && p->state != TASK_RUNNING) {
 		/*
 		 * Fix up our vruntime so that the current sleep doesn't
 		 * cause 'unlimited' sleep bonus.
