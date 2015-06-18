@@ -128,6 +128,7 @@
 #define RADIO_HCI_TIMEOUT	(10000)	/* 10 seconds */
 
 #define TUNE_PARAM 16
+#define FM_RDS_3A_GRP (0x40)
 
 #define AF_JMP_TUNE 0x03
 /**DIGITAL AUDIO 0 MODE**/
