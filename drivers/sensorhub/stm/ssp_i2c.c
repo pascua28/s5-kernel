@@ -13,6 +13,7 @@
  *
  */
 #include "ssp.h"
+#include <linux/kt_wake_funcs.h>
 
 #define LIMIT_DELAY_CNT		200
 #define RECEIVEBUFFERSIZE	12
@@ -279,6 +280,13 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 		return FAIL;
 	}
 
+	// On Call Hook
+	if (uInst == ADD_SENSOR && uSensorType == PROXIMITY_SENSOR)
+	{
+		wake_funcs_set_prox(false);
+		set_call_in_progress(true);
+	}
+
 	switch (uInst) {
 	case REMOVE_SENSOR:
 		command = MSG2SSP_INST_BYPASS_SENSOR_REMOVE;
@@ -329,10 +337,18 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 
 	iRet = ssp_spi_async(data, msg);
 
+	// Call ended hook
+	if (uInst == REMOVE_SENSOR && uSensorType == PROXIMITY_SENSOR)
+	{
+		wake_funcs_set_prox(true);
+		set_call_in_progress(false);
+	}
+
 	if (iRet != SUCCESS) {
 		pr_err("[SSP]: %s - Instruction CMD Fail %d\n", __func__, iRet);
 		return ERROR;
 	}
+
 
 	return iRet;
 }
