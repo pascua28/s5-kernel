@@ -1073,9 +1073,25 @@ static int __ref update_offline_cores(int val)
 			pr_err("Unable to offline CPU%d. err:%d\n",
 				cpu, ret);
 		else
-			pr_debug("Offlined CPU%d\n", cpu);
+			pr_info("Offlined CPU%d\n", cpu);
 	}
 	return ret;
+}
+
+static __ref void clear_offline_cores(void)
+{
+	uint32_t cpu = 0;
+
+	if (!core_control_enabled)
+		return;
+
+	pr_info("Core control cleared\n");
+
+	mutex_lock(&core_control_mutex);
+	for_each_possible_cpu(cpu) {
+		cpus_offlined &= ~BIT(cpu);
+	}
+	mutex_unlock(&core_control_mutex);
 }
 
 static __ref int do_hotplug(void *data)
@@ -1116,7 +1132,7 @@ static __ref int do_hotplug(void *data)
 	return ret;
 }
 #else
-static void do_core_control(long temp)
+static __ref void do_core_control(long temp)
 {
 	return;
 }
@@ -1124,6 +1140,10 @@ static void do_core_control(long temp)
 static __ref int do_hotplug(void *data)
 {
 	return 0;
+}
+
+static __ref void clear_offline_cores(void)
+{
 }
 #endif
 
@@ -1309,12 +1329,15 @@ static void __ref do_freq_control(long temp)
 		if (limit_idx == limit_idx_high)
 			return;
 
-		limit_idx += msm_thermal_info.bootup_freq_step;
-		if (limit_idx >= limit_idx_high) {
+		// remove limit in one step
+		// since we already waited for temp to fall below
+		// limit - hysteresis
+		//limit_idx += msm_thermal_info.bootup_freq_step;
+		//if (limit_idx >= limit_idx_high) {
 			limit_idx = limit_idx_high;
 			max_freq = UINT_MAX;
-		} else
-			max_freq = table[limit_idx].frequency;
+		//} else
+		//	max_freq = table[limit_idx].frequency;
 	}
 
 	if (max_freq == cpus[cpu].limited_max_freq)
@@ -1381,14 +1404,9 @@ static void __ref check_temp(struct work_struct *work)
 			limit_init = 1;
 	}
 	pr_debug("temp=%ld\n", temp);
-	
-	if (temp >= msm_thermal_info.limit_temp_degC)
-		do_freq_control(temp);
-	else
-		clear_freq_limit();
 
-	if (temp >= msm_thermal_info.core_limit_temp_degC)
-		do_core_control(temp);
+	do_freq_control(temp);
+	do_core_control(temp);
 
 	do_vdd_restriction();
 	do_psm();
@@ -1981,6 +1999,7 @@ static int __ref set_enabled(const char *val, const struct kernel_param *kp)
 		else {
 			polling_enabled = 1;
 			clear_freq_limit();
+			clear_offline_cores();
 			schedule_delayed_work(&check_temp_work, 0);
 		}
 
@@ -2073,6 +2092,7 @@ static ssize_t __ref store_poll_ms(struct kobject *kobj,
 	} else {
 		polling_enabled = 1;
 		clear_freq_limit();
+		clear_offline_cores();
 		schedule_delayed_work(&check_temp_work, 0);
 	}
 	pr_info("polling enabled = %d poll_ms=%d\n", polling_enabled, val);
@@ -2167,6 +2187,7 @@ static ssize_t __ref store_cc_enabled(struct kobject *kobj,
 	} else {
 		pr_info("Core control disabled\n");
 		unregister_cpu_notifier(&msm_thermal_cpu_notifier);
+		clear_offline_cores();
 	}
 	pr_info("core_control_enabled = %d\n", core_control_enabled);
 
