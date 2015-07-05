@@ -598,6 +598,8 @@ static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
 		return -ENODEV;
 
 	list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+		if(fhandler == NULL)
+			continue;
 		if (fhandler->fn_number == SYNAPTICS_RMI4_F1A) {
 			ii = fhandler->intr_reg_num;
 
@@ -1018,12 +1020,12 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #define SYNA_ONE_FINGER_W_OR_M		    0x0b
 
 
-#define KEY_F3			61   //¿¿¿¿¿¿, 
-#define KEY_F4			62   //¿¿¿¿¿¿¿
-#define KEY_F5			63   // ¿¿¿¿¿¿¿V
-#define KEY_F6			64   // ¿¿¿¿¿¿¿¿
-#define KEY_F7			65  // ¿¿¿¿<
-#define KEY_F8			66  // ¿¿¿, >
+#define KEY_F3			61  // Double click, light the screen 
+#define KEY_F4			62  // cycle , open the carmer
+#define KEY_F5			63  // v, open the flashlight
+#define KEY_F6			64  // ||, stop the music
+#define KEY_F7			65  // <, last music
+#define KEY_F8			66  // >, next music 
 #define KEY_F9			67  // M or W
 
 #define UnkownGestrue       0
@@ -1048,7 +1050,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #define SYNA_SMARTCOVER_MAN     750
 
 
-//¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿
 #define SYNA_ADDR_REPORT_FLAG        0x1b  //report mode register
 #define SYNA_ADDR_GESTURE_FLAG       0x20  //gesture enable register
 #define SYNA_ADDR_GLOVE_FLAG       	 0x1f  //glove enable register
@@ -1386,8 +1387,6 @@ static int synaptics_rmi4_crood_read(char *page, char **start, off_t off,
 		      syna_rmi4_data->points[4], syna_rmi4_data->points[5], syna_rmi4_data->points[6], syna_rmi4_data->points[7],
 		      syna_rmi4_data->points[8], syna_rmi4_data->points[9], syna_rmi4_data->points[10], syna_rmi4_data->points[11],
 		      syna_rmi4_data->points[12]);
-
-	syna_use_gesture2 = 1 ;
 
 	return len ;
 }
@@ -2050,7 +2049,6 @@ static ssize_t synaptics_rmi4_baseline_data(char *buf, bool savefile)
 	synaptics_rmi4_i2c_write(syna_ts_data, F54_CMD_BASE_ADDR, &tmp_new,1);
 	wait_test_cmd_finished();
 
-	//¿¿¿¿¿¿¿¿¿¿¿¿¿¿3¿WORD¿¿¿¿¿¿¿¿¿1000¿¿ Limit ¿¿¿¿¿-1,0.45¿¿¿-1,0.45¿¿¿-0.43,0.02¿
 	for(i = 0;i < 3; i++)
 	{
 		int iTemp[2];
@@ -2339,10 +2337,6 @@ static int synaptics_parse_dt(struct device *dev, struct synaptics_rmi4_data *ts
 int synaptics_regulator_configure(bool on)
 {
 	int rc;
-	struct device *pdev = 0;
-
-	if(syna_rmi4_data)
-		pdev = &syna_rmi4_data->i2c_client->dev;
 
 	if (on == false)
 		goto hw_shutdown;
@@ -2936,6 +2930,8 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	 */
 	if (!list_empty(&rmi->support_fn_list)) {
 		list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+			if (fhandler == NULL)
+				continue;
 			if (fhandler->num_of_data_sources) {
 				if (fhandler->intr_mask &
 						intr[fhandler->intr_reg_num]) {
@@ -2949,6 +2945,8 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	mutex_lock(&exp_data.mutex);
 	if (!list_empty(&exp_data.list)) {
 		list_for_each_entry(exp_fhandler, &exp_data.list, link) {
+			if(exp_fhandler == NULL)
+				continue;
 			if (exp_fhandler->inserted &&
 					(exp_fhandler->func_attn != NULL))
 				exp_fhandler->func_attn(rmi4_data, intr[0]);
@@ -3519,6 +3517,8 @@ static void synaptics_rmi4_empty_fn_list(struct synaptics_rmi4_data *rmi4_data)
 				fhandler_temp,
 				&rmi->support_fn_list,
 				link) {
+			if(fhandler == NULL)
+				continue;
 			if (fhandler->fn_number == SYNAPTICS_RMI4_F1A) {
 				synaptics_rmi4_f1a_kfree(fhandler);
 			} else {
@@ -3856,12 +3856,6 @@ flash_prog_mode:
 		(f01_query[10] & MASK_7BIT);
 	memcpy(rmi->product_id_string, &f01_query[11], 10);
 
-	if (rmi->manufacturer_id != 1) {
-		//		dev_err(&rmi4_data->i2c_client->dev,
-		//				"%s: Non-Synaptics device found, manufacturer ID = %d\n",
-		//				__func__, rmi->manufacturer_id);
-	}
-
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_query_base_addr + F01_BUID_ID_OFFSET,
 			rmi->build_id,
@@ -3881,6 +3875,8 @@ flash_prog_mode:
 	 */
 	if (!list_empty(&rmi->support_fn_list)) {
 		list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+			if(fhandler == NULL)
+				continue;
 			if (fhandler->num_of_data_sources) {
 				rmi4_data->intr_mask[fhandler->intr_reg_num] |=
 					fhandler->intr_mask;
@@ -3918,8 +3914,6 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
-	//synaptics_set_f12ctrl_data(rmi4_data,0,5);
-
 	set_bit(KEY_BACK, rmi4_data->input_dev->keybit);
 	set_bit(KEY_MENU, rmi4_data->input_dev->keybit);
 	set_bit(KEY_HOMEPAGE, rmi4_data->input_dev->keybit);
@@ -3955,6 +3949,8 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 	f1a = NULL;
 	if (!list_empty(&rmi->support_fn_list)) {
 		list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+			if(fhandler == NULL)
+				continue;
 			if (fhandler->fn_number == SYNAPTICS_RMI4_F1A)
 				f1a = fhandler->data;
 		}
@@ -4169,6 +4165,8 @@ static void synaptics_rmi4_exp_fn_work(struct work_struct *work)
 				exp_fhandler_temp,
 				&exp_data.list,
 				link) {
+			if(exp_fhandler == NULL)
+				continue;
 			if ((exp_fhandler->func_init != NULL) &&
 					(exp_fhandler->inserted == false)) {
 				if(exp_fhandler->func_init(rmi4_data) < 0) {
@@ -4235,6 +4233,8 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 		list_add_tail(&exp_fhandler->link, &exp_data.list);
 	} else if (!list_empty(&exp_data.list)) {
 		list_for_each_entry(exp_fhandler, &exp_data.list, link) {
+			if(exp_fhandler == NULL)
+				continue;
 			if (exp_fhandler->fn_type == fn_type) {
 				exp_fhandler->func_init = NULL;
 				exp_fhandler->func_attn = NULL;
@@ -4775,8 +4775,6 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 	} else {
 		rmi4_data->sensor_sleep = false;
 	}
-
-	return;
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -4809,8 +4807,6 @@ static void synaptics_rmi4_early_suspend(struct early_suspend *h)
 
 	if (rmi4_data->full_pm_cycle)
 		synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
-
-	return;
 }
 
 /**
@@ -4846,8 +4842,6 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
 					__func__);
 		}
 	}
-
-	return;
 }
 #endif
 
