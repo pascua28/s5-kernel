@@ -26,6 +26,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
 #include <linux/cpu_pm.h>
+#include <linux/sched.h>
 #include <linux/remote_spinlock.h>
 #include <asm/uaccess.h>
 #include <asm/suspend.h>
