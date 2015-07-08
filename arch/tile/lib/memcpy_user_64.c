@@ -28,7 +28,7 @@
 #define _ST(p, inst, v)						\
 	({							\
 		asm("1: " #inst " %0, %1;"			\
-		    ".pushsection .coldtext.memcpy,\"ax\";"	\
+		    ".pushsection .coldtext,\"ax\";"	\
 		    "2: { move r0, %2; jrp lr };"		\
 		    ".section __ex_table,\"a\";"		\
 		    ".quad 1b, 2b;"				\
@@ -40,7 +40,7 @@
 	({							\
 		unsigned long __v;				\
 		asm("1: " #inst " %0, %1;"			\
-		    ".pushsection .coldtext.memcpy,\"ax\";"	\
+		    ".pushsection .coldtext,\"ax\";"	\
 		    "2: { move r0, %2; jrp lr };"		\
 		    ".section __ex_table,\"a\";"		\
 		    ".quad 1b, 2b;"				\
