@@ -296,6 +296,7 @@
 			linux,code = <115>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
+			gpio-key,skip_resume;
 		};
 		vol_down {
 			label = "volume_down";
@@ -304,6 +305,7 @@
 			linux,code = <114>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
+			gpio-key,skip_resume;
 		};
 /* OPPO zhengzk 2013-04-18 add begin for hallsensor */
 /* #if 1 //#ifdef CONFIG_VENDOR_EDIT */

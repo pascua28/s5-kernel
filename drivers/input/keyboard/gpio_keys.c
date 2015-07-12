@@ -605,6 +605,8 @@ static int gpio_keys_get_devtree_pdata(struct device *dev,
 		else
 			buttons[i].debounce_interval = 5;
 
+		buttons[i].skip_resume = !!of_get_property(pp, "gpio-key,skip_resume", NULL);
+
 		i++;
 	}
 
@@ -806,7 +808,7 @@ static int gpio_keys_resume(struct device *dev)
 		if (bdata->button->wakeup && device_may_wakeup(dev))
 			disable_irq_wake(bdata->irq);
 
-		if (gpio_is_valid(bdata->button->gpio))
+		if (gpio_is_valid(bdata->button->gpio) && !bdata->button->skip_resume)
 			gpio_keys_gpio_report_event(bdata);
 	}
 	input_sync(ddata->input);

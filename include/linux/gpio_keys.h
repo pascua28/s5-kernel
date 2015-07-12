@@ -15,6 +15,7 @@ struct gpio_keys_button {
 	bool can_disable;
 	int value;		/* axis value for EV_ABS */
 	unsigned int irq;	/* Irq number in case of interrupt keys */
+	bool skip_resume;	/* dont send button event on driver resume */
 };
 
 struct gpio_keys_platform_data {
