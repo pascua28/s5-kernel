@@ -1823,8 +1823,6 @@ static int msm8974_snd_startup(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-//liuyan 2013-3-13 change no_mic form 30 to 100,hs_max from 2400 to 2000
-//liuyan 2013-7-22 change button0 threshold form -50 to -70
 void *def_taiko_mbhc_cal(void)
 {
 	void *taiko_cal;
@@ -1874,27 +1872,15 @@ void *def_taiko_mbhc_cal(void)
 	btn_low = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg, MBHC_BTN_DET_V_BTN_LOW);
 	btn_high = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg,
 					       MBHC_BTN_DET_V_BTN_HIGH);
-#ifdef CONFIG_OPPO_DEVICE_FIND7
+#ifdef CONFIG_VENDOR_EDIT
 	btn_low[0] = -70;
-	btn_high[0] = 40;
-	btn_low[1] = 41;
-	btn_high[1] = 61;
-	btn_low[2] = 62;
-	btn_high[2] = 104;
-	btn_low[3] = 105;
-	btn_high[3] = 148;
-	btn_low[4] = 149;
-	btn_high[4] = 189;
-	btn_low[5] = 190;
-	btn_high[5] = 228;
-	btn_low[6] = 229;
-	btn_high[6] = 269;
-	btn_low[7] = 270;
-	btn_high[7] = 500;
+	btn_high[0] = 50;
+	btn_low[1] = 51;
 #else
 	btn_low[0] = -50;
 	btn_high[0] = 20;
 	btn_low[1] = 21;
+#endif
 	btn_high[1] = 61;
 	btn_low[2] = 62;
 	btn_high[2] = 104;
@@ -1905,8 +1891,11 @@ void *def_taiko_mbhc_cal(void)
 	btn_low[5] = 190;
 	btn_high[5] = 228;
 	btn_low[6] = 229;
-	btn_high[6] = 269;
-	btn_low[7] = 270;
+	btn_high[6] = 274;
+	btn_low[7] = 275;
+#ifdef CONFIG_VENDOR_EDIT
+	btn_high[7] = 800;
+#else
 	btn_high[7] = 500;
 #endif
 	n_ready = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg, MBHC_BTN_DET_N_READY);
