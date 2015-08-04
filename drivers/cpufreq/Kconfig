@@ -179,6 +179,12 @@ config CPU_FREQ_DEFAULT_GOV_IMPULSE
 	help
 	  Use the CPUFreq governor 'impulse' as default.
 
+config CPU_FREQ_DEFAULT_GOV_SMARTMAX_EPS
+        bool "smartmax_eps"
+        select CPU_FREQ_GOV_SMARTMAX_EPS
+        help
+          Use the CPUFreq governor 'smartmax eps' as default
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -337,7 +343,13 @@ config CPU_FREQ_GOV_IMPULSE
 	  designed for optimized balance between power and performance.
 
 	  If in doubt, say N.
-            
+
+config CPU_FREQ_GOV_SMARTMAX_EPS
+        tristate "'smartmax EPS' cpufreq policy governor"
+        select CPU_FREQ_TABLE
+        help
+          'smartmax EPS' is the extreme powersaving version of smartmax
+
 menu "x86 CPU frequency scaling drivers"
 depends on X86
 source "drivers/cpufreq/Kconfig.x86"
