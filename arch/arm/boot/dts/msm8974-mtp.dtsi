@@ -18,6 +18,8 @@
 /include/ "dsi-panel-jdi-1440p-video.dtsi"
 /include/ "dsi-panel-jdi-1080p-cmd.dtsi"
 /include/ "dsi-panel-sharp-1080p-cmd.dtsi"
+/include/ "dsi-panel-rsp-1440p-video.dtsi"
+/include/ "dsi-panel-rsp-1440p-cmd.dtsi"
 / {
 	aliases {
 		serial0 = &blsp1_uart1;

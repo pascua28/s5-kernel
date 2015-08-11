@@ -19,8 +19,8 @@
 	dsi_truly_1080_vid: qcom,mdss_dsi_truly_1080p_video {
 		compatible = "qcom,mdss-dsi-panel2";
 		status = "ok";
-		qcom,mdss-dsi-panel-name = "truly 1080p video mode dsi panel";
-		qcom,mdss-dsi-panel-manufacture = "truly";
+		qcom,mdss-dsi-panel-name = "LG 1080p video mode dsi panel";
+		qcom,mdss-dsi-panel-manufacture = "LG";
 		qcom,mdss-dsi-panel-version = "R63315";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
