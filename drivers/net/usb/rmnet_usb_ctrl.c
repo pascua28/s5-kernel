@@ -1127,6 +1127,11 @@ int rmnet_usb_ctrl_init(int no_rmnet_devs, int no_rmnet_insts_per_dev)
 	num_devs = no_rmnet_devs;
 	insts_per_dev = no_rmnet_insts_per_dev;
 
+	if (no_rmnet_devs >= MAX_RMNET_DEVS) {
+		pr_err("Invalid device number.\n");
+		return -EINVAL;
+	}
+
 	ctrl_devs = kzalloc(num_devs * sizeof(*ctrl_devs), GFP_KERNEL);
 	if (!ctrl_devs)
 		return -ENOMEM;
