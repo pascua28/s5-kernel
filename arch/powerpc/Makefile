@@ -241,7 +241,8 @@ TOUT	:= .tmp_gas_check
 # gcc-3.4 and binutils-2.14 are a fatal combination.
 
 checkbin:
-	@if test "$(cc-version)" = "0304" ; then \
+	@if test "$(cc-name)" != "clang" \
+	    && test "$(cc-version)" = "0304" ; then \
 		if ! /bin/echo mftb 5 | $(AS) -v -mppc -many -o $(TOUT) >/dev/null 2>&1 ; then \
 			echo -n '*** ${VERSION}.${PATCHLEVEL} kernels no longer build '; \
 			echo 'correctly with gcc-3.4 and your version of binutils.'; \
@@ -249,7 +250,8 @@ checkbin:
 			false; \
 		fi ; \
 	fi
-	@if test "$(cc-fullversion)" = "040200" \
+	@if test "$(cc-name)" != "clang" \
+	    && test "$(cc-fullversion)" = "040200" \
 	    && test "x${CONFIG_MODULES}${CONFIG_PPC64}" = "xyy" ; then \
 		echo -n '*** GCC-4.2.0 cannot compile the 64-bit powerpc ' ; \
 		echo 'kernel with modules enabled.' ; \
