@@ -306,6 +306,7 @@ zinstall uinstall install: vmlinux
 
 dtbs: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts/find7 MACHINE=$(MACHINE) dtbs
+	$(Q)$(MAKE) $(build)=$(boot)/dts/n3 MACHINE=$(MACHINE) dtbs
 
 zImage-dtb: vmlinux scripts dtbs
 	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@

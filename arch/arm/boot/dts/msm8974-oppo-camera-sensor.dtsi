@@ -54,7 +54,7 @@
 		qcom,cci-master = <0>;
 	};
 
-	eeprom1: qcom,eeprom@20 {
+	eeprom0: qcom,eeprom@20 {
 		cell-index = <0>;
 		reg = <0x20 0x0>;
 		qcom,eeprom-name = "sony_imx214";
@@ -147,11 +147,11 @@
 		qcom,slave-id = <0x20 0x0016 0x214>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
-		qcom,actuator-src = <&actuator1>;
+		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "imx214";
-		qcom,eeprom-src = <&eeprom1>;
+		qcom,eeprom-src = <&eeprom0>;
 		cam_vdig-supply = <&pm8941_l3>;
 		cam_vana-supply = <&pm8941_l17>;
 		cam_vio-supply = <&pm8941_lvs3>;

@@ -471,3 +471,7 @@ config SND_SOC_ES325_I2C
 tristate
 config  SND_SOC_ES325_I2S
 tristate
+
+#xiaojun.lv@PhoneDpt.AudioDrv, 2014/06/13, add for TI smartPA TAS2552
+config SND_SOC_TAS2552
+	tristate "TAS2552"

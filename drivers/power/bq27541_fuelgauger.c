@@ -37,11 +37,34 @@
 #ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2013-09-22 liaofuchun add for bq27541 encryption*/
 #include <linux/random.h>
-
+#include <linux/of_gpio.h> //sjc0623 add
 #include <linux/rtc.h>
 
 extern char *BQ27541_HMACSHA1_authenticate(char *Message,char *Key,char *result);
 #endif //CONFIG_VENDOR_EDIT
+
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* OPPO 2014-06-23 sjc Add begin for 14021 */
+static int mcu_en_gpio = 0;
+void mcu_en_gpio_set(int value)
+{
+	if (value) {
+		if (gpio_is_valid(mcu_en_gpio))
+			gpio_set_value(mcu_en_gpio, 0);///1);
+	} else {
+		if (gpio_is_valid(mcu_en_gpio)) {
+			gpio_set_value(mcu_en_gpio, 1);
+			usleep_range(10000, 10000);
+			gpio_set_value(mcu_en_gpio, 0);
+		}
+	}
+}
+#else
+void mcu_en_gpio_set(int value)
+{
+	return;
+}
+#endif //CONFIG_OPPO_MSM_14021
 
 /* OPPO 2013-12-20 liaofuchun add for fastchg firmware update */
 #ifdef CONFIG_PIC1503_FASTCG
@@ -710,8 +733,10 @@ static struct qpnp_battery_gauge bq27541_batt_gauge = {
 /* OPPO 2013-09-30 wangjc Add end */
 };
 
+#ifdef CONFIG_VENDOR_EDIT
 static bool bq27541_authenticate(struct i2c_client *client);
 static int bq27541_batt_type_detect(struct i2c_client *client);
+#endif
 
 static void bq27541_hw_config(struct work_struct *work)
 {
@@ -952,7 +977,7 @@ static struct platform_device this_device = {
 #define KEY_LEN			16
 
 /* OPPO 2014-02-25 sjc Modify begin for FIND7OP not use authenticate */
-#ifdef CONFIG_OPPO_DEVICE_FIND7OP
+#if defined (CONFIG_OPPO_DEVICE_FIND7OP) || defined (CONFIG_OPPO_DEVICE_N3)
 static bool bq27541_authenticate(struct i2c_client *client)
 {
 	return true;
@@ -1009,17 +1034,49 @@ static bool bq27541_authenticate(struct i2c_client *client)
 	}
 	return false;
 }
-#endif //CONFIG_OPPO_DEVICE_FIND7OP
 /* OPPO 2014-02-25 sjc Modify end */
-#endif //CONFIG_VENDOR_EDIT
+#endif
 
-#ifdef CONFIG_VENDOR_EDIT
 //Fuchun.Liao@EXP.Driver,2014/01/10 add for check battery type
 #define BATTERY_2700MA		0
 #define BATTERY_3000MA		1
+#define BATTERY_N3_ATL		2
+#define BATTERY_N3_SONY	3
 #define TYPE_INFO_LEN		8
 
-#ifndef CONFIG_OPPO_DEVICE_FIND7OP
+#if defined (CONFIG_OPPO_DEVICE_FIND7OP)
+static int bq27541_batt_type_detect(struct i2c_client *client)
+{
+	return BATTERY_3000MA;
+}
+#elif defined(CONFIG_OPPO_DEVICE_N3)
+static int bq27541_batt_type_detect(struct i2c_client *client)
+{
+	char blockA_cmd_buf[1] = {0x01};
+	char rc = 0;
+	char recv_buf[TYPE_INFO_LEN] = {0x0};
+	int i = 0;
+	
+	rc = i2c_smbus_write_i2c_block_data(client,DATAFLASHBLOCK,1,&blockA_cmd_buf[0]);
+	if ( rc < 0 ) {
+		pr_info("%s i2c write error\n",__func__);
+		return 0;
+	}
+	msleep(30);	//it is needed
+	i2c_smbus_read_i2c_block_data(client, AUTHENDATA, TYPE_INFO_LEN, &recv_buf[0]);
+	if ((recv_buf[0] == 0x01) && (recv_buf[1] == 0x09) && (recv_buf[2] == 0x08) && (recv_buf[3] == 0x06))
+		rc = BATTERY_N3_ATL;
+	else if ((recv_buf[0] == 0x19) && (recv_buf[1] == 0x89) && (recv_buf[2] == 0x04) && (recv_buf[3] == 0x02))
+		rc = BATTERY_N3_SONY;
+	else {
+		for(i = 0; i < TYPE_INFO_LEN; i++)
+			pr_info("%s error,recv_buf[%d]:0x%x\n",__func__,i,recv_buf[i]);
+		rc =  BATTERY_N3_SONY;
+	}
+	pr_info("%s battery_type:%d\n",__func__,rc);
+	return rc;
+}
+#else
 /* jingchun.wang@Onlinerd.Driver, 2014/03/10  Modify for 14001 */
 static int bq27541_batt_type_detect(struct i2c_client *client)
 {
@@ -1047,13 +1104,8 @@ static int bq27541_batt_type_detect(struct i2c_client *client)
 	pr_info("%s battery_type:%d\n",__func__,rc);
 	return rc;
 }
-#else /*CONFIG_OPPO_DEVICE_FIND7OP*/
-static int bq27541_batt_type_detect(struct i2c_client *client)
-{
-	return BATTERY_3000MA;
-}
-#endif /*CONFIG_OPPO_DEVICE_FIND7OP*/
 #endif
+#endif //CONFIG_VENDOR_EDIT
 
 /* OPPO 2013-12-12 liaofuchun add for fastchg */
 #ifdef CONFIG_PIC1503_FASTCG
@@ -1277,7 +1329,14 @@ static void fastcg_work_func(struct work_struct *work)
 		} else if(i == 1){
 			gpio_set_value(1, ret_info & 0x1);
 		} else {
-			gpio_set_value(1,bq27541_di->battery_type);
+#if defined (CONFIG_OPPO_DEVICE_FIND7OP) || defined (CONFIG_OPPO_DEVICE_N3)
+			if (bq27541_di->battery_type == BATTERY_N3_SONY)
+				gpio_set_value(1, 0);///in N3 for 4.25V low_temp_full
+			else
+				gpio_set_value(1, 1);
+#else
+			gpio_set_value(1,bq27541_di->battery_type);///0 -> 4A or 1 -> 4.5A
+#endif
 		}
 		
 		gpio_set_value(0, 0);
@@ -1391,6 +1450,27 @@ static int bq27541_battery_probe(struct i2c_client *client,
 	struct bq27541_access_methods *bus;
 	int num;
 	int retval = 0;
+
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* OPPO 2014-06-23 sjc Add begin for 14021 */
+	struct device_node *dev_node = client->dev.of_node;
+	int ret;
+
+	if (dev_node) {
+		mcu_en_gpio = of_get_named_gpio(dev_node, "microchip,mcu-en-gpio", 0);
+	} else {
+		mcu_en_gpio = 0;
+		printk(KERN_ERR "%s: mcu_en_gpio failed\n", __func__);
+	}
+	if (gpio_is_valid(mcu_en_gpio)) {
+		ret = gpio_request(mcu_en_gpio, "mcu_en_gpio");
+		if (ret) {
+			printk(KERN_ERR "%s: gpio_request failed for %d ret=%d\n", __func__, mcu_en_gpio, ret);
+		} else {
+			gpio_set_value(mcu_en_gpio, 0);
+		}
+	}
+#endif //CONFIG_OPPO_MSM_14021
 
 	pr_info("%s\n", __func__);
 
@@ -1515,6 +1595,12 @@ batt_failed_1:
 static int bq27541_battery_remove(struct i2c_client *client)
 {
 	struct bq27541_device_info *di = i2c_get_clientdata(client);
+	
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* OPPO 2014-06-23 sjc Add begin for 14021 */	
+	if (gpio_is_valid(mcu_en_gpio))//sjc0623 add
+		gpio_free(mcu_en_gpio);
+#endif
 
 	qpnp_battery_gauge_unregister(&bq27541_batt_gauge);
 	bq27541_cntl_cmd(di, BQ27541_SUBCMD_DISABLE_DLOG);
@@ -1574,6 +1660,116 @@ static int bq27541_battery_resume(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* OPPO 2014-11-18 sjc Add begin for 14021 */
+#define CONTROL_CMD				0x00
+#define CONTROL_STATUS				0x00
+#define SEAL_POLLING_RETRY_LIMIT	100
+#define BQ27541_UNSEAL_KEY			11151986
+#define RESET_SUBCMD				0x0041
+
+static void control_cmd_write(struct bq27541_device_info *di, u16 cmd)
+{
+	int value;
+	
+	//dev_dbg(di->dev, "%s: %04x\n", __FUNCTION__, cmd);
+	bq27541_cntl_cmd(di, 0x0041);
+	msleep(10);
+	bq27541_read(CONTROL_STATUS, &value, 0, di);
+	printk(KERN_ERR "bq27541 CONTROL_STATUS: 0x%x\n", value);
+}
+/*
+static int control_cmd_read(struct bq27541_device_info *di, u16 cmd)
+{
+	int ret = 0;
+	int value = 0;
+	
+	dev_dbg(di->dev, "%s: %04x\n", __FUNCTION__, cmd);
+
+	bq27541_write(CONTROL_CMD, cmd, false, di);
+
+	msleep(10);
+
+	ret = bq27541_read(CONTROL_CMD, &value, false, di);
+	if (ret) {
+		printk(KERN_ERR "control_cmd_read() fail !\n");
+		return ret;
+	}
+
+	return value;
+	
+}
+*/
+static int sealed(struct bq27541_device_info *di)
+{
+	//return control_cmd_read(di, CONTROL_STATUS) & (1 << 13);
+	int value = 0;
+	
+	bq27541_cntl_cmd(di,CONTROL_STATUS);
+	msleep(10);
+	bq27541_read(CONTROL_STATUS, &value, 0, di);
+	pr_err("%s REG_CNTL: 0x%x\n", __func__, value);
+
+	return value & BIT(14);
+}
+
+static int unseal(struct bq27541_device_info *di, u32 key)
+{
+	int i = 0;
+
+	if (!sealed(di))
+		goto out;
+
+	//bq27541_write(CONTROL_CMD, key & 0xFFFF, false, di);
+	bq27541_cntl_cmd(di, 0x1115);
+	msleep(10);
+	//bq27541_write(CONTROL_CMD, (key & 0xFFFF0000) >> 16, false, di);
+	bq27541_cntl_cmd(di, 0x1986);
+	msleep(10);
+	bq27541_cntl_cmd(di, 0xffff);
+	msleep(10);
+	bq27541_cntl_cmd(di, 0xffff);
+	msleep(10);
+
+	while (i < SEAL_POLLING_RETRY_LIMIT) {
+		i++;
+		if (!sealed(di))
+			break;
+		msleep(10);
+	}
+
+out:
+	printk(KERN_ERR "bq27541 %s: i=%d\n", __FUNCTION__, i);
+
+	if ( i == SEAL_POLLING_RETRY_LIMIT) {
+		printk(KERN_ERR "bq27541 %s failed\n", __FUNCTION__);
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+static void bq27541_reset(struct i2c_client *client)
+{
+	struct bq27541_device_info *di = i2c_get_clientdata(client);
+
+	if (bq27541_get_battery_mvolts() <= 3250 * 1000 
+			&& bq27541_get_battery_mvolts() > 2500 * 1000
+			&& bq27541_get_battery_soc() == 0 
+			&& bq27541_get_battery_temperature() > 150) {
+		if (!unseal(di, BQ27541_UNSEAL_KEY)) {
+			printk(KERN_ERR "bq27541 unseal fail !\n");
+			return;
+		}
+		printk(KERN_ERR "bq27541 unseal OK !\n");
+		
+		control_cmd_write(di, RESET_SUBCMD);
+	}
+	return;
+}
+#else
+static void bq27541_reset(struct i2c_client *client) {}
+#endif //CONFIG_OPPO_MSM_14021
 
 static const struct of_device_id bq27541_match[] = {
 	{ .compatible = "ti,bq27541-battery" },
@@ -1594,6 +1790,7 @@ static struct i2c_driver bq27541_battery_driver = {
 	},
 	.probe		= bq27541_battery_probe,
 	.remove		= bq27541_battery_remove,
+	.shutdown	= bq27541_reset,
 	.suspend	= bq27541_battery_suspend ,
 	.resume		= bq27541_battery_resume,
 	.id_table	= bq27541_id,

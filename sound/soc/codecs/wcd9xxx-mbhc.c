@@ -129,7 +129,12 @@
 #define WCD9XXX_V_CS_NO_MIC 5
 #define WCD9XXX_MB_MEAS_DELTA_MAX_MV 80
 #ifdef CONFIG_VENDOR_EDIT
+/* yan.yuan@PhoneDpt.AudioDrv, 2014/09/12, modify for 14021 headset */
+#ifdef CONFIG_OPPO_DEVICE_N3
+#define WCD9XXX_CS_MEAS_DELTA_MAX_MV  500
+#else
 #define WCD9XXX_CS_MEAS_DELTA_MAX_MV 90
+#endif
 #else
 #define WCD9XXX_CS_MEAS_DELTA_MAX_MV 12
 #endif
@@ -137,8 +142,20 @@
 #ifdef CONFIG_VENDOR_EDIT
 #define WCD9XXX_CS_MAX_MV 120
 #define WCD9xxx_CS_THRESHED 10
+
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* yan.yuan@PhoneDpt.AudioDrv, 2014/09/12, modify for 14021 headset */
+#define WCD9XXX_CS_IPHONE_HIG_THRD 765
+#else
 #define WCD9XXX_CS_IPHONE_HIG_THRD 665
-#define WCD9XXX_CS_IPHONE_LOW_THRD 590
+#endif
+
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* yan.yuan@PhoneDpt.AudioDrv, 2014/09/12, modify for 14021 headset */
+#define WCD9XXX_CS_IPHONE_LOW_THRD 605
+#else
+#define WCD9XXX_CS_IPHONE_LOW_THRD 645
+#endif
 #endif
 
 static int impedance_detect_en;
@@ -1541,7 +1558,9 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 	int dce_value1 = 0;
 	int dce_value2 = 0;
 
+#ifndef CONFIG_OPPO_DEVICE_N3
 	mbhc->mbhc_cfg->set_gnd_mic_gpio(mbhc->codec, 1);
+#endif
 	msleep(50);
 
 	WCD9XXX_BCL_ASSERT_LOCKED(mbhc->resmgr);
@@ -1567,15 +1586,18 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 		/* iphone chinese headset */
 		if (dce_value1 >= WCD9XXX_CS_IPHONE_LOW_THRD &&
 				dce_value1 <= WCD9XXX_CS_IPHONE_HIG_THRD) {
+#ifndef CONFIG_OPPO_DEVICE_N3
 			mbhc->mbhc_cfg->set_gnd_mic_gpio(mbhc->codec, 0);
+#endif
 			type = PLUG_TYPE_HEADSET;
 			/* Chinese Headset */
 		} else {
 			type = PLUG_TYPE_HIGH_HPH;
 		}
 	} else if (abs(dce_value1) <= WCD9xxx_CS_THRESHED) {
+#ifndef CONFIG_OPPO_DEVICE_N3
 		mbhc->mbhc_cfg->set_gnd_mic_gpio(mbhc->codec, 0);
-
+#endif
 		WCD9XXX_BCL_ASSERT_LOCKED(mbhc->resmgr);
 		BUG_ON(NUM_DCE_PLUG_INS_DETECT < 4);
 		wcd9xxx_mbhc_ctrl_clk_bandgap(mbhc, true);
@@ -1606,7 +1628,9 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 				type = PLUG_TYPE_HEADSET;
 				/* Chinese Headset */
 			} else {
+#ifndef CONFIG_OPPO_DEVICE_N3
 				mbhc->mbhc_cfg->set_gnd_mic_gpio(mbhc->codec, 1);
+#endif
 				type = PLUG_TYPE_HEADSET;
 				/* American Headset */
 			}

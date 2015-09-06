@@ -26,6 +26,13 @@
 #include "sd.h"
 #include "sd_ops.h"
 
+#ifdef CONFIG_OPPO_DEVICE_N3
+#include <linux/gpio.h>
+#include <linux/regulator/consumer.h>
+extern int TF_CARD_STATUS;
+#endif
+
+
 #define UHS_SDR104_MIN_DTR	(100 * 1000 * 1000)
 #define UHS_DDR50_MIN_DTR	(50 * 1000 * 1000)
 #define UHS_SDR50_MIN_DTR	(50 * 1000 * 1000)
@@ -1148,6 +1155,19 @@ static int mmc_sd_alive(struct mmc_host *host)
 	return mmc_send_status(host->card, NULL);
 }
 
+//Zhilong.Zhang@OnlineRd.Driver, 2014/09/19, Add for detect tf card
+#ifdef CONFIG_OPPO_DEVICE_N3
+void removed_tf_card(struct mmc_host *host)
+{
+	mmc_sd_remove(host);
+
+	mmc_claim_host(host);
+	mmc_detach_bus(host);
+	mmc_power_off(host);
+	mmc_release_host(host);
+}
+#endif
+
 /*
  * Card detection callback from host.
  */
@@ -1157,9 +1177,31 @@ static void mmc_sd_detect(struct mmc_host *host)
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
         int retries = 5;
 #endif
+#ifdef CONFIG_OPPO_DEVICE_N3
+	int rc;
+	struct regulator *vdd_regulator_ldo13=NULL;
+#endif
 
 	BUG_ON(!host);
 	BUG_ON(!host->card);
+
+#ifdef CONFIG_OPPO_DEVICE_N3
+	if (TF_CARD_STATUS == 0){
+		printk("removed_tf_card\n");
+		gpio_set_value(75, 0);
+		
+		vdd_regulator_ldo13 = regulator_get(NULL, "8941_l13");
+		if (IS_ERR(vdd_regulator_ldo13)) {
+			rc = PTR_ERR(vdd_regulator_ldo13);
+			printk("regulator_get ldo13 failed rc=%d\n", rc);
+			//return;
+		}
+		rc = regulator_set_voltage(vdd_regulator_ldo13, 0, 0);
+		if (rc) {
+			printk("regulator_set_voltage ldo13 failed rc=%d\n", rc);
+		}
+	}
+#endif
 
 	mmc_rpm_hold(host, &host->card->dev);
 	mmc_claim_host(host);
@@ -1346,6 +1388,14 @@ int mmc_attach_sd(struct mmc_host *host)
 		mmc_host_clk_release(host);
 	}
 
+#ifdef CONFIG_VENDOR_EDIT
+    //Lycan.Wang@Prd.BasicDrv, 2014-07-10 Add for retry 5 times when new sdcard init error
+	if (!host->detect_change_retry) {
+        pr_err("%s have init error 5 times\n", __func__);
+        return -ETIMEDOUT;
+    }
+#endif /* VENDOR_EDIT */
+
 	err = mmc_send_app_op_cond(host, 0, &ocr);
 	if (err)
 		return err;
@@ -1398,7 +1448,16 @@ int mmc_attach_sd(struct mmc_host *host)
 	 * Detect and init the card.
 	 */
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
+#ifndef CONFIG_VENDOR_EDIT
+    //Lycan.Wang@Prd.BasicDrv, 2014-07-10 Modify for init retry only once when have init error before
 	retries = 5;
+#else /* VENDOR_EDIT */
+    if (host->detect_change_retry < 5) 
+        retries = 1;
+    else
+        retries = 5;
+#endif /* VENDOR_EDIT */
+
 	/*
 	 * Some bad cards may take a long time to init, give preference to
 	 * suspend in those cases.
@@ -1451,6 +1510,11 @@ err:
 		pr_err("%s: error %d whilst initialising SD card: rescan: %d\n",
 		       mmc_hostname(host), err, host->rescan_disable);
 
+#ifdef CONFIG_VENDOR_EDIT
+    //Lycan.Wang@Prd.BasicDrv, 2014-07-10 Add for retry 5 times when new sdcard init error
+    host->detect_change_retry--;
+    pr_err("detect_change_retry = %d !!!\n", host->detect_change_retry);
+#endif /* VENDOR_EDIT */
 	return err;
 }
 

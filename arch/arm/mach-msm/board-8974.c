@@ -21,6 +21,9 @@
 #include <linux/of_platform.h>
 #include <linux/memory.h>
 #include <linux/regulator/machine.h>
+#ifdef CONFIG_OPPO_DEVICE_N3
+#include <linux/regulator/consumer.h> //ranfei
+#endif
 #include <linux/regulator/krait-regulator.h>
 #include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
@@ -67,6 +70,11 @@ int get_pcb_version(void)
 	return current_pcb_version_num;
 }
 
+int get_pcb_version_find7s(void)
+{
+	return get_pcb_version() >= HW_VERSION__20 && get_pcb_version() < HW_VERSION__30;
+}
+
 int get_rf_version(void)
 {
 	return current_rf_version_num;
@@ -91,7 +99,27 @@ int __init board_pcb_verison_init(void)
 		current_pcb_version_num = HW_VERSION__22;
 	else if (strstr(boot_command_line,"oppo.pcb_version=23"))
 		current_pcb_version_num = HW_VERSION__23;
-	//printk("yuyi, pcb_version num %d \n",current_pcb_version_num);
+/* wenxian.zhen@Onlinerd.Driver, 2014/06/18  Add begin for N3  PCB	version */
+	else if (strstr(boot_command_line,"oppo.pcb_version=30"))
+		current_pcb_version_num = HW_VERSION__30;
+	else if (strstr(boot_command_line,"oppo.pcb_version=31"))
+		current_pcb_version_num = HW_VERSION__31;
+	else if (strstr(boot_command_line,"oppo.pcb_version=32"))
+		current_pcb_version_num = HW_VERSION__32;
+	else if (strstr(boot_command_line,"oppo.pcb_version=33"))
+		current_pcb_version_num = HW_VERSION__33;
+	else if (strstr(boot_command_line,"oppo.pcb_version=34"))
+		current_pcb_version_num = HW_VERSION__34;
+	else if (strstr(boot_command_line,"oppo.pcb_version=40"))
+		current_pcb_version_num = HW_VERSION__40;
+	else if (strstr(boot_command_line,"oppo.pcb_version=41"))
+		current_pcb_version_num = HW_VERSION__41;
+	else if (strstr(boot_command_line,"oppo.pcb_version=42"))
+		current_pcb_version_num = HW_VERSION__42;
+	else if (strstr(boot_command_line,"oppo.pcb_version=43"))
+		current_pcb_version_num = HW_VERSION__43;
+	else if (strstr(boot_command_line,"oppo.pcb_version=44"))
+		current_pcb_version_num = HW_VERSION__44;
 	return 0;
 }
 
@@ -127,8 +155,38 @@ int __init board_rf_version_init(void)
 		current_rf_version_num = RF_VERSION__76;
 	else if (strstr(boot_command_line,"oppo.rf_version=77"))
 		current_rf_version_num = RF_VERSION__77;
-
-	//printk("yuyi, rf_version num %d \n",current_pcb_version_num);
+	else if (strstr(boot_command_line,"oppo.rf_version=87"))
+		current_rf_version_num = RF_VERSION__87;
+	else if (strstr(boot_command_line,"oppo.rf_version=88"))
+		current_rf_version_num = RF_VERSION__88;
+	else if (strstr(boot_command_line,"oppo.rf_version=89"))
+		current_rf_version_num = RF_VERSION__89;
+	else if (strstr(boot_command_line,"oppo.rf_version=98"))
+		current_rf_version_num = RF_VERSION__98;
+	else if (strstr(boot_command_line,"oppo.rf_version=99"))
+		current_rf_version_num = RF_VERSION__99;	
+/* wenxian.zhen@Onlinerd.Driver, 2014/06/18  Add begin for N3  PCB RF version */	
+	else if (strstr(boot_command_line,"oppo.rf_version=90"))
+		current_rf_version_num = RF_VERSION__90_CHINA_MOBILE;
+	else if (strstr(boot_command_line,"oppo.rf_version=91"))
+		current_rf_version_num = RF_VERSION__91_UNICOM;
+	else if (strstr(boot_command_line,"oppo.rf_version=92"))
+		current_rf_version_num = RF_VERSION__92_CHINA_RESERVED1;
+	else if (strstr(boot_command_line,"oppo.rf_version=93"))
+		current_rf_version_num = RF_VERSION__93_CHINA_RESERVED2;
+	else if (strstr(boot_command_line,"oppo.rf_version=94"))
+		current_rf_version_num = RF_VERSION__94_CHINA_RESERVED3;
+	else if (strstr(boot_command_line,"oppo.rf_version=95"))
+		current_rf_version_num = RF_VERSION__95_EUROPE;
+	else if (strstr(boot_command_line,"oppo.rf_version=96"))
+		current_rf_version_num = RF_VERSION__96_AMERICA;
+	else if (strstr(boot_command_line,"oppo.rf_version=97"))
+		current_rf_version_num = RF_VERSION__97_TAIWAN;
+	else if (strstr(boot_command_line,"oppo.rf_version=98"))
+		current_rf_version_num = RF_VERSION__98_INDONESIA;
+	else if (strstr(boot_command_line,"oppo.rf_version=99"))
+		current_rf_version_num = RF_VERSION__99_OVERSEA_RESERVED1;	
+/* wenxian.zhen@Onlinerd.Driver, 2014/06/18  Add end for N3  PCB RF version */
 	
 	return 0;
 }
@@ -292,7 +350,7 @@ static void __init oppo_config_display(void)
 		return;
 	}
 
-	if (get_pcb_version() >= HW_VERSION__20) {
+	if (get_pcb_version_find7s()) {
 		rc = gpio_request(DISP_LCD_UNK_GPIO, "lcd_unk");
 		if (rc) {
 			pr_err("%s: request DISP_UNK GPIO failed, rc: %d",
@@ -309,6 +367,50 @@ static void __init oppo_config_display(void)
 		}
 	}
 }
+
+#ifdef CONFIG_OPPO_DEVICE_N3
+static int __init oppo_config_n3(void)
+{
+	int rc;
+	struct regulator *vdd_regulator_ldo9=0;
+	struct regulator *vdd_regulator_lvs2=0;
+
+	/*zhangzhilong add for SIM1*/
+	printk( "zwx---power on l9");
+	if(!vdd_regulator_ldo9) {
+		vdd_regulator_ldo9 = regulator_get(NULL, "8941_l9");
+		if (IS_ERR(vdd_regulator_ldo9)) {
+			rc = PTR_ERR(vdd_regulator_ldo9);
+			printk( "zwx---Regulator get failed vcc_ana rc=%d\n", rc);
+			return rc;
+		}
+
+		rc = regulator_set_voltage(vdd_regulator_ldo9, 1800000, 1800000);
+		if (rc) {
+			printk(
+					"zwx---regulator set_vtg failed rc=%d\n", rc);
+		}
+	}
+
+	printk( "zwx---power on lvs2");
+	if(!vdd_regulator_lvs2) {
+		vdd_regulator_lvs2 = regulator_get(NULL, "8941_lvs2");
+		if (IS_ERR(vdd_regulator_lvs2)) {
+			rc = PTR_ERR(vdd_regulator_lvs2);
+			printk( "zwx---Regulator get failed vcc_ana rc=%d\n", rc);
+			return rc;
+		}
+
+		rc = regulator_set_voltage(vdd_regulator_lvs2, 1800000, 1800000);
+		if (rc) {
+			printk(
+					"zwx---regulator set_vtg failed rc=%d\n", rc);
+		}
+	}	
+	regulator_enable(vdd_regulator_lvs2);
+	return 0;
+}
+#endif
 #endif //CONFIG_VENDOR_EDIT
 
 static struct memtype_reserve msm8974_reserve_table[] __initdata = {
@@ -500,6 +602,9 @@ void __init msm8974_init(void)
 	msm8974_add_drivers();
 /*OPPO yuyi 2013-07-15 add begin for version */
 #ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_N3
+    oppo_config_n3();
+#endif
 	oppo_config_display();
 	board_pcb_verison_init();
 	board_rf_version_init();

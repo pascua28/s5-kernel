@@ -536,7 +536,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
     
     pr_debug("%s: enable = %d, panel index=%d\n", __func__, enable, ctrl_pdata->index);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
-    if (get_pcb_version() < HW_VERSION__20) { /* For Single DSI: Find7 */
+    if (!get_pcb_version_find7s()) { /* For Single DSI: Find7 ,liuyan add for N3*/
         if (enable) {
 			rc = mdss_dsi_request_gpios(ctrl_pdata);
 			if (rc) {
@@ -548,6 +548,9 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		  		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		  		gpio_direction_output(ctrl_pdata->disp_en_gpio,0);
 
+#ifdef CONFIG_OPPO_DEVICE_N3
+				gpio_direction_output(ctrl_pdata->disp_en_gpio76,0);
+#endif
 		  		mdelay(2);
 		  		//	wmb();	
 		  		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
@@ -555,6 +558,9 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		    		gpio_direction_output(ctrl_pdata->disp_en_gpio,1);
 		  		}
 		  		//	wmb();	
+#ifdef CONFIG_OPPO_DEVICE_N3
+				gpio_direction_output(ctrl_pdata->disp_en_gpio76,1);
+#endif
 		  		mdelay(2);
 		  		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		  		mdelay(10);
@@ -572,6 +578,9 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	    		gpio_direction_output(ctrl_pdata->disp_en_gpio,0);
 	    		gpio_free(ctrl_pdata->disp_en_gpio);
 	  		}
+#ifdef CONFIG_OPPO_DEVICE_N3
+			gpio_direction_output(ctrl_pdata->disp_en_gpio76,0);
+#endif
     	}
     } else {		 /* For Dual DSI: Find7S */
         if(ctrl_pdata->index==1){ /* For Find7S DSI 1 */
@@ -793,7 +802,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mipi  = &pdata->panel_info.mipi;
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
-
+#ifdef CONFIG_OPPO_DEVICE_N3
+	pr_debug("%s: gpio 76=%d\n", __func__,gpio_get_value(ctrl->disp_en_gpio76));
+#endif
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 

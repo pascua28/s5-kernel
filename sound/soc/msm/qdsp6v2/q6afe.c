@@ -1326,8 +1326,13 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	ret = afe_q6_interface_prepare();
 	if (IS_ERR_VALUE(ret))
 		return ret;
-
-	afe_send_cal(port_id);
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* xiaojun.lv@PhoneDpt.AudioDrv, 2014/08/13, modify for 14021 auto feedback */
+    if(port_id!=AFE_PORT_ID_SECONDARY_MI2S_TX)
+	    afe_send_cal(port_id);
+#else
+    afe_send_cal(port_id);
+#endif
 	afe_send_hw_delay(port_id, rate);
 
 	/* Start SW MAD module */

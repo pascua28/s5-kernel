@@ -74,14 +74,7 @@ static void *emergency_dload_mode_addr;
 
 /* Download mode master kill-switch */
 static int dload_set(const char *val, struct kernel_param *kp);
-
-#ifndef CONFIG_VENDOR_EDIT  
-//He Wei@OnLineRD,  2013/08/02, modify for reboot after crash
 static int download_mode = 1;
-#else      /*CONFIG_VENDOR_EDIT*/	
-static int download_mode = 0;
-#endif   /*CONFIG_VENDOR_EDIT*/
-
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
@@ -264,6 +257,7 @@ static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 #define FACTORY_MODE	0x77665504
 #define WLAN_MODE		0x77665505
 #define RF_MODE			0x77665506
+#define MOS_MODE		0x77665507
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 /* OPPO 2013.07.09 hewei modify end for restart mode*/
@@ -333,6 +327,8 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(RF_MODE, restart_reason);
 		}   else if (!strncmp(cmd, "wlan", 4)) {
 			__raw_writel(WLAN_MODE, restart_reason);
+		}   else if (!strncmp(cmd, "mos", 3)) {
+			__raw_writel(MOS_MODE, restart_reason);
 		}   else if (!strncmp(cmd, "ftm", 3)) {
 			__raw_writel(FACTORY_MODE, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {

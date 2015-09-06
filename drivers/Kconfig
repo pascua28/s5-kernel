@@ -158,4 +158,8 @@ source "drivers/backoff/Kconfig"
 
 source "drivers/cpuquiet/Kconfig"
 
+#OPPO 2014-05-23 Xinhua.Song added begin for camera motor
+source "drivers/camera-motor/Kconfig"
+#OPPO 2014-05-23 Xinhua.Song added end for camera motor
+
 endmenu

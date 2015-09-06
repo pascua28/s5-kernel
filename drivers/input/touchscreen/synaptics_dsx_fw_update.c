@@ -27,11 +27,15 @@
 #include "synaptics_dsx.h"
 #include "synaptics_dsx_i2c.h"
 #include "synaptics_firmware_youngfast.h"
+#include "synaptics_firmware_tpk_gff.h"
 #ifdef CONFIG_OPPO_DEVICE_FIND7OP  //for 14001's wintek tp
 #include "synaptics_firmware_tpk_jdi_14001.h"
 #include "synaptics_firmware_tpk_sharp_14001.h"
 #include "synaptics_firmware_tpk_truly_14001.h"
 #include "synaptics_firmware_wintek_jdi_14001.h"
+#elif defined CONFIG_OPPO_DEVICE_N3
+#include "synaptics_firmware_tpk_n3.h"
+#include "synaptics_firmware_wintek_n3.h"
 #else
 #include "synaptics_firmware_tpk.h"
 #include "synaptics_firmware_tpk_find7s.h"
@@ -1445,10 +1449,12 @@ int synaptics_rmi4_get_firmware_version(int vendor, int lcd_type) {
 	if (vendor == TP_VENDOR_YOUNGFAST) {
 		return FIRMWARE_YOUNGFAST_VERSION;
 	} else if (vendor == TP_VENDOR_TPK) {
-#ifndef CONFIG_OPPO_DEVICE_FIND7OP
-		if (get_pcb_version() >= HW_VERSION__20)
+#if defined(CONFIG_OPPO_DEVICE_FIND7) || defined(CONFIG_OPPO_DEVICE_N3)
+#if defined(CONFIG_OPPO_DEVICE_FIND7)
+		if (get_pcb_version_find7s())
 			return FIRMWARE_TPK_FIND7S_VERSION;
 		else
+#endif
 			return FIRMWARE_TPK_VERSION;
 	} else if (vendor == TP_VENDOR_WINTEK) {
 		return FIRMWARE_WINTEK_VERSION;
@@ -1563,10 +1569,12 @@ static unsigned char* fwu_rmi4_get_firmware_data(void) {
 	else if (vendor_id == TP_VENDOR_YOUNGFAST)
 		firmwaredata = (unsigned char*)Syna_Firmware_Data_youngfast;
 	else if (vendor_id == TP_VENDOR_TPK) {
-#ifndef CONFIG_OPPO_DEVICE_FIND7OP
-		if (get_pcb_version() >= HW_VERSION__20)
+#if defined(CONFIG_OPPO_DEVICE_FIND7) || defined(CONFIG_OPPO_DEVICE_N3)
+#if defined(CONFIG_OPPO_DEVICE_FIND7)
+		if (get_pcb_version_find7s())
 			firmwaredata = (unsigned char*)Syna_Firmware_Data_tpk_find7s;
 		else
+#endif
 			firmwaredata = (unsigned char*)Syna_Firmware_Data_tpk;
 	} else if (vendor_id == TP_VENDOR_WINTEK) {
 		firmwaredata = (unsigned char*)Syna_Firmware_Data_Wintek;
@@ -1581,7 +1589,8 @@ static unsigned char* fwu_rmi4_get_firmware_data(void) {
 		if (lcd_type_id == LCD_VENDOR_JDI)
 			firmwaredata = (unsigned char*)Syna_Firmware_Data_Wintek_jdi;
 #endif
-	}
+	} else if(vendor_id == TP_VENDOR_TPK_GFF)
+		firmwaredata = (unsigned char*)Syna_Firmware_Data_tpk_gff;	
 
 	return firmwaredata;
 }

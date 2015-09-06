@@ -149,3 +149,8 @@ obj-$(CONFIG_SENSORS)		+= sensors/
 obj-y += backoff/
 
 obj-$(CONFIG_CPUQUIET_FRAMEWORK)		+= cpuquiet/
+
+#OPPO 2014-05-23 Xinhua.Song added begin for camera motor 
+obj-$(CONFIG_CAMERA_MOTOR)  += camera-motor/
+#OPPO 2014-05-23 Xinhua.Song added end
+

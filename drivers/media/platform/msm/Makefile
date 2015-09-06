@@ -3,7 +3,7 @@ obj-$(CONFIG_MSM_WFD) += wfd/
 obj-$(CONFIG_DVB_MPQ) += dvb/
 
 ifeq ($(CONFIG_VENDOR_EDIT),y)
-obj-$(CONFIG_MSMB_CAMERA) += camera_v2_oppo/
+obj-$(CONFIG_MSMB_CAMERA) += camera_v2_oppo_n3/
 else
 obj-$(CONFIG_MSMB_CAMERA) += camera_v2/
 endif

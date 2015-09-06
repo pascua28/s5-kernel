@@ -320,6 +320,10 @@ struct mdss_dsi_ctrl_pdata {
 /* OPPO 2014-02-11 yxq add begin for Find7s */	
 	int index;
 /* OPPO 2014-02-11 yxq add end */
+#ifdef CONFIG_OPPO_DEVICE_N3
+/* liuyan@Onlinerd.driver, 2014/08/10  Add for 14021 lcd enable */
+	int disp_en_gpio76;	
+#endif /*CONFIG_VENDOR_EDIT*/
 #endif
 };
 

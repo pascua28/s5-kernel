@@ -111,7 +111,7 @@ static int lm3630_chip_init(struct lm3630_chip_data *pchip)
 #ifdef CONGIF_OPPO_CMCC_OPTR
     reg_val = 0x12; /* For 13077 CMCC */
 #else
-    if (get_pcb_version() >= 20) {
+    if (get_pcb_version_find7s()) {
         reg_val = 0x12; /* For 13097 low power version */
     } else {
         reg_val = 0x16; /* For 13077 pvt panel */
@@ -448,7 +448,7 @@ int lm3630_bank_a_update_status(u32 bl_level)
 		if(bl_level>20)
 			ret = regmap_write(pchip->regmap,
 				   REG_BRT_A, bl_level);
-		else if(get_pcb_version() < 20)
+		else if(!get_pcb_version_find7s())
 			ret = regmap_write(pchip->regmap,
 				   REG_BRT_A, 2+(bl_level-1)*7/18);
 		else

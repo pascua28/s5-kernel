@@ -6,7 +6,9 @@
 
 obj-$(CONFIG_OPPO_DEVICE_FIND7)		+= pn544.o
 obj-$(CONFIG_OPPO_DEVICE_FIND7OP)		+= pn544_op.o
-obj-$(CONFIG_OPPO_DEVICE_FIND7OP)		+= p61.o
+obj-$(CONFIG_OPPO_DEVICE_FIND7OP)		+= p61_op.o
+obj-$(CONFIG_OPPO_DEVICE_N3)		+= pn544_op.o
+obj-$(CONFIG_OPPO_DEVICE_N3)		+= p61_n3.o
 obj-$(CONFIG_OPPO_DEVICE_FIND7WX)		+= pn544.o
 #obj-$(CONFIG_NFC_PN533)		+= pn533.o
 #obj-$(CONFIG_NFC_WILINK)	+= nfcwilink.o
