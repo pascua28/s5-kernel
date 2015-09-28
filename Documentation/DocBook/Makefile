@@ -64,6 +64,12 @@ installmandocs: mandocs
 KERNELDOCXMLREF = $(srctree)/scripts/kernel-doc-xml-ref
 KERNELDOC       = $(srctree)/scripts/kernel-doc
 DOCPROC         = $(objtree)/scripts/docproc
+CHECK_LC_CTYPE = $(objtree)/scripts/check-lc_ctype
+
+# Use a fixed encoding - UTF-8 if the C library has support built-in
+# or ASCII if not
+LC_CTYPE := $(call try-run, LC_CTYPE=C.UTF-8 $(CHECK_LC_CTYPE),C.UTF-8,C)
+export LC_CTYPE
 
 XMLTOFLAGS = -m $(srctree)/Documentation/DocBook/stylesheet.xsl
 XMLTOFLAGS += --skip-validation
