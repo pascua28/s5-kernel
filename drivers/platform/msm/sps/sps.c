@@ -2364,6 +2364,7 @@ EXPORT_SYMBOL(sps_pipe_reset);
 int sps_bam_process_irq(unsigned long dev)
 {
 	struct sps_bam *bam;
+	int ret = 0;
 
 	SPS_DBG("sps:%s.", __func__);
 
@@ -2378,9 +2379,9 @@ int sps_bam_process_irq(unsigned long dev)
 		return SPS_ERROR;
 	}
 
-	sps_bam_check_irq(bam);
+	ret = sps_bam_check_irq(bam);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(sps_bam_process_irq);
 
