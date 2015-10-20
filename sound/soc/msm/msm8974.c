@@ -1583,7 +1583,7 @@ static int msm_be_hw_params_fixup_sec_mi2s(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *rate = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_RATE);
 
-	pr_err("%s()\n", __func__);
+	pr_debug("%s()\n", __func__);
 	rate->min = rate->max = 48000;
 
     param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
@@ -1779,7 +1779,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 					     140, 141, 142, 143};
 
 
-	pr_info("%s(), dev_name%s\n", __func__, dev_name(cpu_dai->dev));
+	pr_debug("%s(), dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 
 	rtd->pmdown_time = 0;
 
@@ -2092,14 +2092,13 @@ static void msm8974_mi2s_shutdown(struct snd_pcm_substream *substream)
 	int ret =0;
 
 	if (atomic_dec_return(&sec_mi2s_clk.mi2s_rsc_ref) == 0) {
-		pr_info("%s: free mi2s resources\n", __func__);
-	#ifdef MI2S_LPASS_CLK_ENABLE	
-       		ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX, &lpass_mi2s_disable);	
-       		if (ret < 0) {	
-      			pr_err("%s: afe_set_lpass_clock failed\n", __func__);	
-       	//	return ret;	
-      		}
-    #endif	
+		pr_debug("%s: free mi2s resources\n", __func__);
+#ifdef MI2S_LPASS_CLK_ENABLE
+		ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX, &lpass_mi2s_disable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+		}
+#endif
 
 		msm8974_mi2s_free_gpios();
 	}
@@ -2114,7 +2113,7 @@ static int msm8974_configure_mi2s_gpio(void)
 		rtn = gpio_request(sec_mi2s_gpio[i].gpio_no,
 				sec_mi2s_gpio[i].gpio_name);
 
-		pr_info("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
+		pr_debug("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
 		sec_mi2s_gpio[i].gpio_no, sec_mi2s_gpio[i].gpio_name, rtn);
 		gpio_set_value(sec_mi2s_gpio[i].gpio_no, 1);
 
@@ -2139,19 +2138,19 @@ static int msm8974_mi2s_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 
-	pr_info("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
 
 	if (atomic_inc_return(&sec_mi2s_clk.mi2s_rsc_ref) == 1) {
-		pr_info("%s: acquire mi2s resources\n", __func__);
+		pr_debug("%s: acquire mi2s resources\n", __func__);
 		msm8974_configure_mi2s_gpio();
-	#ifdef MI2S_LPASS_CLK_ENABLE	
-       		ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX, &lpass_mi2s_enable);	
-       		if (ret < 0) {	
-      			pr_err("%s: afe_set_lpass_clock failed\n", __func__);	
-       		return ret;	
-      		}
-	#endif
-	
+#ifdef MI2S_LPASS_CLK_ENABLE
+		ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX, &lpass_mi2s_enable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+			return ret;
+		}
+#endif
+
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
 			dev_err(cpu_dai->dev, "set format for CPU dai"
