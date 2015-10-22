@@ -83,7 +83,7 @@
 
 		adsp_mem: adsp_region {
 			linux,contiguous-region;
-			reg = <0 0x3F00000>;
+			reg = <0 0x4100000>;
 			label = "adsp_mem";
 		};
 
@@ -829,32 +829,31 @@
 			    "lpaif_tert_mode_muxsel",
 			    "lpaif_quat_mode_muxsel";
 
-                qcom,audio-routing =
-                        "AIF4 VI", "MCLK",
-                        "RX_BIAS", "MCLK",
-                        "LDO_H", "MCLK",
-                        "AIF4 MAD", "MCLK",
-                        "AMIC1", "MIC BIAS1 Internal1",
-                        "MIC BIAS1 Internal1", "Handset Mic",
-                        "AMIC2", "MIC BIAS2 External",
-                        "MIC BIAS2 External", "Headset Mic",
-                        "AMIC3", "MIC BIAS2 External",
-                        "MIC BIAS2 External", "ANCRight Headset Mic",
-                        "AMIC4", "MIC BIAS2 External",
-                        "MIC BIAS2 External", "ANCLeft Headset Mic",
-                        "DMIC1", "MIC BIAS1 External",
-                        "MIC BIAS1 External", "Digital Mic1",
-                        "DMIC2", "MIC BIAS1 External",
-                        "MIC BIAS1 External", "Digital Mic2",
-                        "DMIC3", "MIC BIAS3 External",
-                        "MIC BIAS3 External", "Digital Mic3",
-                        "DMIC4", "MIC BIAS3 External",
-                        "MIC BIAS3 External", "Digital Mic4",
-                        "DMIC5", "MIC BIAS4 External",
-                        "MIC BIAS4 External", "Digital Mic5",
-                        "DMIC6", "MIC BIAS4 External",
-                        "MIC BIAS4 External", "Digital Mic6";
-
+		qcom,audio-routing =
+			"AIF4 VI", "MCLK",
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AIF4 MAD", "MCLK",
+			"AMIC1", "MIC BIAS1 Internal1",
+			"MIC BIAS1 Internal1", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCRight Headset Mic",
+			"AMIC4", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			"DMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic1",
+			"DMIC2", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic2",
+			"DMIC3", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic3",
+			"DMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic4",
+			"DMIC5", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic5",
+			"DMIC6", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic6";
 
 		qcom,cdc-mclk-gpios = <&pm8941_gpios 15 0>;
 		qcom,taiko-mclk-clk-freq = <9600000>;

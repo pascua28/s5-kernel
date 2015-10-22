@@ -70,6 +70,7 @@ obj-$(CONFIG_QSEECOM) += qseecom.o
 obj-$(CONFIG_QFP_FUSE) += qfp_fuse.o
 obj-$(CONFIG_TI_DRV2667) += ti_drv2667.o
 obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
+obj-$(CONFIG_UID_CPUTIME) 	+= uid_cputime.o
 #OPPO 2013-02-21 yuyi add begin for breath led
 obj-$(CONFIG_SN3193_SLED)  += shineled/
 #OPPO 2013-02-21 yuyi add end
