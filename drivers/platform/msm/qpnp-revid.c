@@ -184,7 +184,7 @@ static int __devinit qpnp_revid_probe(struct spmi_device *spmi)
 	return 0;
 }
 
-static struct spmi_driver qpnp_revid_driver = {
+static struct spmi_driver qpnp_revid_driver __refdata = {
 	.probe	= qpnp_revid_probe,
 	.driver	= {
 		.name		= QPNP_REVID_DEV_NAME,
