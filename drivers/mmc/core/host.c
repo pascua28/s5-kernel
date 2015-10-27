@@ -450,7 +450,7 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 			host->wlock_name);
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
 
-#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_N3
     //Lycan.Wang@Prd.BasicDrv, 2014-07-09 Add for retry 5 times when new sdcard init error
     host->detect_change_retry = 5;
 #endif /* VENDOR_EDIT */

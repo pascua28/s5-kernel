@@ -17,7 +17,9 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 
+#ifdef CONFIG_OPPO_DEVICE_N3
 int TF_CARD_STATUS=1;
+#endif
 
 struct mmc_cd_gpio {
 	unsigned int gpio;
@@ -45,7 +47,10 @@ static irqreturn_t mmc_cd_gpio_irqt(int irq, void *dev_id)
 	struct mmc_cd_gpio *cd = host->hotplug.handler_priv;
 	int status;
 
-	TF_CARD_STATUS = status = mmc_cd_get_status(host);
+	status = mmc_cd_get_status(host);
+#ifdef CONFIG_OPPO_DEVICE_N3
+	TF_CARD_STATUS = status;
+#endif
 	if (unlikely(status < 0))
 		goto out;
 
@@ -56,7 +61,7 @@ static irqreturn_t mmc_cd_gpio_irqt(int irq, void *dev_id)
 				"HIGH" : "LOW");
 		cd->status = status;
 
-#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_OPPO_DEVICE_N3
         //Lycan.Wang@Prd.BasicDrv, 2014-07-10 Add for retry 5 times when new sdcard init error
         host->detect_change_retry = 5;
 #endif /* VENDOR_EDIT */

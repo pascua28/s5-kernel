@@ -44,7 +44,9 @@
 
 #include "sdhci-pltfm.h"
 
+#ifdef CONFIG_OPPO_DEVICE_N3
 extern int TF_CARD_STATUS;
+#endif
 enum sdc_mpm_pin_state {
 	SDC_DAT1_DISABLE,
 	SDC_DAT1_ENABLE,
@@ -1000,6 +1002,7 @@ static int sdhci_msm_setup_pad(struct sdhci_msm_pltfm_data *pdata, bool enable)
 static int sdhci_msm_setup_pins(struct sdhci_msm_pltfm_data *pdata, bool enable)
 {
 	int ret = 0;
+#ifdef CONFIG_OPPO_DEVICE_N3
 	struct sdhci_msm_slot_reg_data *curr_slot;
 
 	curr_slot = pdata->vreg_data;
@@ -1008,13 +1011,15 @@ static int sdhci_msm_setup_pins(struct sdhci_msm_pltfm_data *pdata, bool enable)
 			 __func__);
 		goto out;
 	}
-
+#endif
 
 	if (!pdata->pin_data || (pdata->pin_data->cfg_sts == enable))
 		return 0;
+#ifdef CONFIG_OPPO_DEVICE_N3
 	if(TF_CARD_STATUS==0 && enable && (!curr_slot->vdd_data->is_always_on)){
 		return 0;
 	}
+#endif
 	if (pdata->pin_data->is_gpio)
 		ret = sdhci_msm_setup_gpio(pdata, enable);
 	else
@@ -1023,9 +1028,10 @@ static int sdhci_msm_setup_pins(struct sdhci_msm_pltfm_data *pdata, bool enable)
 	if (!ret)
 		pdata->pin_data->cfg_sts = enable;
 
+#ifdef CONFIG_OPPO_DEVICE_N3
 out:
+#endif
 	return ret;
-
 }
 
 static int sdhci_msm_dt_get_array(struct device *dev, const char *prop_name,
@@ -1860,11 +1866,11 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 		goto out;
 	}
 
+#ifdef CONFIG_OPPO_DEVICE_N3
 	if(TF_CARD_STATUS==0 && enable && (!curr_slot->vdd_data->is_always_on)){
 		return 0;
 	}
 
-#ifdef CONFIG_OPPO_DEVICE_N3
 //Zhilong.Zhang@OnlineRd.Driver, 2014/08/09, Add for enable TF ldo
 	if (!curr_slot->vdd_data->is_always_on) {
 		if (!enable)
@@ -1970,6 +1976,7 @@ static int sdhci_msm_set_vdd_io_vol(struct sdhci_msm_pltfm_data *pdata,
 	int ret = 0;
 	int set_level;
 	struct sdhci_msm_reg_data *vdd_io_reg;
+#ifdef CONFIG_OPPO_DEVICE_N3
 	struct sdhci_msm_slot_reg_data *curr_slot;
 
 	curr_slot = pdata->vreg_data;
@@ -1978,13 +1985,16 @@ static int sdhci_msm_set_vdd_io_vol(struct sdhci_msm_pltfm_data *pdata,
 			 __func__);
 		goto out;
 	}
+#endif
 
 	if (!pdata->vreg_data)
 		return ret;
 
+#ifdef CONFIG_OPPO_DEVICE_N3
 	if((TF_CARD_STATUS==0) && (level== VDD_IO_HIGH) && (!curr_slot->vdd_data->is_always_on)){
 		return 0;
 	}
+#endif
 	vdd_io_reg = pdata->vreg_data->vdd_io_data;
 	if (vdd_io_reg && vdd_io_reg->is_enabled) {
 		switch (level) {
@@ -2006,9 +2016,10 @@ static int sdhci_msm_set_vdd_io_vol(struct sdhci_msm_pltfm_data *pdata,
 		ret = sdhci_msm_vreg_set_voltage(vdd_io_reg, set_level,
 				set_level);
 	}
+#ifdef CONFIG_OPPO_DEVICE_N3
 out:
+#endif
 	return ret;
-
 }
 
 /*
