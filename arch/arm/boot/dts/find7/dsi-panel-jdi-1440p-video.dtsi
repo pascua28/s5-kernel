@@ -188,8 +188,8 @@
 												  15 01 00 00 10 00 02 55 82];
 		qcom,mdss-dsi-cabc-video-command = [05 01 00 00 10 00 02 29 00
 											15 01 00 00 10 00 02 55 83];
-		qcom,mdss-dsi-pan-enable-dynamic-fps;
-		qcom,mdss-dsi-pan-fps-update = "dfps_suspend_resume_mode";
+		//qcom,mdss-dsi-pan-enable-dynamic-fps;
+		//qcom,mdss-dsi-pan-fps-update = "dfps_suspend_resume_mode";
 	};
 	
 	dsi_jdi_1440_vid2: qcom,dsi_jdi_1440p_video_1 {
@@ -291,7 +291,7 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-reset-sequence = <1 15>, <0 75>, <1 15>;
-		qcom,mdss-dsi-pan-enable-dynamic-fps;
-		qcom,mdss-dsi-pan-fps-update = "dfps_suspend_resume_mode";
+		//qcom,mdss-dsi-pan-enable-dynamic-fps;
+		//qcom,mdss-dsi-pan-fps-update = "dfps_suspend_resume_mode";
 	};
 };
