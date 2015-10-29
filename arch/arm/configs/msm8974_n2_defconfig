@@ -346,7 +346,6 @@ CONFIG_VIDEO_DEV=y
 CONFIG_VIDEO_V4L2_SUBDEV_API=y
 CONFIG_DVB_CORE=m
 # CONFIG_MSM_CAMERA is not set
-CONFIG_MSM_CAMERA_LED_CCI=y
 CONFIG_MT9M114=y
 CONFIG_OV2720=y
 CONFIG_IMX135=y
@@ -541,9 +540,9 @@ CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE=y
 #jiangyg@OnlineRd.PM, 2013/10/18, Add for device selection(n2)
 CONFIG_OPPO_DEVICE_N2=y
 #endif /*CONFIG_VENDDOR_EDIT*/
-#oppo yuyi 2013-10-05 add begin for vibrator ¡¢NFC and RGB_led
+#oppo yuyi 2013-10-05 add begin for vibrator \A1\A2NFC and RGB_led
 CONFIG_QPNP_VIBRATOR=y
 CONFIG_NFC_DEVICES=y
 CONFIG_PN544_NFC=y
 CONFIG_SN3193_SLED = y
-#oppo yuyi 2013-10-05 add end for vibrator ¡¢NFC and RGB_led
+#oppo yuyi 2013-10-05 add end for vibrator \A1\A2NFC and RGB_led
