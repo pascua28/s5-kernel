@@ -418,6 +418,10 @@ static ssize_t synaptics_rmi4_camera_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf);
 static ssize_t synaptics_rmi4_camera_store(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count);
+static ssize_t synaptics_rmi4_button_disable_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf);
+static ssize_t synaptics_rmi4_button_disable_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count);
 
 static struct device_attribute attrs[] = {
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -471,10 +475,15 @@ static struct kobj_attribute camera_attribute = __ATTR(camera_enable, (S_IRUGO |
 			synaptics_rmi4_camera_show,
 			synaptics_rmi4_camera_store);
 
+static struct kobj_attribute buttons_disable_attribute = __ATTR(button_disable, (S_IRUGO | S_IWUSR),
+			synaptics_rmi4_button_disable_show,
+			synaptics_rmi4_button_disable_store);
+
 static struct attribute *gesture_attrs[] = {
 	&double_tap_attribute.attr,
 	&flashlight_attribute.attr,
 	&camera_attribute.attr,
+	&buttons_disable_attribute.attr,
 	NULL
 };
 
@@ -1226,7 +1235,7 @@ static int synaptics_ts_init_virtual_key(struct synaptics_rmi4_data *ts )
 	/* virtual keys */
 	return ret;
 }
-static int get_virtual_key_button(int x, int y)
+static int get_virtual_key_button(struct synaptics_rmi4_data *rmi4_data, int x, int y)
 {
 	int i;
 	int lcdheight = LCD_MAX_Y ;
@@ -1238,6 +1247,9 @@ static int get_virtual_key_button(int x, int y)
 
 	if(y <= lcdheight)
 		return 0;
+
+	if (rmi4_data->button_disable)
+		return TP_VKEY_NONE;
 
 	for (i = 0; i < TP_VKEY_NONE; ++i)
 	{
@@ -1489,6 +1501,29 @@ static ssize_t synaptics_rmi4_camera_store(struct kobject *kobj,
 	if(!(syna_use_gesture && syna_rmi4_data->gesture))
 		syna_use_gesture = (syna_rmi4_data->gesture_flags&0xff)?1:0 ;
 	print_ts(TS_DEBUG, KERN_ERR "enable=0x%x\n", syna_rmi4_data->gesture_flags);
+
+	return count;
+}
+
+static ssize_t synaptics_rmi4_button_disable_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf) {
+	int len = 0 ;
+
+	len = sprintf(buf, "%d\n", syna_rmi4_data->button_disable);
+
+	return len ;
+}
+
+static ssize_t synaptics_rmi4_button_disable_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count) {
+	unsigned int enable;
+
+	if (sscanf(buf, "%u", &enable) != 1)
+		return -EINVAL;
+
+	syna_rmi4_data->button_disable = (enable == 1) ? true : false;
+
+	print_ts(TS_DEBUG, KERN_ERR "button_disable=%d\n", syna_rmi4_data->button_disable);
 
 	return count;
 }
@@ -2742,7 +2777,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				y = rmi4_data->sensor_max_y - y;
 
 			{
-				int pressed_vkey = get_virtual_key_button(x, y);
+				int pressed_vkey = get_virtual_key_button(rmi4_data, x, y);
 				if (pressed_vkey == TP_VKEY_NONE)
 				{
 					continue;
@@ -3113,7 +3148,8 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
             input_sync(rmi4_data->input_dev);            
         }
 
-		int_key_report(rmi4_data);
+		if (!rmi4_data->button_disable)
+			int_key_report(rmi4_data);
 	}
 #endif
 	mutex_lock(&exp_data.mutex);
@@ -4620,6 +4656,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->sensor_sleep = false;
 	rmi4_data->irq_enabled = false;
 	rmi4_data->fingers_on_2d = false;
+	rmi4_data->button_disable = false;
 
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;

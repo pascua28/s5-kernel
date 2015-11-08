@@ -304,6 +304,7 @@ struct synaptics_rmi4_data {
 	unsigned char bcontinue;
 	struct workqueue_struct *reportqueue;  //for work queue
 	struct work_struct reportwork;
+	bool button_disable;
 };
 
 enum exp_fn {
