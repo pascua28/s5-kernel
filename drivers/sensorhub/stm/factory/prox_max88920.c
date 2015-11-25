@@ -13,6 +13,7 @@
  *
  */
 #include "../ssp.h"
+#include <linux/kt_wake_funcs.h>
 
 #ifdef CONFIG_SENSORS_SSP_TMG399X
 #define	VENDOR		"AMS"
@@ -498,6 +499,7 @@ void initialize_prox_factorytest(struct ssp_data *data)
 {
 	sensors_register(data->prox_device, data,
 		prox_attrs, "proximity_sensor");
+	main_prox_data = data;
 }
 
 void remove_prox_factorytest(struct ssp_data *data)
