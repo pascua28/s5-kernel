@@ -320,6 +320,12 @@ config HAVE_ARCH_SECCOMP_FILTER
 	    results in the system call being skipped immediately.
 	  - seccomp syscall wired up
 
+config HAVE_STACK_VALIDATION
+	bool
+	help
+	  Architecture supports the 'objtool check' host tool command, which
+	  performs compile-time stack metadata validation.
+
 config SECCOMP_FILTER
 	def_bool y
 	depends on HAVE_ARCH_SECCOMP_FILTER && SECCOMP && NET
