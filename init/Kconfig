@@ -1078,6 +1078,10 @@ config HOTPLUG
 	  disabling this option for embedded systems that do not use modules, a
 	  dynamic /dev tree, or dynamic device discovery.  Just say Y.
 
+config KALLSYMS_ABSOLUTE_PERCPU
+	bool
+	default X86_64 && SMP
+
 config PRINTK
 	default y
 	bool "Enable support for printk" if EXPERT
