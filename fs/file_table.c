@@ -253,7 +253,6 @@ static void __fput(struct file *file)
 	}
 	fops_put(file->f_op);
 	put_pid(file->f_owner.pid);
-	file_sb_list_del(file);
 	if ((file->f_mode & (FMODE_READ | FMODE_WRITE)) == FMODE_READ)
 		i_readcount_dec(inode);
 	if (file->f_mode & FMODE_WRITE)
@@ -307,18 +306,17 @@ void fput(struct file *file)
 {
 	if (atomic_long_dec_and_test(&file->f_count)) {
 		struct task_struct *task = current;
-		unsigned long flags;
-
 		file_sb_list_del(file);
-		if (likely(!in_interrupt() && !(task->flags & PF_KTHREAD))) {
-			init_task_work(&file->f_u.fu_rcuhead, ____fput);
-			if (!task_work_add(task, &file->f_u.fu_rcuhead, true))
-				return;
+		if (unlikely(in_interrupt() || task->flags & PF_KTHREAD)) {
+			unsigned long flags;
+			spin_lock_irqsave(&delayed_fput_lock, flags);
+			list_add(&file->f_u.fu_list, &delayed_fput_list);
+			schedule_work(&delayed_fput_work);
+			spin_unlock_irqrestore(&delayed_fput_lock, flags);
+			return;
 		}
-		spin_lock_irqsave(&delayed_fput_lock, flags);
-		list_add(&file->f_u.fu_list, &delayed_fput_list);
-		schedule_work(&delayed_fput_work);
-		spin_unlock_irqrestore(&delayed_fput_lock, flags);
+		init_task_work(&file->f_u.fu_rcuhead, ____fput);
+		task_work_add(task, &file->f_u.fu_rcuhead, true);
 	}
 }
 
