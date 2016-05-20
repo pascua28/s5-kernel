@@ -21,27 +21,21 @@
 
  */
 /*
-Driver: daqboard2000
-Description: IOTech DAQBoard/2000
-Author: Anders Blomdell <anders.blomdell@control.lth.se>
-Status: works
-Updated: Mon, 14 Apr 2008 15:28:52 +0100
-Devices: [IOTech] DAQBoard/2000 (daqboard2000)
-
-Much of the functionality of this driver was determined from reading
-the source code for the Windows driver.
-
-The FPGA on the board requires initialization code, which can
-be loaded by comedi_config using the -i
-option.  The initialization code is available from http://www.comedi.org
-in the comedi_nonfree_firmware tarball.
-
-Configuration options:
-  [0] - PCI bus of device (optional)
-  [1] - PCI slot of device (optional)
-  If bus/slot is not specified, the first supported
-  PCI device found will be used.
-*/
+ * Driver: daqboard2000
+ * Description: IOTech DAQBoard/2000
+ * Author: Anders Blomdell <anders.blomdell@control.lth.se>
+ * Status: works
+ * Updated: Mon, 14 Apr 2008 15:28:52 +0100
+ * Devices: [IOTech] DAQBoard/2000 (daqboard2000)
+ *
+ * Much of the functionality of this driver was determined from reading
+ * the source code for the Windows driver.
+ *
+ * The FPGA on the board requires firmware, which is available from
+ * http://www.comedi.org in the comedi_nonfree_firmware tarball.
+ *
+ * Configuration options: not applicable, uses PCI auto config
+ */
 /*
    This card was obviously never intended to leave the Windows world,
    since it lacked all kind of hardware documentation (except for cable
