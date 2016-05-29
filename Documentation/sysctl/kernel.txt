@@ -49,8 +49,9 @@ show up in /proc/sys/kernel:
 - overflowuid
 - panic
 - panic_on_oops
-- panic_on_unrecovered_nmi
 - panic_on_stackoverflow
+- panic_on_unrecovered_nmi
+- perf_event_paranoid
 - pid_max
 - powersave-nap               [ PPC only ]
 - printk
@@ -289,24 +290,13 @@ Default value is "/sbin/hotplug".
 kptr_restrict:
 
 This toggle indicates whether restrictions are placed on
-exposing kernel addresses via /proc and other interfaces.
-
-When kptr_restrict is set to (0), the default, there are no restrictions.
-
-When kptr_restrict is set to (1), kernel pointers printed using the %pK
-format specifier will be replaced with 0's unless the user has CAP_SYSLOG
-and effective user and group ids are equal to the real ids. This is
-because %pK checks are done at read() time rather than open() time, so
-if permissions are elevated between the open() and the read() (e.g via
-a setuid binary) then %pK will not leak kernel pointers to unprivileged
-users. Note, this is a temporary solution only. The correct long-term
-solution is to do the permission checks at open() time. Consider removing
-world read permissions from files that use %pK, and using dmesg_restrict
-to protect against uses of %pK in dmesg(8) if leaking kernel pointer
-values to unprivileged users is a concern.
-
-When kptr_restrict is set to (2), kernel pointers printed using
-%pK will be replaced with 0's regardless of privileges.
+exposing kernel addresses via /proc and other interfaces.  When
+kptr_restrict is set to (0), there are no restrictions.  When
+kptr_restrict is set to (1), the default, kernel pointers
+printed using the %pK format specifier will be replaced with 0's
+unless the user has CAP_SYSLOG.  When kptr_restrict is set to
+(2), kernel pointers printed using %pK will be replaced with 0's
+regardless of privileges.
 
 ==============================================================
 
@@ -402,19 +392,6 @@ the recommended setting is 60.
 
 ==============================================================
 
-panic_on_unrecovered_nmi:
-
-The default Linux behaviour on an NMI of either memory or unknown is
-to continue operation. For many environments such as scientific
-computing it is preferable that the box is taken out and the error
-dealt with than an uncorrected parity/ECC error get propagated.
-
-A small number of systems do generate NMI's for bizarre random reasons
-such as power management so the default is off. That sysctl works like
-the existing panic controls already in that directory.
-
-==============================================================
-
 panic_on_oops:
 
 Controls the kernel's behaviour when an oops or BUG is encountered.
@@ -438,32 +415,32 @@ This file shows up if CONFIG_DEBUG_STACKOVERFLOW is enabled.
 
 ==============================================================
 
-perf_cpu_time_max_percent:
+panic_on_unrecovered_nmi:
 
-Hints to the kernel how much CPU time it should be allowed to
-use to handle perf sampling events.  If the perf subsystem
-is informed that its samples are exceeding this limit, it
-will drop its sampling frequency to attempt to reduce its CPU
-usage.
+The default Linux behaviour on an NMI of either memory or unknown is
+to continue operation. For many environments such as scientific
+computing it is preferable that the box is taken out and the error
+dealt with than an uncorrected parity/ECC error get propagated.
 
-Some perf sampling happens in NMIs.  If these samples
-unexpectedly take too long to execute, the NMIs can become
-stacked up next to each other so much that nothing else is
-allowed to execute.
-
-0: disable the mechanism.  Do not monitor or correct perf's
-   sampling rate no matter how CPU time it takes.
-
-1-100: attempt to throttle perf's sample rate to this
-   percentage of CPU.  Note: the kernel calculates an
-   "expected" length of each sample event.  100 here means
-   100% of that expected length.  Even if this is set to
-   100, you may still see sample throttling if this
-   length is exceeded.  Set to 0 if you truly do not care
-   how much CPU is consumed.
+A small number of systems do generate NMI's for bizarre random reasons
+such as power management so the default is off. That sysctl works like
+the existing panic controls already in that directory.
 
 ==============================================================
 
+perf_event_paranoid:
+
+Controls use of the performance events system by unprivileged
+users (without CAP_SYS_ADMIN).  The default value is 3 if
+CONFIG_SECURITY_PERF_EVENTS_RESTRICT is set, or 1 otherwise.
+
+ -1: Allow use of (almost) all events by all users
+>=0: Disallow raw tracepoint access by users without CAP_IOC_LOCK
+>=1: Disallow CPU event access by users without CAP_SYS_ADMIN
+>=2: Disallow kernel profiling by users without CAP_SYS_ADMIN
+>=3: Disallow all event access by users without CAP_SYS_ADMIN
+
+==============================================================
 
 pid_max:
 
