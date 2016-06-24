@@ -22,3 +22,9 @@ header-y += sigcontext32.h
 header-y += ucontext.h
 header-y += vm86.h
 header-y += vsyscall.h
+
+generated-y += syscalls_32.h
+generated-y += syscalls_64.h
+generated-y += unistd_32_ia32.h
+generated-y += unistd_64_x32.h
+generated-y += xen-hypercalls.h
