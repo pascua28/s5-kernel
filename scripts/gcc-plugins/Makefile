@@ -12,11 +12,14 @@ else
   export HOST_EXTRACXXFLAGS
 endif
 
-export GCCPLUGINS_DIR HOSTLIBS
+export HOSTLIBS
 
-$(HOSTLIBS)-y := $(GCC_PLUGIN)
+$(HOSTLIBS)-y := $(foreach p,$(GCC_PLUGIN),$(if $(findstring /,$(p)),,$(p)))
 always := $($(HOSTLIBS)-y)
 
 $(foreach p,$($(HOSTLIBS)-y:%.so=%),$(eval $(p)-objs := $(p).o))
+
+subdir-y := $(GCC_PLUGIN_SUBDIR)
+subdir-  += $(GCC_PLUGIN_SUBDIR)
 
 clean-files += *.so
