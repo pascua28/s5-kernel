@@ -140,7 +140,8 @@ displayed, and no commit message proposed.
 ~~~~~~~~~~~~~~~~~~
 
 Additional flags can be passed to spatch through the SPFLAGS
-variable.
+variable. This works as Coccinelle respects the last flags
+given to it when options are in conflict.
 
     make SPFLAGS=--use_glimpse coccicheck
 
