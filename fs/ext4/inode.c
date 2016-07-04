@@ -2424,7 +2424,20 @@ retry:
 		trace_ext4_da_write_pages(inode, &mpd);
 		wbc->nr_to_write -= mpd.pages_written;
 
-		ext4_journal_stop(handle);
+		/*
+		 * Caution: If the handle is synchronous,
+		 * ext4_journal_stop() can wait for transaction commit
+		 * to finish which may depend on writeback of pages to
+		 * complete or on page lock to be released.  In that
+		 * case, we have to wait until after after we have
+		 * submitted all the IO, released page locks we hold,
+		 * and dropped io_end reference (for extent conversion
+		 * to be able to complete) before stopping the handle.
+		 */
+		if (!ext4_handle_valid(handle) || handle->h_sync == 0) {
+			ext4_journal_stop(handle);
+			handle = NULL;
+		}
 
 		if ((mpd.retval == -ENOSPC) && sbi->s_journal) {
 			/* commit the transaction which would
