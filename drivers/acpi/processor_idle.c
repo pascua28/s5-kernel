@@ -41,6 +41,7 @@
 #include <linux/clockchips.h>
 #include <linux/cpuidle.h>
 #include <linux/irqflags.h>
+#include <linux/cpu.h>
 
 /*
  * Include the apic definitions for x86 to have the APIC timer related defines
@@ -129,7 +130,7 @@ static struct dmi_system_id __cpuinitdata processor_power_dmi_table[] = {
  * Callers should disable interrupts before the call and enable
  * interrupts after return.
  */
-static void acpi_safe_halt(void)
+static void __cpuidle acpi_safe_halt(void)
 {
 	current_thread_info()->status &= ~TS_POLLING;
 	/*
@@ -709,7 +710,7 @@ static int acpi_idle_bm_check(void)
  *
  * Caller disables interrupt before call and enables interrupt after return.
  */
-static inline void acpi_idle_do_entry(struct acpi_processor_cx *cx)
+static void __cpuidle acpi_idle_do_entry(struct acpi_processor_cx *cx)
 {
 	/* Don't trace irqs off for idle */
 	stop_critical_timings();

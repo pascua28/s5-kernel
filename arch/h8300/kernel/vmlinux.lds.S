@@ -71,6 +71,7 @@ SECTIONS
         .text :
 	{
 	_text = .;
+		CPUIDLE_TEXT
 #if defined(CONFIG_ROMKERNEL)
 	*(.int_redirect)
 #endif

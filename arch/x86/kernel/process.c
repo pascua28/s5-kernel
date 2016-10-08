@@ -451,7 +451,7 @@ void cpu_idle(void)
  * We use this if we don't have any better
  * idle routine..
  */
-void default_idle(void)
+void __cpuidle default_idle(void)
 {
 	if (hlt_use_halt()) {
 		trace_cpu_idle_rcuidle(1, smp_processor_id());

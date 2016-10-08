@@ -11,6 +11,7 @@
 #include <linux/mutex.h>
 #include <linux/module.h>
 #include <linux/cpuidle.h>
+#include <linux/cpu.h>
 
 #include "cpuidle.h"
 
