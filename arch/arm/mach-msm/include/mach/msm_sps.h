@@ -21,5 +21,14 @@ struct msm_sps_platform_data {
 	u32 bamdma_restricted_pipes;
 };
 
+<<<<<<< HEAD:arch/arm/mach-msm/include/mach/msm_sps.h
 #endif /* _MSM_SPS_H_ */
 
+=======
+		qcom,ion-heap@25 {
+			reg = <25>;
+			qcom,ion-heap-type = "SYSTEM";
+		};
+	};
+};
+>>>>>>> ed1213b1963... ion: disable system contig heap:arch/arm/boot/dts/apq8084-ion.dtsi
