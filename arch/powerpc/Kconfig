@@ -106,6 +106,7 @@ config ARCH_NO_VIRT_TO_BUS
 config PPC
 	bool
 	default y
+	select BUILDTIME_EXTABLE_SORT
 	select OF
 	select OF_EARLY_FLATTREE
 	select HAVE_FTRACE_MCOUNT_RECORD
