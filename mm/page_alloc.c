@@ -82,7 +82,7 @@ EXPORT_PER_CPU_SYMBOL(_numa_mem_);
 #endif
 
 #ifdef CONFIG_GCC_PLUGIN_LATENT_ENTROPY
-volatile u64 latent_entropy;
+volatile unsigned long latent_entropy;
 EXPORT_SYMBOL(latent_entropy);
 #endif
 
