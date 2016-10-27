@@ -8459,8 +8459,7 @@ static inline void dbs_timer_init(struct cpu_dbs_info_s *dbs_info)
 
 	dbs_info_enabled = true;
 
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0) || LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,112)
 	INIT_DEFERRABLE_WORK(&dbs_info->work, do_dbs_timer);
 #else
 	INIT_DELAYED_WORK_DEFERRABLE(&dbs_info->work, do_dbs_timer);
