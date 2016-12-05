@@ -1045,7 +1045,6 @@ int sps_bam_pipe_disconnect(struct sps_bam *dev, u32 pipe_index)
 {
 	struct sps_pipe *pipe;
 	int result;
-	unsigned long flags;
 
 	if (pipe_index >= dev->props.num_pipes) {
 		SPS_ERR("sps:Invalid BAM %pa pipe: %d\n", BAM_ID(dev),
