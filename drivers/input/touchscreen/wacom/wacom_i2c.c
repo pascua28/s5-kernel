@@ -103,11 +103,6 @@ static int wacom_stop(struct wacom_i2c *wac_i2c)
 
 	gpio_direction_output(wac_i2c->wac_pdata->vdd_en, 0);
 
-#ifdef WACOM_BOOSTER
-	if (wac_i2c->dvfs_lock_status)
-		wacom_set_dvfs_lock(wac_i2c, -1);
-#endif
-
 #ifdef USE_WACOM_BLOCK_KEYEVENT
 	wac_i2c->touch_pressed = false;
 	wac_i2c->touchkey_skipped = false;
@@ -986,41 +981,6 @@ static ssize_t epen_saving_mode_store(struct device *dev,
 	return count;
 }
 #endif
-#ifdef WACOM_BOOSTER
-static ssize_t boost_level_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
-{
-	struct wacom_i2c *wac_i2c = dev_get_drvdata(dev);
-	int val, retval;
-
-	dev_info(&wac_i2c->client->dev, "%s\n", __func__);
-	sscanf(buf, "%d", &val);
-
-	if (val != 1 && val != 2 && val != 3 && val != 0) {
-		dev_info(&wac_i2c->client->dev,
-			"%s: wrong cmd %d\n", __func__, val);
-		return count;
-	}
-	wac_i2c->dvfs_boost_mode = val;
-	dev_info(&wac_i2c->client->dev,
-			"%s: dvfs_boost_mode = %d\n",
-			__func__, wac_i2c->dvfs_boost_mode);
-
-	if (wac_i2c->dvfs_boost_mode != DVFS_STAGE_TRIPLE) {
-		wac_i2c->dvfs_freq = -1;
-	} else if (wac_i2c->dvfs_boost_mode == DVFS_STAGE_NONE) {
-		retval = set_freq_limit(DVFS_TOUCH_ID, -1);
-		if (retval < 0) {
-			dev_err(&wac_i2c->client->dev,
-					"%s: booster stop failed(%d).\n",
-					__func__, retval);
-			wac_i2c->dvfs_lock_status = false;
-		}
-	}
-	return count;
-}
-#endif
 
 #ifdef USE_WACOM_BLOCK_KEYEVENT
 static ssize_t epen_delay_time_show(struct device *dev,
@@ -1101,10 +1061,6 @@ static DEVICE_ATTR(epen_connection,
 static DEVICE_ATTR(epen_saving_mode,
 		   S_IWUSR | S_IWGRP, NULL, epen_saving_mode_store);
 #endif
-#ifdef WACOM_BOOSTER
-static DEVICE_ATTR(boost_level,
-		   S_IWUSR | S_IWGRP, NULL, boost_level_store);
-#endif
 
 static DEVICE_ATTR(epen_gestures, S_IWUSR | S_IWGRP | S_IRUGO,
 		   epen_gestures_show, epen_gestures_store);
@@ -1137,9 +1093,6 @@ static struct attribute *epen_attributes[] = {
 #endif
 #ifdef BATTERY_SAVING_MODE
 	&dev_attr_epen_saving_mode.attr,
-#endif
-#ifdef WACOM_BOOSTER
-	&dev_attr_boost_level.attr,
 #endif
 	&dev_attr_epen_gestures.attr,
 	NULL,
@@ -1414,12 +1367,6 @@ static int wacom_i2c_remove(struct i2c_client *client)
 #endif
 
 	cancel_delayed_work_sync(&wac_i2c->pen_insert_dwork);
-#ifdef WACOM_BOOSTER
-	cancel_delayed_work_sync(&wac_i2c->work_dvfs_off);
-	cancel_delayed_work_sync(&wac_i2c->work_dvfs_chg);
-
-	mutex_destroy(&wac_i2c->dvfs_lock);
-#endif
 	mutex_destroy(&wac_i2c->lock);
 
 	sysfs_remove_group(&wac_i2c->dev->kobj, &epen_attr_group);
@@ -1628,9 +1575,6 @@ static int wacom_i2c_probe(struct i2c_client *client,
 	mutex_init(&wac_i2c->irq_lock);
 #endif
 
-#ifdef WACOM_BOOSTER
-	wacom_init_dvfs(wac_i2c);
-#endif
 	INIT_DELAYED_WORK(&wac_i2c->resume_work, wacom_i2c_resume_work);
 
 #ifdef USE_WACOM_BLOCK_KEYEVENT
@@ -1785,11 +1729,6 @@ err_input_allocate_device:
 	cancel_delayed_work_sync(&wac_i2c->pen_insert_dwork);
 #ifdef WACOM_RESETPIN_DELAY
 	cancel_delayed_work_sync(&wac_i2c->work_wacom_reset);
-#endif
-#ifdef WACOM_BOOSTER
-	cancel_delayed_work_sync(&wac_i2c->work_dvfs_off);
-	cancel_delayed_work_sync(&wac_i2c->work_dvfs_chg);
-	mutex_destroy(&wac_i2c->dvfs_lock);
 #endif
 	wac_i2c->wac_pdata->wacom_stop(wac_i2c);
 	mutex_destroy(&wac_i2c->lock);
