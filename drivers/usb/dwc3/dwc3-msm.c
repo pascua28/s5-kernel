@@ -1815,7 +1815,7 @@ static void dwc3_chg_detect_work(struct work_struct *w)
 		return;
 	}
 
-	queue_delayed_work(system_nrt_wq, &mdwc->chg_work, delay);
+	schedule_delayed_work(&mdwc->chg_work, delay);
 }
 
 static void dwc3_start_chg_det(struct dwc3_charger *charger, bool start)
@@ -1837,7 +1837,7 @@ static void dwc3_start_chg_det(struct dwc3_charger *charger, bool start)
 
 	mdwc->chg_state = USB_CHG_STATE_UNDEFINED;
 	charger->chg_type = DWC3_INVALID_CHARGER;
-	queue_delayed_work(system_nrt_wq, &mdwc->chg_work, 0);
+	schedule_delayed_work(&mdwc->chg_work, 0);
 }
 
 static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
@@ -3432,7 +3432,7 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 	dev_dbg(dev, "dwc3-msm PM suspend\n");
 #endif
 
-	flush_delayed_work_sync(&mdwc->resume_work);
+	flush_delayed_work(&mdwc->resume_work);
 	if (!atomic_read(&mdwc->in_lpm)) {
 		dev_err(mdwc->dev, "Abort PM suspend!! (USB is outside LPM)\n");
 		return -EBUSY;

@@ -1085,7 +1085,7 @@ static void wcnss_smd_notify_event(void *data, unsigned int event)
 				WCNSS_CTRL_CHANNEL);
 		schedule_work(&penv->wcnssctrl_version_work);
 		schedule_work(&penv->wcnss_pm_config_work);
-		__cancel_delayed_work(&penv->wcnss_pm_qos_del_req);
+		cancel_delayed_work(&penv->wcnss_pm_qos_del_req);
 		schedule_delayed_work(&penv->wcnss_pm_qos_del_req, 0);
 
 		break;
