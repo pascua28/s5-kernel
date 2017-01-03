@@ -70,6 +70,9 @@ my (@stack, $re, $dre, $x, $xs);
 	} elsif ($arch eq 'mips') {
 		#88003254:       27bdffe0        addiu   sp,sp,-32
 		$re = qr/.*addiu.*sp,sp,-(([0-9]{2}|[3-9])[0-9]{2})/o;
+	} elsif ($arch eq 'openrisc') {
+		# c000043c:       9c 21 fe f0     l.addi r1,r1,-272
+		$re = qr/.*l\.addi.*r1,r1,-(([0-9]{2}|[3-9])[0-9]{2})/o;
 	} elsif ($arch eq 'nios2') {
 		#25a8:	defffb04 	addi	sp,sp,-20
 		$re = qr/.*addi.*sp,sp,-(([0-9]{2}|[3-9])[0-9]{2})/o;
