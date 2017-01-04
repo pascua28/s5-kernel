@@ -2590,7 +2590,7 @@ static int __devinit cypress_touchkey_probe(struct i2c_client *client,
 
 	ret = request_threaded_irq(client->irq, NULL,
 			cypress_touchkey_interrupt,
-			IRQF_TRIGGER_FALLING, client->dev.driver->name, info);
+			IRQF_ONESHOT | IRQF_TRIGGER_FALLING, client->dev.driver->name, info);
 	if (ret < 0) {
 		dev_info(&client->dev, "Failed to request IRQ %d (err: %d).\n",
 				client->irq, ret);

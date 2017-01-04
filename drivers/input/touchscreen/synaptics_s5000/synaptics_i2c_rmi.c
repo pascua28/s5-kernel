@@ -2064,7 +2064,7 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 			return retval;
 
 		retval = request_threaded_irq(rmi4_data->irq, NULL,
-					synaptics_rmi4_irq, IRQF_TRIGGER_FALLING,
+					synaptics_rmi4_irq, IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 				DRIVER_NAME, rmi4_data);
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
