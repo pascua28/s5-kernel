@@ -515,6 +515,11 @@
 #define FTDI_TAVIR_STK500_PID	0xFA33	/* STK500 AVR programmer */
 
 
+/*
+ * NovaTech product ids (FTDI_VID)
+ */
+#define FTDI_NT_ORIONLXM_PID	0x7c90	/* OrionLXm Substation Automation Platform */
+
 
 /********************************/
 /** third-party VID/PID combos **/
