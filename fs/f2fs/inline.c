@@ -110,7 +110,8 @@ int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 	struct f2fs_io_info fio = {
 		.sbi = F2FS_I_SB(dn->inode),
 		.type = DATA,
-		.rw = WRITE_SYNC | REQ_PRIO,
+		.op = REQ_OP_WRITE,
+		.op_flags = REQ_SYNC | REQ_NOIDLE | REQ_PRIO,
 		.page = page,
 		.encrypted_page = NULL,
 	};
@@ -122,16 +123,6 @@ int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 	err = f2fs_reserve_block(dn, 0);
 	if (err)
 		return err;
-
-	if (unlikely(dn->data_blkaddr != NEW_ADDR)) {
-		f2fs_put_dnode(dn);
-		set_sbi_flag(fio.sbi, SBI_NEED_FSCK);
-		f2fs_msg(fio.sbi->sb, KERN_WARNING,
-			"%s: corrupted inline inode ino=%lx, i_addr[0]:0x%x, "
-			"run fsck to fix.",
-			__func__, dn->inode->i_ino, dn->data_blkaddr);
-		return -EINVAL;
-	}
 
 	f2fs_bug_on(F2FS_P_SB(page), PageWriteback(page));
 
@@ -361,17 +352,6 @@ static int f2fs_move_inline_dirents(struct inode *dir, struct page *ipage,
 	err = f2fs_reserve_block(&dn, 0);
 	if (err)
 		goto out;
-
-	if (unlikely(dn.data_blkaddr != NEW_ADDR)) {
-		f2fs_put_dnode(&dn);
-		set_sbi_flag(F2FS_P_SB(page), SBI_NEED_FSCK);
-		f2fs_msg(F2FS_P_SB(page)->sb, KERN_WARNING,
-			"%s: corrupted inline inode ino=%lx, i_addr[0]:0x%x, "
-			"run fsck to fix.",
-			__func__, dir->i_ino, dn.data_blkaddr);
-		err = -EINVAL;
-		goto out;
-	}
 
 	f2fs_wait_on_page_writeback(page, DATA, true);
 	zero_user_segment(page, MAX_INLINE_DATA, PAGE_SIZE);
