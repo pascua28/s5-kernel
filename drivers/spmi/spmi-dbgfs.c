@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, 2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -170,6 +170,7 @@ static int spmi_dfs_open(struct spmi_ctrl_data *ctrl_data, struct file *file)
 	trans->ctrl = ctrl_data->ctrl;
 	trans->offset = trans->addr;
 	mutex_init(&trans->spmi_dfs_lock);
+
 	file->private_data = trans;
 	return 0;
 }
@@ -475,7 +476,6 @@ static ssize_t spmi_dfs_reg_write(struct file *file, const char __user *buf,
 	int cnt = 0;
 	u8  *values;
 	size_t ret = 0;
-
 	u32 offset;
 	char *kbuf;
 	struct spmi_trans *trans = file->private_data;
@@ -556,7 +556,6 @@ static ssize_t spmi_dfs_reg_read(struct file *file, char __user *buf,
 			len = 0;
 			goto unlock_mutex;
 		}
-
 	}
 
 	len = min(count, log->wpos - log->rpos);
