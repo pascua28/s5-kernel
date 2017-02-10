@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1557,6 +1557,7 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		pr_err("%s: Invalid mux value %d\n", __func__, mux);
 		return -EINVAL;
 	}
+
 	mutex_lock(&routing_lock);
 	switch (ucontrol->value.integer.value[0]) {
 	case 0:
@@ -1665,13 +1666,14 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	bool state = false;
 
+	pr_debug("%s: msm_route_ec_ref_rx = %d value = %ld\n",
+		 __func__, msm_route_ext_ec_ref,
+		 ucontrol->value.integer.value[0]);
+
 	if (mux >= e->max) {
 		pr_err("%s: Invalid mux value %d\n", __func__, mux);
 		return -EINVAL;
 	}
-	pr_debug("%s: msm_route_ec_ref_rx = %d value = %ld\n",
-		 __func__, msm_route_ext_ec_ref,
-		 ucontrol->value.integer.value[0]);
 
 	mutex_lock(&routing_lock);
 	switch (ucontrol->value.integer.value[0]) {
@@ -4838,7 +4840,7 @@ static struct platform_driver msm_routing_pcm_driver = {
 		.of_match_table = msm_pcm_routing_dt_match,
 	},
 	.probe = msm_routing_pcm_probe,
-	.remove = msm_routing_pcm_remove,
+	.remove = __devexit_p(msm_routing_pcm_remove),
 };
 
 int msm_routing_check_backend_enabled(int fedai_id)
