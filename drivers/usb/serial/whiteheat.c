@@ -272,7 +272,7 @@ static int whiteheat_firmware_download(struct usb_serial *serial,
 					      be16_to_cpu(record->len), 0xa0);
 		if (response < 0) {
 			dev_err(&serial->dev->dev, "%s - ezusb_writememory "
-				"failed for loader (%d %04X %p %d)\n",
+				"failed for loader (%d %04X %pK %d)\n",
 				__func__, response, be32_to_cpu(record->addr),
 				record->data, be16_to_cpu(record->len));
 			break;
@@ -292,7 +292,7 @@ static int whiteheat_firmware_download(struct usb_serial *serial,
 		if (response < 0) {
 			dev_err(&serial->dev->dev, "%s - ezusb_writememory "
 				"failed for first firmware step "
-				"(%d %04X %p %d)\n", __func__, response,
+				"(%d %04X %pK %d)\n", __func__, response,
 				be32_to_cpu(record->addr), record->data,
 				be16_to_cpu(record->len));
 			break;
@@ -310,7 +310,7 @@ static int whiteheat_firmware_download(struct usb_serial *serial,
 		if (response < 0) {
 			dev_err(&serial->dev->dev, "%s - ezusb_writememory "
 				"failed for second firmware step "
-				"(%d %04X %p %d)\n", __func__, response,
+				"(%d %04X %pK %d)\n", __func__, response,
 				be32_to_cpu(record->addr), record->data,
 				be16_to_cpu(record->len));
 			break;
