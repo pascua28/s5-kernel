@@ -107,7 +107,7 @@ skip:
 	cmp	r3, r10
 	bgt	loop1
 finished:
-	mov	r10, #0				@ swith back to cache level 0
+	mov	r10, #0				@ switch back to cache level 0
 	mcr	p15, 2, r10, c0, c0, 0		@ select current cache level in cssr
 	dsb
 	isb
