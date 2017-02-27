@@ -1064,7 +1064,7 @@ static void __exit devfreq_exit(void)
 module_exit(devfreq_exit);
 
 /*
- * The followings are helper functions for devfreq user device drivers with
+ * The following are helper functions for devfreq user device drivers with
  * OPP framework.
  */
 
