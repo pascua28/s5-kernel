@@ -31,6 +31,9 @@
 #include <linux/i2c/synaptics_rmi.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
+#ifdef CONFIG_FB
+#include <linux/fb.h>
+#endif
 
 #define DRIVER_NAME "synaptics_rmi4_i2c"
 
@@ -3987,6 +3990,11 @@ static void alloc_tsp_reboot_mode(void)
 }
 #endif
 
+#ifdef CONFIG_FB
+static int fb_notifier_callback(struct notifier_block *self,
+	unsigned long event, void *data);
+#endif
+
  /**
  * synaptics_rmi4_probe()
  *
@@ -4261,6 +4269,13 @@ err_tsp_reboot:
 #ifdef TSP_TURNOFF_AFTER_PROBE
 	synaptics_rmi4_stop_device(rmi4_data);
 #endif
+
+#ifdef CONFIG_FB
+	rmi4_data->fb_notif.notifier_call = fb_notifier_callback;
+	if (fb_register_client(&rmi4_data->fb_notif))
+		pr_err("%s: could not create fb notifier\n", __func__);
+#endif
+
 	return retval;
 
 err_sysfs:
@@ -4327,6 +4342,10 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 	synaptics_rmi4_release_support_fn(rmi4_data);
 
 	input_free_device(rmi4_data->input_dev);
+
+#ifdef CONFIG_FB
+	fb_unregister_client(&rmi4_data->fb_notif);
+#endif
 
 	kfree(rmi4_data);
 
@@ -4695,6 +4714,36 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	mutex_unlock(&rmi4_data->input_dev->mutex);
+
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_FB
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	struct synaptics_rmi4_data *rmi4_data =
+			container_of(self, struct synaptics_rmi4_data, fb_notif);
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+		int *blank = evdata->data;
+		switch (*blank) {
+		case FB_BLANK_UNBLANK:
+		case FB_BLANK_NORMAL:
+		case FB_BLANK_VSYNC_SUSPEND:
+		case FB_BLANK_HSYNC_SUSPEND:
+			synaptics_rmi4_resume(&rmi4_data->i2c_client->dev);
+			break;
+		case FB_BLANK_POWERDOWN:
+			synaptics_rmi4_suspend(&rmi4_data->i2c_client->dev);
+			break;
+		default:
+			/* Don't handle what we don't understand */
+			break;
+		}
+	}
 
 	return 0;
 }

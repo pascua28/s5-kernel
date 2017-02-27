@@ -59,6 +59,11 @@
  * Synpatics IC report those data through F51's edge swipe
  * fucntionality.
  */
+ 
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#endif
+ 
 #define SURFACE_TOUCH
 
 #define	USE_OPEN_CLOSE
@@ -404,6 +409,11 @@ struct synaptics_rmi4_data {
 	void (*register_cb)(struct synaptics_rmi_callbacks *);
 	struct synaptics_rmi_callbacks callbacks;
 #endif
+
+#ifdef CONFIG_FB
+	struct notifier_block fb_notif;
+#endif
+
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
 	int (*i2c_write)(struct synaptics_rmi4_data *pdata, unsigned short addr,
