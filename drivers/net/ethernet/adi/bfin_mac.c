@@ -1099,8 +1099,8 @@ static void bfin_mac_rx(struct net_device *dev)
 	}
 	/* reserve 2 bytes for RXDWA padding */
 	skb_reserve(new_skb, NET_IP_ALIGN);
-	/* Invidate the data cache of skb->data range when it is write back
-	 * cache. It will prevent overwritting the new data from DMA
+	/* Invalidate the data cache of skb->data range when it is write back
+	 * cache. It will prevent overwriting the new data from DMA
 	 */
 	blackfin_dcache_invalidate_range((unsigned long)new_skb->head,
 					 (unsigned long)new_skb->end);
