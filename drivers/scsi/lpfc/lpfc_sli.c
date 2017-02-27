@@ -11008,7 +11008,7 @@ lpfc_sli4_sp_handle_els_wcqe(struct lpfc_hba *phba,
  * @phba: Pointer to HBA context object.
  * @wcqe: Pointer to work-queue completion queue entry.
  *
- * This routine handles slow-path WQ entry comsumed event by invoking the
+ * This routine handles slow-path WQ entry consumed event by invoking the
  * proper WQ release routine to the slow-path WQ.
  **/
 static void
@@ -11384,7 +11384,7 @@ lpfc_sli4_fp_handle_fcp_wcqe(struct lpfc_hba *phba,
  * @cq: Pointer to completion queue.
  * @wcqe: Pointer to work-queue completion queue entry.
  *
- * This routine handles an fast-path WQ entry comsumed event by invoking the
+ * This routine handles an fast-path WQ entry consumed event by invoking the
  * proper WQ release routine to the slow-path WQ.
  **/
 static void
