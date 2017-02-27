@@ -34,6 +34,10 @@ extern struct class *sec_class;
 #define TK_BIT_GLOVE 0x40
 #endif
 
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#endif
+
 //#define AUTOCAL_WORKQUEUE
 
 /*#define TK_HOME_ENABLE*/
@@ -137,6 +141,10 @@ struct cypress_touchkey_info {
 
 #ifdef TK_KEYPAD_ENABLE
 	atomic_t keypad_enable;
+#endif
+
+#if defined(CONFIG_FB) && defined(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY_KS01)
+	struct notifier_block fb_notif;
 #endif
 };
 
