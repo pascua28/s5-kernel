@@ -112,7 +112,7 @@ struct vmscsi_request {
 
 
 /*
- * This structure is sent during the intialization phase to get the different
+ * This structure is sent during the initialization phase to get the different
  * properties of the channel.
  */
 struct vmstorage_channel_properties {
