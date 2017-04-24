@@ -35,6 +35,7 @@ modules.builtin
 *.lzo
 *.patch
 *.gcno
+*.ll
 *.dwo
 *.c.[012]*.*
 
