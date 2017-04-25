@@ -131,8 +131,8 @@ struct operation {
 };
 
 /* definitions of av_decision.flags */
-// [ SEC_SELINUX_PORTING_COMMON
-#ifdef CONFIG_ALWAYS_ENFORCE
+// START_SEC_SELINUX_PORTING_COMMON
+#ifdef SELINUX_ALWAYS_ENFORCE
 #define AVD_FLAGS_PERMISSIVE	0x0000
 #else
 #define AVD_FLAGS_PERMISSIVE	0x0001
