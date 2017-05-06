@@ -313,6 +313,14 @@ void ftrace_likely_update(struct ftrace_branch_data *f, int val, int expect);
 # define __attribute_const__	/* unimplemented */
 #endif
 
+#ifndef __randomize_layout
+# define __randomize_layout __designated_init
+#endif
+
+#ifndef __no_randomize_layout
+# define __no_randomize_layout
+#endif
+
 /*
  * Tell gcc if a function is cold. The compiler will assume any path
  * directly leading to the call is unlikely.
