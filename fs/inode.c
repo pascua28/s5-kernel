@@ -114,7 +114,7 @@ int proc_nr_inodes(ctl_table *table, int write,
 #endif
 
 /**
- * inode_init_always - perform inode structure intialisation
+ * inode_init_always - perform inode structure initialisation
  * @sb: superblock inode belongs to
  * @inode: inode to initialise
  *
