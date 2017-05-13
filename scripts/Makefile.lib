@@ -138,7 +138,7 @@ ld_flags       = $(LDFLAGS) $(ldflags-y)
 DTC_INCLUDE    := $(srctree)/scripts/dtc/include-prefixes
 
 dtc_cpp_flags  = -Wp,-MD,$(depfile).pre.tmp -nostdinc                    \
-		 $(addprefix -I,$(DTC_INCLUDE))                          \
+		 -I$(srctree)/scripts/dtc/include-prefixes               \
 		 -undef -D__DTS__
 
 # Useful for describing the dependency of composite objects
