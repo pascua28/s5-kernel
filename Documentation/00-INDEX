@@ -28,8 +28,6 @@ DMA-API.txt
 	- DMA API, pci_ API & extensions for non-consistent memory machines.
 DMA-ISA-LPC.txt
 	- How to do DMA with ISA (and LPC) devices.
-DocBook/
-	- directory with DocBook templates etc. for kernel documentation.
 HOWTO
 	- the process and procedures of how to do Linux kernel development.
 IPMI.txt

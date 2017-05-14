@@ -1186,7 +1186,7 @@ clean: archclean vmlinuxclean
 #
 mrproper: rm-dirs  := $(wildcard $(MRPROPER_DIRS))
 mrproper: rm-files := $(wildcard $(MRPROPER_FILES))
-mrproper-dirs      := $(addprefix _mrproper_,Documentation/DocBook scripts)
+mrproper-dirs      := $(addprefix _mrproper_,scripts)
 
 PHONY += $(mrproper-dirs) mrproper archmrproper
 $(mrproper-dirs):
@@ -1283,7 +1283,7 @@ help:
 	@$(MAKE) $(build)=$(package-dir) help
 	@echo  ''
 	@echo  'Documentation targets:'
-	@$(MAKE) -f $(srctree)/Documentation/DocBook/Makefile dochelp
+	@$(MAKE) -f $(srctree)/Documentation/Makefile dochelp
 	@echo  ''
 	@echo  'Architecture specific targets ($(SRCARCH)):'
 	@$(if $(archhelp),$(archhelp),\
@@ -1332,8 +1332,8 @@ $(help-board-dirs): help-%:
 # Documentation targets
 # ---------------------------------------------------------------------------
 %docs: scripts_basic FORCE
-	$(Q)$(MAKE) $(build)=scripts build_docproc build_check-lc_ctype
-	$(Q)$(MAKE) $(build)=Documentation/DocBook $@
+	$(Q)$(MAKE) $(build)=scripts build_docproc
+	$(Q)$(MAKE) $(build)=Documentation $@
 
 else # KBUILD_EXTMOD
 
