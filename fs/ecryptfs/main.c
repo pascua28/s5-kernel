@@ -189,9 +189,6 @@ enum { ecryptfs_opt_sig, ecryptfs_opt_ecryptfs_sig,
 #ifdef CONFIG_CRYPTO_FIPS
 	ecryptfs_opt_enable_cc,
 #endif
-#ifdef CONFIG_SDP
-	ecryptfs_opt_userid, ecryptfs_opt_sdp,
-#endif
        ecryptfs_opt_err };
 
 static const match_table_t tokens = {
@@ -214,10 +211,6 @@ static const match_table_t tokens = {
 #endif
 #ifdef CONFIG_CRYPTO_FIPS
 	{ecryptfs_opt_enable_cc, "ecryptfs_enable_cc"},
-#endif
-#ifdef CONFIG_SDP
-	{ecryptfs_opt_userid, "userid=%s"},
-	{ecryptfs_opt_sdp, "sdp_enabled"},
 #endif
 	{ecryptfs_opt_err, NULL}
 };
@@ -488,24 +481,6 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 			strncpy(cipher_mode, ECRYPTFS_AES_CBC_MODE, ECRYPTFS_MAX_CIPHER_MODE_SIZE);
 			break;
 #endif
-#ifdef CONFIG_SDP
-		case ecryptfs_opt_userid: {
-			char *userid_src = args[0].from;
-			int userid =
-				(int)simple_strtol(userid_src,
-						&userid_src, 0);
-			sbi->userid = userid;
-			mount_crypt_stat->userid = userid;
-			/*
-			 * Enabling SDP by default for Knox container.
-			 */
-			mount_crypt_stat->flags |= ECRYPTFS_MOUNT_SDP_ENABLED;
-			}
-			break;
-		case ecryptfs_opt_sdp:
-			mount_crypt_stat->flags |= ECRYPTFS_MOUNT_SDP_ENABLED;
-			break;
-#endif
 		case ecryptfs_opt_err:
 		default:
 			printk(KERN_WARNING
@@ -667,10 +642,6 @@ static struct dentry *ecryptfs_mount(struct file_system_type *fs_type, int flags
 		rc = -ENOMEM;
 		goto out;
 	}
-
-#ifdef CONFIG_SDP
-	sbi->userid = -1;
-#endif
 
 	rc = ecryptfs_parse_options(sbi, raw_data, &check_ruid);
 	if (rc) {
