@@ -138,7 +138,7 @@ enum {
 	BINDER_DEBUG_FREE_BUFFER            = 1U << 11,
 	BINDER_DEBUG_INTERNAL_REFS          = 1U << 12,
 	BINDER_DEBUG_PRIORITY_CAP           = 1U << 13,
-	BINDER_DEBUG_SPINLOCKS              = 1U << 16,
+	BINDER_DEBUG_SPINLOCKS              = 1U << 14,
 };
 static uint32_t binder_debug_mask;
 
@@ -413,6 +413,51 @@ enum binder_deferred_state {
 	BINDER_DEFERRED_RELEASE      = 0x04,
 };
 
+/**
+ * struct binder_proc - binder process bookkeeping
+ * @proc_node:            element for binder_procs list
+ * @threads:              rbtree of binder_threads in this proc
+ * @nodes:                rbtree of binder nodes associated with
+ *                        this proc ordered by node->ptr
+ * @refs_by_desc:         rbtree of refs ordered by ref->desc
+ * @refs_by_node:         rbtree of refs ordered by ref->node
+ * @pid                   PID of group_leader of process
+ *                        (invariant after initialized)
+ * @tsk                   task_struct for group_leader of process
+ *                        (invariant after initialized)
+ * @files                 files_struct for process
+ *                        (invariant after initialized)
+ * @deferred_work_node:   element for binder_deferred_list
+ *                        (protected by binder_deferred_lock)
+ * @deferred_work:        bitmap of deferred work to perform
+ *                        (protected by binder_deferred_lock)
+ * @is_dead:              process is dead and awaiting free
+ *                        when outstanding transactions are cleaned up
+ * @todo:                 list of work for this process
+ * @wait:                 wait queue head to wait for proc work
+ *                        (invariant after initialized)
+ * @stats:                per-process binder statistics
+ *                        (atomics, no lock needed)
+ * @delivered_death:      list of delivered death notification
+ * @max_threads:          cap on number of binder threads
+ * @requested_threads:    number of binder threads requested but not
+ *                        yet started. In current implementation, can
+ *                        only be 0 or 1.
+ * @requested_threads_started: number binder threads started
+ * @ready_threads:        number of threads waiting for proc work
+ * @tmp_ref:              temporary reference to indicate proc is in use
+ * @default_priority:     default scheduler priority
+ *                        (invariant after initialized)
+ * @debugfs_entry:        debugfs node
+ * @alloc:                binder allocator bookkeeping
+ * @context:              binder_context for this proc
+ *                        (invariant after initialized)
+ * @inner_lock:           can nest under outer_lock and/or node lock
+ * @outer_lock:           no nesting under innor or node lock
+ *                        Lock order: 1) outer, 2) node, 3) inner
+ *
+ * Bookkeeping structure for binder processes
+ */
 struct binder_proc {
 	struct hlist_node proc_node;
 	struct rb_root threads;
@@ -519,6 +564,97 @@ struct binder_transaction {
 	 */
 	spinlock_t lock;
 };
+
+/**
+ * binder_proc_lock() - Acquire outer lock for given binder_proc
+ * @proc:         struct binder_proc to acquire
+ *
+ * Acquires proc->outer_lock. Used to protect binder_ref
+ * structures associated with the given proc.
+ */
+#define binder_proc_lock(proc) _binder_proc_lock(proc, __LINE__)
+static void
+_binder_proc_lock(struct binder_proc *proc, int line)
+{
+	binder_debug(BINDER_DEBUG_SPINLOCKS,
+		     "%s: line=%d\n", __func__, line);
+	spin_lock(&proc->outer_lock);
+}
+
+/**
+ * binder_proc_unlock() - Release spinlock for given binder_proc
+ * @proc:         struct binder_proc to acquire
+ *
+ * Release lock acquired via binder_proc_lock()
+ */
+#define binder_proc_unlock(_proc) _binder_proc_unlock(_proc, __LINE__)
+static void
+_binder_proc_unlock(struct binder_proc *proc, int line)
+{
+	binder_debug(BINDER_DEBUG_SPINLOCKS,
+		     "%s: line=%d\n", __func__, line);
+	spin_unlock(&proc->outer_lock);
+}
+
+/**
+ * binder_inner_proc_lock() - Acquire inner lock for given binder_proc
+ * @proc:         struct binder_proc to acquire
+ *
+ * Acquires proc->inner_lock. Used to protect todo lists
+ */
+#define binder_inner_proc_lock(proc) _binder_inner_proc_lock(proc, __LINE__)
+static void
+_binder_inner_proc_lock(struct binder_proc *proc, int line)
+{
+	binder_debug(BINDER_DEBUG_SPINLOCKS,
+		     "%s: line=%d\n", __func__, line);
+	spin_lock(&proc->inner_lock);
+}
+
+/**
+ * binder_inner_proc_unlock() - Release inner lock for given binder_proc
+ * @proc:         struct binder_proc to acquire
+ *
+ * Release lock acquired via binder_inner_proc_lock()
+ */
+#define binder_inner_proc_unlock(proc) _binder_inner_proc_unlock(proc, __LINE__)
+static void
+_binder_inner_proc_unlock(struct binder_proc *proc, int line)
+{
+	binder_debug(BINDER_DEBUG_SPINLOCKS,
+		     "%s: line=%d\n", __func__, line);
+	spin_unlock(&proc->inner_lock);
+}
+
+/**
+ * binder_node_lock() - Acquire spinlock for given binder_node
+ * @node:         struct binder_node to acquire
+ *
+ * Acquires node->lock. Used to protect binder_node fields
+ */
+#define binder_node_lock(node) _binder_node_lock(node, __LINE__)
+static void
+_binder_node_lock(struct binder_node *node, int line)
+{
+	binder_debug(BINDER_DEBUG_SPINLOCKS,
+		     "%s: line=%d\n", __func__, line);
+	spin_lock(&node->lock);
+}
+
+/**
+ * binder_node_unlock() - Release spinlock for given binder_proc
+ * @node:         struct binder_node to acquire
+ *
+ * Release lock acquired via binder_node_lock()
+ */
+#define binder_node_unlock(node) _binder_node_unlock(node, __LINE__)
+static void
+_binder_node_unlock(struct binder_node *node, int line)
+{
+	binder_debug(BINDER_DEBUG_SPINLOCKS,
+		     "%s: line=%d\n", __func__, line);
+	spin_unlock(&node->lock);
+}
 
 static void
 binder_defer_work(struct binder_proc *proc, enum binder_deferred_state defer);
