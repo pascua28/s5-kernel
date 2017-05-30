@@ -1028,7 +1028,7 @@ static struct of_device_id msm_slp_sts_match_tbl[] = {
 	{},
 };
 
-static struct platform_driver msm_cpu_status_driver = {
+static struct platform_driver msm_cpu_status_driver __refdata = {
 	.probe = msm_cpu_status_probe,
 	.driver = {
 		.name = "cpu_slp_status",
@@ -1042,7 +1042,7 @@ static struct of_device_id msm_snoc_clnt_match_tbl[] = {
 	{},
 };
 
-static struct platform_driver msm_cpu_pm_snoc_client_driver = {
+static struct platform_driver msm_cpu_pm_snoc_client_driver __refdata = {
 	.probe = msm_pm_snoc_client_probe,
 	.driver = {
 		.name = "pm_snoc_client",
@@ -1309,7 +1309,7 @@ static struct of_device_id msm_cpu_pm_table[] = {
 	{},
 };
 
-static struct platform_driver msm_cpu_pm_driver = {
+static struct platform_driver msm_cpu_pm_driver __refdata = {
 	.probe = msm_cpu_pm_probe,
 	.driver = {
 		.name = "pm-8x60",
