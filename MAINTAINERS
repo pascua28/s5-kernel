@@ -2309,6 +2309,7 @@ L:	linux-doc@vger.kernel.org
 T:	TBD
 S:	Maintained
 F:	Documentation/
+F:	scripts/kernel-doc
 
 DOUBLETALK DRIVER
 M:	"James R. Van Zandt" <jrv@vanzandt.mv.com>
