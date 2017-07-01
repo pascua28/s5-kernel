@@ -160,19 +160,19 @@ polling:
 	}
 
 	/* Process active pipe sources */
-	pipe = list_first_entry(&dev->pipes_q, struct sps_pipe, list);
-
-	list_for_each_entry(pipe, &dev->pipes_q, list) {
-		/* Check this pipe's bit in the source mask */
-		if (BAM_PIPE_IS_ASSIGNED(pipe)
+	if (!list_empty(&dev->pipes_q)) {
+		list_for_each_entry(pipe, &dev->pipes_q, list) {
+			/* Check this pipe's bit in the source mask */
+			if (BAM_PIPE_IS_ASSIGNED(pipe)
 				&& (!pipe->disconnecting)
 				&& (source & pipe->pipe_index_mask)) {
-			/* This pipe has an interrupt pending */
-			pipe_handler(dev, pipe);
-			source &= ~pipe->pipe_index_mask;
+				/* This pipe has an interrupt pending */
+				pipe_handler(dev, pipe);
+				source &= ~pipe->pipe_index_mask;
+			}
+			if (source == 0)
+				break;
 		}
-		if (source == 0)
-			break;
 	}
 
 	/* Process any inactive pipe sources */
@@ -287,7 +287,7 @@ int sps_bam_enable(struct sps_bam *dev)
 					IRQF_TRIGGER_RISING | IRQF_NO_SUSPEND,
 					"sps", dev);
 				SPS_DBG(
-					"sps:BAM 0x%x uses edge for IRQ# %d\n",
+					"sps:BAM %pa uses edge for IRQ# %d\n",
 					BAM_ID(dev), dev->props.irq);
 			} else {
 				result = request_irq(dev->props.irq,
@@ -295,11 +295,11 @@ int sps_bam_enable(struct sps_bam *dev)
 					IRQF_TRIGGER_HIGH | IRQF_NO_SUSPEND,
 					"sps", dev);
 				SPS_DBG(
-					"sps:BAM 0x%x uses level for IRQ# %d\n",
+					"sps:BAM %pa uses level for IRQ# %d\n",
 					BAM_ID(dev), dev->props.irq);
 			}
 		} else {
-			SPS_DBG1("sps:BAM 0x%x does not have an vaild IRQ# %d\n",
+			SPS_DBG1("sps:BAM %pa does not have an vaild IRQ# %d\n",
 				BAM_ID(dev), dev->props.irq);
 		}
 
@@ -493,12 +493,12 @@ int sps_bam_enable(struct sps_bam *dev)
 		if (dev->props.logging_number > 0)
 			dev->props.logging_number--;
 		SPS_INFO(
-			"sps:BAM %pa (va:0x%p) enabled: ver:0x%x, number of pipes:%d\n",
+			"sps:BAM %pa (va:0x%pK) enabled: ver:0x%x, number of pipes:%d\n",
 			BAM_ID(dev), dev->base, dev->version,
 			dev->props.num_pipes);
 	} else
 		SPS_DBG2(
-			"sps:BAM %pa (va:0x%p) enabled: ver:0x%x, number of pipes:%d\n",
+			"sps:BAM %pa (va:0x%pK) enabled: ver:0x%x, number of pipes:%d\n",
 			BAM_ID(dev), dev->base, dev->version,
 			dev->props.num_pipes);
 
@@ -1200,7 +1200,8 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 				vmalloc(pipe->desc_size + size);
 
 			if (pipe->sys.desc_cache == NULL) {
-				SPS_ERR("sps:No memory for pipe %d of BAM %pa\n",
+				SPS_ERR(
+					"sps:No memory for pipe %d of BAM %pa\n",
 					pipe_index, BAM_ID(dev));
 				return -ENOMEM;
 			}
@@ -1208,6 +1209,13 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 			memset(pipe->sys.desc_cache, 0, pipe->desc_size + size);
 		}
 
+		if (pipe->sys.desc_cache == NULL) {
+			/*** MUST BE LAST POINT OF FAILURE (see below) *****/
+			SPS_ERR("sps:Desc cache error: BAM %pa pipe %d: %d\n",
+				BAM_ID(dev), pipe_index,
+				pipe->desc_size + size);
+			return SPS_ERROR;
+		}
 		pipe->sys.user_ptrs = (void **)(pipe->sys.desc_cache +
 						 pipe->desc_size);
 		pipe->sys.cache_offset = pipe->sys.acked_offset;
@@ -1940,7 +1948,7 @@ int sps_bam_pipe_get_event(struct sps_bam *dev,
 
 	if (pipe->sys.no_queue) {
 		SPS_ERR(
-			"sps:Invalid connection for event: BAM %pa pipe %d context 0x%p\n",
+			"sps:Invalid connection for event: BAM %pa pipe %d context 0x%pK\n",
 			BAM_ID(dev), pipe_index, pipe);
 		notify->event_id = SPS_EVENT_INVALID;
 		return SPS_ERROR;
