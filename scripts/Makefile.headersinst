@@ -39,11 +39,6 @@ ifeq ($(skip-inst),)
 kbuild-file := $(srctree)/$(obj)/Kbuild
 include $(kbuild-file)
 
-old-kbuild-file := $(srctree)/$(subst uapi/,,$(obj))/Kbuild
-ifneq ($(wildcard $(old-kbuild-file)),)
-include $(old-kbuild-file)
-endif
-
 installdir    := $(INSTALL_HDR_PATH)/$(dst)
 header-y      := $(sort $(header-y))
 subdirs       := $(patsubst %/,%,$(filter %/, $(header-y)))
