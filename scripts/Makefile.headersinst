@@ -38,8 +38,6 @@ skip-inst := $(if $(filter %/uapi,$(obj)),1)
 
 ifeq ($(skip-inst),)
 
-# generated header directory
-gen := $(if $(gen),$(gen),$(subst include/,include/generated/,$(obj)))
 
 kbuild-file := $(srctree)/$(obj)/Kbuild
 include $(kbuild-file)
@@ -64,7 +62,7 @@ check-file    := $(installdir)/.check
 wrapper-files := $(filter $(header-y), $(generic-y))
 
 srcdir        := $(srctree)/$(obj)
-gendir        := $(objtree)/$(gen)
+gendir        := $(objtree)/$(subst include/,include/generated/,$(obj))
 
 oldsrcdir     := $(srctree)/$(subst /uapi,,$(obj))
 
