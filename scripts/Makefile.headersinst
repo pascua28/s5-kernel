@@ -22,15 +22,12 @@ subdirs       := $(patsubst $(srcdir)/%/,%,\
 		 $(filter-out $(srcdir)/,\
 		 $(sort $(dir $(wildcard $(srcdir)/*/)))))
 
-# caller may set destination dir (when installing to asm/)
-_dst          := $(if $(dst),$(dst),$(obj))
-
 # Recursion
 __headers: $(subdirs)
 
 .PHONY: $(subdirs)
 $(subdirs):
-	$(Q)$(MAKE) $(hdr-inst)=$(obj)/$@ dst=$(_dst)/$@
+	$(Q)$(MAKE) $(hdr-inst)=$(obj)/$@ dst=$(dst)/$@
 
 # Skip header install/check for include/uapi and arch/$(hdr-arch)/include/uapi.
 # We have only sub-directories there.
@@ -47,8 +44,7 @@ ifneq ($(wildcard $(old-kbuild-file)),)
 include $(old-kbuild-file)
 endif
 
-installdir    := $(INSTALL_HDR_PATH)/$(subst uapi/,,$(_dst))
-
+installdir    := $(INSTALL_HDR_PATH)/$(dst)
 header-y      := $(sort $(header-y))
 subdirs       := $(patsubst %/,%,$(filter %/, $(header-y)))
 header-y      := $(filter-out %/, $(header-y))
