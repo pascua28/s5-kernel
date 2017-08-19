@@ -260,5 +260,4 @@ wakeup.bin
 wakeup.elf
 wakeup.lds
 zImage*
-zconf.hash.c
 zoffset.h
