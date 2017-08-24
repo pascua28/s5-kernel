@@ -433,6 +433,7 @@ static __always_inline void __assign_once_size(volatile void *p, void *res, int 
  * handlers, all running on the same CPU.
  */
 #define ACCESS_ONCE(x) (*(volatile typeof(x) *)&(x))
+#define WRITE_ONCE(x, val) ACCESS_ONCE(x) = val
 
 /* Ignore/forbid kprobes attach on very low level functions marked by this attribute: */
 #ifdef CONFIG_KPROBES
