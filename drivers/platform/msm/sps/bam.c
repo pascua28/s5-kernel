@@ -1494,15 +1494,6 @@ void bam_pipe_halt(void *base, u32 pipe, bool halt)
 		bam_write_reg_field(base, P_HALT, pipe, P_HALT_P_HALT, 0);
 }
 
-/* halt and un-halt a pipe */
-void bam_pipe_halt(void *base, u32 pipe, bool halt)
-{
-	if (halt)
-		bam_write_reg_field(base, P_HALT, pipe, P_HALT_P_HALT, 1);
-	else
-		bam_write_reg_field(base, P_HALT, pipe, P_HALT_P_HALT, 0);
-}
-
 /* output the content of BAM-level registers */
 void print_bam_reg(void *virt_addr)
 {
