@@ -1314,6 +1314,8 @@ $(help-board-dirs): help-%:
 
 # Documentation targets
 # ---------------------------------------------------------------------------
+DOC_TARGETS := refcheckdocs
+
 %docs: scripts_basic FORCE
 	$(Q)$(MAKE) $(build)=Documentation $@
 
