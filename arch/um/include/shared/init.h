@@ -60,7 +60,7 @@ typedef void (*exitcall_t)(void);
 #endif
 
 #else
-#include <linux/compiler.h>
+#include <linux/compiler_types.h>
 #endif
 /* These are for everybody (although not all archs will actually
    discard it in modules) */

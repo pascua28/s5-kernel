@@ -1,7 +1,7 @@
 #ifndef _LINUX_LINKAGE_H
 #define _LINUX_LINKAGE_H
 
-#include <linux/compiler.h>
+#include <linux/compiler_types.h>
 #include <asm/linkage.h>
 
 #ifdef __cplusplus
