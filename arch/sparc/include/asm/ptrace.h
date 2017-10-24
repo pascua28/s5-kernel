@@ -164,7 +164,6 @@ struct sparc_stackf {
 
 #ifdef __KERNEL__
 
-#include <linux/compiler.h>
 #include <linux/threads.h>
 #include <asm/switch_to.h>
 
