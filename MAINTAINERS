@@ -4247,6 +4247,11 @@ S:	Maintained
 F:	Documentation/scsi/53c700.txt
 F:	drivers/scsi/53c700*
 
+LEAKING_ADDRESSES
+M:	Tobin C. Harding <me@tobin.cc>
+S:	Maintained
+F:	scripts/leaking_addresses.pl
+
 LED SUBSYSTEM
 M:	Bryan Wu <bryan.wu@canonical.com>
 M:	Richard Purdie <rpurdie@rpsys.net>
