@@ -63,6 +63,11 @@ modules.builtin
 /debian/
 
 #
+# Snap directory (make snap-pkg)
+#
+/snap/
+
+#
 # git files that we don't want to ignore even it they are dot-files
 #
 !.gitignore
