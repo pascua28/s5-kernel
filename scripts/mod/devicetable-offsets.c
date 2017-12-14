@@ -175,5 +175,9 @@ int main(void)
 	DEVID_FIELD(rio_device_id, asm_did);
 	DEVID_FIELD(rio_device_id, asm_vid);
 
+	DEVID(sdw_device_id);
+	DEVID_FIELD(sdw_device_id, mfg_id);
+	DEVID_FIELD(sdw_device_id, part_id);
+
 	return 0;
 }
