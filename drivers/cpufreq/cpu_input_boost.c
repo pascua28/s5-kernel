@@ -19,7 +19,7 @@
 #include <linux/input.h>
 #include <linux/slab.h>
 
-#define FB_BOOST_MS 1100
+#define FB_BOOST_MS 3000
 
 enum boost_status {
 	UNBOOST,
@@ -79,12 +79,11 @@ static void ib_boost_main(struct work_struct *work)
 	b->ib.nr_cpus_boosted = 0;
 
 	/*
-	 * Maximum of two CPUs can be boosted at any given time.
-	 * Boost two CPUs if only one is online as it's very likely
-	 * that another CPU will come online soon (due to user interaction).
-	 * The next CPU to come online is the other CPU that will be boosted.
+	 * Maximum of two CPUs can be boosted at any given time. Boost two
+	 * CPUs if not all CPUs are online. If only one CPU is online, then
+	 * the next CPU to come online is the 2nd CPU that will be boosted.
 	 */
-	b->ib.nr_cpus_to_boost = num_online_cpus() == 1 ? 2 : 1;
+	b->ib.nr_cpus_to_boost = num_online_cpus() == NR_CPUS ? 1 : 2;
 
 	/*
 	 * Reduce the boost duration for all CPUs by a factor of
