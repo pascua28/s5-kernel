@@ -9,6 +9,11 @@
  */
 #include <linux/init.h>
 #include <linux/utsname.h>
+#include <linux/cpu.h>
+#include <linux/module.h>
+
+#include <asm/nospec-branch.h>
+#include <asm/cmdline.h>
 #include <asm/bugs.h>
 #include <asm/processor.h>
 #include <asm/processor-flags.h>
@@ -26,7 +31,33 @@ static int __init no_halt(char *s)
 
 __setup("no-hlt", no_halt);
 
-static int __init no_387(char *s)
+static const char *spectre_v2_strings[] = {
+	[SPECTRE_V2_NONE]			= "Vulnerable",
+	[SPECTRE_V2_RETPOLINE_MINIMAL]		= "Vulnerable: Minimal generic ASM retpoline",
+	[SPECTRE_V2_RETPOLINE_MINIMAL_AMD]	= "Vulnerable: Minimal AMD ASM retpoline",
+	[SPECTRE_V2_RETPOLINE_GENERIC]		= "Mitigation: Full generic retpoline",
+	[SPECTRE_V2_RETPOLINE_AMD]		= "Mitigation: Full AMD retpoline",
+};
+
+#undef pr_fmt
+#define pr_fmt(fmt)     "Spectre V2 mitigation: " fmt
+
+static enum spectre_v2_mitigation spectre_v2_enabled = SPECTRE_V2_NONE;
+static bool spectre_v2_bad_module;
+
+#ifdef RETPOLINE
+bool retpoline_module_ok(bool has_retpoline)
+{
+	if (spectre_v2_enabled == SPECTRE_V2_NONE || has_retpoline)
+		return true;
+
+	pr_err("System may be vunerable to spectre v2\n");
+	spectre_v2_bad_module = true;
+	return false;
+}
+#endif
+
+static void __init spec2_print_if_insecure(const char *reason)
 {
 	boot_cpu_data.hard_math = 0;
 	write_cr0(X86_CR0_TS | X86_CR0_EM | X86_CR0_MP | read_cr0());
@@ -159,10 +190,12 @@ static void __init check_config(void)
 
 void __init check_bugs(void)
 {
-	identify_boot_cpu();
-#ifndef CONFIG_SMP
-	printk(KERN_INFO "CPU: ");
-	print_cpu_info(&boot_cpu_data);
+	if (!boot_cpu_has_bug(X86_BUG_SPECTRE_V2))
+		return sprintf(buf, "Not affected\n");
+
+	return sprintf(buf, "%s%s\n", spectre_v2_strings[spectre_v2_enabled],
+		       spectre_v2_bad_module ? " - vulnerable module loaded" : "");
+}
 #endif
 	check_config();
 	check_fpu();

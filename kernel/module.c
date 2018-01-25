@@ -2730,6 +2730,15 @@ free_hdr:
 	return err;
 }
 
+static void check_modinfo_retpoline(struct module *mod, struct load_info *info)
+{
+	if (retpoline_module_ok(get_modinfo(info, "retpoline")))
+		return;
+
+	pr_warn("%s: loading module not compiled with retpoline compiler.\n",
+		mod->name);
+}
+
 /* Sets info->hdr and info->len. */
 int copy_module_from_fd(int fd, struct load_info *info)
 {
@@ -2905,6 +2914,8 @@ static int check_modinfo(struct module *mod, struct load_info *info)
 
 	if (!get_modinfo(info, "intree"))
 		add_taint_module(mod, TAINT_OOT_MODULE);
+
+	check_modinfo_retpoline(mod, info);
 
 	if (get_modinfo(info, "staging")) {
 		add_taint_module(mod, TAINT_CRAP);
