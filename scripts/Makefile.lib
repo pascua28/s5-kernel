@@ -179,7 +179,7 @@ $(src)/%.tab.c_shipped: $(src)/%.y
 	$(call cmd,bison)
 
 quiet_cmd_bison_h = YACC    $@
-      cmd_bison_h = bison -o/dev/null --defines=$@ -t -l -p $(YACC_PREFIX) $<
+      cmd_bison_h = bison -o/dev/null --defines=$@ -t -l $<
 
 .PRECIOUS: $(src)/%.tab.h_shipped
 $(src)/%.tab.h_shipped: $(src)/%.y
