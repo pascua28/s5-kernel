@@ -2,7 +2,7 @@
 # Kernel configuration targets
 # These targets are used from top-level makefile
 
-PHONY += xconfig gconfig menuconfig config silentoldconfig update-po-config \
+PHONY += xconfig gconfig menuconfig config syncconfig update-po-config \
 	localmodconfig localyesconfig
 
 ifdef KBUILD_KCONFIG
@@ -35,7 +35,7 @@ nconfig: $(obj)/nconf
 
 # This has become an internal implementation detail and is now deprecated
 # for external use.
-silentoldconfig: $(obj)/conf
+syncconfig: $(obj)/conf
 	$(Q)mkdir -p include/config include/generated
 	$< $(silent) --$@ $(Kconfig)
 
@@ -85,7 +85,7 @@ PHONY += $(simple-targets)
 $(simple-targets): $(obj)/conf
 	$< $(silent)
 
-PHONY += oldnoconfig savedefconfig defconfig
+PHONY += oldnoconfig silentoldconfig savedefconfig defconfig
 
 ifneq ($(VARIANT_DEFCONFIG),)
 export KCONFIG_VARIANT := arch/$(SRCARCH)/configs/$(VARIANT_DEFCONFIG)
@@ -116,6 +116,13 @@ listnewconfig olddefconfig: $(obj)/conf
 oldnoconfig: olddefconfig
 	@echo "  WARNING: \"oldnoconfig\" target will be removed after Linux 4.19"
 	@echo "            Please use \"olddefconfig\" instead, which is an alias."
+
+# We do not expect manual invokcation of "silentoldcofig" (or "syncconfig").
+silentoldconfig: syncconfig
+	@echo "  WARNING: \"silentoldconfig\" has been renamed to \"syncconfig\""
+	@echo "            and is now an internal implementation detail."
+	@echo "            What you want is probably \"oldconfig\"."
+	@echo "            \"silentoldconfig\" will be removed after Linux 4.19"
 
 savedefconfig: $(obj)/conf
 	$< $(silent) --$@=defconfig $(Kconfig)
