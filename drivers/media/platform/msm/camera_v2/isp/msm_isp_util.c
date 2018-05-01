@@ -212,10 +212,9 @@ uint32_t msm_isp_get_framedrop_period(
 static inline void msm_isp_get_timestamp(struct msm_isp_timestamp *time_stamp)
 {
 	struct timespec ts;
-
-	ktime_get_ts(&ts);
-	time_stamp->buf_time.tv_sec = ts.tv_sec;
-	time_stamp->buf_time.tv_usec = ts.tv_nsec / 1000;
+	get_monotonic_boottime(&ts);
+	time_stamp->buf_time.tv_sec    = ts.tv_sec;
+	time_stamp->buf_time.tv_usec   = ts.tv_nsec/1000;
 	do_gettimeofday(&(time_stamp->event_time));
 }
 
