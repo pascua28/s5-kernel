@@ -1369,7 +1369,7 @@ putback_inactive_pages(struct mem_cgroup_zone *mz,
 #ifndef CONFIG_ZCACHE
 			file = is_file_lru(lru);
 #endif
-			int numpages = hpage_nr_pages(page);
+			unsigned long numpages = hpage_nr_pages(page);
 			reclaim_stat->recent_rotated[file] += numpages;
 		}
 		if (put_page_testzero(page)) {
