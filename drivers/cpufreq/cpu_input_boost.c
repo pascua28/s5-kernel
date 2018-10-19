@@ -577,9 +577,9 @@ static int __init cpu_ib_init(void)
 
 	spin_lock_init(&b->lock);
     
-    b->ib.freq[0] = 729600;
-	b->ib.freq[1] = 1190400;
-	b->ib.duration_ms = 140;
+	b->ib.freq[0] = 1190400;
+	b->ib.freq[1] = 1497600;
+	b->ib.duration_ms = 50;
     b->enabled = 1;
 
 	INIT_WORK(&b->fb.boost_work, fb_boost_main);
