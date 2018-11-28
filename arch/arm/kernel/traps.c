@@ -37,9 +37,7 @@
 #include <asm/system_misc.h>
 
 #include "signal.h"
-#ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
-#endif
 
 #include <trace/events/exception.h>
 
