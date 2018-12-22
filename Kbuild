@@ -19,7 +19,7 @@ kernel/bounds.s: kernel/bounds.c FORCE
 	$(Q)mkdir -p $(dir $@)
 	$(call if_changed_dep,cc_s_c)
 
-$(obj)/$(bounds-file): kernel/bounds.s FORCE
+$(bounds-file): kernel/bounds.s FORCE
 	$(call filechk,offsets,__LINUX_BOUNDS_H__)
 
 #####
@@ -37,7 +37,7 @@ arch/$(SRCARCH)/kernel/asm-offsets.s: arch/$(SRCARCH)/kernel/asm-offsets.c \
 	$(Q)mkdir -p $(dir $@)
 	$(call if_changed_dep,cc_s_c)
 
-$(obj)/$(offsets-file): arch/$(SRCARCH)/kernel/asm-offsets.s FORCE
+$(offsets-file): arch/$(SRCARCH)/kernel/asm-offsets.s FORCE
 	$(call filechk,offsets,__ASM_OFFSETS_H__)
 
 #####
@@ -59,7 +59,7 @@ missing-syscalls: scripts/checksyscalls.sh $(offsets-file) FORCE
 
 extra-$(CONFIG_GDB_SCRIPTS) += build_constants_py
 
-build_constants_py: $(obj)/$(timeconst-file) $(obj)/$(bounds-file)
+build_constants_py: $(timeconst-file) $(bounds-file)
 	@$(MAKE) $(build)=scripts/gdb/linux $@
 
 # Keep these two files during make clean
