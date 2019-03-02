@@ -4115,6 +4115,15 @@ static void dev_seq_printf_stats(struct seq_file *seq, struct net_device *dev)
 		   stats->tx_compressed);
 }
 
+static void dev_seq_printf_stats_packet(struct seq_file *seq, struct net_device *dev)
+{
+	struct rtnl_link_stats64 temp2;
+	const struct rtnl_link_stats64 *stats2 = dev_get_stats(dev, &temp2);
+
+	seq_printf(seq, "%6s: %llu %llu\n",
+		   dev->name, stats2->rx_bytes, stats2->tx_bytes);
+}
+
 /*
  *	Called from the PROCfs module. This now uses the new arbitrary sized
  *	/proc/net interface to create /proc/net/dev
@@ -4129,6 +4138,13 @@ static int dev_seq_show(struct seq_file *seq, void *v)
 			      "drop fifo colls carrier compressed\n");
 	else
 		dev_seq_printf_stats(seq, v);
+	return 0;
+}
+
+static int dev_seq_show_packet(struct seq_file *seq, void *v)
+{
+	if (v != SEQ_START_TOKEN)
+		dev_seq_printf_stats_packet(seq, v);
 	return 0;
 }
 
@@ -4178,15 +4194,36 @@ static const struct seq_operations dev_seq_ops = {
 	.show  = dev_seq_show,
 };
 
+static const struct seq_operations dev_seq_ops_packet = {
+	.start = dev_seq_start,
+	.next  = dev_seq_next,
+	.stop  = dev_seq_stop,
+	.show  = dev_seq_show_packet,
+};
+
 static int dev_seq_open(struct inode *inode, struct file *file)
 {
 	return seq_open_net(inode, file, &dev_seq_ops,
 			    sizeof(struct seq_net_private));
 }
 
+static int dev_seq_open1(struct inode *inode, struct file *file)
+{
+	return seq_open_net(inode, file, &dev_seq_ops_packet,
+			    sizeof(struct seq_net_private));
+}
+
 static const struct file_operations dev_seq_fops = {
 	.owner	 = THIS_MODULE,
 	.open    = dev_seq_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = seq_release_net,
+};
+
+static const struct file_operations dev_seq1_fops = {
+	.owner	 = THIS_MODULE,
+	.open    = dev_seq_open1,
 	.read    = seq_read,
 	.llseek  = seq_lseek,
 	.release = seq_release_net,
@@ -4322,6 +4359,8 @@ static int __net_init dev_proc_net_init(struct net *net)
 	int rc = -ENOMEM;
 
 	if (!proc_net_fops_create(net, "dev", S_IRUGO, &dev_seq_fops))
+		goto out;
+	if (!proc_net_fops_create(net, "packet_data", S_IRUGO, &dev_seq1_fops))
 		goto out;
 	if (!proc_net_fops_create(net, "softnet_stat", S_IRUGO, &softnet_seq_fops))
 		goto out_dev;
@@ -6235,10 +6274,20 @@ static int dev_cpu_callback(struct notifier_block *nfb,
 		oldsd->output_queue = NULL;
 		oldsd->output_queue_tailp = &oldsd->output_queue;
 	}
-	/* Append NAPI poll list from offline CPU. */
-	if (!list_empty(&oldsd->poll_list)) {
-		list_splice_init(&oldsd->poll_list, &sd->poll_list);
-		raise_softirq_irqoff(NET_RX_SOFTIRQ);
+	/* Append NAPI poll list from offline CPU, with one exception :
+	 * process_backlog() must be called by cpu owning percpu backlog.
+	 * We properly handle process_queue & input_pkt_queue later.
+	 */
+	while (!list_empty(&oldsd->poll_list)) {
+		struct napi_struct *napi = list_first_entry(&oldsd->poll_list,
+							struct napi_struct,
+							poll_list);
+
+		list_del_init(&napi->poll_list);
+		if (napi->poll == process_backlog)
+			napi->state = 0;
+		else
+			____napi_schedule(sd, napi);
 	}
 
 	raise_softirq_irqoff(NET_TX_SOFTIRQ);
@@ -6249,7 +6298,7 @@ static int dev_cpu_callback(struct notifier_block *nfb,
 		netif_rx(skb);
 		input_queue_head_incr(oldsd);
 	}
-	while ((skb = __skb_dequeue(&oldsd->input_pkt_queue))) {
+	while ((skb = skb_dequeue(&oldsd->input_pkt_queue))) {
 		netif_rx(skb);
 		input_queue_head_incr(oldsd);
 	}

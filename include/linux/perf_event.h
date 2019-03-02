@@ -254,8 +254,9 @@ struct perf_event_attr {
 
 				exclude_host   :  1, /* don't count in host   */
 				exclude_guest  :  1, /* don't count in guest  */
+				constraint_duplicate : 1,
 
-				__reserved_1   : 43;
+				__reserved_1   : 42;
 
 	union {
 		__u32		wakeup_events;	  /* wakeup every n events */
@@ -740,6 +741,8 @@ struct pmu {
 	int * __percpu			pmu_disable_count;
 	struct perf_cpu_context * __percpu pmu_cpu_context;
 	int				task_ctx_nr;
+	u32                             events_across_hotplug:1,
+					reserved:31;
 
 	/*
 	 * Fully disable/enable this PMU, can be used to protect from the PMI
@@ -992,11 +995,6 @@ struct perf_event {
 #endif /* CONFIG_PERF_EVENTS */
 };
 
-enum perf_event_context_type {
-	task_context,
-	cpu_context,
-};
-
 /**
  * struct perf_event_context - event context structure
  *
@@ -1004,7 +1002,6 @@ enum perf_event_context_type {
  */
 struct perf_event_context {
 	struct pmu			*pmu;
-	enum perf_event_context_type	type;
 	/*
 	 * Protect the states of the events in the list,
 	 * nr_active, and the list:
@@ -1247,6 +1244,11 @@ extern int sysctl_perf_event_sample_rate;
 extern int perf_proc_update_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
 		loff_t *ppos);
+
+static inline bool perf_paranoid_any(void)
+{
+	return sysctl_perf_event_paranoid > 2;
+}
 
 static inline bool perf_paranoid_tracepoint_raw(void)
 {

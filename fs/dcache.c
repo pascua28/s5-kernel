@@ -225,6 +225,43 @@ static void d_free(struct dentry *dentry)
 		call_rcu(&dentry->d_u.d_rcu, __d_free);
 }
 
+void take_dentry_name_snapshot(struct name_snapshot *name, struct dentry *dentry)
+{
+	spin_lock(&dentry->d_lock);
+	if (unlikely(dname_external(dentry))) {
+		u32 len;
+		char *p;
+
+		for (;;) {
+			len = dentry->d_name.len;
+			spin_unlock(&dentry->d_lock);
+
+			p = kmalloc(len + 1, GFP_KERNEL | __GFP_NOFAIL);
+
+			spin_lock(&dentry->d_lock);
+			if (dentry->d_name.len <= len)
+				break;
+			kfree(p);
+		}
+		memcpy(p, dentry->d_name.name, dentry->d_name.len + 1);
+		spin_unlock(&dentry->d_lock);
+
+		name->name = p;
+	} else {
+		memcpy(name->inline_name, dentry->d_iname, DNAME_INLINE_LEN);
+		spin_unlock(&dentry->d_lock);
+		name->name = name->inline_name;
+	}
+}
+EXPORT_SYMBOL(take_dentry_name_snapshot);
+
+void release_dentry_name_snapshot(struct name_snapshot *name)
+{
+	if (unlikely(name->name != name->inline_name))
+		kfree(name->name);
+}
+EXPORT_SYMBOL(release_dentry_name_snapshot);
+
 /**
  * dentry_rcuwalk_barrier - invalidate in-progress rcu-walk lookups
  * @dentry: the target dentry
@@ -2504,6 +2541,8 @@ static int prepend_path(const struct path *path,
 	struct dentry *dentry = path->dentry;
 	struct vfsmount *vfsmnt = path->mnt;
 	struct mount *mnt = real_mount(vfsmnt);
+	char *orig_buffer = *buffer;
+	int orig_len = *buflen;
 	bool slash = false;
 	int error = 0;
 
@@ -2512,6 +2551,14 @@ static int prepend_path(const struct path *path,
 		struct dentry * parent;
 
 		if (dentry == vfsmnt->mnt_root || IS_ROOT(dentry)) {
+			/* Escaped? */
+			if (dentry != vfsmnt->mnt_root) {
+				*buffer = orig_buffer;
+				*buflen = orig_len;
+				slash = false;
+				error = 3;
+				goto global_root;
+			}
 			/* Global root? */
 			if (!mnt_has_parent(mnt))
 				goto global_root;

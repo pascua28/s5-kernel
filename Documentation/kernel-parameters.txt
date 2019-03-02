@@ -508,12 +508,21 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
 			Also note the kernel might malfunction if you disable
 			some critical bits.
 
+	cma=nn[MG]	[ARM,KNL]
+			Sets the size of kernel global memory area for contiguous
+			memory allocations. For more information, see
+			include/linux/dma-contiguous.h
+
 	cmo_free_hint=	[PPC] Format: { yes | no }
 			Specify whether pages are marked as being inactive
 			when they are freed.  This is used in CMO environments
 			to determine OS memory pressure for page stealing by
 			a hypervisor.
 			Default: yes
+
+	coherent_pool=nn[KMG]	[ARM,KNL]
+			Sets the size of memory pool for coherent, atomic dma
+			allocations, by default set to 256K.
 
 	code_bytes	[X86] How many bytes of object code to print
 			in an oops report.
@@ -2521,6 +2530,10 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
 				0: Toshiba Satellite 1800 (GP data pin select)
 				1: Fast pin select (default)
 				2: ATC IRMode
+
+	snddev_icodec.msm_codec_i2s_slave_mode= [ARM-MSM]
+			1, codec is I2S master
+			0, MSM is I2S master (default)
 
 	softlockup_panic=
 			[KNL] Should the soft-lockup detector generate panics.

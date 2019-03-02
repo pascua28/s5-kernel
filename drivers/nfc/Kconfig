@@ -38,4 +38,14 @@ config NFC_WILINK
 	  Say Y here to compile support for Texas Instrument's NFC WiLink driver
 	  into the kernel or say M to compile it as module.
 
+source "drivers/nfc/secnfc/Kconfig"
 endmenu
+
+config NFC_QNCI
+	bool "Qualcomm NCI based NFC Controller Driver for qca199x"
+	depends on I2C
+	select CRC_CCITT
+	help
+	  This enables the NFC driver for QCA199x based devices.
+	  This is for i2c connected version. NCI protocol logic
+	  resides in the usermode and it has no other NFC dependencies.

@@ -82,12 +82,54 @@ unsigned long task_statm(struct mm_struct *mm,
 	return mm->total_vm;
 }
 
-static void pad_len_spaces(struct seq_file *m, int len)
+static void seq_print_vma_name(struct seq_file *m, struct vm_area_struct *vma)
 {
-	len = 25 + sizeof(void*) * 6 - len;
-	if (len < 1)
-		len = 1;
-	seq_printf(m, "%*c", len, ' ');
+	const char __user *name = vma_get_anon_name(vma);
+	struct mm_struct *mm = vma->vm_mm;
+
+	unsigned long page_start_vaddr;
+	unsigned long page_offset;
+	unsigned long num_pages;
+	unsigned long max_len = NAME_MAX;
+	int i;
+
+	page_start_vaddr = (unsigned long)name & PAGE_MASK;
+	page_offset = (unsigned long)name - page_start_vaddr;
+	num_pages = DIV_ROUND_UP(page_offset + max_len, PAGE_SIZE);
+
+	seq_puts(m, "[anon:");
+
+	for (i = 0; i < num_pages; i++) {
+		int len;
+		int write_len;
+		const char *kaddr;
+		long pages_pinned;
+		struct page *page;
+
+		pages_pinned = get_user_pages(current, mm, page_start_vaddr,
+				1, 0, 0, &page, NULL);
+		if (pages_pinned < 1) {
+			seq_puts(m, "<fault>]");
+			return;
+		}
+
+		kaddr = (const char *)kmap(page);
+		len = min(max_len, PAGE_SIZE - page_offset);
+		write_len = strnlen(kaddr + page_offset, len);
+		seq_write(m, kaddr + page_offset, write_len);
+		kunmap(page);
+		put_page(page);
+
+		/* if strnlen hit a null terminator then we're done */
+		if (write_len != len)
+			break;
+
+		max_len -= len;
+		page_offset = 0;
+		page_start_vaddr += PAGE_SIZE;
+	}
+
+	seq_putc(m, ']');
 }
 
 static void vma_stop(struct proc_maps_private *priv, struct vm_area_struct *vma)
@@ -221,7 +263,6 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 	unsigned long long pgoff = 0;
 	unsigned long start, end;
 	dev_t dev = 0;
-	int len;
 	const char *name = NULL;
 
 	if (file) {
@@ -239,7 +280,8 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 	if (stack_guard_page_end(vma, end))
 		end -= PAGE_SIZE;
 
-	seq_printf(m, "%08lx-%08lx %c%c%c%c %08llx %02x:%02x %lu %n",
+	seq_setwidth(m, 25 + sizeof(void *) * 6 - 1);
+	seq_printf(m, "%08lx-%08lx %c%c%c%c %08llx %02x:%02x %lu ",
 			start,
 			end,
 			flags & VM_READ ? 'r' : '-',
@@ -247,14 +289,14 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 			flags & VM_EXEC ? 'x' : '-',
 			flags & VM_MAYSHARE ? 's' : 'p',
 			pgoff,
-			MAJOR(dev), MINOR(dev), ino, &len);
+			MAJOR(dev), MINOR(dev), ino);
 
 	/*
 	 * Print the dentry name for named mappings, and a
 	 * special [heap] marker for the heap:
 	 */
 	if (file) {
-		pad_len_spaces(m, len);
+		seq_pad(m, ' ');
 		seq_path(m, &file->f_path, "\n");
 		goto done;
 	}
@@ -286,15 +328,21 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 				name = "[stack]";
 			} else {
 				/* Thread stack in /proc/PID/maps */
-				pad_len_spaces(m, len);
+				seq_pad(m, ' ');
 				seq_printf(m, "[stack:%d]", tid);
 			}
+			goto done;
+		}
+
+		if (vma_get_anon_name(vma)) {
+			seq_pad(m, ' ');
+			seq_print_vma_name(m, vma);
 		}
 	}
 
 done:
 	if (name) {
-		pad_len_spaces(m, len);
+		seq_pad(m, ' ');
 		seq_puts(m, name);
 	}
 	seq_putc(m, '\n');
@@ -394,6 +442,7 @@ struct mem_size_stats {
 	unsigned long anonymous_thp;
 	unsigned long swap;
 	u64 pss;
+	u64 swap_pss;
 };
 
 
@@ -402,18 +451,31 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 {
 	struct mem_size_stats *mss = walk->private;
 	struct vm_area_struct *vma = mss->vma;
-	struct page *page;
+	struct page *page = NULL;
 	int mapcount;
 
-	if (is_swap_pte(ptent)) {
-		mss->swap += ptent_size;
-		return;
+	if (pte_present(ptent)) {
+		page = vm_normal_page(vma, addr, ptent);
+	} else if (is_swap_pte(ptent)) {
+		swp_entry_t swpent = pte_to_swp_entry(ptent);
+
+		if (!non_swap_entry(swpent)) {
+			int mapcount;
+
+			mss->swap += ptent_size;
+			mapcount = swp_swapcount(swpent);
+			if (mapcount >= 2) {
+				u64 pss_delta = (u64)ptent_size << PSS_SHIFT;
+
+				do_div(pss_delta, mapcount);
+				mss->swap_pss += pss_delta;
+			} else {
+				mss->swap_pss += (u64)ptent_size << PSS_SHIFT;
+			}
+		} else if (is_migration_entry(swpent))
+			page = migration_entry_to_page(swpent);
 	}
 
-	if (!pte_present(ptent))
-		return;
-
-	page = vm_normal_page(vma, addr, ptent);
 	if (!page)
 		return;
 
@@ -502,6 +564,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 		   "Anonymous:      %8lu kB\n"
 		   "AnonHugePages:  %8lu kB\n"
 		   "Swap:           %8lu kB\n"
+		   "SwapPss:        %8lu kB\n"
 		   "KernelPageSize: %8lu kB\n"
 		   "MMUPageSize:    %8lu kB\n"
 		   "Locked:         %8lu kB\n",
@@ -516,10 +579,17 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 		   mss.anonymous >> 10,
 		   mss.anonymous_thp >> 10,
 		   mss.swap >> 10,
+		   (unsigned long)(mss.swap_pss >> (10 + PSS_SHIFT)),
 		   vma_kernel_pagesize(vma) >> 10,
 		   vma_mmu_pagesize(vma) >> 10,
 		   (vma->vm_flags & VM_LOCKED) ?
 			(unsigned long)(mss.pss >> (10 + PSS_SHIFT)) : 0);
+
+	if (vma_get_anon_name(vma)) {
+		seq_puts(m, "Name:           ");
+		seq_print_vma_name(m, vma);
+		seq_putc(m, '\n');
+	}
 
 	if (m->count < m->size)  /* vma is copied successfully */
 		m->version = (vma != get_gate_vma(task->mm))
@@ -566,6 +636,76 @@ const struct file_operations proc_pid_smaps_operations = {
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= seq_release_private,
+};
+
+static int proc_pid_smaps_simple_show(struct seq_file *m, void *v)
+{
+	struct pid *pid = (struct pid *)m->private;
+	struct task_struct *task;
+	struct mm_struct *mm;
+	struct vm_area_struct *vma;
+	struct mem_size_stats mss_total;
+	struct mem_size_stats mss;
+	int ret = 0;
+
+	struct mm_walk smaps_walk = {
+		.pmd_entry = smaps_pte_range,
+		.private = &mss,
+	};
+
+	task = get_pid_task(pid, PIDTYPE_PID);
+	if (!task) {
+		ret = -1;
+		goto error_task;
+	}
+
+	mm = mm_access(task, PTRACE_MODE_READ);
+	if (!mm || IS_ERR(mm)) {
+		ret = -2;
+		goto error_mm;
+	}
+
+	memset(&mss_total, 0, sizeof mss_total);
+	down_read(&mm->mmap_sem);
+	vma = mm->mmap;
+	while (vma) {
+		memset(&mss, 0, sizeof mss);
+		mss.vma = vma;
+		smaps_walk.mm = vma->vm_mm;
+
+		if (vma->vm_mm && !is_vm_hugetlb_page(vma)) {
+			walk_page_range(vma->vm_start, vma->vm_end, &smaps_walk);
+			mss_total.pss += mss.pss;
+			mss_total.swap_pss += mss.swap_pss;
+		}
+		vma = vma->vm_next;
+	}
+	up_read(&mm->mmap_sem);
+	mmput(mm);
+
+	seq_printf(m,
+		   "Pss:            %8lu kB\n"
+		   "SwapPss:        %8lu kB\n",
+		   (unsigned long)(mss_total.pss >> (10 + PSS_SHIFT)),
+		   (unsigned long)(mss_total.swap_pss >> (10 + PSS_SHIFT)));
+
+error_mm:
+	put_task_struct(task);
+
+error_task:
+	return 0;
+}
+
+static int proc_pid_smaps_simple_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_pid_smaps_simple_show, proc_pid(inode));
+}
+
+const struct file_operations proc_pid_smaps_simple_operations = {
+	.open		= proc_pid_smaps_simple_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
 const struct file_operations proc_tid_smaps_operations = {

@@ -53,6 +53,7 @@ config USB_ARCH_HAS_EHCI
 # some non-PCI HCDs implement xHCI
 config USB_ARCH_HAS_XHCI
 	boolean
+	default y if ARCH_MSM8974
 	default PCI
 
 menuconfig USB_SUPPORT
@@ -182,5 +183,7 @@ source "drivers/usb/atm/Kconfig"
 source "drivers/usb/gadget/Kconfig"
 
 source "drivers/usb/otg/Kconfig"
+
+source "drivers/usb/notify/Kconfig"
 
 endif # USB_SUPPORT

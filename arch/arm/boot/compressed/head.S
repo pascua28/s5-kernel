@@ -390,8 +390,11 @@ wont_overwrite:
  *   sp  = stack pointer
  */
 		orrs	r1, r0, r5
+#ifdef CONFIG_CRYPTO_FIPS_OLD_INTEGRITY_CHECK
+		beq not_relocated_copy
+#else
 		beq	not_relocated
-
+#endif
 		add	r11, r11, r0
 		add	r12, r12, r0
 
@@ -404,6 +407,9 @@ wont_overwrite:
 		add	r2, r2, r0
 		add	r3, r3, r0
 
+#ifdef CONFIG_CRYPTO_FIPS_OLD_INTEGRITY_CHECK
+        bl copy_compressed
+#endif
 		/*
 		 * Relocate all entries in the GOT table.
 		 * Bump bss entries to _edata + dtb size
@@ -482,6 +488,46 @@ params:		ldr	r0, =0x10000100		@ params_phys for RPC
 		mov	pc, lr
 		.ltorg
 		.align
+#endif
+
+/*
+ * change@ksingh.sra-dallas - Copying the zImage to a secure location 
+ * this copy will be used to computer integrity for FIPS validation
+ */
+#ifdef CONFIG_CRYPTO_FIPS_OLD_INTEGRITY_CHECK
+not_relocated_copy:
+		bl copy_compressed
+		b not_relocated
+
+copy_compressed:
+		// preserve the registers
+		PUSH {r1, r2, r4, r8, r9, r10}
+
+		// source address - zImage load address
+		movw r1, #:lower16:FIPS_KERNEL_RAM_BASE
+		movt r1, #:upper16:FIPS_KERNEL_RAM_BASE
+
+		// destination address - location where zImage copy will be made
+		movw r9, #:lower16:CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS
+	        movt r9, #:upper16:CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS
+
+1:
+		// makes the copy of zImage
+		ldmia	r1!, {r10}
+		stmia	r9!, {r10}
+		cmp	r1, r2
+		blo	1b
+
+		// copy the padded hash of zImage
+		.rept 8
+		ldmia	r1!, {r10}
+		stmia	r9!, {r10}
+		.endr
+
+		// restore the registers
+		POP {r1, r2, r4, r8, r9, r10}
+		// go back to where we came from
+		mov	pc, lr
 #endif
 
 /*
@@ -567,6 +613,12 @@ __armv3_mpu_cache_on:
 		mcr	p15, 0, r0, c7, c0, 0	@ invalidate whole cache v3
 		mov	pc, lr
 
+#ifdef CONFIG_CPU_DCACHE_WRITETHROUGH
+#define CB_BITS 0x08
+#else
+#define CB_BITS 0x0c
+#endif
+
 __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 		bic	r3, r3, #0xff		@ Align the pointer
 		bic	r3, r3, #0x3f00
@@ -578,17 +630,14 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 		mov	r9, r0, lsr #18
 		mov	r9, r9, lsl #18		@ start of RAM
 		add	r10, r9, #0x10000000	@ a reasonable RAM size
-		mov	r1, #0x12
-		orr	r1, r1, #3 << 10
+		mov	r1, #0x12		@ XN|U + section mapping
+		orr	r1, r1, #3 << 10	@ AP=11
 		add	r2, r3, #16384
 1:		cmp	r1, r9			@ if virt > start of RAM
-#ifdef CONFIG_CPU_DCACHE_WRITETHROUGH
-		orrhs	r1, r1, #0x08		@ set cacheable
-#else
-		orrhs	r1, r1, #0x0c		@ set cacheable, bufferable
-#endif
-		cmp	r1, r10			@ if virt > end of RAM
-		bichs	r1, r1, #0x0c		@ clear cacheable, bufferable
+		cmphs	r10, r1			@   && end of RAM > virt
+		bic	r1, r1, #0x1c		@ clear XN|U + C + B
+		orrlo	r1, r1, #0x10		@ Set XN|U for non-RAM
+		orrhs	r1, r1, r6		@ set RAM section settings
 		str	r1, [r0], #4		@ 1:1 mapping
 		add	r1, r1, #1048576
 		teq	r0, r2
@@ -599,7 +648,7 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
  * so there is no map overlap problem for up to 1 MB compressed kernel.
  * If the execution is in RAM then we would only be duplicating the above.
  */
-		mov	r1, #0x1e
+		orr	r1, r6, #0x04		@ ensure B is set for this
 		orr	r1, r1, #3 << 10
 		mov	r2, pc
 		mov	r2, r2, lsr #20
@@ -620,6 +669,7 @@ __arm926ejs_mmu_cache_on:
 __armv4_mmu_cache_on:
 		mov	r12, lr
 #ifdef CONFIG_MMU
+		mov	r6, #CB_BITS | 0x12	@ U
 		bl	__setup_mmu
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
@@ -641,6 +691,7 @@ __armv7_mmu_cache_on:
 #ifdef CONFIG_MMU
 		mrc	p15, 0, r11, c0, c1, 4	@ read ID_MMFR0
 		tst	r11, #0xf		@ VMSA
+		movne	r6, #CB_BITS | 0x02	@ !XN
 		blne	__setup_mmu
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
@@ -655,7 +706,7 @@ __armv7_mmu_cache_on:
 		orr	r0, r0, #1 << 25	@ big-endian page tables
 #endif
 		orrne	r0, r0, #1		@ MMU enabled
-		movne	r1, #-1
+		movne	r1, #0xfffffffd		@ domain 0 = client
 		mcrne	p15, 0, r3, c2, c0, 0	@ load page table pointer
 		mcrne	p15, 0, r1, c3, c0, 0	@ load domain access control
 #endif
@@ -668,6 +719,7 @@ __armv7_mmu_cache_on:
 
 __fa526_cache_on:
 		mov	r12, lr
+		mov	r6, #CB_BITS | 0x12	@ U
 		bl	__setup_mmu
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c7, 0	@ Invalidate whole cache
@@ -682,6 +734,7 @@ __fa526_cache_on:
 
 __arm6_mmu_cache_on:
 		mov	r12, lr
+		mov	r6, #CB_BITS | 0x12	@ U
 		bl	__setup_mmu
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c0, 0	@ invalidate whole cache v3
@@ -766,6 +819,8 @@ proc_types:
 @		b	__arm6_mmu_cache_off
 @		b	__armv3_mmu_cache_flush
 
+#if !defined(CONFIG_CPU_V7)
+		/* This collides with some V7 IDs, preventing correct detection */
 		.word	0x00000000		@ old ARM ID
 		.word	0x0000f000
 		mov	pc, lr
@@ -774,6 +829,7 @@ proc_types:
  THUMB(		nop				)
 		mov	pc, lr
  THUMB(		nop				)
+#endif
 
 		.word	0x41007000		@ ARM7/710
 		.word	0xfff8fe00

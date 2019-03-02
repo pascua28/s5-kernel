@@ -16,6 +16,39 @@
 #include <linux/types.h>
 #include <linux/io.h>
 #include <linux/mmc/host.h>
+#include <linux/pm_qos.h>
+
+#define SDHCI_TRACE_RBUF_SZ_ORDER	10	/* 2^10 pages */
+#define SDHCI_TRACE_RBUF_SZ		\
+	(PAGE_SIZE * (1 << SDHCI_TRACE_RBUF_SZ_ORDER))
+#define SDHCI_TRACE_EVENT_SZ		256
+#define SDHCI_TRACE_RBUF_NUM_EVENTS	\
+	(SDHCI_TRACE_RBUF_SZ / SDHCI_TRACE_EVENT_SZ)
+
+#define	SDHCI_TRACE_COMM_LEN		12
+
+#define SDHCI_TRACE_EVENT_DATA_SZ \
+	SDHCI_TRACE_EVENT_SZ
+
+struct sdhci_next {
+	unsigned int sg_count;
+	s32 cookie;
+};
+
+enum sdhci_power_policy {
+	SDHCI_PERFORMANCE_MODE,
+	SDHCI_POWER_SAVE_MODE,
+};
+
+struct sdhci_trace_event {
+	char	data[SDHCI_TRACE_EVENT_DATA_SZ];
+};
+
+struct sdhci_trace_buffer {
+	struct sdhci_trace_event	*rbuf;
+	atomic_t			wr_idx;
+};
+
 
 struct sdhci_host {
 	/* Data set by hardware interface driver */
@@ -91,6 +124,70 @@ struct sdhci_host {
 	unsigned int quirks2;	/* More deviations from spec. */
 
 #define SDHCI_QUIRK2_HOST_OFF_CARD_ON			(1<<0)
+/*
+ * Read Transfer Active/ Write Transfer Active may be not
+ * de-asserted after end of transaction. Issue reset for DAT line.
+ */
+#define SDHCI_QUIRK2_RDWR_TX_ACTIVE_EOT			(1<<1)
+/*
+ * Slow interrupt clearance at 400KHz may cause
+ * host controller driver interrupt handler to
+ * be called twice.
+ */
+#define SDHCI_QUIRK2_SLOW_INT_CLR			(1<<2)
+/*
+ * If the base clock can be scalable, then there should be no further
+ * clock dividing as the input clock itself will be scaled down to
+ * required frequency.
+ */
+#define SDHCI_QUIRK2_ALWAYS_USE_BASE_CLOCK		(1<<3)
+/*
+ * Dont use the max_discard_to in sdhci driver so that the maximum discard
+ * unit gets picked by the mmc queue. Otherwise, it takes a long time for
+ * secure discard kind of operations to complete.
+ */
+#define SDHCI_QUIRK2_USE_MAX_DISCARD_SIZE		(1<<4)
+/*
+ * Ignore data timeout error for R1B commands as there will be no
+ * data associated and the busy timeout value for these commands
+ * could be lager than the maximum timeout value that controller
+ * can handle.
+ */
+#define SDHCI_QUIRK2_IGNORE_DATATOUT_FOR_R1BCMD		(1<<5)
+/*
+ * The preset value registers are not properly initialized by
+ * some hardware and hence preset value must not be enabled for
+ * such controllers.
+ */
+#define SDHCI_QUIRK2_BROKEN_PRESET_VALUE		(1<<6)
+/*
+ * Some controllers define the usage of 0xF in data timeout counter
+ * register (0x2E) which is actually a reserved bit as per
+ * specification.
+ */
+#define SDHCI_QUIRK2_USE_RESERVED_MAX_TIMEOUT		(1<<7)
+/*
+ * This is applicable for controllers that advertize timeout clock
+ * value in capabilities register (bit 5-0) as just 50MHz whereas the
+ * base clock frequency is 200MHz. So, the controller internally
+ * multiplies the value in timeout control register by 4 with the
+ * assumption that driver always uses fixed timeout clock value from
+ * capabilities register to calculate the timeout. But when the driver
+ * uses SDHCI_QUIRK2_ALWAYS_USE_BASE_CLOCK base clock frequency is directly
+ * controller by driver and it's rate varies upto max. 200MHz. This new quirk
+ * will be used in such cases to avoid controller mulplication when timeout is
+ * calculated based on the base clock.
+ */
+#define SDHCI_QUIRK2_DIVIDE_TOUT_BY_4 (1 << 8)
+
+/*
+ * Some SDHC controllers are unable to handle data-end bit error in
+ * 1-bit mode of SDIO.
+ */
+#define SDHCI_QUIRK2_IGN_DATA_END_BIT_ERROR             (1<<9)
+
+/* Start logging events */
+#define SDHCI_QUIRK2_TRACE_ON				(1<<10)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
@@ -122,6 +219,7 @@ struct sdhci_host {
 #define SDHCI_PV_ENABLED	(1<<8)	/* Preset value enabled */
 #define SDHCI_SDIO_IRQ_ENABLED	(1<<9)	/* SDIO irq enabled */
 #define SDHCI_HS200_NEEDS_TUNING (1<<10)	/* HS200 needs tuning */
+#define SDHCI_HS400_NEEDS_TUNING (1<<11)	/* HS400 needs tuning */
 
 	unsigned int version;	/* SDHCI spec. version */
 
@@ -147,6 +245,10 @@ struct sdhci_host {
 	u8 *adma_desc;		/* ADMA descriptor table */
 	u8 *align_buffer;	/* Bounce buffer */
 
+	unsigned int adma_desc_sz; /* ADMA descriptor table size */
+	unsigned int align_buf_sz; /* Bounce buffer size */
+	unsigned int adma_max_desc; /* Max ADMA descriptos (max sg segments) */
+
 	dma_addr_t adma_addr;	/* Mapped ADMA descr. table */
 	dma_addr_t align_addr;	/* Mapped bounce buffer */
 
@@ -169,6 +271,21 @@ struct sdhci_host {
 #define SDHCI_TUNING_MODE_1	0
 	struct timer_list	tuning_timer;	/* Timer for tuning */
 
+	unsigned int cpu_dma_latency_us;
+	struct pm_qos_request pm_qos_req_dma;
+	unsigned int pm_qos_timeout_us;         /* timeout for PM QoS request */
+	struct device_attribute pm_qos_tout;
+
+	struct sdhci_next next_data;
+	ktime_t data_start_time;
+	struct mutex ios_mutex;
+	enum sdhci_power_policy power_policy;
+
+	bool irq_enabled; /* host irq status flag */
+	bool async_int_supp;  /* async support to rxv int, when clks are off */
+	bool disable_sdio_irq_deferred; /* status of disabling sdio irq */
+	struct sdhci_trace_buffer trace_buf;
+	u32 auto_cmd_err_sts;
 	unsigned long private[0] ____cacheline_aligned;
 };
 #endif /* LINUX_MMC_SDHCI_H */

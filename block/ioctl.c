@@ -9,6 +9,12 @@
 #include <linux/blktrace_api.h>
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_BLOCK_SUPPORT_STLOG
+#include <linux/stlog.h>
+#else
+#define ST_LOG(fmt,...)
+#endif
+
 static int blkpg_ioctl(struct block_device *bdev, struct blkpg_ioctl_arg __user *arg)
 {
 	struct block_device *bdevp;
@@ -129,7 +135,15 @@ static int blk_ioctl_discard(struct block_device *bdev, uint64_t start,
 		return -EINVAL;
 	if (secure)
 		flags |= BLKDEV_DISCARD_SECURE;
+
+	ST_LOG("%s %d:%d %lu %lu",secure?"SECDIS":"DIS",MAJOR(bdev->bd_dev),MINOR(bdev->bd_dev),start,len);
+	
 	return blkdev_issue_discard(bdev, start, len, GFP_KERNEL, flags);
+}
+
+static int blk_ioctl_sanitize(struct block_device *bdev)
+{
+	return blkdev_issue_sanitize(bdev, GFP_KERNEL);
 }
 
 static int put_ushort(unsigned long arg, unsigned short val)
@@ -233,6 +247,10 @@ int blkdev_ioctl(struct block_device *bdev, fmode_t mode, unsigned cmd,
 			return -EFAULT;
 		set_device_ro(bdev, n);
 		return 0;
+
+	case BLKSANITIZE:
+		ret = blk_ioctl_sanitize(bdev);
+		break;
 
 	case BLKDISCARD:
 	case BLKSECDISCARD: {

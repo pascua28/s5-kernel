@@ -46,6 +46,9 @@
 #include <asm/div64.h>
 #include <asm/timex.h>
 #include <asm/io.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/timer.h>
@@ -584,7 +587,8 @@ static inline void
 debug_activate(struct timer_list *timer, unsigned long expires)
 {
 	debug_timer_activate(timer);
-	trace_timer_start(timer, expires);
+	trace_timer_start(timer, expires,
+			 tbase_get_deferrable(timer->base) > 0 ? 'y' : 'n');
 }
 
 static inline void debug_deactivate(struct timer_list *timer)
@@ -861,7 +865,13 @@ EXPORT_SYMBOL(mod_timer);
  *
  * mod_timer_pinned() is a way to update the expire field of an
  * active timer (if the timer is inactive it will be activated)
- * and not allow the timer to be migrated to a different CPU.
+ * and to ensure that the timer is scheduled on the current CPU.
+ *
+ * Note that this does not prevent the timer from being migrated
+ * when the current CPU goes offline.  If this is a problem for
+ * you, use CPU-hotplug notifiers to handle it correctly, for
+ * example, cancelling the timer when the corresponding CPU goes
+ * offline.
  *
  * mod_timer_pinned(timer, expires) is equivalent to:
  *
@@ -1112,7 +1122,13 @@ static void call_timer_fn(struct timer_list *timer, void (*fn)(unsigned long),
 	lock_map_acquire(&lockdep_map);
 
 	trace_timer_expire_entry(timer);
+#ifdef CONFIG_SEC_DEBUG
+	secdbg_msg("timer %pS entry", fn);
+#endif
 	fn(data);
+#ifdef CONFIG_SEC_DEBUG
+	secdbg_msg("timer %pS exit", fn);
+#endif
 	trace_timer_expire_exit(timer);
 
 	lock_map_release(&lockdep_map);
@@ -1678,12 +1694,12 @@ static int __cpuinit init_timers_cpu(int cpu)
 			boot_done = 1;
 			base = &boot_tvec_bases;
 		}
+		spin_lock_init(&base->lock);
 		tvec_base_done[cpu] = 1;
 	} else {
 		base = per_cpu(tvec_bases, cpu);
 	}
 
-	spin_lock_init(&base->lock);
 
 	for (j = 0; j < TVN_SIZE; j++) {
 		INIT_LIST_HEAD(base->tv5.vec + j);

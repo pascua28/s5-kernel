@@ -1113,7 +1113,10 @@ struct ext4_super_block {
 	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
 	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
 	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
-	__le32  s_reserved[109];        /* Padding to the end of the block */
+	__le32	s_reserved[102];	/* Padding to the end of the block */
+	__le32	s_sec_magic;		/* flag for reserved inodes */
+	__le32	s_reserved2[5];		/* Padding to the end of the block */
+	__le32	s_checksum;		/* crc32c(superblock) */
 };
 
 #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
@@ -1153,6 +1156,7 @@ struct ext4_sb_info {
 	unsigned int s_mount_flags;
 	unsigned int s_def_mount_opt;
 	ext4_fsblk_t s_sb_block;
+	atomic64_t s_r_blocks_count;
 	uid_t s_resuid;
 	gid_t s_resgid;
 	unsigned short s_mount_state;
@@ -1203,6 +1207,9 @@ struct ext4_sb_info {
 	unsigned long s_ext_blocks;
 	unsigned long s_ext_extents;
 #endif
+
+	/* Reserved inodes count */
+	s64 s_r_inodes_count;
 
 	/* for buddy allocator */
 	struct ext4_group_info ***s_group_info;
@@ -1493,6 +1500,12 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
  */
 #define EXT4_DEF_MIN_BATCH_TIME	0
 #define EXT4_DEF_MAX_BATCH_TIME	15000 /* 15ms */
+
+/*
+ * Default reserved inode count
+ */
+#define EXT4_DEF_RESERVE_INODE 4096
+#define EXT4_SEC_DATA_MAGIC 0xBAB0CAFE /* data partition magic */
 
 /*
  * Minimum number of groups in a flexgroup before we separate out
@@ -1848,9 +1861,15 @@ extern int ext4fs_dirhash(const char *name, int len, struct
 			  dx_hash_info *hinfo);
 
 /* ialloc.c */
-extern struct inode *ext4_new_inode(handle_t *, struct inode *, umode_t,
-				    const struct qstr *qstr, __u32 goal,
-				    uid_t *owner);
+extern struct inode *__ext4_new_inode(handle_t *, struct inode *, umode_t,
+				      const struct qstr *qstr, __u32 goal,
+				      uid_t *owner, int nblocks);
+
+#define ext4_new_inode(handle, dir, mode, qstr, goal, owner) \
+	__ext4_new_inode((handle), (dir), (mode), (qstr), (goal), (owner), 0)
+#define ext4_new_inode_start_handle(dir, mode, qstr, goal, owner, nblocks) \
+	__ext4_new_inode(NULL, (dir), (mode), (qstr), (goal), (owner), (nblocks))
+
 extern void ext4_free_inode(handle_t *, struct inode *);
 extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
 extern unsigned long ext4_count_free_inodes(struct super_block *);
@@ -2029,6 +2048,13 @@ extern __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 group,
 				   struct ext4_group_desc *gdp);
 extern int ext4_group_desc_csum_verify(struct ext4_sb_info *sbi, __u32 group,
 				       struct ext4_group_desc *gdp);
+extern void print_iloc_info(struct super_block *sb,
+				struct ext4_iloc iloc);
+extern void print_bh(struct super_block *sb,
+			struct buffer_head *bh, int start, int len);
+extern void print_block_data(struct super_block *sb, sector_t blocknr,
+			unsigned char *data_to_dump, int start, int len);
+
 
 static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
 {

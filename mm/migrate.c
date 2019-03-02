@@ -34,7 +34,8 @@
 #include <linux/syscalls.h>
 #include <linux/hugetlb.h>
 #include <linux/gfp.h>
-
+#include <trace/events/kmem.h>
+#include <linux/ptrace.h>
 #include <asm/tlbflush.h>
 
 #include "internal.h"
@@ -968,12 +969,14 @@ int migrate_pages(struct list_head *from,
 {
 	int retry = 1;
 	int nr_failed = 0;
+	int nr_succeeded = 0;
 	int pass = 0;
 	struct page *page;
 	struct page *page2;
 	int swapwrite = current->flags & PF_SWAPWRITE;
 	int rc;
 
+	trace_migrate_pages_start(mode);
 	if (!swapwrite)
 		current->flags |= PF_SWAPWRITE;
 
@@ -992,8 +995,10 @@ int migrate_pages(struct list_head *from,
 				goto out;
 			case -EAGAIN:
 				retry++;
+				trace_migrate_retry(retry);
 				break;
 			case 0:
+				nr_succeeded++;
 				break;
 			default:
 				/* Permanent failure */
@@ -1004,9 +1009,14 @@ int migrate_pages(struct list_head *from,
 	}
 	rc = 0;
 out:
+	if (nr_succeeded)
+		count_vm_events(PGMIGRATE_SUCCESS, nr_succeeded);
+	if (nr_failed)
+		count_vm_events(PGMIGRATE_FAIL, nr_failed);
 	if (!swapwrite)
 		current->flags &= ~PF_SWAPWRITE;
 
+	trace_migrate_pages_end(mode);
 	if (rc)
 		return rc;
 
@@ -1342,7 +1352,6 @@ SYSCALL_DEFINE6(move_pages, pid_t, pid, unsigned long, nr_pages,
 		const int __user *, nodes,
 		int __user *, status, int, flags)
 {
-	const struct cred *cred = current_cred(), *tcred;
 	struct task_struct *task;
 	struct mm_struct *mm;
 	int err;
@@ -1366,14 +1375,9 @@ SYSCALL_DEFINE6(move_pages, pid_t, pid, unsigned long, nr_pages,
 
 	/*
 	 * Check if this process has the right to modify the specified
-	 * process. The right exists if the process has administrative
-	 * capabilities, superuser privileges or the same
-	 * userid as the target process.
-	 */
-	tcred = __task_cred(task);
-	if (cred->euid != tcred->suid && cred->euid != tcred->uid &&
-	    cred->uid  != tcred->suid && cred->uid  != tcred->uid &&
-	    !capable(CAP_SYS_NICE)) {
+	 * process. Use the regular "ptrace_may_access()" checks.
+     */
+	if (!ptrace_may_access(task, PTRACE_MODE_READ_REALCREDS)) {
 		rcu_read_unlock();
 		err = -EPERM;
 		goto out;

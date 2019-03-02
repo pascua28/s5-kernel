@@ -65,9 +65,43 @@ static bool cfg80211_is_all_idle(void)
 	return is_all_idle;
 }
 
+
+static bool cfg80211_is_all_countryie_ignore(void)
+{
+	struct cfg80211_registered_device *rdev;
+	struct wireless_dev *wdev;
+	bool is_all_countryie_ignore = true;
+
+	mutex_lock(&cfg80211_mutex);
+
+	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
+		cfg80211_lock_rdev(rdev);
+		list_for_each_entry(wdev, &rdev->netdev_list, list) {
+			wdev_lock(wdev);
+			if (!(wdev->wiphy->country_ie_pref &
+				NL80211_COUNTRY_IE_IGNORE_CORE)) {
+				is_all_countryie_ignore = false;
+				wdev_unlock(wdev);
+				cfg80211_unlock_rdev(rdev);
+				goto out;
+			}
+			wdev_unlock(wdev);
+		}
+		cfg80211_unlock_rdev(rdev);
+	}
+out:
+	mutex_unlock(&cfg80211_mutex);
+
+	return is_all_countryie_ignore;
+}
+
+
 static void disconnect_work(struct work_struct *work)
 {
 	if (!cfg80211_is_all_idle())
+		return;
+
+	if (cfg80211_is_all_countryie_ignore())
 		return;
 
 	regulatory_hint_disconnect();
@@ -190,7 +224,8 @@ static int cfg80211_conn_do_work(struct wireless_dev *wdev)
 					    prev_bssid,
 					    params->ssid, params->ssid_len,
 					    params->ie, params->ie_len,
-					    false, &params->crypto,
+					    params->mfp != NL80211_MFP_NO,
+					    &params->crypto,
 					    params->flags, &params->ht_capa,
 					    &params->ht_capa_mask);
 		if (err)
@@ -689,8 +724,10 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
+#ifndef CONFIG_CFG80211_ALLOW_RECONNECT
 	if (wdev->sme_state != CFG80211_SME_CONNECTED)
 		return;
+#endif
 
 	if (wdev->current_bss) {
 		cfg80211_unhold_bss(wdev->current_bss);
@@ -717,6 +754,10 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 	if (rdev->ops->del_key)
 		for (i = 0; i < 6; i++)
 			rdev->ops->del_key(wdev->wiphy, dev, i, false, NULL);
+
+	if (rdev->ops->set_qos_map) {
+		rdev->ops->set_qos_map(&rdev->wiphy, dev, NULL);
+	}
 
 #ifdef CONFIG_CFG80211_WEXT
 	memset(&wrqu, 0, sizeof(wrqu));
@@ -767,10 +808,14 @@ int __cfg80211_connect(struct cfg80211_registered_device *rdev,
 
 	ASSERT_WDEV_LOCK(wdev);
 
+#ifndef CONFIG_CFG80211_ALLOW_RECONNECT
 	if (wdev->sme_state != CFG80211_SME_IDLE)
 		return -EALREADY;
 
 	if (WARN_ON(wdev->connect_keys)) {
+#else
+	if (wdev->connect_keys) {
+#endif
 		kfree(wdev->connect_keys);
 		wdev->connect_keys = NULL;
 	}

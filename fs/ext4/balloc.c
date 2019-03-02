@@ -90,8 +90,8 @@ unsigned ext4_num_overhead_clusters(struct super_block *sb,
 	 * unusual file system layouts.
 	 */
 	if (ext4_block_in_group(sb, ext4_block_bitmap(sb, gdp), block_group)) {
-		block_cluster = EXT4_B2C(sbi, (start -
-					       ext4_block_bitmap(sb, gdp)));
+		block_cluster = EXT4_B2C(sbi,
+					 ext4_block_bitmap(sb, gdp) - start);
 		if (block_cluster < num_clusters)
 			block_cluster = -1;
 		else if (block_cluster == num_clusters) {
@@ -102,7 +102,7 @@ unsigned ext4_num_overhead_clusters(struct super_block *sb,
 
 	if (ext4_block_in_group(sb, ext4_inode_bitmap(sb, gdp), block_group)) {
 		inode_cluster = EXT4_B2C(sbi,
-					 start - ext4_inode_bitmap(sb, gdp));
+					 ext4_inode_bitmap(sb, gdp) - start);
 		if (inode_cluster < num_clusters)
 			inode_cluster = -1;
 		else if (inode_cluster == num_clusters) {
@@ -114,7 +114,7 @@ unsigned ext4_num_overhead_clusters(struct super_block *sb,
 	itbl_blk = ext4_inode_table(sb, gdp);
 	for (i = 0; i < sbi->s_itb_per_group; i++) {
 		if (ext4_block_in_group(sb, itbl_blk + i, block_group)) {
-			c = EXT4_B2C(sbi, start - itbl_blk + i);
+			c = EXT4_B2C(sbi, itbl_blk + i - start);
 			if ((c < num_clusters) || (c == inode_cluster) ||
 			    (c == block_cluster) || (c == itbl_cluster))
 				continue;
@@ -447,7 +447,7 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
 
 	free_clusters  = percpu_counter_read_positive(fcc);
 	dirty_clusters = percpu_counter_read_positive(dcc);
-	root_clusters = EXT4_B2C(sbi, ext4_r_blocks_count(sbi->s_es));
+	root_clusters = EXT4_B2C(sbi, atomic64_read(&sbi->s_r_blocks_count));
 
 	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
 					EXT4_FREECLUSTERS_WATERMARK) {
