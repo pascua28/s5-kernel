@@ -255,8 +255,8 @@ static int diagchar_open(struct inode *inode, struct file *file)
 	return -ENOMEM;
 
 fail:
-	driver->num_clients--;
 	mutex_unlock(&driver->diagchar_mutex);
+	driver->num_clients--;
 	pr_alert("diag: Insufficient memory for new client");
 	return -ENOMEM;
 }
@@ -1081,7 +1081,6 @@ long diagchar_ioctl(struct file *filp,
 		result = DIAG_DCI_NO_ERROR;
 		break;
 	case DIAG_IOCTL_DCI_EVENT_STATUS:
-		mutex_lock(&driver->dci_mutex);
 		if (copy_from_user(&le_stats, (void *)ioarg,
 					sizeof(struct diag_log_event_stats)))
 			return -EFAULT;
@@ -1090,7 +1089,6 @@ long diagchar_ioctl(struct file *filp,
 				sizeof(struct diag_log_event_stats)))
 			return -EFAULT;
 		result = DIAG_DCI_NO_ERROR;
-		mutex_unlock(&driver->dci_mutex);
 		break;
 	case DIAG_IOCTL_DCI_CLEAR_LOGS:
 		if (copy_from_user((void *)&client_id, (void *)ioarg,

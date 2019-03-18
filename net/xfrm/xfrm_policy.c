@@ -1761,7 +1761,7 @@ static struct dst_entry *make_blackhole(struct net *net, u16 family,
 
 	if (!afinfo) {
 		dst_release(dst_orig);
-		ret = ERR_PTR(-EINVAL);
+		return ERR_PTR(-EINVAL);
 	} else {
 		ret = afinfo->blackhole_route(net, dst_orig);
 	}
@@ -1919,6 +1919,9 @@ no_transform:
 	}
 ok:
 	xfrm_pols_put(pols, drop_pols);
+	if (dst && dst->xfrm &&
+	    dst->xfrm->props.mode == XFRM_MODE_TUNNEL)
+		dst->flags |= DST_XFRM_TUNNEL;
 	return dst;
 
 nopol:
@@ -2939,14 +2942,8 @@ int xfrm_migrate(const struct xfrm_selector *sel, u8 dir, u8 type,
 	struct xfrm_state *x_new[XFRM_MAX_DEPTH];
 	struct xfrm_migrate *mp;
 
-	/* Stage 0 - sanity checks */
 	if ((err = xfrm_migrate_check(m, num_migrate)) < 0)
 		goto out;
-
-	if (dir >= XFRM_POLICY_MAX) {
-		err = -EINVAL;
-		goto out;
-	}
 
 	/* Stage 1 - find policy */
 	if ((pol = xfrm_migrate_policy_find(sel, dir, type)) == NULL) {

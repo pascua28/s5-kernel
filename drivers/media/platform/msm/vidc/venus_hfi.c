@@ -1393,8 +1393,7 @@ static inline int venus_hfi_power_on(struct venus_hfi_device *device)
 	 * recursive lock in cmdq_write function, call nolock version
 	 * of alloc_ocmem
 	 */
-	WARN_ON(!mutex_is_locked(&device->write_lock)
-					&& (msm_vidc_debug & VIDC_INFO));
+	WARN_ON(!mutex_is_locked(&device->write_lock));
 	rc = __alloc_set_ocmem(device, false);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to allocate OCMEM");
@@ -3309,8 +3308,7 @@ static inline void venus_hfi_disable_unprepare_clks(
 		return;
 	}
 
-	WARN_ON(!mutex_is_locked(&device->clk_pwr_lock)
-					&& (msm_vidc_debug & VIDC_INFO));
+	WARN_ON(!mutex_is_locked(&device->clk_pwr_lock));
 	/*
 	* Make the clock state variable as unprepared before actually
 	* unpreparing clocks. This will make sure that when we check
@@ -3365,8 +3363,7 @@ static inline int venus_hfi_prepare_enable_clks(struct venus_hfi_device *device)
 		dprintk(VIDC_ERR, "Invalid params: %pK\n", device);
 		return -EINVAL;
 	}
-	WARN_ON(!mutex_is_locked(&device->clk_pwr_lock)
-					&& (msm_vidc_debug & VIDC_INFO));
+	WARN_ON(!mutex_is_locked(&device->clk_pwr_lock));
 
 	if (device->clk_state == ENABLED_PREPARED) {
 		dprintk(VIDC_DBG, "Clocks already prepared and enabled\n");

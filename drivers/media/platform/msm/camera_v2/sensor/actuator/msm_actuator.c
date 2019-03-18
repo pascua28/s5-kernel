@@ -83,10 +83,7 @@ static void msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 	uint16_t value = 0;
 	uint32_t size = a_ctrl->reg_tbl_size, i = 0;
 	struct msm_camera_i2c_reg_array *i2c_tbl = a_ctrl->i2c_reg_tbl;
-	if (a_ctrl->i2c_reg_tbl == NULL) {
-		pr_err("failed. i2c reg tabl is NULL");
-		return;
-	}
+
 	CDBG("Enter\n");
 	for (i = 0; i < size; i++) {
 		if (write_arr[i].reg_write_type == MSM_ACTUATOR_WRITE_DAC) {
@@ -400,12 +397,6 @@ static int32_t msm_actuator_piezo_move_focus(
 
 	if (num_steps == 0)
 		return rc;
-	
-	if (dest_step_position > a_ctrl->total_steps) {
-		pr_err("Step pos greater than total steps = %d\n",
-			dest_step_position);
-		return -EFAULT;
-	}
 
 	a_ctrl->i2c_tbl_index = 0;
 	a_ctrl->func_tbl->actuator_parse_i2c_params(a_ctrl,
@@ -953,7 +944,7 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 {
 	struct msm_actuator_cfg_data *cdata =
 		(struct msm_actuator_cfg_data *)argp;
-	int32_t rc = -EINVAL;
+	int32_t rc = 0;
 
 	mutex_lock(a_ctrl->actuator_mutex);
 	CDBG("Enter\n");
@@ -972,8 +963,6 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 		break;
 
 	case CFG_SET_DEFAULT_FOCUS:
-		if (a_ctrl->func_tbl &&
-			a_ctrl->func_tbl->actuator_set_default_focus)
 		rc = a_ctrl->func_tbl->actuator_set_default_focus(a_ctrl,
 								  &cdata->cfg.move);
 		if (rc < 0)
@@ -981,8 +970,6 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 		break;
 
 	case CFG_MOVE_FOCUS:
-		if (a_ctrl->func_tbl &&
-			a_ctrl->func_tbl->actuator_move_focus)
 		rc = a_ctrl->func_tbl->actuator_move_focus(a_ctrl,
 							   &cdata->cfg.move);
 		if (rc < 0)
@@ -990,8 +977,6 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 		break;
 
 	case CFG_SET_POSITION:
-	if (a_ctrl->func_tbl &&
-			a_ctrl->func_tbl->actuator_set_position)
 		rc = a_ctrl->func_tbl->actuator_set_position(a_ctrl,
 							     &cdata->cfg.setpos);
 		if (rc < 0)

@@ -2008,10 +2008,6 @@ static int _sha_complete(struct qce_device *pce_dev)
 	uint32_t status;
 
 	areq = (struct ahash_request *) pce_dev->areq;
-	if (!areq) {
-		pr_err("sha operation error. areq is NULL\n");
-		return -ENXIO;
-	}
 	qce_dma_unmap_sg(pce_dev->pdev, areq->src, pce_dev->src_nents,
 				DMA_TO_DEVICE);
 	memcpy(digest, (char *)(&pce_dev->ce_sps.result->auth_iv[0]),
@@ -4776,7 +4772,7 @@ int qce_ablk_cipher_req(void *handle, struct qce_req *c_req)
 	rc = _qce_sps_transfer(pce_dev);
 	if (rc)
 		goto bad;
-		return 0;
+	return 0;
 bad:
 	if (areq->src != areq->dst) {
 		if (pce_dev->dst_nents) {
@@ -4846,7 +4842,7 @@ int qce_process_sha_req(void *handle, struct qce_sha_req *sreq)
 	rc = _qce_sps_transfer(pce_dev);
 	if (rc)
 		goto bad;
-		return 0;
+	return 0;
 bad:
 	if (pce_dev->src_nents) {
 		qce_dma_unmap_sg(pce_dev->pdev, sreq->src,

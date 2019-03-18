@@ -27,6 +27,10 @@ struct virtqueue {
 	void *priv;
 };
 
+unsigned virtqueue_enable_cb_prepare(struct virtqueue *vq);
+
+bool virtqueue_poll(struct virtqueue *vq, unsigned);
+
 /**
  * virtqueue_ops - operations for virtqueue abstraction layer
  * @add_buf: expose buffer to other end
@@ -274,7 +278,11 @@ struct virtio_device {
 	void *priv;
 };
 
-#define dev_to_virtio(dev) container_of(dev, struct virtio_device, dev)
+static inline struct virtio_device *dev_to_virtio(struct device *_dev)
+{
+	return container_of(_dev, struct virtio_device, dev);
+}
+
 int register_virtio_device(struct virtio_device *dev);
 void unregister_virtio_device(struct virtio_device *dev);
 

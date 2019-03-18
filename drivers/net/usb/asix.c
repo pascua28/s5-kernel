@@ -1937,7 +1937,6 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 		deverr(dev, "Select PHY #1 failed: %d", ret);
 		goto err_out;
 	}
-
 	if (dev->mii.phy_id != 0x10) {
 		deverr(dev, "Got wrong PHY ID: %02x", dev->mii.phy_id);
 		ret = -EIO;
@@ -3833,6 +3832,10 @@ static const struct usb_device_id products[] = {
 	USB_DEVICE(0x125E, 0x180D),
 	.driver_info = (unsigned long) &ax88772_info,
 }, {
+	/* DLink DUB-E100 H/W Ver C1 */
+	USB_DEVICE (0x2001, 0x1a02),
+	.driver_info = (unsigned long) &ax88772_info,
+}, {
 	/* ASIX AX88772A 10/100 */
 	USB_DEVICE(0x0b95, 0x772A),
 	.driver_info = (unsigned long) &ax88772a_info,
@@ -3895,5 +3898,3 @@ module_exit(asix_exit);
 MODULE_AUTHOR("David Hollis");
 MODULE_DESCRIPTION("ASIX AX8817X based USB 2.0 Ethernet Devices");
 MODULE_LICENSE("GPL");
-
-

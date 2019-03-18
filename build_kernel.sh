@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export ARCH=arm
-export CROSS_COMPILE=~/arm32/bin/arm-linux-gnueabihf-
+export CROSS_COMPILE=~/arm32/bin/arm-eabi-
 
 mkdir output
 

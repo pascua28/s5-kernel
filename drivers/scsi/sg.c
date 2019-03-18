@@ -353,9 +353,6 @@ sg_read(struct file *filp, char __user *buf, size_t count, loff_t * ppos)
 	struct sg_header *old_hdr = NULL;
 	int retval = 0;
 
-	if (unlikely(segment_eq(get_fs(), KERNEL_DS)))
-	   return -EINVAL;
-
 	if ((!(sfp = (Sg_fd *) filp->private_data)) || (!(sdp = sfp->parentdp)))
 		return -ENXIO;
 	SCSI_LOG_TIMEOUT(3, printk("sg_read: %s, count=%d\n",
@@ -501,7 +498,7 @@ static ssize_t
 sg_new_read(Sg_fd * sfp, char __user *buf, size_t count, Sg_request * srp)
 {
 	sg_io_hdr_t *hp = &srp->header;
-	int err = 0;
+	int err = 0, err2;
 	int len;
 
 	if (count < SZ_SG_IO_HDR) {
@@ -530,8 +527,8 @@ sg_new_read(Sg_fd * sfp, char __user *buf, size_t count, Sg_request * srp)
 		goto err_out;
 	}
 err_out:
-	err = sg_finish_rem_req(srp);
-	return (0 == err) ? count : err;
+	err2 = sg_finish_rem_req(srp);
+	return err ? : err2 ? : count;
 }
 
 static ssize_t
@@ -1972,12 +1969,11 @@ sg_get_rq_mark(Sg_fd * sfp, int pack_id)
 		if ((1 == resp->done) && (!resp->sg_io_owned) &&
 		    ((-1 == pack_id) || (resp->header.pack_id == pack_id))) {
 			resp->done = 2;	/* guard against other readers */
-			write_unlock_irqrestore(&sfp->rq_list_lock, iflags);
-			return resp;
+			break;
 		}
 	}
 	write_unlock_irqrestore(&sfp->rq_list_lock, iflags);
-	return NULL;
+	return resp;
 }
 
 /* always adds to end of list */

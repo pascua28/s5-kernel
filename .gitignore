@@ -7,33 +7,6 @@
 # command after changing this file, to see if there are
 # any tracked files which get ignored after the change.
 #
-# Normal rules
-#
-.*
-*.o
-*.o.*
-*.a
-*.s
-*.ko
-*.so
-*.so.dbg
-*.mod.c
-*.i
-*.lst
-*.symtypes
-*.order
-modules.builtin
-*.elf
-*.bin
-*.gz
-*.bz2
-*.lzma
-*.xz
-*.lzo
-*.patch
-*.gcno
-
-#
 # Top-level generic files
 #
 /tags
@@ -44,6 +17,8 @@ modules.builtin
 /System.map
 /Module.markers
 /Module.symvers
+/output_*
+/release_SmartPack
 
 #
 # Debian directory (make deb-pkg)
@@ -60,7 +35,6 @@ modules.builtin
 # Generated include files
 #
 include/config
-include/linux/version.h
 include/generated
 arch/*/include/generated
 
@@ -84,5 +58,5 @@ GTAGS
 *.orig
 *~
 \#*#
-
 output/
+arch/arm/boot/zImage

@@ -82,7 +82,7 @@ SYSCALL_DEFINE5(add_key, const char __user *, _type,
 	payload = NULL;
 
 	vm = false;
-	if (plen) {
+	if (_payload) {
 		ret = -ENOMEM;
 		payload = kmalloc(plen, GFP_KERNEL);
 		if (!payload) {
@@ -311,7 +311,7 @@ long keyctl_update_key(key_serial_t id,
 
 	/* pull the payload in if one was supplied */
 	payload = NULL;
-	if (plen) {
+	if (_payload) {
 		ret = -ENOMEM;
 		payload = kmalloc(plen, GFP_KERNEL);
 		if (!payload)
@@ -683,11 +683,6 @@ long keyctl_read_key(key_serial_t keyid, char __user *buffer, size_t buflen)
 	}
 
 	key = key_ref_to_ptr(key_ref);
-
-   if (test_bit(KEY_FLAG_NEGATIVE, &key->flags)) {
-      ret = -ENOKEY;
-      goto error2;
-   }
 
 	/* see if we can read it directly */
 	ret = key_permission(key_ref, KEY_READ);
@@ -1086,12 +1081,12 @@ long keyctl_instantiate_key_iov(key_serial_t id,
 	ret = rw_copy_check_uvector(WRITE, _payload_iov, ioc,
 				    ARRAY_SIZE(iovstack), iovstack, &iov, 1);
 	if (ret < 0)
-		return ret;
+		goto err;
 	if (ret == 0)
 		goto no_payload_free;
 
 	ret = keyctl_instantiate_key_common(id, iov, ioc, ret, ringid);
-
+err:
 	if (iov != iovstack)
 		kfree(iov);
 	return ret;
@@ -1193,8 +1188,8 @@ error:
  * Read or set the default keyring in which request_key() will cache keys and
  * return the old setting.
  *
- * If a thread or process keyring is specified then it will be created if it
- * doesn't yet exist.  The old setting will be returned if successful.
+ * If a process keyring is specified then this will be created if it doesn't
+ * yet exist.  The old setting will be returned if successful.
  */
 long keyctl_set_reqkey_keyring(int reqkey_defl)
 {
@@ -1219,8 +1214,11 @@ long keyctl_set_reqkey_keyring(int reqkey_defl)
 
 	case KEY_REQKEY_DEFL_PROCESS_KEYRING:
 		ret = install_process_keyring_to_cred(new);
-		if (ret < 0)
-			goto error;
+		if (ret < 0) {
+			if (ret != -EEXIST)
+				goto error;
+			ret = 0;
+		}
 		goto set;
 
 	case KEY_REQKEY_DEFL_DEFAULT:

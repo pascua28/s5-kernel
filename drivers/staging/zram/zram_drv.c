@@ -401,7 +401,7 @@ out_cleanup:
 static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 			   int offset)
 {
-	int ret = 0;
+	int ret = -ENOMEM;
 	size_t clen;
 	unsigned long handle;
 	struct page *page;
@@ -485,7 +485,6 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 					   ALLOC_ERROR_LOG_RATE_MS))
 			pr_info("Error allocating memory for compressed page: %u, size=%zu\n",
 				index, clen);
-		ret = -ENOMEM;
 		goto out;
 	}
 	cmem = zs_map_object(meta->mem_pool, handle, ZS_MM_WO);
@@ -969,7 +968,9 @@ static void __exit zram_exit(void)
 	for (i = 0; i < num_devices; i++) {
 		zram = &zram_devices[i];
 
+		get_disk(zram->disk);
 		destroy_device(zram);
+		put_disk(zram->disk);
 		/*
 		 * Shouldn't access zram->disk after destroy_device
 		 * because destroy_device already released zram->disk.

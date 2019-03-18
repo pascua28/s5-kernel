@@ -499,9 +499,6 @@ static struct sock *dccp_v6_request_recv_sock(struct sock *sk,
 		newsk->sk_backlog_rcv = dccp_v4_do_rcv;
 		newnp->pktoptions  = NULL;
 		newnp->opt	   = NULL;
-        newnp->ipv6_mc_list = NULL;
-        newnp->ipv6_ac_list = NULL;
-        newnp->ipv6_fl_list = NULL;
 		newnp->mcast_oif   = inet6_iif(skb);
 		newnp->mcast_hops  = ipv6_hdr(skb)->hop_limit;
 
@@ -578,10 +575,6 @@ static struct sock *dccp_v6_request_recv_sock(struct sock *sk,
 	/* Clone RX bits */
 	newnp->rxopt.all = np->rxopt.all;
 
-    newnp->ipv6_mc_list = NULL;
-    newnp->ipv6_ac_list = NULL;
-    newnp->ipv6_fl_list = NULL;
-
 	/* Clone pktoptions received with SYN */
 	newnp->pktoptions = NULL;
 	if (ireq6->pktopts != NULL) {
@@ -618,7 +611,8 @@ static struct sock *dccp_v6_request_recv_sock(struct sock *sk,
 	newinet->inet_rcv_saddr = LOOPBACK4_IPV6;
 
 	if (__inet_inherit_port(sk, newsk) < 0) {
-		sock_put(newsk);
+		inet_csk_prepare_forced_close(newsk);
+		dccp_done(newsk);
 		goto out;
 	}
 	__inet6_hash(newsk, NULL);

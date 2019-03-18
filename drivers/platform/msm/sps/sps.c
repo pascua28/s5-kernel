@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -99,7 +99,6 @@ static char *debugfs_buf;
 static u32 debugfs_buf_size;
 static u32 debugfs_buf_used;
 static int wraparound;
-static struct mutex sps_debugfs_lock;
 
 struct dentry *dent;
 struct dentry *dfile_info;
@@ -117,7 +116,6 @@ static struct sps_bam *phy2bam(u32 phys_addr);
 /* record debug info for debugfs */
 void sps_debugfs_record(const char *msg)
 {
-	mutex_lock(&sps_debugfs_lock);
 	if (debugfs_record_enabled) {
 		if (debugfs_buf_used + MAX_MSG_LEN >= debugfs_buf_size) {
 			debugfs_buf_used = 0;
@@ -131,7 +129,6 @@ void sps_debugfs_record(const char *msg)
 					debugfs_buf_size - debugfs_buf_used,
 					"\n**** end line of sps log ****\n\n");
 	}
-	mutex_unlock(&sps_debugfs_lock);
 }
 
 /* read the recorded debug info to userspace */
@@ -141,7 +138,6 @@ static ssize_t sps_read_info(struct file *file, char __user *ubuf,
 	int ret = 0;
 	int size;
 
-	mutex_lock(&sps_debugfs_lock);
 	if (debugfs_record_enabled) {
 		if (wraparound)
 			size = debugfs_buf_size - MAX_MSG_LEN;
@@ -151,7 +147,6 @@ static ssize_t sps_read_info(struct file *file, char __user *ubuf,
 		ret = simple_read_from_buffer(ubuf, count, ppos,
 				debugfs_buf, size);
 	}
-	mutex_unlock(&sps_debugfs_lock);
 
 	return ret;
 }
@@ -196,13 +191,11 @@ static ssize_t sps_set_info(struct file *file, const char __user *buf,
 
 	new_buf_size = buf_size_kb * SZ_1K;
 
-	mutex_lock(&sps_debugfs_lock);
 	if (debugfs_record_enabled) {
 		if (debugfs_buf_size == new_buf_size) {
 			/* need do nothing */
 			pr_info("sps:debugfs: input buffer size "
 				"is the same as before.\n");
-			mutex_unlock(&sps_debugfs_lock);
 			return count;
 		} else {
 			/* release the current buffer */
@@ -222,14 +215,12 @@ static ssize_t sps_set_info(struct file *file, const char __user *buf,
 	if (!debugfs_buf) {
 		debugfs_buf_size = 0;
 		pr_err("sps:fail to allocate memory for debug_fs.\n");
-		mutex_unlock(&sps_debugfs_lock);
 		return -ENOMEM;
 	}
 
 	debugfs_buf_used = 0;
 	wraparound = false;
 	debugfs_record_enabled = true;
-	mutex_unlock(&sps_debugfs_lock);
 
 	return count;
 }
@@ -277,7 +268,6 @@ static ssize_t sps_set_logging_option(struct file *file, const char __user *buf,
 		return count;
 	}
 
-	mutex_lock(&sps_debugfs_lock);
 	if (((option == 0) || (option == 2)) &&
 		((logging_option == 1) || (logging_option == 3))) {
 		debugfs_record_enabled = false;
@@ -289,7 +279,6 @@ static ssize_t sps_set_logging_option(struct file *file, const char __user *buf,
 	}
 
 	logging_option = option;
-	mutex_unlock(&sps_debugfs_lock);
 
 	return count;
 }
@@ -615,8 +604,6 @@ static void sps_debugfs_init(void)
 			"bam_addr.\n");
 		goto bam_addr_err;
 	}
-
-	mutex_init(&sps_debugfs_lock);
 
 	return;
 

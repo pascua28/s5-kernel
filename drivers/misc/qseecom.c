@@ -1738,7 +1738,7 @@ static int __qseecom_update_cmd_buf(void *msg, bool cleanup,
 			else
 				*update = (uint32_t)sg_dma_address(
 							sg_ptr->sgl);
-				len += (uint32_t)sg->length;
+			len += (uint32_t)sg->length;
 		} else {
 			struct qseecom_sg_entry *update;
 			int j = 0;
@@ -3904,11 +3904,7 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 			break;
 		}
 		pr_debug("SET_MEM_PARAM: qseecom addr = 0x%x\n", (u32)data);
-		mutex_lock(&app_access_lock);
-		atomic_inc(&data->ioctl_count);
 		ret = qseecom_set_client_mem_param(data, argp);
-		atomic_dec(&data->ioctl_count);
-		mutex_unlock(&app_access_lock);
 		if (ret)
 			pr_err("failed Qqseecom_set_mem_param request: %d\n",
 								ret);
