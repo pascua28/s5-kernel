@@ -43,6 +43,7 @@
 
 #include <linux/kthread.h>
 #include <linux/freezer.h>
+#include <linux/ratelimit.h>
 
 #include "ext4.h"
 #include "ext4_extents.h"
@@ -301,7 +302,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
 	handle_t  *handle;
 
 	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
-	if (sb->s_flags & MS_RDONLY)
+	if (sb->s_flags & MS_RDONLY && !journal_current_handle())
 		return ERR_PTR(-EROFS);
 
 	journal = EXT4_SB(sb)->s_journal;
@@ -412,6 +413,9 @@ static void __save_error_info(struct super_block *sb, const char *func,
 static void save_error_info(struct super_block *sb, const char *func,
 			    unsigned int line)
 {
+	if (sb->s_flags & MS_RDONLY)
+		return;
+
 	__save_error_info(sb, func, line);
 	ext4_commit_super(sb, 1);
 }
@@ -437,10 +441,13 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
 	struct super_block		*sb = journal->j_private;
 	struct ext4_sb_info		*sbi = EXT4_SB(sb);
 	int				error = is_journal_aborted(journal);
-	struct ext4_journal_cb_entry	*jce, *tmp;
+	struct ext4_journal_cb_entry	*jce;
 
+	BUG_ON(txn->t_state == T_FINISHED);
 	spin_lock(&sbi->s_md_lock);
-	list_for_each_entry_safe(jce, tmp, &txn->t_private_list, jce_list) {
+	while (!list_empty(&txn->t_private_list)) {
+		jce = list_entry(txn->t_private_list.next,
+				 struct ext4_journal_cb_entry, jce_list);
 		list_del_init(&jce->jce_list);
 		spin_unlock(&sbi->s_md_lock);
 		jce->jce_func(sb, jce, error);
@@ -464,7 +471,7 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
  * that error until we've noted it down and cleared it.
  */
 
-static void ext4_handle_error(struct super_block *sb)
+static void ext4_handle_error(struct super_block *sb, char* buf)
 {
 	if (sb->s_flags & MS_RDONLY)
 		return;
@@ -481,8 +488,8 @@ static void ext4_handle_error(struct super_block *sb)
 		sb->s_flags |= MS_RDONLY;
 	}
 	if (test_opt(sb, ERRORS_PANIC))
-		panic("EXT4-fs (device %s): panic forced after error\n",
-			sb->s_id);
+		panic("EXT4-fs (device %s): panic! %s\n",
+			sb->s_id, buf?buf:"no message");
 }
 
 void __ext4_error(struct super_block *sb, const char *function,
@@ -490,15 +497,24 @@ void __ext4_error(struct super_block *sb, const char *function,
 {
 	struct va_format vaf;
 	va_list args;
+	char *page_buf;
 
 	va_start(args, fmt);
 	vaf.fmt = fmt;
 	vaf.va = &args;
 	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
 	       sb->s_id, function, line, current->comm, &vaf);
+	page_buf = (char *)__get_free_page(GFP_ATOMIC);
+	if (page_buf)
+		sprintf(page_buf, "%s %s:%u: %pV",
+					"***Keep this device after RDX, do not reboot***", function, line, &vaf);
+	else
+		printk(KERN_ERR "__ext4_error: failed to allocate page buf for panic msg\n");
 	va_end(args);
 
-	ext4_handle_error(sb);
+	ext4_handle_error(sb, page_buf);
+	if (page_buf)
+		free_page((unsigned long)page_buf);
 }
 
 void ext4_error_inode(struct inode *inode, const char *function,
@@ -508,6 +524,7 @@ void ext4_error_inode(struct inode *inode, const char *function,
 	va_list args;
 	struct va_format vaf;
 	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+	char *page_buf;
 
 	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
 	es->s_last_error_block = cpu_to_le64(block);
@@ -525,9 +542,17 @@ void ext4_error_inode(struct inode *inode, const char *function,
 		       "inode #%lu: comm %s: %pV\n",
 		       inode->i_sb->s_id, function, line, inode->i_ino,
 		       current->comm, &vaf);
+	page_buf = (char *)__get_free_page(GFP_ATOMIC);
+	if (page_buf)
+		sprintf(page_buf, "%s %s:%u: %pV",
+					"***Keep this device after RDX, do not reboot***", function, line, &vaf);
+	else
+		printk(KERN_ERR "__ext4_error: failed to allocate page buf for panic msg\n");
 	va_end(args);
 
-	ext4_handle_error(inode->i_sb);
+	ext4_handle_error(inode->i_sb, page_buf);
+	if (page_buf)
+		free_page((unsigned long)page_buf);
 }
 
 void ext4_error_file(struct file *file, const char *function,
@@ -539,6 +564,7 @@ void ext4_error_file(struct file *file, const char *function,
 	struct ext4_super_block *es;
 	struct inode *inode = file->f_dentry->d_inode;
 	char pathname[80], *path;
+	char *page_buf;
 
 	es = EXT4_SB(inode->i_sb)->s_es;
 	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
@@ -561,9 +587,17 @@ void ext4_error_file(struct file *file, const char *function,
 		       "comm %s: path %s: %pV\n",
 		       inode->i_sb->s_id, function, line, inode->i_ino,
 		       current->comm, path, &vaf);
+	page_buf = (char *)__get_free_page(GFP_ATOMIC);
+	if (page_buf)
+		sprintf(page_buf, "%s %s:%u: %pV",
+					"***Keep this device after RDX, do not reboot***", function, line, &vaf);
+	else
+		printk(KERN_ERR "__ext4_error: failed to allocate page buf for panic msg\n");
 	va_end(args);
 
-	ext4_handle_error(inode->i_sb);
+	ext4_handle_error(inode->i_sb, page_buf);
+	if (page_buf)
+		free_page((unsigned long)page_buf);
 }
 
 static const char *ext4_decode_error(struct super_block *sb, int errno,
@@ -608,6 +642,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
 {
 	char nbuf[16];
 	const char *errstr;
+	char *page_buf;
 
 	/* Special case: if the error is EROFS, and we're not already
 	 * inside a transaction, then there's really no point in logging
@@ -621,7 +656,16 @@ void __ext4_std_error(struct super_block *sb, const char *function,
 	       sb->s_id, function, line, errstr);
 	save_error_info(sb, function, line);
 
-	ext4_handle_error(sb);
+	page_buf = (char *)__get_free_page(GFP_ATOMIC);
+	if (page_buf)
+		sprintf(page_buf, "%s:%u: <%s>",
+					function, line, "__ext4_std_error");
+	else
+		printk(KERN_ERR "__ext4_error: failed to allocate page buf for panic msg\n");
+
+	ext4_handle_error(sb, page_buf);
+	if (page_buf)
+		free_page((unsigned long)page_buf);
 }
 
 /*
@@ -667,7 +711,7 @@ void ext4_msg(struct super_block *sb, const char *prefix, const char *fmt, ...)
 	va_start(args, fmt);
 	vaf.fmt = fmt;
 	vaf.va = &args;
-	printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
+	printk_ratelimited("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
 	va_end(args);
 }
 
@@ -695,6 +739,7 @@ __acquires(bitlock)
 	struct va_format vaf;
 	va_list args;
 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+	char *page_buf;
 
 	es->s_last_error_ino = cpu_to_le32(ino);
 	es->s_last_error_block = cpu_to_le64(block);
@@ -711,6 +756,12 @@ __acquires(bitlock)
 	if (block)
 		printk(KERN_CONT "block %llu:", (unsigned long long) block);
 	printk(KERN_CONT "%pV\n", &vaf);
+	page_buf = (char *)__get_free_page(GFP_ATOMIC);
+	if (page_buf)
+		sprintf(page_buf, "%s %s:%u: %pV",
+					"***Keep this device after RDX, do not reboot***", function, line, &vaf);
+	else
+		printk(KERN_ERR "__ext4_error: failed to allocate page buf for panic msg\n");
 	va_end(args);
 
 	if (test_opt(sb, ERRORS_CONT)) {
@@ -719,7 +770,9 @@ __acquires(bitlock)
 	}
 
 	ext4_unlock_group(sb, grp);
-	ext4_handle_error(sb);
+	ext4_handle_error(sb, page_buf);
+	if (page_buf)
+		free_page((unsigned long)page_buf);
 	/*
 	 * We only get here in the ERRORS_RO case; relocking the group
 	 * may be dangerous, but nothing bad will happen since the
@@ -2942,6 +2995,73 @@ static void ext4_destroy_lazyinit_thread(void)
 
 	kthread_stop(ext4_lazyinit_task);
 }
+void print_block_data(struct super_block *sb, sector_t blocknr
+						, unsigned char *data_to_dump, int start, int len)
+{
+	int i, j;
+	int bh_offset = (start / 16) * 16;
+	char row_data[17] = { 0, };
+	char row_hex[50] = { 0, };
+	char ch;
+
+	printk(KERN_ERR "As EXT4-fs error, printing data in hex\n");
+	printk(KERN_ERR " [partition info] s_id : %s, start block# : %llu\n"
+			, sb->s_id, sb->s_bdev->bd_part->start_sect);
+	printk(KERN_ERR " dump block# : %llu, start offset(byte) :", blocknr);
+	printk(KERN_ERR " %d, length(byte) : %d\n", start, len);
+	printk(KERN_ERR "-------------------------------------------------\n");
+
+	for (i = 0; i < (len + 15) / 16; i++) {
+		for (j = 0; j < 16; j++) {
+			ch = *(data_to_dump + bh_offset + j);
+			if (start <= bh_offset + j
+				&& start + len > bh_offset + j) {
+
+				if (isascii(ch) && isprint(ch))
+					sprintf(row_data + j, "%c", ch);
+				else
+					sprintf(row_data + j, ".");
+
+				sprintf(row_hex + (j * 3), "%2.2x ", ch);
+				} else {
+					sprintf(row_data + j, " ");
+					sprintf(row_hex + (j * 3), "-- ");
+				}
+			}
+
+			printk(KERN_ERR "0x%4.4x : %s | %s\n"
+					, bh_offset, row_hex, row_data);
+			bh_offset += 16;
+		}
+		printk(KERN_ERR "---------------------------------------------------\n");
+}
+
+void print_iloc_info(struct super_block *sb, struct ext4_iloc iloc)
+{
+	/* for debugging, woojoong.lee */
+	printk(KERN_ERR "iloc info, offset : %lu,"
+			, iloc.offset);
+	printk(KERN_ERR " group# : %u\n", iloc.block_group);
+	printk(KERN_ERR "sb info, inodes per group : %lu,"
+			, EXT4_SB(sb)->s_inodes_per_group);
+	printk(KERN_ERR " inode size : %d\n"
+			, EXT4_SB(sb)->s_inode_size);
+	print_bh(sb, iloc.bh, 0, EXT4_BLOCK_SIZE(sb));
+	/* end */
+}
+
+/* for debugging */
+void print_bh(struct super_block *sb, struct buffer_head *bh
+				, int start, int len)
+{
+	if (bh) {
+		printk(KERN_ERR " print_bh: bh %p, bh->b_size %u, bh->b_data %p\n",
+			(void *) bh, bh->b_size, (void *) bh->b_data);
+		print_block_data(sb, bh->b_blocknr, bh->b_data, start, len);
+	}
+	else
+		printk(KERN_ERR " print_bh: bh is null!\n");
+}
 
 static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 {
@@ -3673,8 +3793,15 @@ no_journal:
 	return 0;
 
 cantfind_ext4:
+
+	/* If you wanna use the flag 'MS_SILENT', call */
+	/* 'print_bh' function within below 'if'. */
+	printk(KERN_ERR "printing data of superblock-bh\n");
+	print_bh(sb, bh, 0, EXT4_BLOCK_SIZE(sb));
+
 	if (!silent)
 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
+
 	goto failed_mount;
 
 failed_mount7:
@@ -4105,6 +4232,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
 		ext4_commit_super(sb, 1);
 
 		jbd2_journal_clear_err(journal);
+		jbd2_journal_update_sb_errno(journal);
 	}
 }
 

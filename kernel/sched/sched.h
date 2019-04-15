@@ -80,7 +80,7 @@ extern struct mutex sched_domains_mutex;
 struct cfs_rq;
 struct rt_rq;
 
-static LIST_HEAD(task_groups);
+extern struct list_head task_groups;
 
 struct cfs_bandwidth {
 #ifdef CONFIG_CFS_BANDWIDTH
@@ -103,6 +103,8 @@ struct cfs_bandwidth {
 /* task group related information */
 struct task_group {
 	struct cgroup_subsys_state css;
+
+	bool notify_on_migrate;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* schedulable entities of this group on each cpu */
@@ -554,6 +556,11 @@ static inline struct task_group *task_group(struct task_struct *p)
 	return autogroup_task_group(p, tg);
 }
 
+static inline bool task_notify_on_migrate(struct task_struct *p)
+{
+	return task_group(p)->notify_on_migrate;
+}
+
 /* Change a task's cfs_rq and parent entity if it moves across CPUs/groups */
 static inline void set_task_rq(struct task_struct *p, unsigned int cpu)
 {
@@ -579,7 +586,10 @@ static inline struct task_group *task_group(struct task_struct *p)
 {
 	return NULL;
 }
-
+static inline bool task_notify_on_migrate(struct task_struct *p)
+{
+	return false;
+}
 #endif /* CONFIG_CGROUP_SCHED */
 
 static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu)
@@ -862,11 +872,12 @@ static inline void idle_balance(int cpu, struct rq *rq)
 
 #endif
 
+#ifdef CONFIG_SYSRQ_SCHED_DEBUG
 extern void sysrq_sched_debug_show(void);
+#endif
 extern void sched_init_granularity(void);
 extern void update_max_interval(void);
 extern void update_group_power(struct sched_domain *sd, int cpu);
-extern int update_runtime(struct notifier_block *nfb, unsigned long action, void *hcpu);
 extern void init_sched_rt_class(void);
 extern void init_sched_fair_class(void);
 
@@ -916,11 +927,13 @@ static inline void cpuacct_charge(struct task_struct *tsk, u64 cputime) {}
 
 static inline void inc_nr_running(struct rq *rq)
 {
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running, true);
 	rq->nr_running++;
 }
 
 static inline void dec_nr_running(struct rq *rq)
 {
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running, false);
 	rq->nr_running--;
 }
 
@@ -1143,7 +1156,6 @@ extern void print_rt_stats(struct seq_file *m, int cpu);
 
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq);
-extern void unthrottle_offline_cfs_rqs(struct rq *rq);
 
 extern void account_cfs_bandwidth_used(int enabled, int was_enabled);
 

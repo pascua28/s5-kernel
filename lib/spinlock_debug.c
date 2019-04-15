@@ -12,6 +12,10 @@
 #include <linux/debug_locks.h>
 #include <linux/delay.h>
 #include <linux/export.h>
+#include <linux/bug.h>
+#ifdef CONFIG_MACH_ATLANTICLTE_ATT
+#include <mach/msm_watchdog_v2.h>
+#endif
 
 void __raw_spin_lock_init(raw_spinlock_t *lock, const char *name,
 			  struct lock_class_key *key)
@@ -49,6 +53,11 @@ void __rwlock_init(rwlock_t *lock, const char *name,
 
 EXPORT_SYMBOL(__rwlock_init);
 
+#ifdef CONFIG_SEC_DEBUG_SPINLOCK_PANIC
+#define DBG_HRT_MAX 10
+raw_spinlock_t debug_hrtimer_spinlock[DBG_HRT_MAX];
+#endif
+
 static void spin_dump(raw_spinlock_t *lock, const char *msg)
 {
 	struct task_struct *owner = NULL;
@@ -58,13 +67,22 @@ static void spin_dump(raw_spinlock_t *lock, const char *msg)
 	printk(KERN_EMERG "BUG: spinlock %s on CPU#%d, %s/%d\n",
 		msg, raw_smp_processor_id(),
 		current->comm, task_pid_nr(current));
-	printk(KERN_EMERG " lock: %p, .magic: %08x, .owner: %s/%d, "
+	printk(KERN_EMERG " lock: %pS, .magic: %08x, .owner: %s/%d, "
 			".owner_cpu: %d\n",
 		lock, lock->magic,
 		owner ? owner->comm : "<none>",
 		owner ? task_pid_nr(owner) : -1,
 		lock->owner_cpu);
+#ifdef CONFIG_MACH_ATLANTICLTE_ATT
+		msm_cause_bite();
+		dump_stack();
+#else
+#ifdef CONFIG_SEC_DEBUG_SPINLOCK_PANIC
+		panic("spinlock bug");
+#else
 	dump_stack();
+#endif
+#endif
 }
 
 static void spin_bug(raw_spinlock_t *lock, const char *msg)
@@ -103,34 +121,44 @@ static inline void debug_spin_unlock(raw_spinlock_t *lock)
 	lock->owner_cpu = -1;
 }
 
+#if 0
 static void __spin_lock_debug(raw_spinlock_t *lock)
 {
 	u64 i;
-	u64 loops = loops_per_jiffy * HZ;
-	int print_once = 1;
+	u64 loops = (loops_per_jiffy * HZ);
 
-	for (;;) {
-		for (i = 0; i < loops; i++) {
-			if (arch_spin_trylock(&lock->raw_lock))
-				return;
-			__delay(1);
-		}
-		/* lockup suspected: */
-		if (print_once) {
-			print_once = 0;
-			spin_dump(lock, "lockup");
-#ifdef CONFIG_SMP
-			trigger_all_cpu_backtrace();
-#endif
-		}
+	for (i = 0; i < loops; i++) {
+		if (arch_spin_trylock(&lock->raw_lock))
+			return;
+		__delay(1);
 	}
+	/* lockup suspected: */
+	spin_dump(lock, "lockup");
+#ifdef CONFIG_SMP
+	trigger_all_cpu_backtrace();
+#endif
+
+	/*
+	 * The trylock above was causing a livelock.  Give the lower level arch
+	 * specific lock code a chance to acquire the lock. We have already
+	 * printed a warning/backtrace at this point. The non-debug arch
+	 * specific code might actually succeed in acquiring the lock.  If it is
+	 * not successful, the end-result is the same - there is no forward
+	 * progress.
+	 */
+	arch_spin_lock(&lock->raw_lock);
 }
+#endif
 
 void do_raw_spin_lock(raw_spinlock_t *lock)
 {
 	debug_spin_lock_before(lock);
+#if 0 /* Temporarily comment out for testing hrtimer spinlock issue */
 	if (unlikely(!arch_spin_trylock(&lock->raw_lock)))
 		__spin_lock_debug(lock);
+#else
+	arch_spin_lock(&lock->raw_lock);
+#endif
 	debug_spin_lock_after(lock);
 }
 

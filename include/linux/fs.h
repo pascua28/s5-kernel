@@ -324,6 +324,7 @@ struct inodes_stat_t {
 #define BLKDISCARDZEROES _IO(0x12,124)
 #define BLKSECDISCARD _IO(0x12,125)
 #define BLKROTATIONAL _IO(0x12,126)
+#define BLKSANITIZE _IO(0x12, 127)
 
 #define BMAP_IOCTL 1		/* obsolete - kept for compatibility */
 #define FIBMAP	   _IO(0x00,1)	/* bmap access */
@@ -2435,6 +2436,7 @@ enum {
 void dio_end_io(struct bio *bio, int error);
 void inode_dio_wait(struct inode *inode);
 void inode_dio_done(struct inode *inode);
+struct inode *dio_bio_get_inode(struct bio *bio);
 
 ssize_t __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
 	struct block_device *bdev, const struct iovec *iov, loff_t offset,

@@ -5,12 +5,12 @@
 #include <linux/input.h>
 #include <linux/of.h>
 
-#define MATRIX_MAX_ROWS		32
-#define MATRIX_MAX_COLS		32
+#define MATRIX_MAX_ROWS		18
+#define MATRIX_MAX_COLS		18
 
-#define KEY(row, col, val)	((((row) & (MATRIX_MAX_ROWS - 1)) << 24) |\
-				 (((col) & (MATRIX_MAX_COLS - 1)) << 16) |\
-				 ((val) & 0xffff))
+#define KEY(row, col, val)	((((row) % (MATRIX_MAX_ROWS)) << 24) |\
+				 (((col) % (MATRIX_MAX_COLS)) << 16) |\
+				 (val & 0xffff))
 
 #define KEY_ROW(k)		(((k) >> 24) & 0xff)
 #define KEY_COL(k)		(((k) >> 16) & 0xff)
@@ -56,7 +56,11 @@ struct matrix_keymap_data {
 struct matrix_keypad_platform_data {
 	const struct matrix_keymap_data *keymap_data;
 
+#ifdef CONFIG_SEC_PATEK_PROJECT
+	unsigned int *row_gpios;
+#else
 	const unsigned int *row_gpios;
+#endif
 	const unsigned int *col_gpios;
 
 	unsigned int	num_row_gpios;

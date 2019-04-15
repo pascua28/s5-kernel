@@ -27,6 +27,8 @@ obj-$(CONFIG_USB_HWA_HCD)	+= host/
 obj-$(CONFIG_USB_ISP1760_HCD)	+= host/
 obj-$(CONFIG_USB_IMX21_HCD)	+= host/
 obj-$(CONFIG_USB_FSL_MPH_DR_OF)	+= host/
+obj-$(CONFIG_USB_PEHCI_HCD)	+= host/
+obj-$(CONFIG_USB_ICE40_HCD)	+= host/
 
 obj-$(CONFIG_USB_C67X00_HCD)	+= c67x00/
 
@@ -36,6 +38,7 @@ obj-$(CONFIG_USB_ACM)		+= class/
 obj-$(CONFIG_USB_PRINTER)	+= class/
 obj-$(CONFIG_USB_WDM)		+= class/
 obj-$(CONFIG_USB_TMC)		+= class/
+obj-$(CONFIG_USB_CCID_BRIDGE)	+= class/
 
 obj-$(CONFIG_USB_STORAGE)	+= storage/
 obj-$(CONFIG_USB)		+= storage/
@@ -50,6 +53,7 @@ obj-$(CONFIG_EARLY_PRINTK_DBGP)	+= early/
 
 obj-$(CONFIG_USB_ATM)		+= atm/
 obj-$(CONFIG_USB_SPEEDTOUCH)	+= atm/
+obj-$(CONFIG_USB_HOST_NOTIFY) 	+= notify/
 
 obj-$(CONFIG_USB_MUSB_HDRC)	+= musb/
 obj-$(CONFIG_USB_RENESAS_USBHS)	+= renesas_usbhs/

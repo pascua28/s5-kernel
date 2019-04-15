@@ -29,10 +29,12 @@ obj-$(CONFIG_HP_ILO)		+= hpilo.o
 obj-$(CONFIG_APDS9802ALS)	+= apds9802als.o
 obj-$(CONFIG_ISL29003)		+= isl29003.o
 obj-$(CONFIG_ISL29020)		+= isl29020.o
+obj-$(CONFIG_USB_HSIC_SMSC_HUB) += smsc_hub.o
 obj-$(CONFIG_SENSORS_TSL2550)	+= tsl2550.o
 obj-$(CONFIG_EP93XX_PWM)	+= ep93xx_pwm.o
 obj-$(CONFIG_DS1682)		+= ds1682.o
 obj-$(CONFIG_TI_DAC7512)	+= ti_dac7512.o
+obj-$(CONFIG_UID_STAT)		+= uid_stat.o
 obj-$(CONFIG_C2PORT)		+= c2port/
 obj-$(CONFIG_IWMC3200TOP)      += iwmc3200top/
 obj-$(CONFIG_HMC6352)		+= hmc6352.o
@@ -47,5 +49,54 @@ obj-$(CONFIG_AB8500_PWM)	+= ab8500-pwm.o
 obj-y				+= lis3lv02d/
 obj-y				+= carma/
 obj-$(CONFIG_USB_SWITCH_FSA9480) += fsa9480.o
+obj-$(CONFIG_USB_SWITCH_TSU6721) += tsu6721.o
+obj-$(CONFIG_SM5502_MUIC) += sm5502.o
+obj-$(CONFIG_SM5504_MUIC) += sm5504.o
+obj-$(CONFIG_USB_SWITCH_FSA9485) += fsa9485.o
+obj-$(CONFIG_USB_SWITCH_RT8973) += rt8973.o
 obj-$(CONFIG_ALTERA_STAPL)	+=altera-stapl/
 obj-$(CONFIG_MAX8997_MUIC)	+= max8997-muic.o
+obj-$(CONFIG_MFD_MAX77888)	+= max77888-muic.o
+obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
+obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
+obj-$(CONFIG_TSIF) += msm_tsif.o
+msm_tsif-objs := tsif.o
+obj-$(CONFIG_TSIF_CHRDEV) += tsif_chrdev.o
+obj-$(CONFIG_TSPP) += tspp.o
+obj-$(CONFIG_CI_BRIDGE_SPI) += ci-bridge-spi.o
+obj-$(CONFIG_HAPTIC_ISA1200)		+= isa1200.o
+obj-$(CONFIG_PMIC8058_PWM) += pmic8058-pwm.o
+obj-$(CONFIG_PMIC8XXX_VIBRATOR) += pm8xxx-vibrator.o
+obj-$(CONFIG_PMIC8XXX_NFC) += pm8xxx-nfc.o
+obj-$(CONFIG_PMIC8XXX_UPL) += pm8xxx-upl.o
+obj-$(CONFIG_MFD_MAX77828)	+= max77828-muic.o
+obj-$(CONFIG_MSM_MEMORY_LOW_POWER_MODE_SUSPEND_DEEP_POWER_DOWN) \
+	+= msm_migrate_pages.o
+obj-$(CONFIG_PMIC8058_XOADC) += pmic8058-xoadc.o
+obj-$(CONFIG_SEC_MISC)	+= sec_param.o sec_misc.o
+obj-$(CONFIG_QSEECOM) += qseecom.o
+obj-$(CONFIG_QFP_FUSE) += qfp_fuse.o
+obj-$(CONFIG_QSEECOM)  += tzic.o
+obj-$(CONFIG_TI_DRV2667) += ti_drv2667.o
+obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
+obj-$(CONFIG_BCM2079X_NFC_I2C)	+= bcm2079x-i2c.o
+obj-$(CONFIG_NFC_PN547)	+= pn547.o
+ifneq ($(CONFIG_SEC_NFC_SENN3AB),y)
+obj-$(CONFIG_SEC_NFC_I2C) += sec_nfc.o
+obj-$(CONFIG_SEC_NFC) += sec_nfc.o
+endif
+obj-$(CONFIG_SAMSUNG_JACK)	+= sec_jack.o
+ifneq ($(CONFIG_EXTCON),y)
+obj-$(CONFIG_USB_SWITCH_TSU6721)    += tsu6721.o
+obj-$(CONFIG_MFD_MAX77693)	+= max77693-muic.o
+obj-$(CONFIG_USB_SWITCH_FSA9485)    += fsa9485.o
+obj-$(CONFIG_MAX77803_MUIC)	+= max77803-muic.o
+obj-$(CONFIG_MAX77804K_MUIC)	+= max77804k-muic.o
+obj-$(CONFIG_MAX77888_MUIC)	+= max77888-muic.o
+endif
+obj-$(CONFIG_SEC_FPGA_ICE40XX)	+= ice40xx.o
+obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
+obj-$(CONFIG_CHECK_SIMSLOT_COUNT) += sim_slot.o
+obj-$(CONFIG_SEC_MODEM) += modem_if/
+
+obj-$(CONFIG_DUALWAVE) += dualwave/

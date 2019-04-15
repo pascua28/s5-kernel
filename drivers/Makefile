@@ -43,6 +43,7 @@ obj-$(CONFIG_CONNECTOR)		+= connector/
 obj-$(CONFIG_FB_I810)           += video/i810/
 obj-$(CONFIG_FB_INTEL)          += video/intelfb/
 
+obj-$(CONFIG_SEC_FPGA)		+= barcode_emul/
 obj-$(CONFIG_PARPORT)		+= parport/
 obj-y				+= base/ block/ misc/ mfd/ nfc/
 obj-$(CONFIG_NUBUS)		+= nubus/
@@ -53,6 +54,8 @@ obj-$(CONFIG_ATA)		+= ata/
 obj-$(CONFIG_TARGET_CORE)	+= target/
 obj-$(CONFIG_MTD)		+= mtd/
 obj-$(CONFIG_SPI)		+= spi/
+obj-$(CONFIG_SPMI)		+= spmi/
+obj-$(CONFIG_SLIMBUS)		+= slimbus/
 obj-y				+= hsi/
 obj-y				+= net/
 obj-$(CONFIG_ATM)		+= atm/
@@ -100,6 +103,7 @@ obj-$(CONFIG_CPU_IDLE)		+= cpuidle/
 obj-y				+= mmc/
 obj-$(CONFIG_MEMSTICK)		+= memstick/
 obj-y				+= leds/
+obj-$(CONFIG_SWITCH)		+= switch/
 obj-$(CONFIG_INFINIBAND)	+= infiniband/
 obj-$(CONFIG_SGI_SN)		+= sn/
 obj-y				+= firmware/
@@ -134,3 +138,31 @@ obj-$(CONFIG_VIRT_DRIVERS)	+= virt/
 obj-$(CONFIG_HYPERV)		+= hv/
 
 obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
+
+#MobiCore
+obj-$(CONFIG_MOBICORE_SUPPORT)  += gud/
+
+obj-$(CONFIG_CORESIGHT)		+= coresight/
+
+obj-$(CONFIG_BIF)		+= bif/
+obj-$(CONFIG_BATTERY_SAMSUNG)   += battery/
+obj-$(CONFIG_SENSORS)		+= sensors/
+obj-$(CONFIG_MOTOR_DRV_ISA1400) += motor/
+obj-$(CONFIG_MOTOR_DRV_DRV2603) += motor/
+obj-$(CONFIG_VIBETONZ)		+= motor/
+obj-$(CONFIG_MSM_VIBRATOR)	+= motor/
+obj-$(CONFIG_HAPTIC_ISA1200)	+=motor/
+obj-$(CONFIG_MAX77826_VIBRATOR)	+= motor/
+obj-$(CONFIG_DRV2604_VIBRATOR)	+=motor/
+
+obj-$(CONFIG_FELICA)		+= felica/
+
+obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
+obj-$(CONFIG_SENSORS_FINGERPRINT)	+= fingerprint/
+obj-$(CONFIG_ADSP_FACTORY)      += adsp_factory/
+obj-$(CONFIG_EXTCON)		+= extcon/
+obj-$(CONFIG_IR_REMOCON_MC96FR116)	+= irda/
+obj-$(CONFIG_IRDA_COMMON_LDO)	+= irda/
+obj-$(CONFIG_SEC_NET_FILTER)	+= secfilter/
+
+obj-$(CONFIG_MACH_BAFFIN2_SGLTE) += qsc/

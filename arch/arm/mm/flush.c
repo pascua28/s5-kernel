@@ -170,15 +170,18 @@ void __flush_dcache_page(struct address_space *mapping, struct page *page)
 	if (!PageHighMem(page)) {
 		__cpuc_flush_dcache_area(page_address(page), PAGE_SIZE);
 	} else {
-		void *addr = kmap_high_get(page);
-		if (addr) {
-			__cpuc_flush_dcache_area(addr, PAGE_SIZE);
-			kunmap_high(page);
-		} else if (cache_is_vipt()) {
-			/* unmapped pages might still be cached */
+		void *addr;
+
+		if (cache_is_vipt_nonaliasing()) {
 			addr = kmap_atomic(page);
 			__cpuc_flush_dcache_area(addr, PAGE_SIZE);
 			kunmap_atomic(addr);
+		} else {
+			addr = kmap_high_get(page);
+			if (addr) {
+				__cpuc_flush_dcache_area(addr, PAGE_SIZE);
+				kunmap_high(page);
+			}
 		}
 	}
 
@@ -339,3 +342,21 @@ void __flush_anon_page(struct vm_area_struct *vma, struct page *page, unsigned l
 	 */
 	__cpuc_flush_dcache_area(page_address(page), PAGE_SIZE);
 }
+
+#ifdef CONFIG_TIMA_RKP_LAZY_MMU
+/* Added here for TIMA lazy MMU. */
+void flush_tlb_l2_page(pmd_t *pmd)
+{
+	unsigned int l2_va = (unsigned int)(
+			__va(*pmd & ~0x3ff) - PTE_HWTABLE_OFF);
+	
+	asm (
+		"mcr p15, 0, %0, c8, c6, 1\n"
+		"mcr p15, 0, %0, c8, c5, 1\n"
+		"mcr p15, 0, %0, c8, c7, 1\n"
+		"mcr p15, 0, %0, c8, c3, 1\n"
+		:
+		: "r" (l2_va)
+	);
+}
+#endif

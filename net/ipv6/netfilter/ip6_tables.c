@@ -347,8 +347,14 @@ ip6t_do_table(struct sk_buff *skb,
 	IP_NF_ASSERT(table->valid_hooks & (1 << hook));
 
 	local_bh_disable();
+	get_reader(&(table->private_lock));
 	addend = xt_write_recseq_begin();
 	private = table->private;
+	/*
+	 * Ensure we load private-> members after we've fetched the base
+	 * pointer.
+	 */
+	smp_read_barrier_depends();
 	cpu        = smp_processor_id();
 	table_base = private->entries[cpu];
 	jumpstack  = (struct ip6t_entry **)private->jumpstack[cpu];
@@ -433,6 +439,7 @@ ip6t_do_table(struct sk_buff *skb,
 	*stackptr = origptr;
 
  	xt_write_recseq_end(addend);
+	put_reader(&(table->private_lock));
  	local_bh_enable();
 
 #ifdef DEBUG_ALLOW_ALL
@@ -2279,16 +2286,15 @@ static void __exit ip6_tables_fini(void)
  * "No next header".
  *
  * If target header is found, its offset is set in *offset and return protocol
- * number. Otherwise, return -1.
+ * number. Otherwise, return -ENOENT or -EBADMSG.
  *
  * If the first fragment doesn't contain the final protocol header or
  * NEXTHDR_NONE it is considered invalid.
  *
  * Note that non-1st fragment is special case that "the protocol number
  * of last header" is "next header" field in Fragment header. In this case,
- * *offset is meaningless and fragment offset is stored in *fragoff if fragoff
- * isn't NULL.
- *
+ * *offset is meaningless. If fragoff is not NULL, the fragment offset is
+ * stored in *fragoff; if it is NULL, return -EINVAL.
  */
 int ipv6_find_hdr(const struct sk_buff *skb, unsigned int *offset,
 		  int target, unsigned short *fragoff)
@@ -2329,9 +2335,12 @@ int ipv6_find_hdr(const struct sk_buff *skb, unsigned int *offset,
 				if (target < 0 &&
 				    ((!ipv6_ext_hdr(hp->nexthdr)) ||
 				     hp->nexthdr == NEXTHDR_NONE)) {
-					if (fragoff)
+					if (fragoff) {
 						*fragoff = _frag_off;
-					return hp->nexthdr;
+						return hp->nexthdr;
+					} else {
+						return -EINVAL;
+					}
 				}
 				return -ENOENT;
 			}

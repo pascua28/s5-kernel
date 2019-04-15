@@ -58,7 +58,8 @@ void show_swap_cache_info(void)
 	printk("Swap cache stats: add %lu, delete %lu, find %lu/%lu\n",
 		swap_cache_info.add_total, swap_cache_info.del_total,
 		swap_cache_info.find_success, swap_cache_info.find_total);
-	printk("Free swap  = %ldkB\n", nr_swap_pages << (PAGE_SHIFT - 10));
+	printk("Free swap  = %ldkB\n",
+		get_nr_swap_pages() << (PAGE_SHIFT - 10));
 	printk("Total swap = %lukB\n", total_swap_pages << (PAGE_SHIFT - 10));
 }
 
@@ -66,7 +67,7 @@ void show_swap_cache_info(void)
  * __add_to_swap_cache resembles add_to_page_cache_locked on swapper_space,
  * but sets SwapCache flag and private instead of mapping and index.
  */
-static int __add_to_swap_cache(struct page *page, swp_entry_t entry)
+int __add_to_swap_cache(struct page *page, swp_entry_t entry)
 {
 	int error;
 
@@ -372,6 +373,7 @@ struct page *read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 struct page *swapin_readahead(swp_entry_t entry, gfp_t gfp_mask,
 			struct vm_area_struct *vma, unsigned long addr)
 {
+#ifdef CONFIG_SWAP_ENABLE_READAHEAD
 	struct page *page;
 	unsigned long offset = swp_offset(entry);
 	unsigned long start_offset, end_offset;
@@ -392,5 +394,6 @@ struct page *swapin_readahead(swp_entry_t entry, gfp_t gfp_mask,
 		page_cache_release(page);
 	}
 	lru_add_drain();	/* Push any new pages onto the LRU now */
+#endif /* CONFIG_SWAP_ENABLE_READAHEAD */
 	return read_swap_cache_async(entry, gfp_mask, vma, addr);
 }

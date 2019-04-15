@@ -24,6 +24,7 @@ __first_valid_page(unsigned long pfn, unsigned long nr_pages)
  * to be MIGRATE_ISOLATE.
  * @start_pfn: The lower PFN of the range to be isolated.
  * @end_pfn: The upper PFN of the range to be isolated.
+ * @migratetype: migrate type to set in error recovery.
  *
  * Making page-allocation-type to be MIGRATE_ISOLATE means free pages in
  * the range will never be allocated. Any free pages and pages freed in the
@@ -32,8 +33,8 @@ __first_valid_page(unsigned long pfn, unsigned long nr_pages)
  * start_pfn/end_pfn must be aligned to pageblock_order.
  * Returns 0 on success and -EBUSY if any part of range cannot be isolated.
  */
-int
-start_isolate_page_range(unsigned long start_pfn, unsigned long end_pfn)
+int start_isolate_page_range(unsigned long start_pfn, unsigned long end_pfn,
+			     unsigned migratetype)
 {
 	unsigned long pfn;
 	unsigned long undo_pfn;
@@ -56,7 +57,7 @@ undo:
 	for (pfn = start_pfn;
 	     pfn < undo_pfn;
 	     pfn += pageblock_nr_pages)
-		unset_migratetype_isolate(pfn_to_page(pfn));
+		unset_migratetype_isolate(pfn_to_page(pfn), migratetype);
 
 	return -EBUSY;
 }
@@ -64,8 +65,8 @@ undo:
 /*
  * Make isolated pages available again.
  */
-int
-undo_isolate_page_range(unsigned long start_pfn, unsigned long end_pfn)
+int undo_isolate_page_range(unsigned long start_pfn, unsigned long end_pfn,
+			    unsigned migratetype)
 {
 	unsigned long pfn;
 	struct page *page;
@@ -77,7 +78,7 @@ undo_isolate_page_range(unsigned long start_pfn, unsigned long end_pfn)
 		page = __first_valid_page(pfn, pageblock_nr_pages);
 		if (!page || get_pageblock_migratetype(page) != MIGRATE_ISOLATE)
 			continue;
-		unset_migratetype_isolate(page);
+		unset_migratetype_isolate(page, migratetype);
 	}
 	return 0;
 }
@@ -86,7 +87,7 @@ undo_isolate_page_range(unsigned long start_pfn, unsigned long end_pfn)
  * all pages in [start_pfn...end_pfn) must be in the same zone.
  * zone->lock must be held before call this.
  *
- * Returns 1 if all pages in the range is isolated.
+ * Returns 1 if all pages in the range are isolated.
  */
 static int
 __test_page_isolated_in_pageblock(unsigned long pfn, unsigned long end_pfn)
@@ -99,10 +100,25 @@ __test_page_isolated_in_pageblock(unsigned long pfn, unsigned long end_pfn)
 			continue;
 		}
 		page = pfn_to_page(pfn);
-		if (PageBuddy(page))
+		if (PageBuddy(page)) {
+			/*
+			 * If race between isolatation and allocation happens,
+			 * some free pages could be in MIGRATE_MOVABLE list
+			 * although pageblock's migratation type of the page
+			 * is MIGRATE_ISOLATE. Catch it and move the page into
+			 * MIGRATE_ISOLATE list.
+			 */
+			if (get_freepage_migratetype(page) != MIGRATE_ISOLATE) {
+				struct page *end_page;
+
+				end_page = page + (1 << page_order(page)) - 1;
+				move_freepages(page_zone(page), page, end_page,
+						MIGRATE_ISOLATE);
+			}
 			pfn += 1 << page_order(page);
+		}
 		else if (page_count(page) == 0 &&
-				page_private(page) == MIGRATE_ISOLATE)
+			get_freepage_migratetype(page) == MIGRATE_ISOLATE)
 			pfn += 1;
 		else
 			break;

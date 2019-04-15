@@ -262,6 +262,24 @@ int request_resource(struct resource *root, struct resource *new)
 EXPORT_SYMBOL(request_resource);
 
 /**
+ * locate_resource - locate an already reserved I/O or memory resource
+ * @root: root resource descriptor
+ * @search: resource descriptor to be located
+ *
+ * Returns pointer to desired resource or NULL if not found.
+ */
+struct resource *locate_resource(struct resource *root, struct resource *search)
+{
+	struct resource *found;
+
+	write_lock(&resource_lock);
+	found = __request_resource(root, search);
+	write_unlock(&resource_lock);
+	return found;
+}
+EXPORT_SYMBOL(locate_resource);
+
+/**
  * release_resource - release a previously reserved resource
  * @old: resource pointer
  */
@@ -339,12 +357,18 @@ int walk_system_ram_range(unsigned long start_pfn, unsigned long nr_pages,
 	while ((res.start < res.end) &&
 		(find_next_system_ram(&res, "System RAM") >= 0)) {
 		pfn = (res.start + PAGE_SIZE - 1) >> PAGE_SHIFT;
-		end_pfn = (res.end + 1) >> PAGE_SHIFT;
+		if (res.end + 1 <= 0)
+			end_pfn = res.end >> PAGE_SHIFT;
+		else
+			end_pfn = (res.end + 1) >> PAGE_SHIFT;
 		if (end_pfn > pfn)
 			ret = (*func)(pfn, end_pfn - pfn, arg);
 		if (ret)
 			break;
-		res.start = res.end + 1;
+		if (res.end + 1 > res.start)
+			res.start = res.end + 1;
+		else
+			res.start = res.end;
 		res.end = orig_end;
 	}
 	return ret;
@@ -1063,7 +1087,7 @@ int iomem_map_sanity_check(resource_size_t addr, unsigned long size)
 {
 	struct resource *p = &iomem_resource;
 	int err = 0;
-	loff_t l;
+	loff_t l = 0;
 
 	read_lock(&resource_lock);
 	for (p = p->child; p ; p = r_next(NULL, p, &l)) {
@@ -1116,7 +1140,7 @@ int iomem_is_exclusive(u64 addr)
 {
 	struct resource *p = &iomem_resource;
 	int err = 0;
-	loff_t l;
+	loff_t l = 0;
 	int size = PAGE_SIZE;
 
 	if (!strict_iomem_checks)

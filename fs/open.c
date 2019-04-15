@@ -1054,6 +1054,7 @@ int filp_close(struct file *filp, fl_owner_t id)
 		dnotify_flush(filp, id);
 		locks_remove_posix(filp, id);
 	}
+	security_file_close(filp);
 	fput(filp);
 	return retval;
 }
@@ -1071,6 +1072,11 @@ SYSCALL_DEFINE1(close, unsigned int, fd)
 	struct files_struct *files = current->files;
 	struct fdtable *fdt;
 	int retval;
+
+#ifdef CONFIG_SEC_DEBUG_ZERO_FD_CLOSE
+	if (fd == 0 && strcmp(current->group_leader->comm,"mediaserver") == 0)
+		panic("trying to close fd=0");
+#endif
 
 	spin_lock(&files->file_lock);
 	fdt = files_fdtable(files);

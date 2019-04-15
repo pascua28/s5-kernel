@@ -253,6 +253,7 @@ void shake_page(struct page *p, int access)
 				.gfp_mask = GFP_KERNEL,
 			};
 
+			shrink.priority = DEF_PRIORITY;
 			nr = shrink_slab(&shrink, 1000, 1000);
 			if (page_count(p) == 1)
 				break;
@@ -1404,7 +1405,7 @@ static int get_any_page(struct page *p, unsigned long pfn, int flags)
 		/* Not a free page */
 		ret = 1;
 	}
-	unset_migratetype_isolate(p);
+	unset_migratetype_isolate(p, MIGRATE_MOVABLE);
 	unlock_memory_hotplug();
 	return ret;
 }
