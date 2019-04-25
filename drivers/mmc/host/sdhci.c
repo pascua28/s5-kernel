@@ -1689,8 +1689,6 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 					mmc->card->type == MMC_TYPE_MMC ?
 					MMC_SEND_TUNING_BLOCK_HS200 :
 					MMC_SEND_TUNING_BLOCK;
-				host->mrq = NULL;
-				host->flags &= ~SDHCI_NEEDS_RETUNING;
 				spin_unlock_irqrestore(&host->lock, flags);
 				sdhci_execute_tuning(mmc, tuning_opcode);
 				spin_lock_irqsave(&host->lock, flags);

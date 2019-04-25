@@ -3841,6 +3841,10 @@ static const struct usb_device_id products[] = {
 	USB_DEVICE(0x0db0, 0xA877),
 	.driver_info = (unsigned long) &ax88772a_info,
 }, {
+	// Linksys USB1000
+	USB_DEVICE (0x1737, 0x0039),
+	.driver_info = (unsigned long) &ax88178_info,
+}, {
 	/* ASIX AX88772A 10/100 */
 	USB_DEVICE(0x0421, 0x772A),
 	.driver_info = (unsigned long) &ax88772a_info,
