@@ -2993,7 +2993,6 @@ static int rt_fill_info(struct net *net, struct flowi4 *fl4,
 	struct rtable *rt = skb_rtable(skb);
 	struct rtmsg *r;
 	struct nlmsghdr *nlh;
-	struct flowi4 *fl4 = &(inet_sk(skb->sk))->cork.fl.u.ip4;
 	unsigned long expires = 0;
 	const struct inet_peer *peer = rt->peer;
 	u32 id = 0, ts = 0, tsage = 0, error;
