@@ -1904,30 +1904,30 @@ static void get_scan_count(struct mem_cgroup_zone *mz, struct scan_control *sc,
 	fraction[1] = fp;
 	denominator = ap + fp + 1;
 out:
-    some_scanned = false;
-    /* Only use force_scan on second pass. */
-    for (pass = 0; !some_scanned && pass < 2; pass++) {
-	for_each_evictable_lru(lru) {
-	    int file = is_file_lru(lru);
-	    unsigned long scan;
+	some_scanned = false;
+	/* Only use force_scan on second pass. */
+	for (pass = 0; !some_scanned && pass < 2; pass++) {
+	    for_each_evictable_lru(lru) {
+		int file = is_file_lru(lru);
+		unsigned long scan;
 
-	    scan = zone_nr_lru_pages(mz, lru);
-	    if (sc->priority || noswap || !vmscan_swappiness(sc)) {
-		scan >>= sc->priority;
-		if (!scan && pass && force_scan)
-		    scan = SWAP_CLUSTER_MAX;
+		scan = zone_nr_lru_pages(mz, lru);
+		if (sc->priority || noswap || !vmscan_swappiness(sc)) {
+		    scan >>= sc->priority;
+		    if (!scan && pass && force_scan)
+			scan = SWAP_CLUSTER_MAX;
 		    scan = div64_u64(scan * fraction[file], denominator);
-		    }
-		    nr[lru] = scan;
-		    /*
-		    * Skip the second pass and don't force_scan,
-		    * if we found something to scan.
-		    */
-		    some_scanned |= !!scan;
 		}
 		nr[lru] = scan;
-    }
+		/*
+		* Skip the second pass and don't force_scan,
+		* if we found something to scan.
+		*/
+		some_scanned |= !!scan;
+	    }
+	}
 }
+
 
 /* Use reclaim/compaction for costly allocs or under memory pressure */
 static bool in_reclaim_compaction(struct scan_control *sc)
