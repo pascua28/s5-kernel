@@ -123,12 +123,13 @@ static int rcu_scheduler_fully_active __read_mostly;
  */
 static DEFINE_PER_CPU(struct task_struct *, rcu_cpu_kthread_task);
 DEFINE_PER_CPU(unsigned int, rcu_cpu_kthread_status);
+DEFINE_PER_CPU(int, rcu_cpu_kthread_cpu);
 DEFINE_PER_CPU(unsigned int, rcu_cpu_kthread_loops);
 DEFINE_PER_CPU(char, rcu_cpu_has_work);
 
 #endif /* #ifdef CONFIG_RCU_BOOST */
 
-static void rcu_boost_kthread_setaffinity(struct rcu_node *rnp, int outgoingcpu);
+static void rcu_node_kthread_setaffinity(struct rcu_node *rnp, int outgoingcpu);
 static void invoke_rcu_core(void);
 static void invoke_rcu_callbacks(struct rcu_state *rsp, struct rcu_data *rdp);
 
@@ -200,13 +201,13 @@ DEFINE_PER_CPU(struct rcu_dynticks, rcu_dynticks) = {
 	.dynticks = ATOMIC_INIT(1),
 };
 
-static long blimit = 10;	/* Maximum callbacks per rcu_do_batch. */
-static long qhimark = 10000;	/* If this many pending, ignore blimit. */
-static long qlowmark = 100;	/* Once only this many pending, use blimit. */
+static int blimit = 10;		/* Maximum callbacks per rcu_do_batch. */
+static int qhimark = 10000;	/* If this many pending, ignore blimit. */
+static int qlowmark = 100;	/* Once only this many pending, use blimit. */
 
-module_param(blimit, long, 0);
-module_param(qhimark, long, 0);
-module_param(qlowmark, long, 0);
+module_param(blimit, int, 0);
+module_param(qhimark, int, 0);
+module_param(qlowmark, int, 0);
 
 int rcu_cpu_stall_suppress __read_mostly; /* 1 = suppress stall warnings. */
 int rcu_cpu_stall_timeout __read_mostly = CONFIG_RCU_CPU_STALL_TIMEOUT;
@@ -1410,7 +1411,8 @@ static void rcu_cleanup_dead_cpu(int cpu, struct rcu_state *rsp)
 	struct rcu_node *rnp = rdp->mynode;  /* Outgoing CPU's rnp. */
 
 	/* Adjust any no-longer-needed kthreads. */
-	rcu_boost_kthread_setaffinity(rnp, -1);
+	rcu_stop_cpu_kthread(cpu);
+	rcu_node_kthread_setaffinity(rnp, -1);
 
 	/* Remove the dying CPU from the bitmasks in the rcu_node hierarchy. */
 
@@ -1471,8 +1473,7 @@ static void rcu_do_batch(struct rcu_state *rsp, struct rcu_data *rdp)
 {
 	unsigned long flags;
 	struct rcu_head *next, *list, **tail;
-	long bl, count, count_lazy;
-	int i;
+	int bl, count, count_lazy;
 
 	/* If no callbacks are ready, just return.*/
 	if (!cpu_has_callbacks_ready_to_invoke(rdp)) {
@@ -1818,6 +1819,7 @@ __call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *rcu),
 	 * a quiescent state betweentimes.
 	 */
 	local_irq_save(flags);
+	WARN_ON_ONCE(cpu_is_offline(smp_processor_id()));
 	rdp = this_cpu_ptr(rsp->rda);
 
 	/* Add the callback to our list. */
@@ -1826,8 +1828,6 @@ __call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *rcu),
 	rdp->qlen++;
 	if (lazy)
 		rdp->qlen_lazy++;
-	else
-		rcu_idle_count_callbacks_posted();
 
 	if (__is_kfree_rcu_offset((unsigned long)func))
 		trace_rcu_kfree_callback(rsp->name, head, (unsigned long)func,
@@ -1892,38 +1892,6 @@ void call_rcu_bh(struct rcu_head *head, void (*func)(struct rcu_head *rcu))
 	__call_rcu(head, func, &rcu_bh_state, 0);
 }
 EXPORT_SYMBOL_GPL(call_rcu_bh);
-
-/*
- * Because a context switch is a grace period for RCU-sched and RCU-bh,
- * any blocking grace-period wait automatically implies a grace period
- * if there is only one CPU online at any point time during execution
- * of either synchronize_sched() or synchronize_rcu_bh().  It is OK to
- * occasionally incorrectly indicate that there are multiple CPUs online
- * when there was in fact only one the whole time, as this just adds
- * some overhead: RCU still operates correctly.
- *
- * Of course, sampling num_online_cpus() with preemption enabled can
- * give erroneous results if there are concurrent CPU-hotplug operations.
- * For example, given a demonic sequence of preemptions in num_online_cpus()
- * and CPU-hotplug operations, there could be two or more CPUs online at
- * all times, but num_online_cpus() might well return one (or even zero).
- *
- * However, all such demonic sequences require at least one CPU-offline
- * operation.  Furthermore, rcu_blocking_is_gp() giving the wrong answer
- * is only a problem if there is an RCU read-side critical section executing
- * throughout.  But RCU-sched and RCU-bh read-side critical sections
- * disable either preemption or bh, which prevents a CPU from going offline.
- * Therefore, the only way that rcu_blocking_is_gp() can incorrectly return
- * that there is only one CPU when in fact there was more than one throughout
- * is when there were no RCU readers in the system.  If there are no
- * RCU readers, the grace period by definition can be of zero length,
- * regardless of the number of online CPUs.
- */
-static inline int rcu_blocking_is_gp(void)
-{
-	might_sleep();  /* Check for RCU read-side critical section. */
-	return num_online_cpus() <= 1;
-}
 
 /**
  * synchronize_sched - wait until an rcu-sched grace period has elapsed.
@@ -2389,10 +2357,12 @@ static int __cpuinit rcu_cpu_notify(struct notifier_block *self,
 		break;
 	case CPU_ONLINE:
 	case CPU_DOWN_FAILED:
-		rcu_boost_kthread_setaffinity(rnp, -1);
+		rcu_node_kthread_setaffinity(rnp, -1);
+		rcu_cpu_kthread_setrt(cpu, 1);
 		break;
 	case CPU_DOWN_PREPARE:
-		rcu_boost_kthread_setaffinity(rnp, cpu);
+		rcu_node_kthread_setaffinity(rnp, cpu);
+		rcu_cpu_kthread_setrt(cpu, 0);
 		break;
 	case CPU_DYING:
 	case CPU_DYING_FROZEN:
@@ -2447,7 +2417,7 @@ static void __init rcu_init_levelspread(struct rcu_state *rsp)
 
 	for (i = NUM_RCU_LVLS - 1; i > 0; i--)
 		rsp->levelspread[i] = CONFIG_RCU_FANOUT;
-	rsp->levelspread[0] = CONFIG_RCU_FANOUT_LEAF;
+	rsp->levelspread[0] = RCU_FANOUT_LEAF;
 }
 #else /* #ifdef CONFIG_RCU_FANOUT_EXACT */
 static void __init rcu_init_levelspread(struct rcu_state *rsp)
@@ -2551,3 +2521,4 @@ void __init rcu_init(void)
 }
 
 #include "rcutree_plugin.h"
+

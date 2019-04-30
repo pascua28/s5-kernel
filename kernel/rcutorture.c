@@ -620,7 +620,7 @@ static int srcu_torture_stats(char *page)
 	cnt += sprintf(&page[cnt], "%s%s per-CPU(idx=%d):",
 		       torture_type, TORTURE_FLAG, idx);
 	for_each_possible_cpu(cpu) {
-		cnt += sprintf(&page[cnt], " %d(%lu,%lu)", cpu,
+		cnt += sprintf(&page[cnt], " %d(%d,%d)", cpu,
 			       per_cpu_ptr(srcu_ctl.per_cpu_ref, cpu)->c[!idx],
 			       per_cpu_ptr(srcu_ctl.per_cpu_ref, cpu)->c[idx]);
 	}
@@ -1337,7 +1337,6 @@ static void rcutorture_booster_cleanup(int cpu)
 
 	/* This must be outside of the mutex, otherwise deadlock! */
 	kthread_stop(t);
-	boost_tasks[cpu] = NULL;
 }
 
 static int rcutorture_booster_init(int cpu)
@@ -1485,15 +1484,13 @@ static void rcu_torture_onoff_cleanup(void)
 		return;
 	VERBOSE_PRINTK_STRING("Stopping rcu_torture_onoff task");
 	kthread_stop(onoff_task);
-	onoff_task = NULL;
 }
 
 #else /* #ifdef CONFIG_HOTPLUG_CPU */
 
-static int
+static void
 rcu_torture_onoff_init(void)
 {
-	return 0;
 }
 
 static void rcu_torture_onoff_cleanup(void)
@@ -1557,7 +1554,6 @@ static void rcu_torture_stall_cleanup(void)
 		return;
 	VERBOSE_PRINTK_STRING("Stopping rcu_torture_stall_task.");
 	kthread_stop(stall_task);
-	stall_task = NULL;
 }
 
 static int rcutorture_cpu_notify(struct notifier_block *self,
@@ -1669,7 +1665,6 @@ rcu_torture_cleanup(void)
 		VERBOSE_PRINTK_STRING("Stopping rcu_torture_shutdown task");
 		kthread_stop(shutdown_task);
 	}
-	shutdown_task = NULL;
 	rcu_torture_onoff_cleanup();
 
 	/* Wait for all RCU callbacks to fire.  */
@@ -1902,17 +1897,9 @@ rcu_torture_init(void)
 			goto unwind;
 		}
 	}
-	i = rcu_torture_onoff_init();
-	if (i != 0) {
-		firsterr = i;
-		goto unwind;
-	}
+	rcu_torture_onoff_init();
 	register_reboot_notifier(&rcutorture_shutdown_nb);
-	i = rcu_torture_stall_init();
-	if (i != 0) {
-		firsterr = i;
-		goto unwind;
-	}
+	rcu_torture_stall_init();
 	rcutorture_record_test_transition();
 	mutex_unlock(&fullstop_mutex);
 	return 0;
@@ -1925,3 +1912,4 @@ unwind:
 
 module_init(rcu_torture_init);
 module_exit(rcu_torture_cleanup);
+
