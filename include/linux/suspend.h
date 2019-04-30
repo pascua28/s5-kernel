@@ -461,4 +461,6 @@ static inline void page_key_write(void *address) {}
 int wakeup_sources_stats_active(void);
 #endif
 
+void print_active_wakeup_sources(void);
+
 #endif /* _LINUX_SUSPEND_H */
