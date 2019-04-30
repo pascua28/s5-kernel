@@ -750,10 +750,7 @@ void synchronize_rcu(void)
 		return;
 
 	/* Once we get past the fastpath checks, same code as rcu_barrier(). */
-	if (rcu_expedited)
-		synchronize_rcu_expedited();
-	else
-		rcu_barrier();
+	rcu_barrier();
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu);
 
@@ -852,6 +849,22 @@ int rcu_preempt_needs_cpu(void)
 	if (!rcu_preempt_running_reader())
 		rcu_preempt_cpu_qs();
 	return rcu_preempt_ctrlblk.rcb.rcucblist != NULL;
+}
+
+/*
+ * Check for a task exiting while in a preemptible -RCU read-side
+ * critical section, clean up if so.  No need to issue warnings,
+ * as debug_check_no_locks_held() already does this if lockdep
+ * is enabled.
+ */
+void exit_rcu(void)
+{
+	struct task_struct *t = current;
+
+	if (t->rcu_read_lock_nesting == 0)
+		return;
+	t->rcu_read_lock_nesting = 1;
+	__rcu_read_unlock();
 }
 
 #else /* #ifdef CONFIG_TINY_PREEMPT_RCU */
@@ -1101,3 +1114,4 @@ MODULE_DESCRIPTION("Read-Copy Update tracing for tiny implementation");
 MODULE_LICENSE("GPL");
 
 #endif /* #ifdef CONFIG_RCU_TRACE */
+

@@ -109,6 +109,5 @@ static inline bool __rcu_reclaim(char *rn, struct rcu_head *head)
 	}
 }
 
-extern int rcu_expedited;
-
 #endif /* __LINUX_RCU_H */
+
