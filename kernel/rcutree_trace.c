@@ -501,4 +501,3 @@ module_exit(rcutree_trace_cleanup);
 MODULE_AUTHOR("Paul E. McKenney");
 MODULE_DESCRIPTION("Read-Copy Update tracing for hierarchical implementation");
 MODULE_LICENSE("GPL");
-

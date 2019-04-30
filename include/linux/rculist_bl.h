@@ -126,4 +126,3 @@ static inline void hlist_bl_add_head_rcu(struct hlist_bl_node *n,
 		pos = rcu_dereference_raw(pos->next))
 
 #endif
-

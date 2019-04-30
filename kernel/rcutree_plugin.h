@@ -154,7 +154,7 @@ static void rcu_preempt_qs(int cpu)
  *
  * Caller must disable preemption.
  */
-void rcu_preempt_note_context_switch(void)
+static void rcu_preempt_note_context_switch(int cpu)
 {
 	struct task_struct *t = current;
 	unsigned long flags;
@@ -165,7 +165,7 @@ void rcu_preempt_note_context_switch(void)
 	    (t->rcu_read_unlock_special & RCU_READ_UNLOCK_BLOCKED) == 0) {
 
 		/* Possibly blocking in an RCU read-side critical section. */
-		rdp = __this_cpu_ptr(rcu_preempt_state.rda);
+		rdp = per_cpu_ptr(rcu_preempt_state.rda, cpu);
 		rnp = rdp->mynode;
 		raw_spin_lock_irqsave(&rnp->lock, flags);
 		t->rcu_read_unlock_special |= RCU_READ_UNLOCK_BLOCKED;
@@ -229,7 +229,7 @@ void rcu_preempt_note_context_switch(void)
 	 * means that we continue to block the current grace period.
 	 */
 	local_irq_save(flags);
-	rcu_preempt_qs(smp_processor_id());
+	rcu_preempt_qs(cpu);
 	local_irq_restore(flags);
 }
 
@@ -970,6 +970,22 @@ static void __init __rcu_init_preempt(void)
 	rcu_init_one(&rcu_preempt_state, &rcu_preempt_data);
 }
 
+/*
+ * Check for a task exiting while in a preemptible-RCU read-side
+ * critical section, clean up if so.  No need to issue warnings,
+ * as debug_check_no_locks_held() already does this if lockdep
+ * is enabled.
+ */
+void exit_rcu(void)
+{
+	struct task_struct *t = current;
+
+	if (t->rcu_read_lock_nesting == 0)
+		return;
+	t->rcu_read_lock_nesting = 1;
+	__rcu_read_unlock();
+}
+
 #else /* #ifdef CONFIG_TREE_PREEMPT_RCU */
 
 static struct rcu_state *rcu_state = &rcu_sched_state;
@@ -1001,6 +1017,14 @@ void rcu_force_quiescent_state(void)
 	rcu_sched_force_quiescent_state();
 }
 EXPORT_SYMBOL_GPL(rcu_force_quiescent_state);
+
+/*
+ * Because preemptible RCU does not exist, we never have to check for
+ * CPUs being in quiescent states.
+ */
+static void rcu_preempt_note_context_switch(int cpu)
+{
+}
 
 /*
  * Because preemptible RCU does not exist, there are never any preempted
@@ -2014,4 +2038,3 @@ static void increment_cpu_stall_ticks(void)
 }
 
 #endif /* #else #ifdef CONFIG_RCU_CPU_STALL_INFO */
-
