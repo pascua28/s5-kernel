@@ -36,6 +36,8 @@
 #define DEFAULT_RQ_POLL_JIFFIES 1
 #define DEFAULT_DEF_TIMER_JIFFIES 5
 
+extern unsigned long avg_nr_running(void);
+
 struct notifier_block freq_transition;
 struct notifier_block cpu_hotplug;
 
