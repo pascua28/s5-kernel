@@ -36,7 +36,9 @@
 #define DEFAULT_RQ_POLL_JIFFIES 1
 #define DEFAULT_DEF_TIMER_JIFFIES 5
 
+#ifdef CONFIG_MSM_RUN_QUEUE_STATS_BE_CONSERVATIVE
 extern unsigned long avg_nr_running(void);
+#endif
 
 struct notifier_block freq_transition;
 struct notifier_block cpu_hotplug;
