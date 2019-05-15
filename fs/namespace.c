@@ -12,7 +12,6 @@
 #include <linux/export.h>
 #include <linux/capability.h>
 #include <linux/mnt_namespace.h>
-#include <linux/user_namespace.h>
 #include <linux/namei.h>
 #include <linux/security.h>
 #include <linux/idr.h>
@@ -2222,13 +2221,6 @@ dput_out:
 	return retval;
 }
 
-
-static void free_mnt_ns(struct mnt_namespace *ns)
-{
-	put_user_ns(ns->user_ns);
-	kfree(ns);
-}
-
 /*
  * Assign a sequence number so we can detect when we attempt to bind
  * mount a reference to an older mount namespace into the current
@@ -2238,7 +2230,7 @@ static void free_mnt_ns(struct mnt_namespace *ns)
  */
 static atomic64_t mnt_ns_seq = ATOMIC64_INIT(1);
 
-static struct mnt_namespace *alloc_mnt_ns(struct user_namespace *user_ns)
+static struct mnt_namespace *alloc_mnt_ns(void)
 {
 	struct mnt_namespace *new_ns;
 
@@ -2251,7 +2243,6 @@ static struct mnt_namespace *alloc_mnt_ns(struct user_namespace *user_ns)
 	INIT_LIST_HEAD(&new_ns->list);
 	init_waitqueue_head(&new_ns->poll);
 	new_ns->event = 0;
-	new_ns->user_ns = get_user_ns(user_ns);
 	return new_ns;
 }
 
@@ -2277,7 +2268,7 @@ void mnt_make_shortterm(struct vfsmount *m)
  * copied from the namespace of the passed in task structure.
  */
 static struct mnt_namespace *dup_mnt_ns(struct mnt_namespace *mnt_ns,
-		struct user_namespace *user_ns, struct fs_struct *fs)
+		struct fs_struct *fs)
 {
 	struct mnt_namespace *new_ns;
 	struct vfsmount *rootmnt = NULL, *pwdmnt = NULL;
@@ -2285,7 +2276,7 @@ static struct mnt_namespace *dup_mnt_ns(struct mnt_namespace *mnt_ns,
 	struct mount *old = mnt_ns->root;
 	struct mount *new;
 
-	new_ns = alloc_mnt_ns(user_ns);
+	new_ns = alloc_mnt_ns();
 	if (IS_ERR(new_ns))
 		return new_ns;
 
@@ -2294,7 +2285,7 @@ static struct mnt_namespace *dup_mnt_ns(struct mnt_namespace *mnt_ns,
 	new = copy_tree(old, old->mnt.mnt_root, CL_COPY_ALL | CL_EXPIRE);
 	if (!new) {
 		up_write(&namespace_sem);
-		free_mnt_ns(new_ns);
+		kfree(new_ns);
 		return ERR_PTR(-ENOMEM);
 	}
 	new_ns->root = new;
@@ -2340,7 +2331,7 @@ static struct mnt_namespace *dup_mnt_ns(struct mnt_namespace *mnt_ns,
 }
 
 struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
-		 struct user_namespace *user_ns, struct fs_struct *new_fs)
+		struct fs_struct *new_fs)
 {
 	struct mnt_namespace *new_ns;
 
@@ -2350,7 +2341,7 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
 	if (!(flags & CLONE_NEWNS))
 		return ns;
 
-	new_ns = dup_mnt_ns(ns, user_ns, new_fs);
+	new_ns = dup_mnt_ns(ns, new_fs);
 
 	put_mnt_ns(ns);
 	return new_ns;
@@ -2362,7 +2353,7 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
  */
 static struct mnt_namespace *create_mnt_ns(struct vfsmount *m)
 {
-	struct mnt_namespace *new_ns = alloc_mnt_ns(&init_user_ns);
+	struct mnt_namespace *new_ns = alloc_mnt_ns();
 	if (!IS_ERR(new_ns)) {
 		struct mount *mnt = real_mount(m);
 		mnt->mnt_ns = new_ns;
@@ -2652,7 +2643,7 @@ void put_mnt_ns(struct mnt_namespace *ns)
 	br_write_unlock(vfsmount_lock);
 	up_write(&namespace_sem);
 	release_mounts(&umount_list);
-	free_mnt_ns(ns);
+	kfree(ns);
 }
 
 struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
