@@ -43,7 +43,6 @@
 
 #include <linux/mm.h>
 #include <linux/mempolicy.h>
-#include <linux/sched.h>
 
 #ifdef CONFIG_RESTART_REASON_SEC_PARAM
 #include <mach/sec_debug.h>
@@ -2083,9 +2082,12 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		unsigned long, arg4, unsigned long, arg5)
 {
 	struct task_struct *me = current;
+<<<<<<< HEAD
 #ifndef CONFIG_SEC_H_PROJECT
 	struct task_struct *tsk;
 #endif
+=======
+>>>>>>> parent of d6087171759... prctl: adds PR_SET_TIMERSLACK_PID for setting timer slack of an arbitrary thread.
 	unsigned char comm[sizeof(me->comm)];
 	long error;
 
@@ -2245,27 +2247,6 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		case PR_SET_VMA:
 			error = prctl_set_vma(arg2, arg3, arg4, arg5);
 			break;
-		/* remove this case because of sidesync call mute for H-projects */
-
-#ifndef CONFIG_SEC_H_PROJECT
-		case PR_SET_TIMERSLACK_PID:
-			rcu_read_lock();
-			tsk = find_task_by_pid_ns((pid_t)arg3, &init_pid_ns);
-			if (tsk == NULL) {
-				rcu_read_unlock();
-				return -EINVAL;
-			}
-			get_task_struct(tsk);
-			rcu_read_unlock();
-			if (arg2 <= 0)
-				tsk->timer_slack_ns =
-					tsk->default_timer_slack_ns;
-			else
-				tsk->timer_slack_ns = arg2;
-			put_task_struct(tsk);
-			error = 0;
-			break;
-#endif
 		default:
 			error = -EINVAL;
 			break;
