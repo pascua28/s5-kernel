@@ -1052,7 +1052,6 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 		err = mmc_send_relative_addr(host, &card->rca);
 		if (err)
 			return err;
-		host->card = card;
 	}
 
 	if (!oldcard) {
@@ -1122,18 +1121,12 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 		}
 	}
 
+	host->card = card;
 	return 0;
 
 free_card:
-	if (mmc_send_status(card, &status))
-		pr_err("%s: %s: Get card status fail\n", __func__, mmc_hostname(card->host));
-	else
-		pr_info("%s: card status is 0x%.8x\n", __func__, status);
-
-	if (!oldcard) {
-		host->card = NULL;
+	if (!oldcard)
 		mmc_remove_card(card);
-	}
 
 	return err;
 }
