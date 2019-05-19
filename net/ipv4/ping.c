@@ -250,36 +250,26 @@ int ping_init_sock(struct sock *sk)
 	struct net *net = sock_net(sk);
 	gid_t group = current_egid();
 	gid_t range[2];
-	struct group_info *group_info;
-	int i, j, count;
-	int ret = 0;
-
-	if (sk->sk_family == AF_INET6)
-                inet6_sk(sk)->ipv6only = 1;
+	struct group_info *group_info = get_current_groups();
+	int i, j, count = group_info->ngroups;
 
 	inet_get_ping_group_range_net(net, range, range+1);
 	if (range[0] <= group && group <= range[1])
 		return 0;
 
-	group_info = get_current_groups();
-	count = group_info->ngroups;
 	for (i = 0; i < group_info->nblocks; i++) {
 		int cp_count = min_t(int, NGROUPS_PER_BLOCK, count);
 
 		for (j = 0; j < cp_count; j++) {
 			group = group_info->blocks[i][j];
 			if (range[0] <= group && group <= range[1])
-				goto out_release_group;
+				return 0;
 		}
 
 		count -= cp_count;
 	}
 
-	ret = -EACCES;
-
-out_release_group:
-	put_group_info(group_info);
-	return ret;
+	return -EACCES;
 }
 EXPORT_SYMBOL_GPL(ping_init_sock);
 
