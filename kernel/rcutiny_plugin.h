@@ -750,10 +750,7 @@ void synchronize_rcu(void)
 		return;
 
 	/* Once we get past the fastpath checks, same code as rcu_barrier(). */
-	if (rcu_expedited)
-		synchronize_rcu_expedited();
-	else
-		rcu_barrier();
+	rcu_barrier();
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu);
 
