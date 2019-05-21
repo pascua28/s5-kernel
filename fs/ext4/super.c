@@ -43,7 +43,6 @@
 
 #include <linux/kthread.h>
 #include <linux/freezer.h>
-#include <linux/ratelimit.h>
 
 #include "ext4.h"
 #include "ext4_extents.h"
@@ -709,7 +708,7 @@ void ext4_msg(struct super_block *sb, const char *prefix, const char *fmt, ...)
 	va_start(args, fmt);
 	vaf.fmt = fmt;
 	vaf.va = &args;
-	printk_ratelimited("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
+	printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
 	va_end(args);
 }
 
