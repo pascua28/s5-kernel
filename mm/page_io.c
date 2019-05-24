@@ -20,7 +20,6 @@
 #include <linux/swapops.h>
 #include <linux/writeback.h>
 #include <linux/blkdev.h>
-#include <linux/frontswap.h>
 #include <asm/pgtable.h>
 
 static struct bio *get_swap_bio(gfp_t gfp_flags,
@@ -150,12 +149,6 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 		unlock_page(page);
 		goto out;
 	}
-	if (frontswap_put_page(page) == 0) {
-		set_page_writeback(page);
-		unlock_page(page);
-		end_page_writeback(page);
-		goto out;
-	}
 	ret = __swap_writepage(page, wbc, end_swap_bio_write);
 out:
 	return ret;
@@ -191,11 +184,6 @@ int swap_readpage(struct page *page)
 
 	VM_BUG_ON(!PageLocked(page));
 	VM_BUG_ON(PageUptodate(page));
-	if (frontswap_get_page(page) == 0) {
-		SetPageUptodate(page);
-		unlock_page(page);
-		goto out;
-	}
 	bio = get_swap_bio(GFP_KERNEL, page, end_swap_bio_read);
 	if (bio == NULL) {
 		unlock_page(page);
