@@ -22,7 +22,7 @@
 #include <linux/slab.h>
 #include <linux/cpu.h>
 #include <linux/cpuquiet.h>
-
+#include <linux/module.h>
 #include "cpuquiet.h"
 
 struct cpuquiet_cpu_stat {
