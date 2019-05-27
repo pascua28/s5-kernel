@@ -107,6 +107,14 @@ struct fs_struct;
 struct perf_event_context;
 struct blk_plug;
 
+static inline void rcu_switch(struct task_struct *prev,
+			      struct task_struct *next)
+{
+#ifdef CONFIG_RCU_USER_QS
+	rcu_user_hooks_switch(prev, next);
+#endif
+}
+
 /*
  * List of flags we want to share for kernel threads,
  * if only because they are not used by them anyway.
