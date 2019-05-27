@@ -608,7 +608,7 @@ static struct Qdisc_ops fq_codel_qdisc_ops __read_mostly = {
 	.owner		=	THIS_MODULE,
 };
 
-const struct Qdisc_ops *default_qdisc_ops = &fq_codel_qdisc_ops;
+struct Qdisc_ops *default_qdisc_ops = &fq_codel_qdisc_ops;
 EXPORT_SYMBOL(default_qdisc_ops);
 
 static int __init fq_codel_module_init(void)
