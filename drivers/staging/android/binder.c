@@ -642,7 +642,6 @@ static int binder_update_page_range(struct binder_proc *proc, int allocate,
 		}
 		/* vm_insert_page does not seem to increment the refcount */
 	}
-	preempt_disable();
 	if (mm) {
 		up_write(&mm->mmap_sem);
 		mmput(mm);
@@ -665,7 +664,6 @@ err_alloc_page_failed:
 		;
 	}
 err_no_vma:
-	preempt_disable();
 	if (mm) {
 		up_write(&mm->mmap_sem);
 		mmput(mm);
@@ -2191,8 +2189,16 @@ static void binder_transaction(struct binder_proc *proc,
 	list_add_tail(&t->work.entry, target_list);
 	tcomplete->type = BINDER_WORK_TRANSACTION_COMPLETE;
 	list_add_tail(&tcomplete->entry, &thread->todo);
-	if (target_wait)
-		wake_up_interruptible(target_wait);
+	if (target_wait) {
+		if (reply || !(t->flags & TF_ONE_WAY)) {
+			preempt_disable();
+			wake_up_interruptible_sync(target_wait);
+			sched_preempt_enable_no_resched();
+		}
+		else {
+			wake_up_interruptible(target_wait);
+		}
+	}
 	return;
 
 err_translate_failed:
@@ -3229,8 +3235,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			ret = -EINVAL;
 			goto err;
 		}
-		if (put_user(BINDER_CURRENT_PROTOCOL_VERSION,
-			     &ver->protocol_version)) {
+		if (put_user(BINDER_CURRENT_PROTOCOL_VERSION, &((struct binder_version *)ubuf)->protocol_version)) {
 			ret = -EINVAL;
 			goto err;
 		}
@@ -3350,11 +3355,7 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_ops = &binder_vm_ops;
 	vma->vm_private_data = proc;
 
-	/* binder_update_page_range assumes preemption is disabled */
-	preempt_disable();
-	ret = binder_update_page_range(proc, 1, proc->buffer, proc->buffer + PAGE_SIZE, vma);
-	preempt_enable_no_resched();
-	if (ret) {
+	if (binder_update_page_range(proc, 1, proc->buffer, proc->buffer + PAGE_SIZE, vma)) {
 		ret = -ENOMEM;
 		failure_string = "alloc small buf";
 		goto err_alloc_small_buf_failed;
@@ -3634,12 +3635,8 @@ static void binder_deferred_func(struct work_struct *work)
 
 	int defer;
 	do {
-		trace_binder_lock(__func__);
-		mutex_lock(&binder_main_lock);
-		trace_binder_locked(__func__);
-
+		binder_lock(__func__);
 		mutex_lock(&binder_deferred_lock);
-		preempt_disable();
 		if (!hlist_empty(&binder_deferred_list)) {
 			proc = hlist_entry(binder_deferred_list.first,
 					struct binder_proc, deferred_work_node);
@@ -3665,8 +3662,7 @@ static void binder_deferred_func(struct work_struct *work)
 		if (defer & BINDER_DEFERRED_RELEASE)
 			binder_deferred_release(proc); /* frees proc */
 
-		trace_binder_unlock(__func__);
-		mutex_unlock(&binder_main_lock);
+		binder_unlock(__func__);
 		if (files)
 			put_files_struct(files);
 	} while (proc);
