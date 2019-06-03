@@ -43,8 +43,6 @@
 #include "binder.h"
 #include "binder_trace.h"
 
-#define BINDER_MIN_ALLOC (1 * PAGE_SIZE)
-
 static DEFINE_MUTEX(binder_main_lock);
 static DEFINE_MUTEX(binder_deferred_lock);
 static DEFINE_MUTEX(binder_mmap_lock);
@@ -3371,8 +3369,7 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	/* binder_update_page_range assumes preemption is disabled */
 	preempt_disable();
-	ret = __binder_update_page_range(proc, 1, proc->buffer,
-					 proc->buffer + BINDER_MIN_ALLOC, vma);
+	ret = binder_update_page_range(proc, 1, proc->buffer, proc->buffer + PAGE_SIZE, vma);
 	preempt_enable_no_resched();
 	if (ret) {
 		ret = -ENOMEM;
