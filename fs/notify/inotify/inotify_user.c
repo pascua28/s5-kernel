@@ -368,20 +368,22 @@ static int inotify_add_to_idr(struct idr *idr, spinlock_t *idr_lock,
 {
 	int ret;
 
-	idr_preload(GFP_KERNEL);
-	spin_lock(idr_lock);
+	do {
+		if (unlikely(!idr_pre_get(idr, GFP_KERNEL)))
+			return -ENOMEM;
 
-	ret = idr_alloc(idr, i_mark, *last_wd + 1, 0, GFP_NOWAIT);
-	if (ret >= 0) {
+		spin_lock(idr_lock);
+		ret = idr_get_new_above(idr, i_mark, *last_wd + 1,
+					&i_mark->wd);
 		/* we added the mark to the idr, take a reference */
-		i_mark->wd = ret;
-		*last_wd = i_mark->wd;
-		fsnotify_get_mark(&i_mark->fsn_mark);
-	}
+		if (!ret) {
+			*last_wd = i_mark->wd;
+			fsnotify_get_mark(&i_mark->fsn_mark);
+		}
+		spin_unlock(idr_lock);
+	} while (ret == -EAGAIN);
 
-	spin_unlock(idr_lock);
-	idr_preload_end();
-	return ret < 0 ? ret : 0;
+	return ret;
 }
 
 static struct inotify_inode_mark *inotify_idr_find_locked(struct fsnotify_group *group,
