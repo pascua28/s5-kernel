@@ -1602,12 +1602,14 @@ static int loop_add(struct loop_device **l, int i)
 	struct gendisk *disk;
 	int err;
 
-	err = -ENOMEM;
 	lo = kzalloc(sizeof(*lo), GFP_KERNEL);
-	if (!lo)
+	if (!lo) {
+		err = -ENOMEM;
 		goto out;
+	}
 
-	if (!idr_pre_get(&loop_index_idr, GFP_KERNEL))
+	err = idr_pre_get(&loop_index_idr, GFP_KERNEL);
+	if (err < 0)
 		goto out_free_dev;
 
 	if (i >= 0) {
