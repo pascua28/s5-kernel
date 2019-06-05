@@ -29,24 +29,21 @@
 
 struct idr_layer {
 	int			prefix;	/* the ID prefix of this idr_layer */
-	int			layer;	/* distance from leaf */
+	DECLARE_BITMAP(bitmap, IDR_SIZE); /* A zero bit means "space here" */
 	struct idr_layer __rcu	*ary[1<<IDR_BITS];
 	int			count;	/* When zero, we can release it */
-	union {
-		/* A zero bit means "space here" */
-		DECLARE_BITMAP(bitmap, IDR_SIZE);
-		struct rcu_head		rcu_head;
-	};
+	int			layer;	/* distance from leaf */
+	struct rcu_head		rcu_head;
 };
 
 struct idr {
 	struct idr_layer __rcu	*hint;	/* the last layer allocated from */
 	struct idr_layer __rcu	*top;
+	struct idr_layer	*id_free;
 	int			layers;	/* only valid w/o concurrent changes */
+	int			id_free_cnt;
 	int			cur;	/* current pos for cyclic allocation */
 	spinlock_t		lock;
-	int			id_free_cnt;
-	struct idr_layer	*id_free;
 };
 
 #define IDR_INIT(name)							\
