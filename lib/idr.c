@@ -214,6 +214,7 @@ EXPORT_SYMBOL(idr_pre_get);
  * sub_alloc - try to allocate an id without growing the tree depth
  * @idp: idr handle
  * @starting_id: id to start search at
+ * @id: pointer to the allocated handle
  * @pa: idr_layer[MAX_IDR_LEVEL] used as backtrack buffer
  * @gfp_mask: allocation mask for idr_layer_alloc()
  * @layer_idr: optional idr passed to idr_layer_alloc()
