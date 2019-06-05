@@ -123,7 +123,6 @@ void ipc_init_ids(struct ipc_ids *ids)
 
 	ids->in_use = 0;
 	ids->seq = 0;
-	ids->next_id = -1;
 	{
 		int seq_limit = INT_MAX/SEQ_MULTIPLIER;
 		if (seq_limit > USHRT_MAX)
@@ -254,7 +253,6 @@ int ipc_addid(struct ipc_ids* ids, struct kern_ipc_perm* new, int size)
 	uid_t euid;
 	gid_t egid;
 	int id, err;
-	int next_id = ids->next_id;
 
 	if (size > IPCMNI)
 		size = IPCMNI;
@@ -267,8 +265,7 @@ int ipc_addid(struct ipc_ids* ids, struct kern_ipc_perm* new, int size)
 	rcu_read_lock();
 	spin_lock(&new->lock);
 
-	err = idr_get_new_above(&ids->ipcs_idr, new,
-				(next_id < 0) ? 0 : ipcid_to_idx(next_id), &id);
+	err = idr_get_new(&ids->ipcs_idr, new, &id);
 	if (err) {
 		spin_unlock(&new->lock);
 		rcu_read_unlock();
@@ -281,14 +278,9 @@ int ipc_addid(struct ipc_ids* ids, struct kern_ipc_perm* new, int size)
 	new->cuid = new->uid = euid;
 	new->gid = new->cgid = egid;
 
-	if (next_id < 0) {
-		new->seq = ids->seq++;
-		if (ids->seq > ids->seq_max)
-			ids->seq = 0;
-	} else {
-		new->seq = ipcid_to_seqx(next_id);
-		ids->next_id = -1;
-	}
+	new->seq = ids->seq++;
+	if(ids->seq > ids->seq_max)
+		ids->seq = 0;
 
 	new->id = ipc_buildid(id, new->seq);
 	return id;
