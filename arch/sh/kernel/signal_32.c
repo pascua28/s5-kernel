@@ -58,8 +58,18 @@ sys_sigsuspend(old_sigset_t mask,
 	       struct pt_regs __regs)
 {
 	sigset_t blocked;
+
+	current->saved_sigmask = current->blocked;
+
+	mask &= _BLOCKABLE;
 	siginitset(&blocked, mask);
-	return sigsuspend(&blocked);
+	set_current_blocked(&blocked);
+
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+	set_restore_sigmask();
+
+	return -ERESTARTNOHAND;
 }
 
 asmlinkage int

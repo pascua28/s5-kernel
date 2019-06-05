@@ -64,8 +64,18 @@ struct rt_signal_frame {
 static int _sigpause_common(old_sigset_t set)
 {
 	sigset_t blocked;
+
+	current->saved_sigmask = current->blocked;
+
+	set &= _BLOCKABLE;
 	siginitset(&blocked, set);
-	return sigsuspend(&blocked);
+	set_current_blocked(&blocked);
+
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+	set_thread_flag(TIF_RESTORE_SIGMASK);
+
+	return -ERESTARTNOHAND;
 }
 
 asmlinkage int sys_sigsuspend(old_sigset_t set)

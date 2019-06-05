@@ -255,7 +255,15 @@ asmlinkage int sys_sigsuspend(nabi_no_regargs struct pt_regs regs)
 	uset = (sigset_t __user *) regs.regs[4];
 	if (copy_from_user(&newset, uset, sizeof(sigset_t)))
 		return -EFAULT;
-	return sigsuspend(&newset);
+	sigdelsetmask(&newset, ~_BLOCKABLE);
+
+	current->saved_sigmask = current->blocked;
+	set_current_blocked(&newset);
+
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+	set_thread_flag(TIF_RESTORE_SIGMASK);
+	return -ERESTARTNOHAND;
 }
 #endif
 
@@ -273,7 +281,15 @@ asmlinkage int sys_rt_sigsuspend(nabi_no_regargs struct pt_regs regs)
 	unewset = (sigset_t __user *) regs.regs[4];
 	if (copy_from_user(&newset, unewset, sizeof(newset)))
 		return -EFAULT;
-	return sigsuspend(&newset);
+	sigdelsetmask(&newset, ~_BLOCKABLE);
+
+	current->saved_sigmask = current->blocked;
+	set_current_blocked(&newset);
+
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+	set_thread_flag(TIF_RESTORE_SIGMASK);
+	return -ERESTARTNOHAND;
 }
 
 #ifdef CONFIG_TRAD_SIGNALS

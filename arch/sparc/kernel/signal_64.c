@@ -242,8 +242,19 @@ struct rt_signal_frame {
 static long _sigpause_common(old_sigset_t set)
 {
 	sigset_t blocked;
+
+	current->saved_sigmask = current->blocked;
+
+	set &= _BLOCKABLE;
 	siginitset(&blocked, set);
-	return sigsuspend(&blocked);
+	set_current_blocked(&blocked);
+
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+
+	set_restore_sigmask();
+
+	return -ERESTARTNOHAND;
 }
 
 asmlinkage long sys_sigpause(unsigned int set)

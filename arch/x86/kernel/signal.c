@@ -478,8 +478,18 @@ asmlinkage int
 sys_sigsuspend(int history0, int history1, old_sigset_t mask)
 {
 	sigset_t blocked;
+
+	current->saved_sigmask = current->blocked;
+
+	mask &= _BLOCKABLE;
 	siginitset(&blocked, mask);
-	return sigsuspend(&blocked);
+	set_current_blocked(&blocked);
+
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+
+	set_restore_sigmask();
+	return -ERESTARTNOHAND;
 }
 
 asmlinkage int

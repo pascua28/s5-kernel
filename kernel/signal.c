@@ -3248,21 +3248,6 @@ SYSCALL_DEFINE0(pause)
 
 #endif
 
-#ifdef HAVE_SET_RESTORE_SIGMASK
-int sigsuspend(sigset_t *set)
-{
-	sigdelsetmask(set, sigmask(SIGKILL)|sigmask(SIGSTOP));
-
-	current->saved_sigmask = current->blocked;
-	set_current_blocked(set);
-
-	current->state = TASK_INTERRUPTIBLE;
-	schedule();
-	set_restore_sigmask();
-	return -ERESTARTNOHAND;
-}
-#endif
-
 #ifdef __ARCH_WANT_SYS_RT_SIGSUSPEND
 /**
  *  sys_rt_sigsuspend - replace the signal mask for a value with the
@@ -3280,7 +3265,15 @@ SYSCALL_DEFINE2(rt_sigsuspend, sigset_t __user *, unewset, size_t, sigsetsize)
 
 	if (copy_from_user(&newset, unewset, sizeof(newset)))
 		return -EFAULT;
-	return sigsuspend(&newset);
+	sigdelsetmask(&newset, sigmask(SIGKILL)|sigmask(SIGSTOP));
+
+	current->saved_sigmask = current->blocked;
+	set_current_blocked(&newset);
+
+	current->state = TASK_INTERRUPTIBLE;
+	schedule();
+	set_restore_sigmask();
+	return -ERESTARTNOHAND;
 }
 #endif /* __ARCH_WANT_SYS_RT_SIGSUSPEND */
 
