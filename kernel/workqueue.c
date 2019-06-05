@@ -1078,14 +1078,13 @@ queue_work_on(int cpu, struct workqueue_struct *wq, struct work_struct *work)
 }
 EXPORT_SYMBOL_GPL(queue_work_on);
 
-void delayed_work_timer_fn(unsigned long __data)
+static void delayed_work_timer_fn(unsigned long __data)
 {
 	struct delayed_work *dwork = (struct delayed_work *)__data;
 	struct cpu_workqueue_struct *cwq = get_work_cwq(&dwork->work);
 
 	__queue_work(smp_processor_id(), cwq->wq, &dwork->work);
 }
-EXPORT_SYMBOL_GPL(delayed_work_timer_fn);
 
 /**
  * queue_delayed_work - queue work on a workqueue after delay
@@ -1124,8 +1123,6 @@ int queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
 	if (!test_and_set_bit(WORK_STRUCT_PENDING_BIT, work_data_bits(work))) {
 		unsigned int lcpu;
 
-		WARN_ON_ONCE(timer->function != delayed_work_timer_fn ||
-			     timer->data != (unsigned long)dwork);
 		WARN_ON_ONCE(timer_pending(timer));
 		WARN_ON_ONCE(!list_empty(&work->entry));
 
@@ -1147,6 +1144,8 @@ int queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
 		set_work_cwq(work, get_cwq(lcpu, wq), 0);
 
 		timer->expires = jiffies + delay;
+		timer->data = (unsigned long)dwork;
+		timer->function = delayed_work_timer_fn;
 
 		if (unlikely(cpu >= 0))
 			add_timer_on(timer, cpu);
