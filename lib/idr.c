@@ -196,7 +196,7 @@ static void idr_mark_full(struct idr_layer **pa, int id)
 	}
 }
 
-static int __idr_pre_get(struct idr *idp, gfp_t gfp_mask)
+int __idr_pre_get(struct idr *idp, gfp_t gfp_mask)
 {
 	while (idp->id_free_cnt < MAX_IDR_FREE) {
 		struct idr_layer *new;
@@ -207,6 +207,7 @@ static int __idr_pre_get(struct idr *idp, gfp_t gfp_mask)
 	}
 	return 1;
 }
+EXPORT_SYMBOL(__idr_pre_get);
 
 /**
  * sub_alloc - try to allocate an id without growing the tree depth
@@ -373,6 +374,20 @@ static void idr_fill_slot(struct idr *idr, void *ptr, int id,
 	idr_mark_full(pa, id);
 }
 
+int __idr_get_new_above(struct idr *idp, void *ptr, int starting_id, int *id)
+{
+	struct idr_layer *pa[MAX_IDR_LEVEL + 1];
+	int rv;
+
+	rv = idr_get_empty_slot(idp, starting_id, pa, 0, idp);
+	if (rv < 0)
+		return rv == -ENOMEM ? -EAGAIN : rv;
+
+	idr_fill_slot(idp, ptr, rv, pa);
+	*id = rv;
+	return 0;
+}
+EXPORT_SYMBOL(__idr_get_new_above);
 
 /**
  * idr_preload - preload for idr_alloc()
@@ -592,7 +607,7 @@ void idr_remove(struct idr *idp, int id)
 }
 EXPORT_SYMBOL(idr_remove);
 
-static void __idr_remove_all(struct idr *idp)
+void __idr_remove_all(struct idr *idp)
 {
 	int n, id, max;
 	int bt_mask;
@@ -625,6 +640,7 @@ static void __idr_remove_all(struct idr *idp)
 	}
 	idp->layers = 0;
 }
+EXPORT_SYMBOL(__idr_remove_all);
 
 /**
  * idr_destroy - release all cached layers within an idr tree
