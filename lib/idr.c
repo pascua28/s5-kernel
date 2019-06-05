@@ -814,10 +814,10 @@ void *idr_replace(struct idr *idp, void *ptr, int id)
 
 	p = idp->top;
 	if (!p)
-		return ERR_PTR(-ENOENT);
+		return ERR_PTR(-EINVAL);
 
 	if (id > idr_max(p->layer + 1))
-		return ERR_PTR(-ENOENT);
+		return ERR_PTR(-EINVAL);
 
 	n = p->layer * IDR_BITS;
 	while ((n > 0) && p) {
