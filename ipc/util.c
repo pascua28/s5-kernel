@@ -253,7 +253,7 @@ int ipc_addid(struct ipc_ids* ids, struct kern_ipc_perm* new, int size)
 {
 	uid_t euid;
 	gid_t egid;
-	int id;
+	int id, err;
 	int next_id = ids->next_id;
 
 	if (size > IPCMNI)
@@ -262,21 +262,17 @@ int ipc_addid(struct ipc_ids* ids, struct kern_ipc_perm* new, int size)
 	if (ids->in_use >= size)
 		return -ENOSPC;
 
-	idr_preload(GFP_KERNEL);
-
 	spin_lock_init(&new->lock);
 	new->deleted = 0;
 	rcu_read_lock();
 	spin_lock(&new->lock);
 
-	id = idr_alloc(&ids->ipcs_idr, new,
-		       (next_id < 0) ? 0 : ipcid_to_idx(next_id), 0,
-		       GFP_NOWAIT);
-	idr_preload_end();
-	if (id < 0) {
+	err = idr_get_new_above(&ids->ipcs_idr, new,
+				(next_id < 0) ? 0 : ipcid_to_idx(next_id), &id);
+	if (err) {
 		spin_unlock(&new->lock);
 		rcu_read_unlock();
-		return id;
+		return err;
 	}
 
 	ids->in_use++;
@@ -312,10 +308,19 @@ static int ipcget_new(struct ipc_namespace *ns, struct ipc_ids *ids,
 		struct ipc_ops *ops, struct ipc_params *params)
 {
 	int err;
+retry:
+	err = idr_pre_get(&ids->ipcs_idr, GFP_KERNEL);
+
+	if (!err)
+		return -ENOMEM;
 
 	down_write(&ids->rw_mutex);
 	err = ops->getnew(ns, params);
 	up_write(&ids->rw_mutex);
+
+	if (err == -EAGAIN)
+		goto retry;
+
 	return err;
 }
 
@@ -372,6 +377,8 @@ static int ipcget_public(struct ipc_namespace *ns, struct ipc_ids *ids,
 	struct kern_ipc_perm *ipcp;
 	int flg = params->flg;
 	int err;
+retry:
+	err = idr_pre_get(&ids->ipcs_idr, GFP_KERNEL);
 
 	/*
 	 * Take the lock as a writer since we are potentially going to add
@@ -383,6 +390,8 @@ static int ipcget_public(struct ipc_namespace *ns, struct ipc_ids *ids,
 		/* key not used */
 		if (!(flg & IPC_CREAT))
 			err = -ENOENT;
+		else if (!err)
+			err = -ENOMEM;
 		else
 			err = ops->getnew(ns, params);
 	} else {
@@ -404,6 +413,9 @@ static int ipcget_public(struct ipc_namespace *ns, struct ipc_ids *ids,
 		ipc_unlock(ipcp);
 	}
 	up_write(&ids->rw_mutex);
+
+	if (err == -EAGAIN)
+		goto retry;
 
 	return err;
 }
