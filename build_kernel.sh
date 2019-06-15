@@ -14,7 +14,7 @@ if [ -e output/.config ]
         make -j4 O=output oldconfig
 fi
 
-make -j4 O=output
+make -j4 O=output 2>&1 |tee ../compile.log
 
 cp output/arch/arm/boot/Image $(pwd)/arch/arm/boot/zImage
 
