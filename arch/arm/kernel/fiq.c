@@ -48,11 +48,6 @@
 #include <asm/irq.h>
 #include <asm/traps.h>
 
-#define FIQ_OFFSET ({					\
-		extern void *vector_fiq_offset;		\
-		(unsigned)&vector_fiq_offset;		\
-	})
-
 static unsigned long no_fiq_insn;
 
 /* Default reacquire function
@@ -86,16 +81,13 @@ int show_fiq_list(struct seq_file *p, int prec)
 void set_fiq_handler(void *start, unsigned int length)
 {
 #if defined(CONFIG_CPU_USE_DOMAINS)
-	void *base = (void *)0xffff0000;
+	memcpy((void *)0xffff001c, start, length);
 #else
-	void *base = vectors_page;
+	memcpy(vectors_page + 0x1c, start, length);
 #endif
-	unsigned offset = FIQ_OFFSET;
-
-	memcpy(base + offset, start, length);
-	flush_icache_range(0xffff0000 + offset, 0xffff0000 + offset + length);
+	flush_icache_range(0xffff001c, 0xffff001c + length);
 	if (!vectors_high())
-		flush_icache_range(offset, offset + length);
+		flush_icache_range(0x1c, 0x1c + length);
 }
 
 int claim_fiq(struct fiq_handler *f)
@@ -159,7 +151,6 @@ EXPORT_SYMBOL(fiq_set_type);
 
 void __init init_FIQ(int start)
 {
-	unsigned offset = FIQ_OFFSET;
-	no_fiq_insn = *(unsigned long *)(0xffff0000 + offset);
+	no_fiq_insn = *(unsigned long *)0xffff001c;
 	fiq_start = start;
 }
