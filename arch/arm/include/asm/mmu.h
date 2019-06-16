@@ -9,7 +9,6 @@ typedef struct {
 	raw_spinlock_t id_lock;
 #endif
 	unsigned int kvm_seq;
-	unsigned long	sigpage;
 } mm_context_t;
 
 #ifdef CONFIG_CPU_HAS_ASID
