@@ -123,16 +123,14 @@ void release_fiq(struct fiq_handler *f)
 	while (current_fiq->fiq_op(current_fiq->dev_id, 0));
 }
 
-static int fiq_start;
-
 void enable_fiq(int fiq)
 {
-	enable_irq(fiq + fiq_start);
+	enable_irq(fiq + FIQ_START);
 }
 
 void disable_fiq(int fiq)
 {
-	disable_irq(fiq + fiq_start);
+	disable_irq(fiq + FIQ_START);
 }
 
 void fiq_set_type(int fiq, unsigned int type)
@@ -149,8 +147,7 @@ EXPORT_SYMBOL(enable_fiq);
 EXPORT_SYMBOL(disable_fiq);
 EXPORT_SYMBOL(fiq_set_type);
 
-void __init init_FIQ(int start)
+void __init init_FIQ(void)
 {
 	no_fiq_insn = *(unsigned long *)0xffff001c;
-	fiq_start = start;
 }
