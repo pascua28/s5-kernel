@@ -3693,7 +3693,11 @@ int handle_pte_fault(struct mm_struct *mm,
 	entry = *pte;
 	if (!pte_present(entry)) {
 		if (pte_none(entry)) {
-			if (vma->vm_ops)
+
+		    if (vma_is_anonymous(vma))
+			return do_anonymous_page(mm, vma, address,
+			pte, pmd, flags);
+		    else
 				return do_linear_fault(mm, vma, address, pte, pmd,
 						flags, entry);
 
