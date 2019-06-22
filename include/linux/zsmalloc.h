@@ -27,12 +27,25 @@ enum zs_mapmode {
 	ZS_MM_WO /* write-only (no copy-in at map time) */
 };
 
+struct zs_ops {
+	struct page * (*alloc)(gfp_t);
+	void (*free)(struct page *);
+};
+
 struct zs_pool;
 
+#ifdef CONFIG_ZRAM
 struct zs_pool *zs_create_pool(gfp_t flags);
+#else
+struct zs_pool *zs_create_pool(gfp_t flags, struct zs_ops *ops);
+#endif /* CONFIG_ZRAM */
 void zs_destroy_pool(struct zs_pool *pool);
 
+#ifdef CONFIG_ZRAM
 unsigned long zs_malloc(struct zs_pool *pool, size_t size);
+#else
+unsigned long zs_malloc(struct zs_pool *pool, size_t size, gfp_t flags);
+#endif /* CONFIG_ZRAM */
 void zs_free(struct zs_pool *pool, unsigned long obj);
 
 void *zs_map_object(struct zs_pool *pool, unsigned long handle,
