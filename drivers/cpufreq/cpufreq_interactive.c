@@ -200,8 +200,6 @@ static unsigned int up_threshold_any_cpu_freq;
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event);
 
-#define DYN_DEFER (1)
-		
 #ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 static
 #endif
@@ -235,22 +233,6 @@ static inline cputime64_t get_cpu_idle_time_jiffy(unsigned int cpu,
 	return jiffies_to_usecs(idle_time);
 }
 
-#ifdef DYN_DEFER
-static inline void timer_set_nondeferrable(struct timer_list *timer)
-{
-       timer->base =
-               ((struct tvec_base *)((unsigned long)timer->base &
-                       ~TBASE_DEFERRABLE_FLAG));
-}
-
-static inline void timer_set_deferrable(struct timer_list *timer)
-{
-       timer->base =
-               ((struct tvec_base *)((unsigned long)timer->base |
-                       TBASE_DEFERRABLE_FLAG));
-}
-#endif
-
 static inline cputime64_t get_cpu_idle_time(unsigned int cpu,
 					    cputime64_t *wall)
 {
@@ -278,13 +260,6 @@ static void cpufreq_interactive_timer_resched(
 	pcpu->cputime_speedadj_timestamp = pcpu->time_in_idle_timestamp;
 	expires = jiffies + usecs_to_jiffies(timer_rate);
 	
-#ifdef DYN_DEFER
-       if (pcpu->target_freq > pcpu->policy->min)
-               timer_set_nondeferrable(&pcpu->cpu_timer);
-       else
-               timer_set_deferrable(&pcpu->cpu_timer);
-#endif
-
 	mod_timer_pinned(&pcpu->cpu_timer, expires);
 
 	if (timer_slack_val >= 0 && pcpu->target_freq > pcpu->policy->min) {
