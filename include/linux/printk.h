@@ -91,9 +91,6 @@ int no_printk(const char *fmt, ...)
 extern asmlinkage __printf(1, 2)
 void early_printk(const char *fmt, ...);
 
-extern int printk_needs_cpu(int cpu);
-extern void printk_tick(void);
-
 #ifdef CONFIG_PRINTK
 asmlinkage __printf(1, 0)
 int vprintk(const char *fmt, va_list args);
@@ -121,6 +118,9 @@ extern int kptr_restrict;
 
 void log_buf_kexec_setup(void);
 void __init setup_log_buf(int early);
+void dump_stack_set_arch_desc(const char *fmt, ...);
+void dump_stack_print_info(const char *log_lvl);
+void show_regs_print_info(const char *log_lvl);
 #else
 static inline __printf(1, 0)
 int vprintk(const char *s, va_list args)
@@ -152,6 +152,18 @@ static inline void log_buf_kexec_setup(void)
 }
 
 static inline void setup_log_buf(int early)
+{
+}
+
+static inline void dump_stack_set_arch_desc(const char *fmt, ...)
+{
+}
+
+static inline void dump_stack_print_info(const char *log_lvl)
+{
+}
+
+static inline void show_regs_print_info(const char *log_lvl)
 {
 }
 #endif

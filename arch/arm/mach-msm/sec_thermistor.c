@@ -522,7 +522,7 @@ static __devinit int sec_therm_probe(struct platform_device *pdev)
 
 	if (!(pdata->no_polling)) {
 
-		INIT_DELAYED_WORK_DEFERRABLE(&info->polling_work,
+		INIT_DEFERRABLE_WORK(&info->polling_work,
 			sec_therm_polling_work);
 		schedule_delayed_work(&info->polling_work,
 			msecs_to_jiffies(info->pdata->polling_interval));
