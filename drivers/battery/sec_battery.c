@@ -4729,7 +4729,7 @@ static int __devinit sec_battery_probe(struct platform_device *pdev)
 
 	switch (pdata->polling_type) {
 	case SEC_BATTERY_MONITOR_WORKQUEUE:
-		INIT_DELAYED_WORK_DEFERRABLE(&battery->polling_work,
+		INIT_DEFERRABLE_WORK(&battery->polling_work,
 			sec_bat_polling_work);
 		break;
 	case SEC_BATTERY_MONITOR_ALARM:
