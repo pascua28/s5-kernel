@@ -2,7 +2,6 @@
 #define LINUX_MM_INLINE_H
 
 #include <linux/huge_mm.h>
-#include <linux/swap.h>
 #ifdef CONFIG_SCFS_LOWER_PAGECACHE_INVALIDATION
 #include <linux/page-flags.h>
 #endif
