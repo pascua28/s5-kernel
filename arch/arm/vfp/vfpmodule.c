@@ -21,7 +21,6 @@
 #include <linux/uaccess.h>
 #include <linux/user.h>
 #include <linux/proc_fs.h>
-#include <linux/seq_file.h>
 
 #include <asm/cp15.h>
 #include <asm/cputype.h>
@@ -658,23 +657,23 @@ static int vfp_hotplug(struct notifier_block *b, unsigned long action,
 }
 
 #ifdef CONFIG_PROC_FS
-static int vfp_bounce_show(struct seq_file *m, void *v)
+static int proc_read_status(char *page, char **start, off_t off, int count,
+			    int *eof, void *data)
 {
-	seq_printf(m, "%llu\n", atomic64_read(&vfp_bounce_count));
-	return 0;
-}
+	char *p = page;
+	int len;
 
-static int vfp_bounce_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, vfp_bounce_show, NULL);
-}
+	p += snprintf(p, PAGE_SIZE, "%llu\n", atomic64_read(&vfp_bounce_count));
 
-static const struct file_operations vfp_bounce_fops = {
-	.open		= vfp_bounce_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
+	len = (p - page) - off;
+	if (len < 0)
+		len = 0;
+
+	*eof = (len <= count) ? 1 : 0;
+	*start = page + off;
+
+	return len;
+}
 #endif
 
 /*
@@ -757,9 +756,11 @@ static int __init vfp_init(void)
 	}
 
 #ifdef CONFIG_PROC_FS
-	procfs_entry = proc_create("cpu/vfp_bounce", S_IRUGO, NULL,
-			&vfp_bounce_fops);
-	if (!procfs_entry)
+	procfs_entry = create_proc_entry("cpu/vfp_bounce", S_IRUGO, NULL);
+
+	if (procfs_entry)
+		procfs_entry->read_proc = proc_read_status;
+	else
 		pr_err("Failed to create procfs node for VFP bounce reporting\n");
 #endif
 
