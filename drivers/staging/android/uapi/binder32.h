@@ -174,11 +174,7 @@ struct binder_version {
 };
 
 /* This is the current protocol version. */
-#ifdef BINDER_IPC_32BIT
 #define BINDER_CURRENT_PROTOCOL_VERSION 7
-#else
-#define BINDER_CURRENT_PROTOCOL_VERSION 8
-#endif
 
 #define BINDER_WRITE_READ		_IOWR('b', 1, struct binder_write_read)
 #define	BINDER_SET_IDLE_TIMEOUT		_IOW('b', 3, __s64)
