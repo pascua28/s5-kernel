@@ -38,7 +38,7 @@
 #include <linux/slab.h>
 #include <linux/security.h>
 
-#include "binder.h"
+#include "binder32.h"
 #include "binder_trace.h"
 
 #define BINDER_MIN_ALLOC (1 * PAGE_SIZE)

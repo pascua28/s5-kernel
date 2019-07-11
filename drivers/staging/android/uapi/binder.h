@@ -41,13 +41,8 @@ enum {
 	FLAT_BINDER_FLAG_ACCEPTS_FDS = 0x100,
 };
 
-#ifdef BINDER_IPC_32BIT
-typedef __u32 binder_size_t;
-typedef __u32 binder_uintptr_t;
-#else
 typedef __u64 binder_size_t;
 typedef __u64 binder_uintptr_t;
-#endif
 
 /**
  * struct binder_object_header - header shared by all binder metadata objects.
