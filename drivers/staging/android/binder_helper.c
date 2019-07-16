@@ -26,12 +26,23 @@ static char proc_data[BUFSIZE];
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("S. G. Pascua");
- 
+
 static struct proc_dir_entry *ent;
 extern int binder_init(void);
 extern int binder32_init(void);
 
-static ssize_t binder32_write(struct file *file, const char *buf,size_t count,loff_t *data )
+static ssize_t binder32_read(struct file *file, char *ubuf,size_t count, loff_t *ppos)
+{
+	if (count > BUFSIZE)
+		count = BUFSIZE;
+
+	if(copy_to_user(ubuf,proc_data,count))
+		return -EFAULT;
+
+	return count;
+}
+
+static ssize_t binder32_write(struct file *file, const char *buf, size_t count, loff_t *data)
 {
 
 	if(count > BUFSIZE)
@@ -52,6 +63,7 @@ static struct file_operations binder32_ops =
 {
 	.owner = THIS_MODULE,
 	.write = binder32_write,
+	.read  = binder32_read,
 };
  
 static int binder_helper_init(void)
