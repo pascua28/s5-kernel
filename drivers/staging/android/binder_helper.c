@@ -21,6 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
+#include <linux/seq_file.h>
 #define BUFSIZE 4
 static char proc_data[BUFSIZE];
 
@@ -31,16 +32,17 @@ static struct proc_dir_entry *ent;
 extern int binder_init(void);
 extern int binder32_init(void);
 
-static ssize_t binder32_read(struct file *file, char *ubuf,size_t count, loff_t *ppos)
+static int binder32_read(struct seq_file *m, void *v)
 {
-	if (count > BUFSIZE)
-		count = BUFSIZE;
-
-	if(copy_to_user(ubuf,proc_data,count))
-		return -EFAULT;
-
-	return count;
+	seq_printf(m, "%s", proc_data);
+	return 0;
 }
+
+static int binder32_open(struct inode *inode, struct  file *file)
+{
+	return single_open(file, binder32_read, NULL);
+}
+
 
 static ssize_t binder32_write(struct file *file, const char *buf, size_t count, loff_t *data)
 {
@@ -59,17 +61,20 @@ static ssize_t binder32_write(struct file *file, const char *buf, size_t count, 
 	return count;
 }
 
-static struct file_operations binder32_ops = 
+static struct file_operations binder32_ops =
 {
 	.owner = THIS_MODULE,
+	.open = binder32_open,
 	.write = binder32_write,
-	.read  = binder32_read,
+	.read  = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
 };
- 
+
 static int binder_helper_init(void)
 {
-	ent=proc_create("android_n",0660,NULL,&binder32_ops);
+	ent = proc_create("android_n", 0666, NULL, &binder32_ops);
 	return 0;
 }
 
-fs_initcall(binder_helper_init);
+early_initcall(binder_helper_init);
