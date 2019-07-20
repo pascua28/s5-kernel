@@ -18,63 +18,25 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
-#include <linux/kernel.h>
 #include <linux/proc_fs.h>
-#include <asm/uaccess.h>
-#include <linux/seq_file.h>
-#define BUFSIZE 4
-static char proc_data[BUFSIZE];
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("S. G. Pascua");
 
-static struct proc_dir_entry *ent;
 extern int binder_init(void);
 extern int binder32_init(void);
 
-static int binder32_read(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%s", proc_data);
-	return 0;
-}
-
-static int binder32_open(struct inode *inode, struct  file *file)
-{
-	return single_open(file, binder32_read, NULL);
-}
-
-
-static ssize_t binder32_write(struct file *file, const char *buf, size_t count, loff_t *data)
-{
-
-	if(count > BUFSIZE)
-	    return -EFAULT;
-
-	if(copy_from_user(proc_data, buf, count))
-	    return -EFAULT;
-
-	if(!strncmp("1",(char*)proc_data,1))
-		binder32_init();
-	else
-		binder_init();
-
-	return count;
-}
-
-static struct file_operations binder32_ops =
-{
-	.owner = THIS_MODULE,
-	.open = binder32_open,
-	.write = binder32_write,
-	.read  = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
 static int binder_helper_init(void)
 {
-	ent = proc_create("android_n", 0666, NULL, &binder32_ops);
+	struct file *f;
+	f = filp_open("/nougat", O_RDONLY, 0);
+	if (IS_ERR(f)) {
+		binder_init();
+	} else {
+		binder32_init();
+		filp_close(f, NULL);
+	}
 	return 0;
 }
 
-early_initcall(binder_helper_init);
+device_initcall(binder_helper_init);
