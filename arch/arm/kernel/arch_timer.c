@@ -369,8 +369,6 @@ static u32 arch_counter_get_cntvct32(void)
 
 	cntvct = get_cntvct_func();
 
-	of_node_put(np);
-
 	/*
 	 * The sched_clock infrastructure only knows about counters
 	 * with at most 32bits. Forget about the upper 24 bits for the
