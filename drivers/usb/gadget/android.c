@@ -444,7 +444,7 @@ static void android_work(struct work_struct *data)
 		}
 		pr_info("%s: sent uevent %s\n", __func__, uevent_envp[0]);
 	} else {
-		pr_info("%s: did not send uevent (%d %d %p)\n", __func__,
+		pr_info("%s: did not send uevent (%d %d %pK)\n", __func__,
 			 dev->connected, dev->sw_connected, cdev->config);
 	}
 }
@@ -2492,7 +2492,8 @@ static ssize_t audio_source_pcm_show(struct device *dev,
 	struct audio_source_config *config = f->config;
 
 	/* print PCM card and device numbers */
-	return sprintf(buf, "%d %d\n", config->card, config->device);
+	return snprintf(buf, PAGE_SIZE,
+			"%d %d\n", config->card, config->device);
 }
 
 static DEVICE_ATTR(pcm, S_IRUGO | S_IWUSR, audio_source_pcm_show, NULL);
@@ -3740,7 +3741,7 @@ static int usb_diag_update_pid_and_serial_num(u32 pid, const char *snum)
 		return -ENODEV;
 	}
 
-	pr_debug("%s: dload:%p pid:%x serial_num:%s\n",
+	pr_debug("%s: dload:%pK pid:%x serial_num:%s\n",
 				__func__, diag_dload, pid, snum);
 
 	/* update pid */

@@ -255,7 +255,7 @@ int usb_wwan_write(struct tty_struct *tty, struct usb_serial_port *port,
 			usb_anchor_urb(this_urb, &portdata->submitted);
 			err = usb_submit_urb(this_urb, GFP_ATOMIC);
 			if (err) {
-				dbg("usb_submit_urb %p (write bulk) failed "
+				dbg("usb_submit_urb %pK (write bulk) failed "
 				    "(%d)", this_urb, err);
 				usb_unanchor_urb(this_urb);
 				clear_bit(i, &portdata->out_busy);
@@ -365,7 +365,7 @@ static void usb_wwan_indat_callback(struct urb *urb)
 	int status = urb->status;
 	unsigned long flags;
 
-	dbg("%s: %p", __func__, urb);
+	dbg("%s: %pK", __func__, urb);
 
 	endpoint = usb_pipeendpoint(urb->pipe);
 	port = urb->context;
@@ -864,7 +864,7 @@ int usb_wwan_resume(struct usb_serial *serial)
 		portdata = usb_get_serial_port_data(port);
 
 		/* skip closed ports */
-		if (!portdata->opened)
+		if (!portdata || !portdata->opened)
 			continue;
 
 		if (port->interrupt_in_urb) {
@@ -893,10 +893,8 @@ int usb_wwan_resume(struct usb_serial *serial)
 			usb_anchor_urb(urb, &portdata->submitted);
 			err = usb_submit_urb(urb, GFP_ATOMIC);
 			if (err < 0) {
-				err("%s: Error %d for bulk URB[%d]:%p %d",
-				    __func__, err, j, urb, i);
-				usb_unanchor_urb(urb);
-				intfdata->suspended = 1;
+				err("%s: Error %d for bulk URB %d",
+				    __func__, err, i);
 				err_count++;
 			}
 		}

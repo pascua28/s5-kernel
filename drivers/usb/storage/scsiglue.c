@@ -243,14 +243,14 @@ static int slave_configure(struct scsi_device *sdev)
 				us->protocol == USB_PR_BULK)
 			us->use_last_sector_hacks = 1;
 
-		/* A few buggy USB-ATA bridges don't understand FUA */
-		if (us->fflags & US_FL_BROKEN_FUA)
-			sdev->broken_fua = 1;
-
 		if (us->sdev_autosuspend_delay >= 0) {
 			sdev->use_rpm_auto = 1;
 			sdev->autosuspend_delay = us->sdev_autosuspend_delay;
 		}
+
+		/* A few buggy USB-ATA bridges don't understand FUA */
+		if (us->fflags & US_FL_BROKEN_FUA)
+			sdev->broken_fua = 1;
 	} else {
 
 		/* Non-disk-type devices don't need to blacklist any pages
@@ -321,7 +321,7 @@ static int queuecommand_lck(struct scsi_cmnd *srb,
 
 	/* check for state-transition errors */
 	if (us->srb != NULL) {
-		printk(KERN_ERR USB_STORAGE "Error in %s: us->srb = %p\n",
+		printk(KERN_ERR USB_STORAGE "Error in %s: us->srb = %pK\n",
 			__func__, us->srb);
 		return SCSI_MLQUEUE_HOST_BUSY;
 	}

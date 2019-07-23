@@ -24,8 +24,8 @@
 #include <linux/kthread.h>
 #include <linux/mutex.h>
 #include <linux/freezer.h>
-#include <linux/random.h>
 #include <linux/usb/otg.h>
+#include <linux/random.h>
 
 #include <asm/uaccess.h>
 #include <asm/byteorder.h>
@@ -114,6 +114,8 @@ struct usb_hub {
 	struct delayed_work	init_work;
 	void			**port_owners;
 };
+
+int deny_new_usb = 0;
 
 static inline int hub_is_superspeed(struct usb_device *hdev)
 {
@@ -2155,6 +2157,13 @@ int usb_new_device(struct usb_device *udev)
 	/* Tell the world! */
 	announce_device(udev);
 
+#ifdef CONFIG_USB_HOST_NOTIFY
+#if defined(CONFIG_MUIC_MAX77693_SUPPORT_OTG_AUDIO_DOCK)
+	call_audiodock_notify(udev);
+#endif
+	call_battery_notify(udev, 1);
+#endif
+
 	if (udev->serial)
 		add_device_randomness(udev->serial, strlen(udev->serial));
 	if (udev->product)
@@ -2163,12 +2172,6 @@ int usb_new_device(struct usb_device *udev)
 		add_device_randomness(udev->manufacturer,
 				      strlen(udev->manufacturer));
 
-#ifdef CONFIG_USB_HOST_NOTIFY
-#if defined(CONFIG_MUIC_MAX77693_SUPPORT_OTG_AUDIO_DOCK)
-	call_audiodock_notify(udev);
-#endif
-	call_battery_notify(udev, 1);
-#endif
 	device_enable_async_suspend(&udev->dev);
 
 	/*
@@ -3666,6 +3669,11 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		if (portstatus & USB_PORT_STAT_ENABLE)
   			goto done;
 		return;
+	}
+
+	if (deny_new_usb) {
+		dev_err(hub_dev, "denied insert of USB device on port %d\n", port1);
+		goto done;
 	}
 
 	for (i = 0; i < SET_CONFIG_TRIES; i++) {

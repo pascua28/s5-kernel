@@ -178,7 +178,7 @@ static void ghsic_ctrl_connect_w(struct work_struct *w)
 	if (!port || !test_bit(CH_READY, &port->bridge_sts))
 		return;
 
-	pr_debug("%s: port:%p\n", __func__, port);
+	pr_debug("%s: port:%pK\n", __func__, port);
 
 	retval = ctrl_bridge_open(&port->brdg);
 	if (retval) {
@@ -471,7 +471,7 @@ static int gctrl_port_alloc(int portno, enum gadget_type gtype)
 
 	platform_driver_register(pdrv);
 
-	pr_debug("%s: port:%p portno:%d\n", __func__, port, portno);
+	pr_debug("%s: port:%pK portno:%d\n", __func__, port, portno);
 
 	return 0;
 }
@@ -533,7 +533,7 @@ int ghsic_ctrl_setup(unsigned int num_ports, enum gadget_type gtype)
 free_ports:
 	for (i = first_port_id; i < no_ctrl_ports; i++)
 		ghsic_ctrl_port_free(i);
-	no_ctrl_ports = first_port_id;
+		no_ctrl_ports = first_port_id;
 	return ret;
 }
 
