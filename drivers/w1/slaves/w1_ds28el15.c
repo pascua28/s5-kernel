@@ -1547,7 +1547,7 @@ static int get_array_value(void)
 	}
 	buf = str;
 	for(i=0;i<5;i++){
-		strncpy(&data,&buf[i*2],2);
+		memcpy(&data,&buf[i*2],2);
 		sscanf(&data, "%x", (unsigned int *)&ret);
 		w1_array[i]=ret;
 	}
