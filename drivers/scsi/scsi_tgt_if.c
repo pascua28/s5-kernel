@@ -189,7 +189,7 @@ int scsi_tgt_uspace_send_it_nexus_request(int host_no, u64 itn_id,
 	ev.p.it_nexus_req.function = function;
 	ev.p.it_nexus_req.itn_id = itn_id;
 	if (initiator_id)
-		strncpy(ev.p.it_nexus_req.initiator_id, initiator_id,
+		memcpy(ev.p.it_nexus_req.initiator_id, initiator_id,
 			sizeof(ev.p.it_nexus_req.initiator_id));
 
 	dprintk("%d %x %llx\n", host_no, function, (unsigned long long)itn_id);
