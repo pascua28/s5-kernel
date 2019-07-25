@@ -1226,10 +1226,10 @@ static ssize_t es705_keyword_grammar_path_set(struct device *dev,
 	/* replace absolute path with relative path */
 	index = strrchr(path, '/');
 	if (index)
-		strncpy(path2, index + 1, strlen(index + 1));
+		memcpy(path2, index + 1, strlen(index + 1));
 	else {
 		pr_info("%s : [ES705] cannot find /\n", __func__);
-		strncpy(path2, path, strlen(path));
+		memcpy(path2, path, strlen(path));
 	}
 	pr_info("%s : [ES705] keyword_grammar_final_path = %s\n", __func__, path2);
 
@@ -1269,10 +1269,10 @@ static ssize_t es705_keyword_net_path_set(struct device *dev,
 	/* replace absolute path with relative path */
 	index = strrchr(path, '/');
 	if (index)
-		strncpy(path2, index + 1, strlen(index + 1));
+		memcpy(path2, index + 1, strlen(index + 1));
 	else {
 		pr_info("%s : [ES705] cannot find /\n", __func__);
-		strncpy(path2, path, strlen(path));
+		memcpy(path2, path, strlen(path));
 	}
 	pr_info("%s : [ES705] keyword_net_final_path = %s\n", __func__, path2);
 

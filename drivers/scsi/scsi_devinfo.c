@@ -294,7 +294,7 @@ static void scsi_strcpy_devinfo(char *name, char *to, size_t to_length,
 			/* 
 			 * space pad the string if it is short. 
 			 */
-			strncpy(&to[from_length], spaces,
+			memcpy(&to[from_length], spaces,
 				to_length - from_length);
 		}
 	}
