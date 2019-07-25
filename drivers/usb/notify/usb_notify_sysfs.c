@@ -145,7 +145,7 @@ static ssize_t disable_store(
 				udev->set_disable(udev, param);
 			memset(udev->disable_state_cmd, 0,
 				sizeof(udev->disable_state_cmd));
-			strncpy(udev->disable_state_cmd,
+			memcpy(udev->disable_state_cmd,
 				disable, strlen(disable));
 			ret = size;
 		}

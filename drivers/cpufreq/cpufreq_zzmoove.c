@@ -6357,7 +6357,7 @@ static inline int set_profile(int profile_num)
 		dbs_tuners_ins.profile_number = profile_num;
 
 		// ZZ: set current profile name
-		strncpy(dbs_tuners_ins.profile, zzmoove_profiles[i].profile_name, sizeof(dbs_tuners_ins.profile));
+		memcpy(dbs_tuners_ins.profile, zzmoove_profiles[i].profile_name, sizeof(dbs_tuners_ins.profile));
 		set_profile_active = false; // ZZ: profile found - allow setting of tuneables again
 		return 1;
 	    }
