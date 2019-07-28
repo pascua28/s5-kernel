@@ -103,7 +103,7 @@ ssize_t gpu_busy_show(struct device *dev, struct device_attribute *attr, char *b
 	 * elapsed time using "%7d %7d"
 	 * */
 	/* ************************************ */
-	strncpy(time_consumed_str, input_buffer,   7);
+	memcpy(time_consumed_str, input_buffer,   7);
 	strncpy(time_elapsed_str,  input_buffer+8, 7);
 
 	time_consumed = atoi_ignore_space(time_consumed_str);
