@@ -25,10 +25,6 @@
 #include <asm/siginfo.h>
 #include <asm/uaccess.h>
 
-#ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-extern void	sec_debug_EMFILE_error_proc(unsigned long files_addr);
-#endif
-
 void set_close_on_exec(unsigned int fd, int flag)
 {
 	struct files_struct *files = current->files;
@@ -68,9 +64,6 @@ SYSCALL_DEFINE3(dup3, unsigned int, oldfd, unsigned int, newfd, int, flags)
 		return -EINVAL;
 
 	if (newfd >= rlimit(RLIMIT_NOFILE)) {
-#ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-		sec_debug_EMFILE_error_proc((unsigned long)files);
-#endif
 		return -EMFILE;
 	}
 
