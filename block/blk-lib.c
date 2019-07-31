@@ -58,7 +58,7 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 	/* Zero-sector (unknown) and one-sector granularities are the same.  */
 	granularity = max(q->limits.discard_granularity >> 9, 1U);
 	mask = granularity - 1;
-	alignment = (q->limits.discard_alignment >> 9) & mask;
+	alignment = bdev_discard_alignment(bdev) >> 9;
 
 	/*
 	 * Ensure that max_discard_sectors is of the proper
