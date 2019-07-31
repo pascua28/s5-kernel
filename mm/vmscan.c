@@ -56,7 +56,7 @@
 #include <trace/events/vmscan.h>
 
 #ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
-int max_swappiness = 200;
+int max_swappiness = 100;
 #endif
 
 #ifdef CONFIG_RUNTIME_COMPCACHE
@@ -153,7 +153,7 @@ struct mem_cgroup_zone {
 /*
  * From 0 .. 100.  Higher means more swappy.
  */
-int vm_swappiness = 60;
+int vm_swappiness = 1;
 long vm_total_pages;	/* The total number of pages which the VM controls */
 
 #ifdef CONFIG_RUNTIME_COMPCACHE
