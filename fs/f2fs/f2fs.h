@@ -138,6 +138,7 @@ static inline __u32 f2fs_crc32(void *buf, size_t len)
 static inline bool f2fs_crc_valid(__u32 blk_crc, void *buf, size_t buf_size)
 {
 	return f2fs_crc32(buf, buf_size) == blk_crc;
+}
 
 /* bio stuffs */
 #define REQ_OP_READ	READ

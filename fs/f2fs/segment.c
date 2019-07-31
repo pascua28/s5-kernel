@@ -809,7 +809,7 @@ static int __blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 		}
 
 		if (bio) {
-			int ret = submit_bio_wait(0, bio);
+			int ret = __submit_bio_wait(0, bio);
 			bio_put(bio);
 			if (ret)
 				return ret;
