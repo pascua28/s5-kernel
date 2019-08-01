@@ -743,7 +743,7 @@ static void add_discard_addrs(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	bool force = (cpc->reason == CP_DISCARD);
 	int i;
 
-	if (se->valid_blocks == max_blocks)
+	if (se->valid_blocks == max_blocks || !f2fs_discard_en(sbi))
 		return;
 
 	if (!force) {
@@ -901,12 +901,14 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 	if (del > 0) {
 		if (f2fs_test_and_set_bit(offset, se->cur_valid_map))
 			f2fs_bug_on(sbi, 1);
-		if (!f2fs_test_and_set_bit(offset, se->discard_map))
+		if (f2fs_discard_en(sbi) &&
+			!f2fs_test_and_set_bit(offset, se->discard_map))
 			sbi->discard_blks--;
 	} else {
 		if (!f2fs_test_and_clear_bit(offset, se->cur_valid_map))
 			f2fs_bug_on(sbi, 1);
-		if (f2fs_test_and_clear_bit(offset, se->discard_map))
+		if (f2fs_discard_en(sbi) &&
+			f2fs_test_and_clear_bit(offset, se->discard_map))
 			sbi->discard_blks++;
 	}
 	if (!f2fs_test_bit(offset, se->ckpt_valid_map))
@@ -1384,6 +1386,10 @@ int f2fs_trim_fs(struct f2fs_sb_info *sbi, struct fstrim_range *range)
 		mutex_lock(&sbi->gc_mutex);
 		err = write_checkpoint(sbi, &cpc);
 		mutex_unlock(&sbi->gc_mutex);
+		if (err)
+			break;
+
+		schedule();
 	}
 out:
 	range->len = F2FS_BLK_TO_BYTES(cpc.trimmed);
@@ -2210,12 +2216,16 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
 			= kzalloc(SIT_VBLOCK_MAP_SIZE, GFP_KERNEL);
 		sit_i->sentries[start].ckpt_valid_map
 			= kzalloc(SIT_VBLOCK_MAP_SIZE, GFP_KERNEL);
-		sit_i->sentries[start].discard_map
-			= kzalloc(SIT_VBLOCK_MAP_SIZE, GFP_KERNEL);
 		if (!sit_i->sentries[start].cur_valid_map ||
-				!sit_i->sentries[start].ckpt_valid_map ||
-				!sit_i->sentries[start].discard_map)
+				!sit_i->sentries[start].ckpt_valid_map)
 			return -ENOMEM;
+
+		if (f2fs_discard_en(sbi)) {
+			sit_i->sentries[start].discard_map
+				= kzalloc(SIT_VBLOCK_MAP_SIZE, GFP_KERNEL);
+			if (!sit_i->sentries[start].discard_map)
+				return -ENOMEM;
+		}
 	}
 
 	sit_i->tmp_map = kzalloc(SIT_VBLOCK_MAP_SIZE, GFP_KERNEL);
@@ -2339,36 +2349,56 @@ static void build_sit_entries(struct f2fs_sb_info *sbi)
 			struct f2fs_sit_entry sit;
 			struct page *page;
 
-			down_read(&curseg->journal_rwsem);
-			for (i = 0; i < sits_in_cursum(journal); i++) {
-				if (le32_to_cpu(segno_in_journal(journal, i))
-								== start) {
-					sit = sit_in_journal(journal, i);
-					up_read(&curseg->journal_rwsem);
-					goto got_it;
-				}
-			}
-			up_read(&curseg->journal_rwsem);
-
 			page = get_current_sit_page(sbi, start);
 			sit_blk = (struct f2fs_sit_block *)page_address(page);
 			sit = sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, start)];
 			f2fs_put_page(page, 1);
-got_it:
+
 			check_block_count(sbi, start, &sit);
 			seg_info_from_raw_sit(se, &sit);
 
 			/* build discard map only one time */
-			memcpy(se->discard_map, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
-			sbi->discard_blks += sbi->blocks_per_seg - se->valid_blocks;
-
-			if (sbi->segs_per_sec > 1) {
-				struct sec_entry *e = get_sec_entry(sbi, start);
-				e->valid_blocks += se->valid_blocks;
+			if (f2fs_discard_en(sbi)) {
+				memcpy(se->discard_map, se->cur_valid_map,
+							SIT_VBLOCK_MAP_SIZE);
+				sbi->discard_blks += sbi->blocks_per_seg -
+							se->valid_blocks;
 			}
+
+			if (sbi->segs_per_sec > 1)
+				get_sec_entry(sbi, start)->valid_blocks +=
+							se->valid_blocks;
 		}
 		start_blk += readed;
 	} while (start_blk < sit_blk_cnt);
+
+	down_read(&curseg->journal_rwsem);
+	for (i = 0; i < sits_in_cursum(journal); i++) {
+		struct f2fs_sit_entry sit;
+		struct seg_entry *se;
+		unsigned int old_valid_blocks;
+
+		start = le32_to_cpu(segno_in_journal(journal, i));
+		se = &sit_i->sentries[start];
+		sit = sit_in_journal(journal, i);
+
+		old_valid_blocks = se->valid_blocks;
+
+		check_block_count(sbi, start, &sit);
+		seg_info_from_raw_sit(se, &sit);
+
+		if (f2fs_discard_en(sbi)) {
+			memcpy(se->discard_map, se->cur_valid_map,
+						SIT_VBLOCK_MAP_SIZE);
+			sbi->discard_blks += old_valid_blocks -
+						se->valid_blocks;
+		}
+
+		if (sbi->segs_per_sec > 1)
+			get_sec_entry(sbi, start)->valid_blocks +=
+				se->valid_blocks - old_valid_blocks;
+	}
+	up_read(&curseg->journal_rwsem);
 }
 
 static void init_free_segmap(struct f2fs_sb_info *sbi)

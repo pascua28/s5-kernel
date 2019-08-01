@@ -172,7 +172,10 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	int max_slots;
 	f2fs_hash_t namehash;
 
-	namehash = f2fs_dentry_hash(&name);
+	if(fname->hash)
+		namehash = cpu_to_le32(fname->hash);
+	else
+		namehash = f2fs_dentry_hash(&name);
 
 	nbucket = dir_buckets(level, F2FS_I(dir)->i_dir_level);
 	nblock = bucket_blocks(level);
@@ -375,7 +378,8 @@ static int make_empty_dir(struct inode *inode,
 }
 
 struct page *init_inode_metadata(struct inode *inode, struct inode *dir,
-			const struct qstr *name, struct page *dpage)
+			const struct qstr *new_name, const struct qstr *orig_name,
+			struct page *dpage)
 {
 	struct page *page;
 	int err;
@@ -400,7 +404,7 @@ struct page *init_inode_metadata(struct inode *inode, struct inode *dir,
 		if (err)
 			goto put_error;
 
-		err = f2fs_init_security(inode, dir, name, page);
+		err = f2fs_init_security(inode, dir, orig_name, page);
 		if (err)
 			goto put_error;
 
@@ -417,8 +421,8 @@ struct page *init_inode_metadata(struct inode *inode, struct inode *dir,
 		set_cold_node(inode, page);
 	}
 
-	if (name)
-		init_dent_inode(name, page);
+	if (new_name)
+		init_dent_inode(new_name, page);
 
 	/*
 	 * This file should be checkpointed during fsync.
@@ -504,6 +508,7 @@ void f2fs_update_dentry(nid_t ino, umode_t mode, struct f2fs_dentry_ptr *d,
 }
 
 int f2fs_add_regular_entry(struct inode *dir, const struct qstr *new_name,
+				const struct qstr *orig_name,
 				struct inode *inode, nid_t ino, umode_t mode)
 {
 	unsigned int bit_pos;
@@ -569,7 +574,8 @@ add_dentry:
 
 	if (inode) {
 		down_write(&F2FS_I(inode)->i_sem);
-		page = init_inode_metadata(inode, dir, new_name, NULL);
+		page = init_inode_metadata(inode, dir, new_name,
+						orig_name, NULL);
 		if (IS_ERR(page)) {
 			err = PTR_ERR(page);
 			goto fail;
@@ -619,9 +625,11 @@ int __f2fs_add_link(struct inode *dir, const struct qstr *name,
 
 	err = -EAGAIN;
 	if (f2fs_has_inline_dentry(dir))
-		err = f2fs_add_inline_entry(dir, &new_name, inode, ino, mode);
+		err = f2fs_add_inline_entry(dir, &new_name, fname.usr_fname,
+							inode, ino, mode);
 	if (err == -EAGAIN)
-		err = f2fs_add_regular_entry(dir, &new_name, inode, ino, mode);
+		err = f2fs_add_regular_entry(dir, &new_name, fname.usr_fname,
+							inode, ino, mode);
 
 	fscrypt_free_filename(&fname);
 	f2fs_update_time(F2FS_I_SB(dir), REQ_TIME);
@@ -634,7 +642,7 @@ int f2fs_do_tmpfile(struct inode *inode, struct inode *dir)
 	int err = 0;
 
 	down_write(&F2FS_I(inode)->i_sem);
-	page = init_inode_metadata(inode, dir, NULL, NULL);
+	page = init_inode_metadata(inode, dir, NULL, NULL, NULL);
 	if (IS_ERR(page)) {
 		err = PTR_ERR(page);
 		goto fail;
@@ -789,16 +797,9 @@ bool f2fs_fill_dentries(struct file *file, void *dirent, filldir_t filldir,
 			int save_len = fstr->len;
 			int ret;
 
-			de_name.name = f2fs_kmalloc(de_name.len, GFP_NOFS);
-			if (!de_name.name)
-				return false;
-
-			memcpy(de_name.name, d->filename[bit_pos], de_name.len);
-
 			ret = fscrypt_fname_disk_to_usr(d->inode,
 						(u32)de->hash_code, 0,
 						&de_name, fstr);
-			kfree(de_name.name);
 			if (ret < 0)
 				return true;
 
