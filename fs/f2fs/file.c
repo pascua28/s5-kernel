@@ -22,6 +22,7 @@
 #include <linux/pagevec.h>
 #include <linux/random.h>
 #include <linux/aio.h>
+#include <linux/uuid.h>
 #include <linux/file.h>
 
 #include "f2fs.h"
@@ -2119,12 +2120,8 @@ static int f2fs_move_file_range(struct file *file_in, loff_t pos_in,
 	}
 
 	inode_lock(src);
-	if (src != dst) {
-		if (!inode_trylock(dst)) {
-			ret = -EBUSY;
-			goto out;
-		}
-	}
+	if (src != dst)
+		inode_lock(dst);
 
 	ret = -EINVAL;
 	if (pos_in + len > src->i_size || pos_in + len < pos_in)
@@ -2183,7 +2180,6 @@ static int f2fs_move_file_range(struct file *file_in, loff_t pos_in,
 out_unlock:
 	if (src != dst)
 		inode_unlock(dst);
-out:
 	inode_unlock(src);
 	return ret;
 }
@@ -2261,7 +2257,6 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return f2fs_ioc_gc(filp, arg);
 	case F2FS_IOC_WRITE_CHECKPOINT:
 		return f2fs_ioc_write_checkpoint(filp, arg);
-			return f2fs_ioc_defragment(filp, arg);
 	case F2FS_IOC_DEFRAGMENT:
 		return f2fs_ioc_defragment(filp, arg);
 	case F2FS_IOC_MOVE_RANGE:
