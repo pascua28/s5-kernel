@@ -382,6 +382,7 @@ void f2fs_evict_inode(struct inode *inode)
 	remove_ino_entry(sbi, inode->i_ino, APPEND_INO);
 	remove_ino_entry(sbi, inode->i_ino, UPDATE_INO);
 
+	sb_start_intwrite(inode->i_sb);
 	set_inode_flag(inode, FI_NO_ALLOC);
 	i_size_write(inode, 0);
 retry:
@@ -404,6 +405,7 @@ retry:
 
 	if (err)
 		update_inode_page(inode);
+	sb_end_intwrite(inode->i_sb);
 no_delete:
 	stat_dec_inline_xattr(inode);
 	stat_dec_inline_dir(inode);

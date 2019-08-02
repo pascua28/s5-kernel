@@ -43,7 +43,7 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 	struct dnode_of_data dn;
 	int err;
 
-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
+	sb_start_pagefault(inode->i_sb);
 
 	f2fs_bug_on(sbi, f2fs_has_inline_data(inode));
 
@@ -97,6 +97,7 @@ mapped:
 		f2fs_wait_on_encrypted_page_writeback(sbi, dn.data_blkaddr);
 
 out:
+	sb_end_pagefault(inode->i_sb);
 	f2fs_update_time(sbi, REQ_TIME);
 	return block_page_mkwrite_return(err);
 }
