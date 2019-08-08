@@ -499,7 +499,6 @@ out:
 	spin_unlock(&files->file_lock);
 	return error;
 }
-EXPORT_SYMBOL(alloc_fd);
 
 int get_unused_fd(void)
 {
