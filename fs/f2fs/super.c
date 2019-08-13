@@ -802,6 +802,8 @@ static void f2fs_put_super(struct super_block *sb)
 	wait_for_completion(&sbi->s_kobj_unregister);
 
 	sb->s_fs_info = NULL;
+	if (sbi->s_chksum_driver)
+		crypto_free_shash(sbi->s_chksum_driver);
 	kfree(sbi->raw_super);
 
 	destroy_device_list(sbi);
@@ -1008,7 +1010,7 @@ static int segment_bits_seq_show(struct seq_file *seq, void *offset)
 #define F2FS_PROC_FILE_DEF(_name)					\
 static int _name##_open_fs(struct inode *inode, struct file *file)	\
 {									\
-	return single_open(file, _name##_seq_show, PDE(inode)->data);	\
+	return single_open(file, _name##_seq_show, PDE(inode)->data);   \
 }									\
 									\
 static const struct file_operations f2fs_seq_##_name##_fops = {		\
@@ -1849,6 +1851,15 @@ try_onemore:
 
 	sbi->sb = sb;
 
+	/* Load the checksum driver */
+	sbi->s_chksum_driver = crypto_alloc_shash("crc32", 0, 0);
+	if (IS_ERR(sbi->s_chksum_driver)) {
+		f2fs_msg(sb, KERN_ERR, "Cannot load crc32 driver.");
+		err = PTR_ERR(sbi->s_chksum_driver);
+		sbi->s_chksum_driver = NULL;
+		goto free_sbi;
+	}
+
 	/* set a block size */
 	if (unlikely(!sb_set_blocksize(sb, F2FS_BLKSIZE))) {
 		f2fs_msg(sb, KERN_ERR, "unable to set blocksize");
@@ -2171,6 +2182,8 @@ free_options:
 free_sb_buf:
 	kfree(raw_super);
 free_sbi:
+	if (sbi->s_chksum_driver)
+		crypto_free_shash(sbi->s_chksum_driver);
 	kfree(sbi);
 
 	/* give only one another chance */
@@ -2202,6 +2215,7 @@ static struct file_system_type f2fs_fs_type = {
 	.kill_sb	= kill_f2fs_super,
 	.fs_flags	= FS_REQUIRES_DEV,
 };
+MODULE_ALIAS_FS("f2fs");
 
 static int __init init_inodecache(void)
 {
