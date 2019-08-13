@@ -802,8 +802,11 @@ static void f2fs_put_super(struct super_block *sb)
 	wait_for_completion(&sbi->s_kobj_unregister);
 
 	sb->s_fs_info = NULL;
+
+#ifdef CONFIG_F2FS_ENCRYPTION
 	if (sbi->s_chksum_driver)
 		crypto_free_shash(sbi->s_chksum_driver);
+#endif
 	kfree(sbi->raw_super);
 
 	destroy_device_list(sbi);
@@ -1851,6 +1854,7 @@ try_onemore:
 
 	sbi->sb = sb;
 
+#ifdef CONFIG_F2FS_ENCRYPTION
 	/* Load the checksum driver */
 	sbi->s_chksum_driver = crypto_alloc_shash("crc32", 0, 0);
 	if (IS_ERR(sbi->s_chksum_driver)) {
@@ -1859,6 +1863,7 @@ try_onemore:
 		sbi->s_chksum_driver = NULL;
 		goto free_sbi;
 	}
+#endif
 
 	/* set a block size */
 	if (unlikely(!sb_set_blocksize(sb, F2FS_BLKSIZE))) {
@@ -2182,8 +2187,10 @@ free_options:
 free_sb_buf:
 	kfree(raw_super);
 free_sbi:
+#ifdef CONFIG_F2FS_ENCRYPTION
 	if (sbi->s_chksum_driver)
 		crypto_free_shash(sbi->s_chksum_driver);
+#endif
 	kfree(sbi);
 
 	/* give only one another chance */
