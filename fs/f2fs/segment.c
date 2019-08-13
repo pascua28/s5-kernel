@@ -30,21 +30,6 @@ static struct kmem_cache *discard_cmd_slab;
 static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
 
-static unsigned long __reverse_ulong(unsigned char *str)
-{
-	unsigned long tmp = 0;
-	int shift = 24, idx = 0;
-
-#if BITS_PER_LONG == 64
-	shift = 56;
-#endif
-	while (shift >= 0) {
-		tmp |= (unsigned long)str[idx++] << shift;
-		shift -= BITS_PER_BYTE;
-	}
-	return tmp;
-}
-
 /**
  * Copied from latest lib/llist.c
  * llist_for_each_entry_safe - iterate over some deleted entries of
@@ -103,6 +88,21 @@ struct llist_node *llist_reverse_order(struct llist_node *head)
  */
 #define list_last_entry(ptr, type, member) \
 	list_entry((ptr)->prev, type, member)
+
+static unsigned long __reverse_ulong(unsigned char *str)
+{
+	unsigned long tmp = 0;
+	int shift = 24, idx = 0;
+
+#if BITS_PER_LONG == 64
+	shift = 56;
+#endif
+	while (shift >= 0) {
+		tmp |= (unsigned long)str[idx++] << shift;
+		shift -= BITS_PER_BYTE;
+	}
+	return tmp;
+}
 
 /*
  * __reverse_ffs is copied from include/asm-generic/bitops/__ffs.h since
@@ -499,33 +499,6 @@ void f2fs_balance_fs_bg(struct f2fs_sb_info *sbi)
 	}
 }
 
-struct __submit_bio_ret {
-	struct completion event;
-	int error;
-};
-
-static void __submit_bio_wait_endio(struct bio *bio, int error)
-{
-	struct __submit_bio_ret *ret = bio->bi_private;
-
-	ret->error = error;
-	complete(&ret->event);
-}
-
-static int __submit_bio_wait(int rw, struct bio *bio)
-{
-	struct __submit_bio_ret ret;
-
-	rw |= REQ_SYNC;
-	init_completion(&ret.event);
-	bio->bi_private = &ret;
-	bio->bi_end_io = __submit_bio_wait_endio;
-	submit_bio(rw, bio);
-	wait_for_completion(&ret.event);
-
-	return ret.error;
-}
-
 static int __submit_flush_wait(struct f2fs_sb_info *sbi,
 				struct block_device *bdev)
 {
@@ -534,7 +507,7 @@ static int __submit_flush_wait(struct f2fs_sb_info *sbi,
 
 	bio->bi_rw = REQ_OP_WRITE;
 	bio->bi_bdev = bdev;
-	ret = __submit_bio_wait(WRITE_FLUSH, bio);
+	ret = submit_bio_wait(WRITE_FLUSH, bio);
 	bio_put(bio);
 
 	trace_f2fs_issue_flush(bdev, test_opt(sbi, NOBARRIER),
@@ -895,7 +868,7 @@ static int __blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 		}
 
 		if (bio) {
-			int ret = __submit_bio_wait(0, bio);
+			int ret = submit_bio_wait(0, bio);
 			bio_put(bio);
 			if (ret)
 				return ret;
