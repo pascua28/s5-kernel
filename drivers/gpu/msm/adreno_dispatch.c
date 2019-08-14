@@ -1526,7 +1526,7 @@ static void _print_recovery(struct kgsl_device *device,
  *
  * Process expired commands and send new ones.
  */
-static void adreno_dispatcher_work(struct kthread_work *work)
+static void adreno_dispatcher_work(struct work_struct *work)
 {
 	struct adreno_dispatcher *dispatcher =
 		container_of(work, struct adreno_dispatcher, work);
@@ -1719,7 +1719,7 @@ void adreno_dispatcher_schedule(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 
-	queue_kthread_work(&kgsl_driver.worker, &dispatcher->work);
+	queue_work(device->work_queue, &dispatcher->work);
 }
 
 /**
@@ -2001,7 +2001,7 @@ int adreno_dispatcher_init(struct adreno_device *adreno_dev)
 	setup_timer(&dispatcher->fault_timer, adreno_dispatcher_fault_timer,
 		(unsigned long) adreno_dev);
 
-	init_kthread_work(&dispatcher->work, adreno_dispatcher_work);
+	INIT_WORK(&dispatcher->work, adreno_dispatcher_work);
 
 	plist_head_init(&dispatcher->pending);
 	spin_lock_init(&dispatcher->plist_lock);

@@ -22,7 +22,6 @@
 #include <linux/cdev.h>
 #include <linux/regulator/consumer.h>
 #include <linux/mm.h>
-#include <linux/kthread.h>
 
 #include <mach/kgsl.h>
 
@@ -123,8 +122,6 @@ struct kgsl_driver {
 		atomic_t mapped_max;
 	} stats;
 	unsigned int full_cache_threshold;
-	struct kthread_worker worker;
-	struct task_struct *worker_thread;
 };
 
 extern struct kgsl_driver kgsl_driver;
