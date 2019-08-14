@@ -255,6 +255,10 @@ static int __die(const char *str, int err, struct thread_info *thread, struct pt
 		TASK_COMM_LEN, tsk->comm, task_pid_nr(tsk), thread + 1);
 
 	if (!user_mode(regs) || in_interrupt()) {
+#ifndef CONFIG_SEC_DEBUG
+		dump_mem(KERN_EMERG, "Stack: ", regs->ARM_sp,
+			 THREAD_SIZE + (unsigned long)task_stack_page(tsk));
+#else
 		if (THREAD_SIZE + (unsigned long)task_stack_page(tsk) - regs->ARM_sp
 			> THREAD_SIZE) {
 			dump_mem(KERN_EMERG, "Stack: ", regs->ARM_sp,
@@ -263,6 +267,7 @@ static int __die(const char *str, int err, struct thread_info *thread, struct pt
 			dump_mem(KERN_EMERG, "Stack: ", regs->ARM_sp,
 					THREAD_SIZE + (unsigned long)task_stack_page(tsk));
 		}
+#endif
 
 		dump_mem(KERN_EMERG, "Stack: ", regs->ARM_sp,
 			 THREAD_SIZE + (unsigned long)task_stack_page(tsk));
@@ -287,6 +292,9 @@ void die(const char *str, struct pt_regs *regs, int err)
 	oops_enter();
 
 	raw_spin_lock_irq(&die_lock);
+#ifdef CONFIG_SEC_DEBUG
+	secdbg_sched_msg("!!die!!");
+#endif
 	console_verbose();
 	bust_spinlocks(1);
 	if (!user_mode(regs))
@@ -294,6 +302,10 @@ void die(const char *str, struct pt_regs *regs, int err)
 	if (bug_type != BUG_TRAP_TYPE_NONE)
 		str = "Oops - BUG";
 	ret = __die(str, err, thread, regs);
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
+	sec_debug_save_die_info(str, regs);
+#endif
+
 
 	if (regs && kexec_should_crash(thread->task))
 		crash_kexec(regs);
