@@ -104,7 +104,7 @@ static int ipa_generate_rt_hw_rule(enum ipa_ip_type ip,
  * @hdr_sz: header size
  * @max_rt_idx: maximal index
  *
- * Returns:	size on success, negative on failure
+ * Returns:	0 on success, negative on failure
  *
  * caller needs to hold any needed locks to ensure integrity
  *
@@ -192,15 +192,8 @@ int ipa_generate_rt_hw_tbl(enum ipa_ip_type ip, struct ipa_mem_buffer *mem)
 	u8 *rt_tbl_mem_body;
 	int max_rt_idx;
 	int i;
-	int res;
 
-	res = ipa_get_rt_hw_tbl_size(ip, &hdr_sz, &max_rt_idx);
-	if (res < 0) {
-		IPAERR("ipa_get_rt_hw_tbl_size failed %d\n", res);
-		goto error;
-	}
-
-	mem->size = res;
+	mem->size = ipa_get_rt_hw_tbl_size(ip, &hdr_sz, &max_rt_idx);
 	mem->size = (mem->size + IPA_RT_TABLE_MEMORY_ALLIGNMENT) &
 				~IPA_RT_TABLE_MEMORY_ALLIGNMENT;
 
@@ -262,11 +255,7 @@ int ipa_generate_rt_hw_tbl(enum ipa_ip_type ip, struct ipa_mem_buffer *mem)
 					      ((u32)body &
 					      IPA_RT_ENTRY_MEMORY_ALLIGNMENT));
 		} else {
-			if (tbl->sz == 0) {
-				IPAERR("cannot generate 0 size table\n");
-				goto proc_err;
-			}
-
+			WARN_ON(tbl->sz == 0);
 			/* allocate memory for the RT tbl */
 			rt_tbl_mem.size = tbl->sz;
 			rt_tbl_mem.base =
