@@ -964,7 +964,7 @@ static int uvc_parse_standard_control(struct uvc_device *dev,
 		 *   direction flag.
 		 *
 		 * Other unknown types are accepted.
-		 */			 */
+		 */
 
 
 		type = get_unaligned_le16(&buffer[4]);
