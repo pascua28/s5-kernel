@@ -405,6 +405,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -std=gnu89 \
+		   -march=armv7-a \
 		   $(CLANG_FLAGS)
 
 KBUILD_AFLAGS_KERNEL :=
