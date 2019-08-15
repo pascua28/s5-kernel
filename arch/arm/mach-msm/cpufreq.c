@@ -283,10 +283,10 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 		return 0;
 
 	if (cpufreq_frequency_table_cpuinfo(policy, table)) {
-		policy->cpuinfo.min_freq = 300000;
+		policy->cpuinfo.min_freq = 268000;
 		policy->cpuinfo.max_freq = 2457600;
 	}
-	policy->min = 300000;
+	policy->min = 268000;
 	policy->max = 2457600;
 
 	if (is_clk)
