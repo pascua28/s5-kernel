@@ -1004,8 +1004,6 @@ static void sps_device_de_init(void)
 			SPS_ERR("sps:SPS de-init: BAMs are still registered");
 
 		sps_map_de_init();
-
-		kfree(sps);
 	}
 
 	sps_mem_de_init();
@@ -2747,6 +2745,7 @@ static struct platform_driver msm_sps_driver = {
 		.name	= SPS_DRV_NAME,
 		.owner	= THIS_MODULE,
 		.of_match_table = msm_sps_match,
+		.suppress_bind_attrs = true,
 	},
 	.remove		= __exit_p(msm_sps_remove),
 };
