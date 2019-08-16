@@ -566,6 +566,7 @@ static int camera_v4l2_open(struct file *filep)
 
 	BUG_ON(!pvdev);
 
+	mutex_lock(&pvdev->video_drvdata_mutex);
 	rc = camera_v4l2_fh_open(filep);
 	if (rc < 0) {
 		pr_err("%s : camera_v4l2_fh_open", __func__);
@@ -626,6 +627,8 @@ static int camera_v4l2_open(struct file *filep)
 	}
 
 	atomic_add(1, &pvdev->opened);
+	mutex_unlock(&pvdev->video_drvdata_mutex);
+
 	return rc;
 
  post_fail:
@@ -637,6 +640,7 @@ static int camera_v4l2_open(struct file *filep)
  vb2_q_fail:
 	camera_v4l2_fh_release(filep);
  fh_open_fail:
+	mutex_unlock(&pvdev->video_drvdata_mutex);
 	return rc;
 }
 
@@ -664,6 +668,7 @@ static int camera_v4l2_close(struct file *filep)
 	struct camera_v4l2_private *sp = fh_to_private(filep->private_data);
 
 	BUG_ON(!pvdev);
+	mutex_lock(&pvdev->video_drvdata_mutex);
 
 	atomic_sub_return(1, &pvdev->opened);
 
@@ -704,6 +709,7 @@ static int camera_v4l2_close(struct file *filep)
 
 	camera_v4l2_vb2_q_release(filep);
 	camera_v4l2_fh_release(filep);
+	mutex_unlock(&pvdev->video_drvdata_mutex);
 
 	return rc;
 }
@@ -788,6 +794,7 @@ int camera_init_v4l2(struct device *dev, unsigned int *session)
 
 	*session = pvdev->vdev->num;
 	atomic_set(&pvdev->opened, 0);
+	mutex_init(&pvdev->video_drvdata_mutex);
 	video_set_drvdata(pvdev->vdev, pvdev);
 	pr_warn("%s : Succeed!", __func__);
 	goto init_end;
