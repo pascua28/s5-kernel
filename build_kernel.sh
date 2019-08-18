@@ -8,7 +8,7 @@ if [ -e .config ]
     then
         make -j4 oldconfig
     else
-        cp defconfig.config
+        cp defconfig .config
         make -j4 oldconfig
 fi
 
