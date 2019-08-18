@@ -84,3 +84,4 @@ GTAGS
 *~
 \#*#
 arch/arm/boot/dtb
+arch/arm/boot/dt.img
