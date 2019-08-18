@@ -471,13 +471,7 @@ static ssize_t store_##file_name					\
 	return ret ? ret : count;					\
 }
 
-#ifdef CONFIG_SEC_PM
-#ifndef CONFIG_ARCH_MSM8226
-/* Disable scaling_min_freq store */
-	store_one(scaling_min_freq, min);
-#endif
-#endif
-
+store_one(scaling_min_freq, min);
 store_one(scaling_max_freq, max);
 
 /**
