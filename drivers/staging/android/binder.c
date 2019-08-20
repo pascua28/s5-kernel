@@ -4330,7 +4330,11 @@ static int __init init_binder_device(const char *name)
 	return ret;
 }
 
-static int __init binder_init(void)
+#ifdef BINDER_IPC_32BIT
+int binder32_init(void)
+#else
+int binder_init(void)
+#endif
 {
 	int ret;
 	char *device_name, *device_names;
@@ -4406,8 +4410,11 @@ err_alloc_device_names_failed:
 
 	return ret;
 }
-
-device_initcall(binder_init);
+#ifdef BINDER_IPC_32BIT
+EXPORT_SYMBOL(binder32_init);
+#else
+EXPORT_SYMBOL(binder_init);
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "binder_trace.h"
