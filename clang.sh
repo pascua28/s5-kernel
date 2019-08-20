@@ -1,13 +1,11 @@
 #!/bin/bash
 
-mkdir output
-
-if [ -e output/.config ]
+if [ -e .config ]
 	then
-		make -j4 ARCH=arm O=output oldconfig
+		make -j4 ARCH=arm oldconfig
 	else
-		cp defconfig output/.config
-		make -j4 ARCH=arm O=output oldconfig
+		cp defconfig .config
+		make -j4 ARCH=arm oldconfig
 fi
 
 DATE_START=$(date +"%s")
@@ -20,11 +18,11 @@ make -j$(nproc --all) \
 ARCH=arm CC="ccache /home/pascua14/clang/bin/clang" \
 CLANG_TRIPLE=arm-linux-gnueabihf- \
 CROSS_COMPILE=/home/pascua14/arm32/bin/arm-linux-gnueabihf- \
-O=output
+zImage
 
 git apply -R gcc_prebuilts
 
-tools/dtbTool -2 -o output/arch/arm/boot/dt.img -s 2048 -p output/scripts/dtc/ output/arch/arm/boot/
+tools/dtbTool -2 -o arch/arm/boot/dt.img -s 2048 -p scripts/dtc/ arch/arm/boot/
 
 DATE_END=$(date +"%s")
 DIFF=$(($DATE_END - $DATE_START))
