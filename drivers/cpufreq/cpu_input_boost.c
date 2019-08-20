@@ -169,11 +169,12 @@ static int do_cpu_boost(struct notifier_block *nb,
 	struct cpufreq_policy *policy = data;
 	struct boost_policy *b = boost_policy_g;
 	struct ib_pcpu *pcpu = per_cpu_ptr(b->ib.boost_info, policy->cpu);
+	unsigned int user_min_freq = policy->min;
 
 	if (val != CPUFREQ_ADJUST)
 		return NOTIFY_OK;
 
-	if (!is_driver_enabled(b) && policy->min == policy->cpuinfo.min_freq)
+	if (!is_driver_enabled(b))
 		return NOTIFY_OK;
 
 	if (is_fb_boost_active(b)) {
@@ -194,11 +195,11 @@ static int do_cpu_boost(struct notifier_block *nb,
 		}
 	}
 
-	if (pcpu->state)
+	if (pcpu->state && b->ib.freq[policy->cpu ? 1 : 0] > user_min_freq)
 		policy->min = min(policy->max,
 				b->ib.freq[policy->cpu ? 1 : 0]);
 	else
-		policy->min = policy->cpuinfo.min_freq;
+		policy->min = user_min_freq;
 
 	return NOTIFY_OK;
 }
@@ -577,11 +578,6 @@ static int __init cpu_ib_init(void)
 		return -ENOMEM;
 
 	spin_lock_init(&b->lock);
-    
-	b->ib.freq[0] = 1190400;
-	b->ib.freq[1] = 1497600;
-	b->ib.duration_ms = 50;
-    b->enabled = 1;
 
 	INIT_WORK(&b->fb.boost_work, fb_boost_main);
 	INIT_DELAYED_WORK(&b->fb.unboost_work, fb_unboost_main);
@@ -612,6 +608,11 @@ static int __init cpu_ib_init(void)
 	cpufreq_register_notifier(&do_cpu_boost_nb, CPUFREQ_POLICY_NOTIFIER);
 
 	fb_register_client(&fb_boost_nb);
+
+	b->ib.freq[0] = 1190400;
+	b->ib.freq[1] = 1497600;
+	b->ib.duration_ms = 50;
+	b->enabled = 1;
 
 	return 0;
 
