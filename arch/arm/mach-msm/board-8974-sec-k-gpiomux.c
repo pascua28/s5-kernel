@@ -2085,7 +2085,7 @@ static struct msm_gpiomux_config msm8974_sdc3_configs[] __initdata = {
 	},
 };
 
-static void msm_gpiomux_sdc3_install(void)
+static void __init msm_gpiomux_sdc3_install(void)
 {
 	msm_gpiomux_install(msm8974_sdc3_configs,
 			    ARRAY_SIZE(msm8974_sdc3_configs));
