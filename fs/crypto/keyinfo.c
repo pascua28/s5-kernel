@@ -75,10 +75,8 @@ static int derive_key_aes(u8 deriving_key[FS_AES_128_ECB_KEY_SIZE],
 		res = ecr.res;
 	}
 out:
-	if (req)
-		ablkcipher_request_free(req);
-	if (tfm)
-		crypto_free_ablkcipher(tfm);
+	ablkcipher_request_free(req);
+	crypto_free_ablkcipher(tfm);
 	return res;
 }
 
@@ -106,7 +104,6 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
 	kfree(full_key_descriptor);
 	if (IS_ERR(keyring_key))
 		return PTR_ERR(keyring_key);
-	down_read(&keyring_key->sem);
 
 	if (keyring_key->type != &key_type_logon) {
 		printk_once(KERN_WARNING
@@ -114,9 +111,11 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
 		res = -ENOKEY;
 		goto out;
 	}
+	down_read(&keyring_key->sem);
 	ukp = ((struct user_key_payload *)keyring_key->payload.data);
 	if (ukp->datalen != sizeof(struct fscrypt_key)) {
 		res = -EINVAL;
+		up_read(&keyring_key->sem);
 		goto out;
 	}
 	master_key = (struct fscrypt_key *)ukp->data;
@@ -127,13 +126,51 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
 				"%s: key size incorrect: %d\n",
 				__func__, master_key->size);
 		res = -ENOKEY;
+		up_read(&keyring_key->sem);
 		goto out;
 	}
 	res = derive_key_aes(ctx->nonce, master_key->raw, raw_key);
-out:
 	up_read(&keyring_key->sem);
+	if (res)
+		goto out;
+
+	crypt_info->ci_keyring_key = keyring_key;
+	return 0;
+out:
 	key_put(keyring_key);
 	return res;
+}
+
+static int determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
+				 const char **cipher_str_ret, int *keysize_ret)
+{
+	if (S_ISREG(inode->i_mode)) {
+		if (ci->ci_data_mode == FS_ENCRYPTION_MODE_AES_256_XTS) {
+			*cipher_str_ret = "xts(aes)";
+			*keysize_ret = FS_AES_256_XTS_KEY_SIZE;
+			return 0;
+		}
+		pr_warn_once("fscrypto: unsupported contents encryption mode "
+			     "%d for inode %lu\n",
+			     ci->ci_data_mode, inode->i_ino);
+		return -ENOKEY;
+	}
+
+	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) {
+		if (ci->ci_filename_mode == FS_ENCRYPTION_MODE_AES_256_CTS) {
+			*cipher_str_ret = "cts(cbc(aes))";
+			*keysize_ret = FS_AES_256_CTS_KEY_SIZE;
+			return 0;
+		}
+		pr_warn_once("fscrypto: unsupported filenames encryption mode "
+			     "%d for inode %lu\n",
+			     ci->ci_filename_mode, inode->i_ino);
+		return -ENOKEY;
+	}
+
+	pr_warn_once("fscrypto: unsupported file type %d for inode %lu\n",
+		     (inode->i_mode & S_IFMT), inode->i_ino);
+	return -ENOKEY;
 }
 
 static void put_crypt_info(struct fscrypt_info *ci)
@@ -141,22 +178,20 @@ static void put_crypt_info(struct fscrypt_info *ci)
 	if (!ci)
 		return;
 
+	key_put(ci->ci_keyring_key);
 	crypto_free_ablkcipher(ci->ci_ctfm);
 	kmem_cache_free(fscrypt_info_cachep, ci);
 }
 
-int fscrypt_get_encryption_info(struct inode *inode)
+int get_crypt_info(struct inode *inode)
 {
 	struct fscrypt_info *crypt_info;
 	struct fscrypt_context ctx;
 	struct crypto_ablkcipher *ctfm;
 	const char *cipher_str;
+	int keysize;
 	u8 raw_key[FS_MAX_KEY_SIZE];
-	u8 mode;
 	int res;
-
-	if (inode->i_crypt_info)
-		return 0;
 
 	res = fscrypt_initialize();
 	if (res)
@@ -164,18 +199,33 @@ int fscrypt_get_encryption_info(struct inode *inode)
 
 	if (!inode->i_sb->s_cop->get_context)
 		return -EOPNOTSUPP;
+retry:
+	crypt_info = ACCESS_ONCE(inode->i_crypt_info);
+	if (crypt_info) {
+		if (!crypt_info->ci_keyring_key ||
+				key_validate(crypt_info->ci_keyring_key) == 0)
+			return 0;
+		fscrypt_put_encryption_info(inode, crypt_info);
+		goto retry;
+	}
 
 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
 	if (res < 0) {
 		if (!fscrypt_dummy_context_enabled(inode))
 			return res;
+		ctx.format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
 		ctx.contents_encryption_mode = FS_ENCRYPTION_MODE_AES_256_XTS;
 		ctx.filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_256_CTS;
 		ctx.flags = 0;
 	} else if (res != sizeof(ctx)) {
 		return -EINVAL;
 	}
-	res = 0;
+
+	if (ctx.format != FS_ENCRYPTION_CONTEXT_FORMAT_V1)
+		return -EINVAL;
+
+	if (ctx.flags & ~FS_POLICY_FLAGS_VALID)
+		return -EINVAL;
 
 	crypt_info = kmem_cache_alloc(fscrypt_info_cachep, GFP_NOFS);
 	if (!crypt_info)
@@ -185,29 +235,14 @@ int fscrypt_get_encryption_info(struct inode *inode)
 	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
 	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
 	crypt_info->ci_ctfm = NULL;
+	crypt_info->ci_keyring_key = NULL;
 	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
 				sizeof(crypt_info->ci_master_key));
-	if (S_ISREG(inode->i_mode))
-		mode = crypt_info->ci_data_mode;
-	else if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-		mode = crypt_info->ci_filename_mode;
-	else
-		BUG();
 
-	switch (mode) {
-	case FS_ENCRYPTION_MODE_AES_256_XTS:
-		cipher_str = "xts(aes)";
-		break;
-	case FS_ENCRYPTION_MODE_AES_256_CTS:
-		cipher_str = "cts(cbc(aes))";
-		break;
-	default:
-		printk_once(KERN_WARNING
-			    "%s: unsupported key mode %d (ino %u)\n",
-			    __func__, mode, (unsigned) inode->i_ino);
-		res = -ENOKEY;
+	res = determine_cipher_type(crypt_info, inode, &cipher_str, &keysize);
+	if (res)
 		goto out;
-	}
+
 	if (fscrypt_dummy_context_enabled(inode)) {
 		memset(raw_key, 0x42, FS_AES_256_XTS_KEY_SIZE);
 		goto got_key;
@@ -243,12 +278,17 @@ got_key:
 	crypto_ablkcipher_clear_flags(ctfm, ~0);
 	crypto_tfm_set_flags(crypto_ablkcipher_tfm(ctfm),
 					CRYPTO_TFM_REQ_WEAK_KEY);
-	res = crypto_ablkcipher_setkey(ctfm, raw_key, fscrypt_key_size(mode));
+	res = crypto_ablkcipher_setkey(ctfm, raw_key, keysize);
 	if (res)
 		goto out;
 
-	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) == NULL)
-		crypt_info = NULL;
+	memzero_explicit(raw_key, sizeof(raw_key));
+	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) != NULL) {
+		put_crypt_info(crypt_info);
+		goto retry;
+	}
+	return 0;
+
 out:
 	if (res == -ENOKEY)
 		res = 0;
@@ -256,7 +296,6 @@ out:
 	memzero_explicit(raw_key, sizeof(raw_key));
 	return res;
 }
-EXPORT_SYMBOL(fscrypt_get_encryption_info);
 
 void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
 {
@@ -274,3 +313,17 @@ void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
 	put_crypt_info(ci);
 }
 EXPORT_SYMBOL(fscrypt_put_encryption_info);
+
+int fscrypt_get_encryption_info(struct inode *inode)
+{
+	struct fscrypt_info *ci = inode->i_crypt_info;
+
+	if (!ci ||
+		(ci->ci_keyring_key &&
+		 (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
+					       (1 << KEY_FLAG_REVOKED) |
+					       (1 << KEY_FLAG_DEAD)))))
+		return get_crypt_info(inode);
+	return 0;
+}
+EXPORT_SYMBOL(fscrypt_get_encryption_info);
