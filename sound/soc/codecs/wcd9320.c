@@ -7477,7 +7477,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 				  WCD9XXX_CDC_TYPE_TAIKO);
 	if (ret) {
 		pr_err("%s: wcd9xxx init failed %d\n", __func__, ret);
-		goto err_nomem_slimch;
+		goto err_init;
 	}
 
 	taiko->clsh_d.buck_mv = taiko_codec_get_buck_mv(codec);
@@ -7497,11 +7497,12 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	set_bit(WCD9XXX_ANC_CAL, taiko->fw_data->cal_bit);
 	set_bit(WCD9XXX_MAD_CAL, taiko->fw_data->cal_bit);
 	set_bit(WCD9XXX_MBHC_CAL, taiko->fw_data->cal_bit);
+
 	ret = wcd_cal_create_hwdep(taiko->fw_data,
 					WCD9XXX_CODEC_HWDEP_NODE, codec);
 	if (ret < 0) {
 		dev_err(codec->dev, "%s hwdep failed %d\n", __func__, ret);
-		goto err_hwdep;
+		goto err_init;
 	}
 
 #if defined(CONFIG_MACH_KLTE_KOR)
@@ -7513,7 +7514,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 					rco_clk_rate, false);
 		if (ret) {
 			pr_err("%s: mbhc init failed %d\n", __func__, ret);
-			goto err_hwdep;
+			goto err_init;
 		}
 	}
 #elif defined(CONFIG_MACH_KLTE_JPN)
@@ -7525,7 +7526,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 					rco_clk_rate, false);
 		if (ret) {
 			pr_err("%s: mbhc init failed %d\n", __func__, ret);
-			goto err_hwdep;
+			goto err_init;
 		}
 	}
 #else
@@ -7537,7 +7538,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 				rco_clk_rate, false);
 	if (ret) {
 		pr_err("%s: mbhc init failed %d\n", __func__, ret);
-		goto err_hwdep;
+		goto err_init;
 	}
 #elif defined(CONFIG_SEC_JACTIVE_PROJECT)
 /* init and start mbhc */
@@ -7550,7 +7551,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
                     rco_clk_rate, false);
         if (ret) {
             pr_err("%s: mbhc init failed %d\n", __func__, ret);
-            goto err_hwdep;
+            goto err_init;
         }
 	}
 #endif
@@ -7577,7 +7578,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	ret = taiko_handle_pdata(taiko);
 	if (IS_ERR_VALUE(ret)) {
 		pr_err("%s: bad pdata\n", __func__);
-		goto err_hwdep;
+		goto err_pdata;
 	}
 
 	taiko->spkdrv_reg = taiko_codec_find_regulator(codec,
@@ -7601,7 +7602,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	if (!ptr) {
 		pr_err("%s: no mem for slim chan ctl data\n", __func__);
 		ret = -ENOMEM;
-		goto err_hwdep;
+		goto err_nomem_slimch;
 	}
 
 	if (taiko->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
@@ -7671,19 +7672,19 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	snd_soc_dapm_disable_pin(dapm, "ANC HEADPHONE");
 	snd_soc_dapm_disable_pin(dapm, "ANC EAR PA");
 	snd_soc_dapm_disable_pin(dapm, "ANC EAR");
-	snd_soc_dapm_sync(dapm);
 	mutex_unlock(&dapm->codec->mutex);
+	snd_soc_dapm_sync(dapm);
 
 	codec->ignore_pmdown_time = 1;
 	return ret;
 
 err_irq:
 	taiko_cleanup_irqs(taiko);
-        kfree(ptr);
-err_hwdep:
-	kfree(taiko->fw_data);
+err_pdata:
+	kfree(ptr);
 err_nomem_slimch:
 	kfree(taiko);
+err_init:
 	return ret;
 }
 static int taiko_codec_remove(struct snd_soc_codec *codec)
