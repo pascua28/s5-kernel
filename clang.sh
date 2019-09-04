@@ -14,11 +14,10 @@ git apply gcc_prebuilts
 
 export KBUILD_COMPILER_STRING=$(~/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 
-make -j$(nproc --all) \
-ARCH=arm CC="ccache /home/pascua14/clang/bin/clang" \
+make ARCH=arm CC="ccache /home/pascua14/clang/bin/clang" \
 CLANG_TRIPLE=arm-linux-gnueabihf- \
 CROSS_COMPILE=/home/pascua14/arm32/bin/arm-linux-gnueabihf- \
-zImage
+-j$(nproc --all)
 
 git apply -R gcc_prebuilts
 
