@@ -63,8 +63,6 @@ ASD=$(cat /system/build.prop | grep ro.build.version.sdk | cut -d "=" -f 2)
 
 if [ "$ASD" == "24" ] || [ "$ASD" == "25" ]; then
 	ui_print "Andoid 7.0/7.1 detected!";
-	# rm $ramdisk/binder.sh
-	# insert_line init.rc "write /proc/android_n 1" after "chmod 0664 /sys/module/lowmemorykiller/parameters/minfree" "\twrite /proc/android_n 1";
 	touch $ramdisk/nougat;
 
 	if [ ! -d "/system/vendor/cameradata" ]; then
@@ -73,8 +71,6 @@ if [ "$ASD" == "24" ] || [ "$ASD" == "25" ]; then
 	fi
 else
 	ui_print "Android 8.0/8.1/9.0 detected!";
-	# rm $ramdisk/binder32.sh
-	# insert_line init.rc "write /proc/android_n 0" after "chmod 0664 /sys/module/lowmemorykiller/parameters/minfree" "\twrite /proc/android_n 0";
 fi
 
 write_boot;
