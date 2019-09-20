@@ -446,8 +446,8 @@ static ssize_t store_##file_name					\
 	unsigned int ret = -EINVAL;					\
 	struct cpufreq_policy new_policy;				\
 									\
-	if (!strcmp(current->comm, "mpdecision"))			\
-		return ret;						\
+	if (&policy->object == &policy->min)				\
+		return count;						\
 									\
 	ret = cpufreq_get_policy(&new_policy, policy->cpu);		\
 	if (ret)							\
