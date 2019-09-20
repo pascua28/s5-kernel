@@ -48,6 +48,7 @@ ramdisk_compression=auto;
 chmod 775 $ramdisk/sbin
 chmod 755 $ramdisk/sbin/busybox
 chmod 755 $ramdisk/sbin/sswap
+chmod 755 $ramdisk/sbin/intellikernel.sh
 
 chmod 775 $ramdisk/res
 chmod -R 755 $ramdisk/res/bc
@@ -72,6 +73,10 @@ if [ "$ASD" == "24" ] || [ "$ASD" == "25" ]; then
 else
 	ui_print "Android 8.0/8.1/9.0 detected!";
 fi
+
+insert_line init.qcom.rc "service tweaks /system/bin/sh /sbin/intellikernel.sh" before "service mpdecision /system/bin/mpdecision --avg_comp" "service tweaks /system/bin/sh /sbin/intellikernel.sh\n\tclass main\n\tuser root\n\tgroup root\n\tdisabled\n\toneshot\n";
+
+insert_line init.qcom.rc "start tweaks" after "start mpdecision" "\tstart tweaks\n";
 
 write_boot;
 
