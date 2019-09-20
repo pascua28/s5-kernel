@@ -24,9 +24,6 @@ echo '0' > /sys/block/mmcblk0/queue/iostats
 echo '2048' > /sys/block/mmcblk1/queue/read_ahead_kb
 echo '0' > /sys/block/mmcblk1/queue/iostats
 
-# Restore /data contexts to avoid any issues
-restorecon -RF /data
-
 # Set SELinux to enforcing after the above tweaks
 echo 0 > /sys/module/selinux/parameters/force_permissive
 setenforce 1
