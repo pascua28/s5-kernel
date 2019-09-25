@@ -794,7 +794,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 				      enum ttu_flags ttu_flags,
 				      unsigned long *ret_nr_dirty,
 				      unsigned long *ret_nr_writeback,
-				      bool force_reclaim)
+				      bool ignore_references)
 {
 	LIST_HEAD(ret_pages);
 	LIST_HEAD(free_pages);
@@ -810,7 +810,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		struct address_space *mapping;
 		struct page *page;
 		int may_enter_fs;
-		enum page_references references = PAGEREF_RECLAIM_CLEAN;
+		enum page_references references = PAGEREF_RECLAIM;
 
 		cond_resched();
 
@@ -844,7 +844,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			goto keep;
 		}
 
-		if (!force_reclaim)
+		if (!ignore_references)
 			references = page_check_references(page, sc);
 
 		switch (references) {
