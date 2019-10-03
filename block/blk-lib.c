@@ -44,7 +44,7 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 	struct request_queue *q = bdev_get_queue(bdev);
 	int type = REQ_WRITE | REQ_DISCARD | REQ_PRIO;
 	unsigned int max_discard_sectors;
-	unsigned int granularity, alignment, mask;
+	unsigned int granularity;
 	struct bio_batch bb;
 	struct bio *bio;
 	int ret = 0;
@@ -57,12 +57,10 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 
 	/* Zero-sector (unknown) and one-sector granularities are the same.  */
 	granularity = max(q->limits.discard_granularity >> 9, 1U);
-	mask = granularity - 1;
-	alignment = (q->limits.discard_alignment >> 9) & mask;
 
 	/*
 	 * Ensure that max_discard_sectors is of the proper
-	 * granularity, so that requests stay aligned after a split.
+	 * granularity
 	 */
 	max_discard_sectors = min(q->limits.max_discard_sectors, UINT_MAX >> 9);
 	max_discard_sectors = round_down(max_discard_sectors, granularity);
@@ -82,27 +80,10 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 	bb.wait = &wait;
 
 	while (nr_sects) {
-		unsigned int req_sects;
-		sector_t end_sect;
-
 		bio = bio_alloc(gfp_mask, 1);
 		if (!bio) {
 			ret = -ENOMEM;
 			break;
-		}
-
-		req_sects = min_t(sector_t, nr_sects, max_discard_sectors);
-
-		/*
-		 * If splitting a request, and the next starting sector would be
-		 * misaligned, stop the discard at the previous aligned sector.
-		 */
-		end_sect = sector + req_sects;
-		if (req_sects < nr_sects && (end_sect & mask) != alignment) {
-			end_sect =
-				round_down(end_sect - alignment, granularity)
-				+ alignment;
-			req_sects = end_sect - sector;
 		}
 
 		bio->bi_sector = sector;
@@ -110,9 +91,14 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 		bio->bi_bdev = bdev;
 		bio->bi_private = &bb;
 
-		bio->bi_size = req_sects << 9;
-		nr_sects -= req_sects;
-		sector = end_sect;
+		if (nr_sects > max_discard_sectors) {
+			bio->bi_size = max_discard_sectors << 9;
+			nr_sects -= max_discard_sectors;
+			sector += max_discard_sectors;
+		} else {
+			bio->bi_size = nr_sects << 9;
+			nr_sects = 0;
+		}
 
 		atomic_inc(&bb.done);
 		submit_bio(type, bio);
