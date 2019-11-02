@@ -1361,12 +1361,15 @@ putback_inactive_pages(struct mem_cgroup_zone *mz,
 		lru = page_lru(page);
 		add_page_to_lru_list(zone, page, lru);
 
-		file = is_file_lru(lru);
 #ifdef CONFIG_ZCACHE
+		file = is_file_lru(lru);
 		if (file)
 			SetPageWasActive(page);
 #endif
 		if (is_active_lru(lru)) {
+#ifndef CONFIG_ZCACHE
+			file = is_file_lru(lru);
+#endif
 			int numpages = hpage_nr_pages(page);
 			reclaim_stat->recent_rotated[file] += numpages;
 		}
