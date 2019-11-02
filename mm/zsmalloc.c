@@ -203,19 +203,14 @@ struct link_free {
 	void *next;
 };
 
+struct zs_pool {
+	struct size_class size_class[ZS_SIZE_CLASSES];
 #ifdef CONFIG_ZRAM
-struct zs_pool {
-	struct size_class size_class[ZS_SIZE_CLASSES];
-
 	gfp_t flags;	/* allocation flags used when growing pool */
-};
 #else
-struct zs_pool {
-	struct size_class size_class[ZS_SIZE_CLASSES];
-
 	struct zs_ops *ops;
-};
 #endif
+};
 
 /*
  * A zspage's class index and fullness group
