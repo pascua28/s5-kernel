@@ -96,7 +96,6 @@
 #define BUSY_PERSISTENCE		(3500 / DEF_SAMPLING_MS)
 
 static DEFINE_MUTEX(lazyplug_mutex);
-static DEFINE_MUTEX(lazymode_mutex);
 
 static struct delayed_work lazyplug_work;
 static struct delayed_work lazyplug_boost;
@@ -418,15 +417,6 @@ static void lazyplug_suspend(struct early_suspend *handler)
 	}
 }
 
-static void cpu_all_up(struct work_struct *work);
-static DECLARE_WORK(cpu_all_up_work, cpu_all_up);
-
-static void cpu_all_up(struct work_struct *work)
-{
-	cpu_all_ctrl(true);
-	wakeup_boost();
-}
-
 #ifdef CONFIG_POWERSUSPEND
 static void lazyplug_resume(struct power_suspend *handler)
 #else
@@ -441,7 +431,9 @@ static void lazyplug_resume(struct early_suspend *handler)
 		suspended = false;
 		mutex_unlock(&lazyplug_mutex);
 
-		schedule_work(&cpu_all_up_work);
+		cpu_all_ctrl(true);
+
+		wakeup_boost();
 	}
 	queue_delayed_work_on(0, lazyplug_wq, &lazyplug_work,
 		msecs_to_jiffies(10));
@@ -463,26 +455,21 @@ static struct early_suspend lazyplug_early_suspend_driver = {
 };
 #endif	/* CONFIG_HAS_EARLYSUSPEND */
 
-static unsigned int Lnr_run_profile_sel = 0;
-static unsigned int Ltouch_boost_active = true;
-static bool Lprevious_state = false;
+static unsigned int __read_mostly Lnr_run_profile_sel = 0;
+static unsigned int __read_mostly Ltouch_boost_active = true;
 void lazyplug_enter_lazy(bool enter)
 {
-	mutex_lock(&lazymode_mutex);
-	if (enter && !Lprevious_state) {
+	if (enter) {
 		pr_info("lazyplug: entering lazy mode\n");
 		Lnr_run_profile_sel = nr_run_profile_sel;
 		Ltouch_boost_active = touch_boost_active;
 		nr_run_profile_sel = 2; /* conversative profile */
 		touch_boost_active = false;
-		Lprevious_state = true;
-	} else if (!enter && Lprevious_state) {
+	} else {
 		pr_info("lazyplug: exiting lazy mode\n");
 		touch_boost_active = Ltouch_boost_active;
 		nr_run_profile_sel = Lnr_run_profile_sel;
-		Lprevious_state = false;
 	}
-	mutex_unlock(&lazymode_mutex);
 }
 
 static void lazyplug_input_event(struct input_handle *handle,
