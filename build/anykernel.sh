@@ -74,11 +74,19 @@ else
 	ui_print "Android 8.0/8.1/9.0 detected!";
 fi
 
-insert_line init.qcom.rc "service tweaks /system/bin/sh /sbin/intellikernel.sh" before "service mpdecision" "service tweaks /system/bin/sh /sbin/intellikernel.sh\n\tclass main\n\tuser root\n\tgroup root\n\tdisabled\n\toneshot\n\tseclabel u:r:magisk:s0\n";
+remove_section init.qcom.rc "service tweaks" "seclabel u:r:magisk:s0"
 
-insert_line init.qcom.rc "start tweaks" after "start mpdecision" "\tstart tweaks\n";
+remove_line init.qcom.rc "start tweaks"
 
 replace_string init.qcom.rc "\tstart mpdecision" "start mpdecision" "# start mpdecision";
+
+insert_line init.qcom.rc "exec u:r:magisk:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:magisk:s0 root root -- /sbin/intellikernel.sh";
+
+insert_line init.qcom.rc "exec u:r:supersu:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:supersu:s0 root root -- /sbin/intellikernel.sh";
+
+insert_line init.qcom.rc "exec u:r:su:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:su:s0 root root -- /sbin/intellikernel.sh";
+
+insert_line init.qcom.rc "exec u:r:init:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:init:s0 root root -- /sbin/intellikernel.sh";
 
 write_boot;
 
