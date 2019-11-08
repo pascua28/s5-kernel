@@ -962,7 +962,7 @@ static int rqbalance_start(void)
 	rq_data->nr_run_sample_tail = (uint8_t)-1;
 	rq_data->nr_run_sample_count = 0;
 	rq_data->update_rate = (RQ_AVG_TIMER_RATE_NS / 1000000);
-	INIT_DELAYED_WORK_DEFERRABLE(&rq_data->work, rq_work_fn);
+	INIT_DEFERRABLE_WORK(&rq_data->work, rq_work_fn);
 
 	start_rq_work();
 
