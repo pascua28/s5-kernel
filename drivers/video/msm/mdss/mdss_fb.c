@@ -65,6 +65,10 @@
 #define MDSS_FB_NUM 2
 #endif
 
+#define SMARTDIM_MIN 40
+#define SMARTDIM_PCC_MIN 6600
+#define PCC_MAX 32768
+
 #define MAX_FBI_LIST 32
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
@@ -244,14 +248,48 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 
 static int lcd_backlight_registered;
 
+static int pcc_r = 32768, pcc_g = 32768, pcc_b = 32768;
+
+static int pcc_ratio(int pcc_old, int pcc_new)
+{
+
+	int ratio = pcc_old * pcc_new / PCC_MAX;
+
+	return ratio;
+}
+
+static void bl_to_pcc(int value)
+{
+	struct mdp_pcc_cfg_data pcc_cfg;
+	u32 copyback = 0;
+
+	int pcc_intp = PCC_MAX + ((PCC_MAX - SMARTDIM_PCC_MIN) * (value - SMARTDIM_MIN)) / (SMARTDIM_MIN - 1);
+
+	memset(&pcc_cfg, 0, sizeof(struct mdp_pcc_cfg_data));
+	pcc_cfg.block = MDP_LOGICAL_BLOCK_DISP_0;
+	pcc_cfg.ops = MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE;
+	pcc_cfg.r.r = pcc_ratio(pcc_r, pcc_intp);
+	pcc_cfg.g.g = pcc_ratio(pcc_g, pcc_intp);
+	pcc_cfg.b.b = pcc_ratio(pcc_b, pcc_intp);
+	mdss_mdp_pcc_config(&pcc_cfg, &copyback);
+}
+
 static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 				      enum led_brightness value)
 {
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 	int bl_lvl;
+	int bl_lvl_real;
 
 	if (value > mfd->panel_info->brightness_max)
 		value = mfd->panel_info->brightness_max;
+
+	if (value < SMARTDIM_MIN && value != 0) {
+		bl_lvl_real = value;
+		value = SMARTDIM_MIN;
+
+		bl_to_pcc(bl_lvl_real);
+	}
 
 	/* This maps android backlight level 0 to 255 into
 	   driver backlight level 0 to bl_max with rounding */
@@ -490,7 +528,6 @@ static ssize_t mdss_fb_get_idle_notify(struct device *dev,
 	return ret;
 }
 
-static int pcc_r = 32768, pcc_g = 32768, pcc_b = 32768;
 static ssize_t mdss_get_rgb(struct device *dev,
 			    struct device_attribute *attr, char *buf)
 {
