@@ -78,6 +78,8 @@ insert_line init.qcom.rc "service tweaks /system/bin/sh /sbin/intellikernel.sh" 
 
 insert_line init.qcom.rc "start tweaks" after "start mpdecision" "\tstart tweaks\n";
 
+replace_string init.qcom.rc "\tstart mpdecision" "start mpdecision" "# start mpdecision";
+
 write_boot;
 
 ## end install
