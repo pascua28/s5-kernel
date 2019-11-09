@@ -268,9 +268,17 @@ static void bl_to_pcc(int value)
 	memset(&pcc_cfg, 0, sizeof(struct mdp_pcc_cfg_data));
 	pcc_cfg.block = MDP_LOGICAL_BLOCK_DISP_0;
 	pcc_cfg.ops = MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE;
-	pcc_cfg.r.r = pcc_ratio(pcc_r, pcc_intp);
-	pcc_cfg.g.g = pcc_ratio(pcc_g, pcc_intp);
-	pcc_cfg.b.b = pcc_ratio(pcc_b, pcc_intp);
+
+	if (value < SMARTDIM_MIN && value != 0) {
+		pcc_cfg.r.r = pcc_ratio(pcc_r, pcc_intp);
+		pcc_cfg.g.g = pcc_ratio(pcc_g, pcc_intp);
+		pcc_cfg.b.b = pcc_ratio(pcc_b, pcc_intp);
+	} else if (value != 0) {
+		pcc_cfg.r.r = pcc_r;
+		pcc_cfg.g.g = pcc_g;
+		pcc_cfg.b.b = pcc_b;
+	}
+
 	mdss_mdp_pcc_config(&pcc_cfg, &copyback);
 }
 
@@ -279,17 +287,14 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 {
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 	int bl_lvl;
-	int bl_lvl_real;
 
 	if (value > mfd->panel_info->brightness_max)
 		value = mfd->panel_info->brightness_max;
 
-	if (value < SMARTDIM_MIN && value != 0) {
-		bl_lvl_real = value;
-		value = SMARTDIM_MIN;
+	bl_to_pcc(value);
 
-		bl_to_pcc(bl_lvl_real);
-	}
+	if (value < SMARTDIM_MIN && value != 0)
+		value = SMARTDIM_MIN;
 
 	/* This maps android backlight level 0 to 255 into
 	   driver backlight level 0 to bl_max with rounding */
