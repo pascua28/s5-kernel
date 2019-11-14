@@ -78,8 +78,6 @@ remove_section init.qcom.rc "service tweaks" "seclabel u:r:magisk:s0"
 
 remove_line init.qcom.rc "start tweaks"
 
-replace_line init.qcom.rc "start mpdecision" "\t# start mpdecision";
-
 insert_line init.qcom.rc "exec u:r:magisk:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:magisk:s0 root root -- /sbin/intellikernel.sh";
 
 insert_line init.qcom.rc "exec u:r:supersu:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:supersu:s0 root root -- /sbin/intellikernel.sh";
