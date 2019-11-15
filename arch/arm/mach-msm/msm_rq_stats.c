@@ -39,6 +39,8 @@
 struct notifier_block freq_transition;
 struct notifier_block cpu_hotplug;
 
+extern unsigned long avg_nr_running(void);
+
 struct cpu_load_data {
 	cputime64_t prev_cpu_idle;
 	cputime64_t prev_cpu_wall;
@@ -155,17 +157,28 @@ static unsigned int report_load_at_max_freq(void)
 {
 	int cpu;
 	struct cpu_load_data *pcpu;
-	unsigned int total_load = 0;
+	uint64_t timed_load = 0;
+	unsigned int max_window_size = 0;
 
 	for_each_online_cpu(cpu) {
 		pcpu = &per_cpu(cpuload, cpu);
+
 		mutex_lock(&pcpu->cpu_load_mutex);
+
 		update_average_load(pcpu->cur_freq, cpu);
-		total_load += pcpu->avg_load_maxfreq;
+
+		timed_load += ((uint64_t) pcpu->avg_load_maxfreq) * pcpu->window_size;
+		if (pcpu->window_size > max_window_size)
+			max_window_size = pcpu->window_size;
+
 		pcpu->avg_load_maxfreq = 0;
 		mutex_unlock(&pcpu->cpu_load_mutex);
 	}
-	return total_load;
+
+	if (max_window_size == 0)
+		return 0;
+	else
+		return div_u64(timed_load, max_window_size);
 }
 
 static int cpufreq_transition_handler(struct notifier_block *nb,
@@ -266,25 +279,8 @@ static void def_work_fn(struct work_struct *work)
 static ssize_t run_queue_avg_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	unsigned int val = 0;
-	unsigned long flags = 0;
-
-	spin_lock_irqsave(&rq_lock, flags);
-	/* rq avg currently available only on one core */
-	val = rq_info.rq_avg;
-	rq_info.rq_avg = 0;
-#ifdef CONFIG_SEC_SMART_MGR_RUNQUEUE_AVG
-	sum_avg += val;
-	sum_avg_cnt++;
-	/*If none read this smt_mgr_run_queue_avg more than 30 seconds clear itself*/
-	if(sum_avg_cnt * 50 /* <- decision_ms*/ >= 30 * 1000) {
-		sum_avg = 0;
-		sum_avg_cnt = 0;
-	}
-#endif
-	spin_unlock_irqrestore(&rq_lock, flags);
-
-	return snprintf(buf, PAGE_SIZE, "%d.%d\n", val/10, val%10);
+	int nr_running = (avg_nr_running() * 10) >> FSHIFT;
+	return snprintf(buf, PAGE_SIZE, "%d.%d\n", nr_running/10, nr_running%10);
 }
 
 static struct kobj_attribute run_queue_avg_attr = __ATTR_RO(run_queue_avg);
