@@ -84,4 +84,7 @@ GTAGS
 *~
 \#*#
 
+# Generated firmware files
+firmware/epen/*.bin
+
 output/
