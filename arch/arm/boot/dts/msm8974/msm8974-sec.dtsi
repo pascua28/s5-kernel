@@ -2453,7 +2453,7 @@
 	qcom,msm-thermal {
 		compatible = "qcom,msm-thermal";
 		qcom,sensor-id = <5>;
-		qcom,poll-ms = <250>;
+		qcom,poll-ms = <1000>;
 		qcom,limit-temp = <80>;
 		qcom,temp-hysteresis = <10>;
 		qcom,freq-step = <2>;
