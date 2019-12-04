@@ -172,6 +172,4 @@ source "drivers/irda/Kconfig"
 
 source "drivers/qsc/Kconfig"
 
-source "drivers/cpuquiet/Kconfig"
-
 endmenu
