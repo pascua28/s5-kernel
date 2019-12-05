@@ -542,19 +542,19 @@ int dev_pm_qos_add_ancestor_request(struct device *dev,
 				    struct dev_pm_qos_request *req, s32 value)
 {
 	struct device *ancestor = dev->parent;
-	int ret = -ENODEV;
+	int error = -ENODEV;
 
 	while (ancestor && !ancestor->power.ignore_children)
 		ancestor = ancestor->parent;
 
 	if (ancestor)
-		ret = dev_pm_qos_add_request(ancestor, req,
-					     DEV_PM_QOS_LATENCY, value);
+		error = dev_pm_qos_add_request(ancestor, req,
+					       DEV_PM_QOS_LATENCY, value);
 
-	if (ret < 0)
+	if (error < 0)
 		req->dev = NULL;
 
-	return ret;
+	return error;
 }
 EXPORT_SYMBOL_GPL(dev_pm_qos_add_ancestor_request);
 
