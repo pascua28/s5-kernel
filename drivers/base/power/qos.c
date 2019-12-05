@@ -46,7 +46,6 @@
 #include "power.h"
 
 static DEFINE_MUTEX(dev_pm_qos_mtx);
-static DEFINE_MUTEX(dev_pm_qos_sysfs_mtx);
 
 static BLOCKING_NOTIFIER_HEAD(dev_pm_notifiers);
 
@@ -217,17 +216,12 @@ void dev_pm_qos_constraints_destroy(struct device *dev)
 	struct pm_qos_constraints *c;
 	struct pm_qos_flags *f;
 
-	mutex_lock(&dev_pm_qos_sysfs_mtx);
+	mutex_lock(&dev_pm_qos_mtx);
 
 	/*
 	 * If the device's PM QoS resume latency limit or PM QoS flags have been
 	 * exposed to user space, they have to be hidden at this point.
 	 */
-	pm_qos_sysfs_remove_latency(dev);
-	pm_qos_sysfs_remove_flags(dev);
-
-	mutex_lock(&dev_pm_qos_mtx);
-
 	__dev_pm_qos_hide_latency_limit(dev);
 	__dev_pm_qos_hide_flags(dev);
 
@@ -260,8 +254,6 @@ void dev_pm_qos_constraints_destroy(struct device *dev)
 
  out:
 	mutex_unlock(&dev_pm_qos_mtx);
-
-	mutex_unlock(&dev_pm_qos_sysfs_mtx);
 }
 
 /**
@@ -566,14 +558,6 @@ static void __dev_pm_qos_drop_user_request(struct device *dev,
 	kfree(req);
 }
 
-static void dev_pm_qos_drop_user_request(struct device *dev,
-					 enum dev_pm_qos_req_type type)
-{
-	mutex_lock(&dev_pm_qos_mtx);
-	__dev_pm_qos_drop_user_request(dev, type);
-	mutex_unlock(&dev_pm_qos_mtx);
-}
-
 /**
  * dev_pm_qos_expose_latency_limit - Expose PM QoS latency limit to user space.
  * @dev: Device whose PM QoS latency limit is to be exposed to user space.
@@ -597,8 +581,6 @@ int dev_pm_qos_expose_latency_limit(struct device *dev, s32 value)
 		return ret;
 	}
 
-	mutex_lock(&dev_pm_qos_sysfs_mtx);
-
 	mutex_lock(&dev_pm_qos_mtx);
 
 	if (IS_ERR_OR_NULL(dev->power.qos))
@@ -609,27 +591,26 @@ int dev_pm_qos_expose_latency_limit(struct device *dev, s32 value)
 	if (ret < 0) {
 		__dev_pm_qos_remove_request(req);
 		kfree(req);
-		mutex_unlock(&dev_pm_qos_mtx);
 		goto out;
 	}
+
 	dev->power.qos->latency_req = req;
-
-	mutex_unlock(&dev_pm_qos_mtx);
-
 	ret = pm_qos_sysfs_add_latency(dev);
 	if (ret)
-		dev_pm_qos_drop_user_request(dev, DEV_PM_QOS_LATENCY);
+		__dev_pm_qos_drop_user_request(dev, DEV_PM_QOS_LATENCY);
 
  out:
-	mutex_unlock(&dev_pm_qos_sysfs_mtx);
+	mutex_unlock(&dev_pm_qos_mtx);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(dev_pm_qos_expose_latency_limit);
 
 static void __dev_pm_qos_hide_latency_limit(struct device *dev)
 {
-	if (!IS_ERR_OR_NULL(dev->power.qos) && dev->power.qos->latency_req)
+	if (!IS_ERR_OR_NULL(dev->power.qos) && dev->power.qos->latency_req) {
+		pm_qos_sysfs_remove_latency(dev);
 		__dev_pm_qos_drop_user_request(dev, DEV_PM_QOS_LATENCY);
+	}
 }
 
 /**
@@ -638,15 +619,9 @@ static void __dev_pm_qos_hide_latency_limit(struct device *dev)
  */
 void dev_pm_qos_hide_latency_limit(struct device *dev)
 {
-	mutex_lock(&dev_pm_qos_sysfs_mtx);
-
-	pm_qos_sysfs_remove_latency(dev);
-
 	mutex_lock(&dev_pm_qos_mtx);
 	__dev_pm_qos_hide_latency_limit(dev);
 	mutex_unlock(&dev_pm_qos_mtx);
-
-	mutex_unlock(&dev_pm_qos_sysfs_mtx);
 }
 EXPORT_SYMBOL_GPL(dev_pm_qos_hide_latency_limit);
 
@@ -674,8 +649,6 @@ int dev_pm_qos_expose_flags(struct device *dev, s32 val)
 	}
 
 	pm_runtime_get_sync(dev);
-	mutex_lock(&dev_pm_qos_sysfs_mtx);
-
 	mutex_lock(&dev_pm_qos_mtx);
 
 	if (IS_ERR_OR_NULL(dev->power.qos))
@@ -686,19 +659,16 @@ int dev_pm_qos_expose_flags(struct device *dev, s32 val)
 	if (ret < 0) {
 		__dev_pm_qos_remove_request(req);
 		kfree(req);
-		mutex_unlock(&dev_pm_qos_mtx);
 		goto out;
 	}
+
 	dev->power.qos->flags_req = req;
-
-	mutex_unlock(&dev_pm_qos_mtx);
-
 	ret = pm_qos_sysfs_add_flags(dev);
 	if (ret)
-		dev_pm_qos_drop_user_request(dev, DEV_PM_QOS_FLAGS);
+		__dev_pm_qos_drop_user_request(dev, DEV_PM_QOS_FLAGS);
 
  out:
-	mutex_unlock(&dev_pm_qos_sysfs_mtx);
+	mutex_unlock(&dev_pm_qos_mtx);
 	pm_runtime_put(dev);
 	return ret;
 }
@@ -706,8 +676,10 @@ EXPORT_SYMBOL_GPL(dev_pm_qos_expose_flags);
 
 static void __dev_pm_qos_hide_flags(struct device *dev)
 {
-	if (!IS_ERR_OR_NULL(dev->power.qos) && dev->power.qos->flags_req)
+	if (!IS_ERR_OR_NULL(dev->power.qos) && dev->power.qos->flags_req) {
+		pm_qos_sysfs_remove_flags(dev);
 		__dev_pm_qos_drop_user_request(dev, DEV_PM_QOS_FLAGS);
+	}
 }
 
 /**
@@ -717,15 +689,9 @@ static void __dev_pm_qos_hide_flags(struct device *dev)
 void dev_pm_qos_hide_flags(struct device *dev)
 {
 	pm_runtime_get_sync(dev);
-	mutex_lock(&dev_pm_qos_sysfs_mtx);
-
-	pm_qos_sysfs_remove_flags(dev);
-
 	mutex_lock(&dev_pm_qos_mtx);
 	__dev_pm_qos_hide_flags(dev);
 	mutex_unlock(&dev_pm_qos_mtx);
-
-	mutex_unlock(&dev_pm_qos_sysfs_mtx);
 	pm_runtime_put(dev);
 }
 EXPORT_SYMBOL_GPL(dev_pm_qos_hide_flags);
