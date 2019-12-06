@@ -97,7 +97,7 @@ static const struct row_queue_params row_queues_def[] = {
 
 /* Default values for idling on read queues (in msec) */
 #define ROW_IDLE_TIME_MSEC 5
-#define ROW_READ_FREQ_MSEC 5
+#define ROW_READ_FREQ_MSEC 20
 
 /**
  * struct rowq_idling_data -  parameters for idling on the queue
