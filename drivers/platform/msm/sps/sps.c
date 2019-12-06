@@ -945,7 +945,7 @@ static int sps_device_init(void)
 		goto exit_err;
 	}
 
-	SPS_DBG2("sps:bamdma_bam.phys=%pa.virt=0x%p.",
+	SPS_DBG2("sps:bamdma_bam.phys=%pa.virt=0x%pK.",
 		&bamdma_props.phys_addr,
 		bamdma_props.virt_addr);
 
@@ -959,7 +959,7 @@ static int sps_device_init(void)
 		goto exit_err;
 	}
 
-	SPS_DBG2("sps:bamdma_dma.phys=%pa.virt=0x%p.",
+	SPS_DBG2("sps:bamdma_dma.phys=%pa.virt=0x%pK.",
 		&bamdma_props.periph_phys_addr,
 		bamdma_props.periph_virt_addr);
 
@@ -1337,6 +1337,7 @@ int sps_connect(struct sps_pipe *h, struct sps_connect *connect)
 		goto exit_err;
 	}
 
+	mutex_lock(&bam->lock);
 	SPS_DBG2("sps:sps_connect: bam %pa src 0x%lx dest 0x%lx mode %s",
 			BAM_ID(bam),
 			connect->source,
@@ -1345,14 +1346,13 @@ int sps_connect(struct sps_pipe *h, struct sps_connect *connect)
 
 	/* Allocate resources for the specified connection */
 	pipe->connect = *connect;
-	mutex_lock(&bam->lock);
 	result = sps_rm_state_change(pipe, SPS_STATE_ALLOCATE);
-	mutex_unlock(&bam->lock);
-	if (result)
+	if (result) {
+		mutex_unlock(&bam->lock);
 		goto exit_err;
+	}
 
 	/* Configure the connection */
-	mutex_lock(&bam->lock);
 	result = sps_rm_state_change(pipe, SPS_STATE_CONNECT);
 	mutex_unlock(&bam->lock);
 	if (result) {
@@ -2327,7 +2327,7 @@ int sps_timer_ctrl(struct sps_pipe *h,
 }
 EXPORT_SYMBOL(sps_timer_ctrl);
 
-/*
+/**
  * Reset a BAM pipe
  */
 int sps_pipe_reset(unsigned long dev, u32 pipe)
@@ -2359,11 +2359,81 @@ int sps_pipe_reset(unsigned long dev, u32 pipe)
 EXPORT_SYMBOL(sps_pipe_reset);
 
 /*
+ * Disable a BAM pipe
+ */
+int sps_pipe_disable(unsigned long dev, u32 pipe)
+{
+	struct sps_bam *bam;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!dev) {
+		SPS_ERR("sps:%s:BAM handle is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (pipe >= BAM_MAX_PIPES) {
+		SPS_ERR("sps:%s:pipe index is invalid.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		SPS_ERR("sps:%s:BAM is not found by handle.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam_disable_pipe(bam->base, pipe);
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_pipe_disable);
+
+/*
+ * Check pending descriptors in the descriptor FIFO
+ * of a pipe
+ */
+int sps_pipe_pending_desc(unsigned long dev, u32 pipe, bool *pending)
+{
+
+	struct sps_bam *bam;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!dev) {
+		SPS_ERR("sps:%s:BAM handle is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (pipe >= BAM_MAX_PIPES) {
+		SPS_ERR("sps:%s:pipe index is invalid.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (!pending) {
+		SPS_ERR("sps:%s:input flag is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		SPS_ERR("sps:%s:BAM is not found by handle.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	*pending = sps_bam_pipe_pending_desc(bam, pipe);
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_pipe_pending_desc);
+
+/*
  * Process any pending IRQ of a BAM
  */
 int sps_bam_process_irq(unsigned long dev)
 {
 	struct sps_bam *bam;
+	int ret = 0;
 
 	SPS_DBG("sps:%s.", __func__);
 
@@ -2378,9 +2448,9 @@ int sps_bam_process_irq(unsigned long dev)
 		return SPS_ERROR;
 	}
 
-	sps_bam_check_irq(bam);
+	ret = sps_bam_check_irq(bam);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(sps_bam_process_irq);
 
@@ -2562,7 +2632,7 @@ static int get_device_tree_data(struct platform_device *pdev)
 	if (of_property_read_u32((&pdev->dev)->of_node,
 				"qcom,device-type",
 				&d_type)) {
-		d_type = 1;
+		d_type = 3;
 		SPS_DBG("sps:default device type.\n");
 	} else
 		SPS_DBG("sps:device type is %d.", d_type);
