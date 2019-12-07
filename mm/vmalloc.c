@@ -37,37 +37,11 @@ static void vunmap_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end)
 {
 	pte_t *pte;
 
-#ifdef CONFIG_TIMA_RKP_LAZY_MMU
-	unsigned long do_lazy_mmu = 0;
-#endif
-
 	pte = pte_offset_kernel(pmd, addr);
-	
-#ifdef CONFIG_TIMA_RKP_LAZY_MMU
-	do_lazy_mmu = 1;
-	if (do_lazy_mmu) {
-		spin_lock(&init_mm.page_table_lock);
-		tima_send_cmd2((unsigned int)pmd, TIMA_LAZY_MMU_START, TIMA_LAZY_MMU_CMDID);
-		flush_tlb_l2_page(pmd);
-		spin_unlock(&init_mm.page_table_lock);
-	}
-#endif
-
-
 	do {
 		pte_t ptent = ptep_get_and_clear(&init_mm, addr, pte);
 		WARN_ON(!pte_none(ptent) && !pte_present(ptent));
 	} while (pte++, addr += PAGE_SIZE, addr != end);
-
-#ifdef CONFIG_TIMA_RKP_LAZY_MMU
-	if (do_lazy_mmu) {
-		spin_lock(&init_mm.page_table_lock);
-		tima_send_cmd2((unsigned int)pmd, TIMA_LAZY_MMU_STOP, TIMA_LAZY_MMU_CMDID);
-		flush_tlb_l2_page(pmd);
-		spin_unlock(&init_mm.page_table_lock);
-	}
-#endif
-
 }
 
 static void vunmap_pmd_range(pud_t *pud, unsigned long addr, unsigned long end)
@@ -117,9 +91,6 @@ static int vmap_pte_range(pmd_t *pmd, unsigned long addr,
 		unsigned long end, pgprot_t prot, struct page **pages, int *nr)
 {
 	pte_t *pte;
-#ifdef CONFIG_TIMA_RKP_LAZY_MMU
-	unsigned long do_lazy_mmu = 0;
-#endif
 
 	/*
 	 * nr is a running index into the array which helps higher level
@@ -129,17 +100,6 @@ static int vmap_pte_range(pmd_t *pmd, unsigned long addr,
 	pte = pte_alloc_kernel(pmd, addr);
 	if (!pte)
 		return -ENOMEM;
-
-#ifdef CONFIG_TIMA_RKP_LAZY_MMU
-	do_lazy_mmu = 1;
-	if (do_lazy_mmu) {
-		spin_lock(&init_mm.page_table_lock);
-		tima_send_cmd2((unsigned int)pmd, TIMA_LAZY_MMU_START, TIMA_LAZY_MMU_CMDID);
-		flush_tlb_l2_page(pmd);
-		spin_unlock(&init_mm.page_table_lock);
-	}
-#endif
-
 	do {
 		struct page *page = pages[*nr];
 
@@ -150,16 +110,6 @@ static int vmap_pte_range(pmd_t *pmd, unsigned long addr,
 		set_pte_at(&init_mm, addr, pte, mk_pte(page, prot));
 		(*nr)++;
 	} while (pte++, addr += PAGE_SIZE, addr != end);
-
-#ifdef CONFIG_TIMA_RKP_LAZY_MMU
-	if (do_lazy_mmu) {
-		spin_lock(&init_mm.page_table_lock);
-		tima_send_cmd2((unsigned int)pmd, TIMA_LAZY_MMU_STOP, TIMA_LAZY_MMU_CMDID);
-		flush_tlb_l2_page(pmd);
-		spin_unlock(&init_mm.page_table_lock);
-	}
-#endif
-
 	return 0;
 }
 
@@ -428,12 +378,12 @@ nocache:
 		addr = ALIGN(first->va_end, align);
 		if (addr < vstart)
 			goto nocache;
-		if (addr + size < addr)
+		if (addr + size - 1 < addr)
 			goto overflow;
 
 	} else {
 		addr = ALIGN(vstart, align);
-		if (addr + size < addr)
+		if (addr + size - 1 < addr)
 			goto overflow;
 
 		n = vmap_area_root.rb_node;
@@ -460,7 +410,7 @@ nocache:
 		if (addr + cached_hole_size < first->va_start)
 			cached_hole_size = first->va_start - addr;
 		addr = ALIGN(first->va_end, align);
-		if (addr + size < addr)
+		if (addr + size - 1 < addr)
 			goto overflow;
 
 		n = rb_next(&first->rb_node);
@@ -1166,6 +1116,7 @@ void *vm_map_ram(struct page **pages, unsigned int count, int node, pgprot_t pro
 	return mem;
 }
 EXPORT_SYMBOL(vm_map_ram);
+
 /**
  * vm_area_check_early - check if vmap area is already mapped
  * @vm: vm_struct to be checked
@@ -1191,6 +1142,7 @@ int __init vm_area_check_early(struct vm_struct *vm)
 	}
 	return 0;
 }
+
 /**
  * vm_area_add_early - add vmap area early during boot
  * @vm: vm_struct to add
@@ -1466,26 +1418,15 @@ struct vm_struct *__get_vm_area_caller(unsigned long size, unsigned long flags,
  */
 struct vm_struct *get_vm_area(unsigned long size, unsigned long flags)
 {
-#ifdef CONFIG_ENABLE_VMALLOC_SAVING
-	return __get_vm_area_node(size, 1, flags, PAGE_OFFSET, VMALLOC_END,
-				-1, GFP_KERNEL, __builtin_return_address(0));
-#else
 	return __get_vm_area_node(size, 1, flags, VMALLOC_START, VMALLOC_END,
 				-1, GFP_KERNEL, __builtin_return_address(0));
-#endif
-
 }
 
 struct vm_struct *get_vm_area_caller(unsigned long size, unsigned long flags,
 				const void *caller)
 {
-#ifdef CONFIG_ENABLE_VMALLOC_SAVING
-	return __get_vm_area_node(size, 1, flags, PAGE_OFFSET, VMALLOC_END,
-						-1, GFP_KERNEL, caller);
-#else
 	return __get_vm_area_node(size, 1, flags, VMALLOC_START, VMALLOC_END,
-				-1, GFP_KERNEL, __builtin_return_address(0));
-#endif
+						-1, GFP_KERNEL, caller);
 }
 
 /**
