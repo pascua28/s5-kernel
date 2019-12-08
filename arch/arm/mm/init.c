@@ -896,9 +896,8 @@ void __init mem_init(void)
 		   MLM(VMALLOC_START, VMALLOC_END),
 		   MLM(PAGE_OFFSET, (unsigned long)high_memory));
 #endif
-
-	printk(KERN_NOTICE
 #ifdef CONFIG_HIGHMEM
+	printk(KERN_NOTICE
 		   "    pkmap   : 0x%08lx - 0x%08lx   (%4ld MB)\n"
 #endif
 #ifdef CONFIG_MODULES
