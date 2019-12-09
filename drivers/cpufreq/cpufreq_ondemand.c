@@ -887,10 +887,9 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 				freq_next = dbs_tuners_ins.sync_freq;
 
 			if (max_load_freq >
-				 ((dbs_tuners_ins.up_threshold_multi_core -
+				 (dbs_tuners_ins.up_threshold_multi_core -
 				  dbs_tuners_ins.down_differential_multi_core) *
-				  policy->cur) &&
-				freq_next < dbs_tuners_ins.optimal_freq)
+				  policy->cur)
 				freq_next = dbs_tuners_ins.optimal_freq;
 
 		}
