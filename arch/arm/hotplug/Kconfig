@@ -4,3 +4,8 @@ config INTELLI_PLUG
         help
           Generic Intelli-plug cpu hotplug driver for ARM SOCs
 
+config MAKO_HOTPLUG
+	bool "Mako Hotplug"
+	default y
+	help
+	  Mako Hotplug: A custom hotplug by fransisco franco
