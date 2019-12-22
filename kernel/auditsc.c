@@ -1698,32 +1698,32 @@ static void audit_log_exit(struct audit_context *context, struct task_struct *ts
 				 (context->return_valid==AUDITSC_SUCCESS)?"yes":"no",
 				 context->return_code);
 
-		spin_lock_irq(&tsk->sighand->siglock);
-		if (tsk->signal && tsk->signal->tty && tsk->signal->tty->name)
-			tty = tsk->signal->tty->name;
-		else
-			tty = "(none)";
-		spin_unlock_irq(&tsk->sighand->siglock);
+	spin_lock_irq(&tsk->sighand->siglock);
+	if (tsk->signal && tsk->signal->tty && tsk->signal->tty->name)
+		tty = tsk->signal->tty->name;
+	else
+		tty = "(none)";
+	spin_unlock_irq(&tsk->sighand->siglock);
 
-		audit_log_format(ab,
-			  " a0=%lx a1=%lx a2=%lx a3=%lx items=%d"
-			  " ppid=%d ppcomm=%s pid=%d auid=%u uid=%u gid=%u"
-			  " euid=%u suid=%u fsuid=%u"
-			  " egid=%u sgid=%u fsgid=%u tty=%s ses=%u",
-			  context->argv[0],
-			  context->argv[1],
-			  context->argv[2],
-			  context->argv[3],
-			  context->name_count,
-			  context->ppid,
-			  tsk->parent->comm,
-			  context->pid,
-			  tsk->loginuid,
-			  context->uid,
-			  context->gid,
-			  context->euid, context->suid, context->fsuid,
-			  context->egid, context->sgid, context->fsgid, tty,
-			  tsk->sessionid);
+	audit_log_format(ab,
+		  " a0=%lx a1=%lx a2=%lx a3=%lx items=%d"
+		  " ppid=%d ppcomm=%s pid=%d auid=%u uid=%u gid=%u"
+		  " euid=%u suid=%u fsuid=%u"
+		  " egid=%u sgid=%u fsgid=%u tty=%s ses=%u",
+		  context->argv[0],
+		  context->argv[1],
+		  context->argv[2],
+		  context->argv[3],
+		  context->name_count,
+		  context->ppid,
+		  tsk->parent->comm,
+		  context->pid,
+		  tsk->loginuid,
+		  context->uid,
+		  context->gid,
+		  context->euid, context->suid, context->fsuid,
+		  context->egid, context->sgid, context->fsgid, tty,
+		  tsk->sessionid);
 
 
 		audit_log_task_info(ab, tsk);
