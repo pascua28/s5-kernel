@@ -280,7 +280,7 @@ static int __init apr_tal_init(void)
 	ret  = platform_driver_register(&apr_q6_driver);
 	if (ret)
 		goto err;
-		ret  = platform_driver_register(&apr_modem_driver);
+	ret  = platform_driver_register(&apr_modem_driver);
 	if (ret)
 		goto err_register;
 
