@@ -35,9 +35,9 @@ static ssize_t charge_level_ac_store(struct kobject *kobj, struct kobj_attribute
 	// read value from input buffer
 	ret = sscanf(buf, "%d", &val);
 
-    if (ret != 1)
-        return -EINVAL;
-        
+	if (ret != 1)
+		return -EINVAL;
+
 	// check whether value is within the valid ranges and adjust accordingly
 	if (val > AC_CHARGE_LEVEL_MAX)
 		val = AC_CHARGE_LEVEL_MAX;
@@ -67,9 +67,9 @@ static ssize_t charge_level_usb_store(struct kobject *kobj, struct kobj_attribut
 	// read value from input buffer
 	ret = sscanf(buf, "%d", &val);
 
-    if (ret != 1)
-        return -EINVAL;
-        
+	if (ret != 1)
+		return -EINVAL;
+
 	// check whether value is within the valid ranges and adjust accordingly
 	if (val > USB_CHARGE_LEVEL_MAX)
 		val = USB_CHARGE_LEVEL_MAX;
@@ -98,9 +98,9 @@ static ssize_t charge_level_wireless_store(struct kobject *kobj, struct kobj_att
 	// read value from input buffer
 	ret = sscanf(buf, "%d", &val);
 
-    if (ret != 1)
-        return -EINVAL;
-        
+	if (ret != 1)
+		return -EINVAL;
+
 	// check whether value is within the valid ranges and adjust accordingly
 	if (val > WIRELESS_CHARGE_LEVEL_MAX)
 		val = WIRELESS_CHARGE_LEVEL_MAX;
