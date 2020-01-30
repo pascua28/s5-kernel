@@ -847,7 +847,7 @@ static bool wacom_i2c_coord_range(struct wacom_i2c *wac_i2c, s16 *x, s16 *y)
 }
 
 #ifdef WACOM_USE_SOFTKEY
-#if defined(CONFIG_SEC_VIENNA_PROJECT)
+#if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT)
 static int keycode[] = {
 	KEY_RECENT, KEY_BACK,
 };
@@ -1113,7 +1113,8 @@ int wacom_i2c_coord(struct wacom_i2c *wac_i2c)
 #endif
 			input_report_key(wac_i2c->input_dev,
 					 BTN_STYLUS, stylus);
-			if (!stylus && !wac_i2c->side_pressed) {
+			if (!wac_i2c->enabled_gestures ||
+					(!stylus && !wac_i2c->side_pressed)) {
 				input_report_key(wac_i2c->input_dev, BTN_TOUCH, prox);
 			}
 			input_report_key(wac_i2c->input_dev, wac_i2c->tool, 1);

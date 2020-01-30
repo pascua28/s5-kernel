@@ -189,6 +189,10 @@ static ssize_t front_camera_firmware_show(struct device *dev,
 static DEVICE_ATTR(rear_camtype, S_IRUGO, back_camera_type_show, NULL);
 static DEVICE_ATTR(rear_camfw, S_IRUGO|S_IWUSR|S_IWGRP,
     back_camera_firmware_show, back_camera_firmware_store);
+#ifdef CONFIG_SEC_LT03_PROJECT
+static DEVICE_ATTR(rear_camfw_full, S_IRUGO | S_IWUSR | S_IWGRP,
+    back_camera_firmware_full_show, back_camera_firmware_full_store);
+#endif
 static DEVICE_ATTR(rear_camfw_load, S_IRUGO|S_IWUSR|S_IWGRP,
     back_camera_firmware_load_show, back_camera_firmware_load_store);
 static DEVICE_ATTR(rear_camfw_full, S_IRUGO | S_IWUSR | S_IWGRP,
@@ -244,6 +248,12 @@ static int __init msm_sensor_init_module(void)
 		printk("Failed to create device file!(%s)!\n",
 			dev_attr_rear_camfw.attr.name);
 	}
+#ifdef CONFIG_SEC_LT03_PROJECT
+	if (device_create_file(cam_dev_back, &dev_attr_rear_camfw_full) < 0) {
+		printk("Failed to create device file!(%s)!\n",
+			dev_attr_rear_camfw_full.attr.name);
+	}
+#endif
 	if (device_create_file(cam_dev_back, &dev_attr_rear_camfw_load) < 0) {
 		printk("Failed to create device file!(%s)!\n",
 			dev_attr_rear_camfw_load.attr.name);

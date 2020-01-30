@@ -18,6 +18,8 @@
 #ifndef __MAX17050_FUELGAUGE_H
 #define __MAX17050_FUELGAUGE_H __FILE__
 
+#include <linux/hrtimer.h>
+
 #if defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || \
 	defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_MACH_MONDRIAN)
 #define FUELALERT_CHECK_VOLTAGE_FEATURE

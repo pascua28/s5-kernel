@@ -837,7 +837,7 @@ int ipa_reset_rt(enum ipa_ip_type ip)
 	struct ipa_rt_entry *rule_next;
 	struct ipa_tree_node *node;
 	struct ipa_rt_tbl_set *rset;
-        struct ipa_hdr_entry *hdr_entry;
+	struct ipa_hdr_entry *hdr_entry;
 	struct ipa_hdr_proc_ctx_entry *hdr_proc_entry;
 
 	if (ip >= IPA_IP_MAX) {
@@ -875,7 +875,7 @@ int ipa_reset_rt(enum ipa_ip_type ip)
 				continue;
 
 			list_del(&rule->link);
-                        if (rule->hdr) {
+			if (rule->hdr) {
 				hdr_entry = ipa_id_find(
 					rule->rule.hdr_hdl);
 				if (!hdr_entry ||
