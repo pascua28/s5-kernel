@@ -999,7 +999,7 @@ INT32 ffsRemoveFile(struct inode *inode, FILE_ID_T *fid)
 
 INT32 ffsSetAttr(struct inode *inode, UINT32 attr)
 {
-	UINT32 type, sector;
+	UINT32 type, sector = 0;
 	DENTRY_T *ep;
 	struct super_block *sb = inode->i_sb;
 	FS_INFO_T *p_fs = &(EXFAT_SB(sb)->fs_info);
