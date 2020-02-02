@@ -737,7 +737,7 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 
 	for (i = 0; i < MAX_SIZE; i++) {
 		if (sscanf(buf++, "%u", &_data) == 1) {
-			if (_data == 0 || buf == '\0')
+			if (_data == 0 || *buf == '\0')
 				break;
 			if (count == 2) {
 				data->ir_freq = _data;

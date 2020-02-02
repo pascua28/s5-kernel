@@ -3199,7 +3199,7 @@ int synaptics_rmi4_set_custom_ctrl_register(struct synaptics_rmi4_data *rmi4_dat
 		}
 		memcpy(value, data, length);
 
-		snprintf(temp, 1, ":");
+		scnprintf(temp, 1, ":");
 		while (ii < length) {
 			snprintf(t_temp, 7, "0x%X, ", data[ii]);
 			strcat(temp, t_temp);
@@ -3224,7 +3224,7 @@ int synaptics_rmi4_set_custom_ctrl_register(struct synaptics_rmi4_data *rmi4_dat
 				return -EIO;
 			}
 
-			snprintf(temp, 1, ":");
+			scnprintf(temp, 1, ":");
 			while (ii < length) {
 				snprintf(t_temp, 7, "0x%X, ", data[ii]);
 				strcat(temp, t_temp);
@@ -3950,9 +3950,10 @@ static void synaptics_rmi4_release_support_fn(struct synaptics_rmi4_data *rmi4_d
 		dev_err(&rmi4_data->i2c_client->dev, "%s: support_fn_list is empty\n",
 				__func__);
 #ifdef PROXIMITY
-		if (rmi4_data->f51_handle)
+		if (rmi4_data->f51_handle) {
 			kfree(rmi4_data->f51_handle);
 			rmi4_data->f51_handle = NULL;
+		}
 #endif
 		return;
 	}

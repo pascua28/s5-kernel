@@ -347,7 +347,7 @@ int32_t msm_camera_cci_i2c_write_table(
 		usleep_range(write_setting->delay * 1000, (write_setting->delay
 							   * 1000) + 1000);
 
-		client->addr_type = client_addr_type;
+	client->addr_type = client_addr_type;
 	}
 
 

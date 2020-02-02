@@ -194,7 +194,7 @@ static struct switch_dev switch_earjackkey = {
 };
 #endif
 
-static const char const *max77804k_path_name[] = {
+static const char *max77804k_path_name[] = {
 	[PATH_OPEN]	= "OPEN",
 	[PATH_USB_AP]	= "USB-AP",
 	[PATH_AUDIO]	= "AUDIO",
