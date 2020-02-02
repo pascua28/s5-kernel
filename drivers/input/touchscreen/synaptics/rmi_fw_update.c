@@ -1511,7 +1511,7 @@ int synaptics_rmi4_set_tsp_test_result_in_config(int pass_fail)
 
 	/* read config from IC */
 	memset(buf, 0, sizeof(buf));
-	snprintf(buf, 2, "%u\n", 1);
+	scnprintf(buf, 2, "%u\n", 1);
 	fwu_sysfs_read_config_store(&rmi4_data->i2c_client->dev, NULL, buf, 1);
 
 	/* set test result value */

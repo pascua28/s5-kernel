@@ -1423,9 +1423,10 @@ static int searching_function(long long candela, int *index, int gamma_curve)
 		} else if (gamma_curve == GAMMA_CURVE_2P2) {
 			delta_1 = candela - curve_2p2_350[cnt];
 			delta_2 = candela - curve_2p2_350[cnt+1];
-		} else
+		} else {
 			delta_1 = candela - curve_2p2_350[cnt];
 			delta_2 = candela - curve_2p2_350[cnt+1];
+		}
 
 		if (delta_2 < 0) {
 			*index = (delta_1 + delta_2) <= 0 ? cnt : cnt+1;
