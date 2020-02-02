@@ -1014,9 +1014,10 @@ static long ffs_epfile_ioctl(struct file *file, unsigned code,
 
 			spin_unlock_irq(&epfile->ffs->eps_lock);
 			ret = copy_to_user((void *)value, desc, sizeof(*desc));
-			if (ret)
+			if (ret) {
 				ret = -EFAULT;
 				return ret;
+			   }
 			}
 		default:
 			ret = -ENOTTY;
