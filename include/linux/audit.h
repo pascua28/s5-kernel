@@ -719,6 +719,10 @@ extern int audit_enabled;
 #define audit_log_d_path(b, p, d) do { ; } while (0)
 #define audit_log_key(b, k) do { ; } while (0)
 #define audit_log_secctx(b,s) do { ; } while (0)
+static inline int audit_update_lsm_rules(void)
+{
+	return 0;
+}
 #define audit_enabled 0
 #endif
 #endif
