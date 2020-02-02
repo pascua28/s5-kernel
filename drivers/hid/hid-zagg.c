@@ -144,8 +144,8 @@ static int zagg_kbd_input_mapping(struct hid_device *hdev,
 		usage->hid & HID_USAGE);
 
 	if (HID_UP_KEYBOARD == (usage->hid & HID_USAGE_PAGE)) { // 0x00070000 == (0x???????? & 0XFFFF0000)
-		switch (usage->hid & HID_USAGE) { // 0X0000FFFF --> PS/2 Set 1 Make
 		set_bit(EV_REP, hi->input->evbit);
+		switch (usage->hid & HID_USAGE) { // 0X0000FFFF --> PS/2 Set 1 Make
 		/* Only for UK keyboard */
 		case 0x32: zagg_kbd_mouse_map_key_clear(KEY_BACKSLASH); break; // BACKSLASH
 		case 0x64: zagg_kbd_mouse_map_key_clear(KEY_102ND); break; // PLUS

@@ -951,7 +951,7 @@ int elv_register(struct elevator_type *e)
 		    WARN_ON(e->icq_align < __alignof__(struct io_cq)))
 			return -EINVAL;
 
-		snprintf(e->icq_cache_name, sizeof(e->icq_cache_name),
+		scnprintf(e->icq_cache_name, sizeof(e->icq_cache_name),
 			 "%s_io_cq", e->elevator_name);
 		e->icq_cache = kmem_cache_create(e->icq_cache_name, e->icq_size,
 						 e->icq_align, 0, NULL);

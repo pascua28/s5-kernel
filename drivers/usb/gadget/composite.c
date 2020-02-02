@@ -1655,7 +1655,7 @@ static int composite_bind(struct usb_gadget *gadget)
 	if (iManufacturer || !cdev->desc.iManufacturer) {
 		if (!iManufacturer && !composite->iManufacturer &&
 		    !*composite_manufacturer)
-			snprintf(composite_manufacturer,
+			scnprintf(composite_manufacturer,
 				 sizeof composite_manufacturer,
 				 "%s %s with %s",
 				 init_utsname()->sysname,
