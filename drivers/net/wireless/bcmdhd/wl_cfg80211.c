@@ -8445,7 +8445,7 @@ int wl_get_bss_info(struct bcm_cfg80211 *cfg, struct net_device *dev, uint8 *mac
 
 	} else {
 		rate = dtoh32(rate);
-		snprintf(rate_str, sizeof(rate_str), "%d", (rate/2));
+		scnprintf(rate_str, sizeof(rate_str), "%d", (rate/2));
 	}
 
 	//supported maximum rate

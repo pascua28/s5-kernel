@@ -731,19 +731,19 @@ static struct dsi_cmd get_aid_aor_control_set(int cd_idx)
 	if (!aid_map_table.size || !(cd_idx < aid_map_table.size))
 		goto end;
 
-		/* Get index in the aid command list*/
-		cmd_idx = aid_map_table.cmd_idx[cd_idx];
-		c_payload = aid_cmds_list.cmd_desc[cmd_idx].payload;
+	/* Get index in the aid command list*/
+	cmd_idx = aid_map_table.cmd_idx[cd_idx];
+	c_payload = aid_cmds_list.cmd_desc[cmd_idx].payload;
 
 
-		/* Check if current & previous commands are same */
-		if (p_idx >= 0) {
-			p_payload = aid_cmds_list.cmd_desc[p_idx].payload;
-			payload_size = aid_cmds_list.cmd_desc[p_idx].dchdr.dlen;
+	/* Check if current & previous commands are same */
+	if (p_idx >= 0) {
+		p_payload = aid_cmds_list.cmd_desc[p_idx].payload;
+		payload_size = aid_cmds_list.cmd_desc[p_idx].dchdr.dlen;
 
-			if (!memcmp(p_payload, c_payload, payload_size))
-				goto end;
-		}
+		if (!memcmp(p_payload, c_payload, payload_size))
+			goto end;
+	}
 
 	/* Get the command desc */
 	aid_control.cmd_desc = &(aid_cmds_list.cmd_desc[cmd_idx]);
@@ -2569,21 +2569,21 @@ static int mdss_samsung_parse_panel_cmd(struct device_node *np,
 		if (dchdr->dlen >200)
 			goto error2;
 
-			bp += sizeof(*dchdr);
-			len -= sizeof(*dchdr);
-			bp += dchdr->dlen;
-			len -= dchdr->dlen;
-			commands->num_of_cmds++;
+		bp += sizeof(*dchdr);
+		len -= sizeof(*dchdr);
+		bp += dchdr->dlen;
+		len -= dchdr->dlen;
+		commands->num_of_cmds++;
 
-			type = dchdr->dtype;
-			if (type == DTYPE_GEN_READ ||
-				type == DTYPE_GEN_READ1 ||
-				type == DTYPE_GEN_READ2 ||
-				type == DTYPE_DCS_READ)	{
-				/* Read command :last byte contain read size, read start */
-				bp += 2;
-				len -= 2;
-				is_read = 1;
+		type = dchdr->dtype;
+		if (type == DTYPE_GEN_READ ||
+			type == DTYPE_GEN_READ1 ||
+			type == DTYPE_GEN_READ2 ||
+			type == DTYPE_DCS_READ)	{
+			/* Read command :last byte contain read size, read start */
+			bp += 2;
+			len -= 2;
+			is_read = 1;
 			}
 		}
 

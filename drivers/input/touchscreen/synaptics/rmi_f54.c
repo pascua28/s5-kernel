@@ -6044,7 +6044,7 @@ static int synaptics_rmi4_f54_get_report_type(int type)
 	unsigned int patience = 90;
 
 	memset(buf, 0x00, sizeof(buf));
-	snprintf(buf, 3, "%u\n", type);
+	scnprintf(buf, 3, "%u\n", type);
 	retval = synaptics_rmi4_f54_report_type_store(NULL, NULL, buf, 2);
 	if (retval != 2)
 		return 0;
