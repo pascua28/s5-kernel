@@ -248,7 +248,7 @@ static void logi_dj_recv_add_djhid_device(struct dj_receiver_dev *djrcv_dev,
 		dj_report->report_params[DEVICE_PAIRED_PARAM_EQUAD_ID_LSB]);
 
 	usb_make_path(usbdev, dj_hiddev->phys, sizeof(dj_hiddev->phys));
-	snprintf(tmpstr, sizeof(tmpstr), ":%d", dj_report->device_index);
+	scnprintf(tmpstr, sizeof(tmpstr), ":%d", dj_report->device_index);
 	strlcat(dj_hiddev->phys, tmpstr, sizeof(dj_hiddev->phys));
 
 	dj_dev = kzalloc(sizeof(struct dj_device), GFP_KERNEL);

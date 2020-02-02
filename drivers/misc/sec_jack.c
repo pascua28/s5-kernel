@@ -379,7 +379,7 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 	if (jack_type == SEC_HEADSET_4POLE) {
 #endif
 		/* for a 4 pole headset, enable detection of send/end key */
-		if (hi->send_key_dev == NULL)
+		if (hi->send_key_dev == NULL) {
 			/* enable to get events again */
 			hi->send_key_dev = platform_device_register_data(NULL,
 				GPIO_EVENT_DEV_NAME,
@@ -388,6 +388,7 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 				sizeof(sec_jack_input_data));
 			mod_timer(&hi->timer,
 				jiffies + msecs_to_jiffies(1000));
+		}
 	} else {
 		/* for all other jacks, disable send/end key detection */
 		if (hi->send_key_dev != NULL) {

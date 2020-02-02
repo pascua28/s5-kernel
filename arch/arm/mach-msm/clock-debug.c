@@ -201,7 +201,7 @@ static int fmax_rates_show(struct seq_file *m, void *unused)
 
 	seq_printf(m, "%12s", "");
 	for (i = 0; i < nregs; i++) {
-		snprintf(reg_name, ARRAY_SIZE(reg_name), "reg %d", i);
+		scnprintf(reg_name, ARRAY_SIZE(reg_name), "reg %d", i);
 		seq_printf(m, "%10s", reg_name);
 		if (vdd_class->vdd_ua)
 			seq_printf(m, "%10s", "");

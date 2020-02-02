@@ -3357,7 +3357,7 @@ int synaptics_rmi4_set_custom_ctrl_register(struct synaptics_rmi4_data *rmi4_dat
 		}
 		memcpy(value, data, length);
 
-		snprintf(temp, 1, ":");
+		scnprintf(temp, 1, ":");
 		while (ii < length) {
 			snprintf(t_temp, 7, "0x%X, ", data[ii]);
 			strcat(temp, t_temp);
@@ -3382,7 +3382,7 @@ int synaptics_rmi4_set_custom_ctrl_register(struct synaptics_rmi4_data *rmi4_dat
 				return -EIO;
 			}
 
-			snprintf(temp, 1, ":");
+			scnprintf(temp, 1, ":");
 			while (ii < length) {
 				snprintf(t_temp, 7, "0x%X, ", data[ii]);
 				strcat(temp, t_temp);
