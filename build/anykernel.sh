@@ -40,22 +40,13 @@ ramdisk_compression=auto;
 
 ## AnyKernel methods (DO NOT CHANGE)
 # import patching functions/variables - see for reference
-. /tmp/anykernel/tools/ak2-core.sh;
+. tools/ak3-core.sh;
 
 
 ## AnyKernel file attributes
 # set permissions/ownership for included ramdisk files
-chmod 775 $ramdisk/sbin
-chmod 755 $ramdisk/sbin/busybox
-chmod 755 $ramdisk/sbin/sswap
-chmod 755 $ramdisk/sbin/intellikernel.sh
-
-chmod 775 $ramdisk/res
-chmod -R 755 $ramdisk/res/bc
-chmod -R 755 $ramdisk/res/misc
-
-chown -R root:root $ramdisk/*;
-
+set_perm_recursive 0 0 755 644 $ramdisk/*;
+set_perm_recursive 0 0 750 750 $ramdisk/init* $ramdisk/sbin;
 
 ## AnyKernel install
 dump_boot;
@@ -74,17 +65,10 @@ else
 	ui_print "Android 8.0/8.1/9.0 detected!";
 fi
 
-remove_section init.qcom.rc "service tweaks" "seclabel u:r:magisk:s0"
-
-remove_line init.qcom.rc "start tweaks"
-
-insert_line init.qcom.rc "exec u:r:magisk:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:magisk:s0 root root -- /sbin/intellikernel.sh";
-
-insert_line init.qcom.rc "exec u:r:supersu:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:supersu:s0 root root -- /sbin/intellikernel.sh";
-
-insert_line init.qcom.rc "exec u:r:su:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:su:s0 root root -- /sbin/intellikernel.sh";
-
-insert_line init.qcom.rc "exec u:r:init:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:init:s0 root root -- /sbin/intellikernel.sh";
+remove_line init.qcom.rc "exec u:r:magisk:s0 root root -- /sbin/intellikernel.sh"
+remove_line init.qcom.rc "exec u:r:supersu:s0 root root -- /sbin/intellikernel.sh"
+remove_line init.qcom.rc "exec u:r:su:s0 root root -- /sbin/intellikernel.sh"
+remove_line init.qcom.rc "exec u:r:init:s0 root root -- /sbin/intellikernel.sh"
 
 write_boot;
 

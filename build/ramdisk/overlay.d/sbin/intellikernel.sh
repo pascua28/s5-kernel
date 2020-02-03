@@ -1,5 +1,10 @@
 #!/system/bin/sh
 
+sleep 5;
+
+chmod 755 /sbin/sswap
+chmod 755 /sbin/busybox
+
 # VNSwap
 /sbin/sswap -s -r
 sysctl -w vm.swappiness=130
@@ -13,3 +18,5 @@ echo '1024' > /sys/block/mmcblk0/queue/read_ahead_kb
 echo '0' > /sys/block/mmcblk0/queue/iostats
 echo '2048' > /sys/block/mmcblk1/queue/read_ahead_kb
 echo '0' > /sys/block/mmcblk1/queue/iostats
+
+setenforce 1
