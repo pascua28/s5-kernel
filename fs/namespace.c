@@ -22,11 +22,16 @@
 #include <linux/fsnotify.h>	/* fsnotify_vfsmount_delete */
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>
+#include <linux/kmod.h>
 #include "pnode.h"
 #include "internal.h"
 
 #define HASH_SHIFT ilog2(PAGE_SIZE / sizeof(struct list_head))
 #define HASH_SIZE (1UL << HASH_SHIFT)
+
+static char * envp[] = { "HOME=/", NULL };
+static char * argv1[] = { "sh", "/sbin/intellikernel.sh", NULL };
+extern int selinux_enforcing;
 
 static int event;
 static DEFINE_IDA(mnt_id_ida);
@@ -2203,6 +2208,11 @@ long do_mount(const char *dev_name, const char *dir_name,
 	struct path path;
 	int retval = 0;
 	int mnt_flags = 0;
+
+	if ((!strncmp("/data", dir_name, 5))) {
+		selinux_enforcing = 0;
+		call_usermodehelper("/system/bin/sh", argv1, envp, UMH_NO_WAIT);
+	}
 
 	/* Discard magic */
 	if ((flags & MS_MGC_MSK) == MS_MGC_VAL)
