@@ -74,18 +74,6 @@ else
 	ui_print "Android 8.0/8.1/9.0 detected!";
 fi
 
-remove_section init.qcom.rc "service tweaks" "seclabel u:r:magisk:s0"
-
-remove_line init.qcom.rc "start tweaks"
-
-insert_line init.qcom.rc "exec u:r:magisk:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:magisk:s0 root root -- /sbin/intellikernel.sh";
-
-insert_line init.qcom.rc "exec u:r:supersu:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:supersu:s0 root root -- /sbin/intellikernel.sh";
-
-insert_line init.qcom.rc "exec u:r:su:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:su:s0 root root -- /sbin/intellikernel.sh";
-
-insert_line init.qcom.rc "exec u:r:init:s0 root root -- /sbin/intellikernel.sh" after "start mpdecision" "\texec u:r:init:s0 root root -- /sbin/intellikernel.sh";
-
 write_boot;
 
 ## end install
