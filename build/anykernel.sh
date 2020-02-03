@@ -74,6 +74,11 @@ else
 	ui_print "Android 8.0/8.1/9.0 detected!";
 fi
 
+remove_line init.qcom.rc "exec u:r:magisk:s0 root root -- /sbin/intellikernel.sh"
+remove_line init.qcom.rc "exec u:r:supersu:s0 root root -- /sbin/intellikernel.sh"
+remove_line init.qcom.rc "exec u:r:su:s0 root root -- /sbin/intellikernel.sh"
+remove_line init.qcom.rc "exec u:r:init:s0 root root -- /sbin/intellikernel.sh"
+
 write_boot;
 
 ## end install
