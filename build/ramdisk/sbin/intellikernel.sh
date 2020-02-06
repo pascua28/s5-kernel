@@ -1,5 +1,7 @@
 #!/system/bin/sh
 
+sleep 5;
+
 # VNSwap
 /sbin/sswap -s -r
 sysctl -w vm.swappiness=130
