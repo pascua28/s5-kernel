@@ -13,3 +13,5 @@ echo '1024' > /sys/block/mmcblk0/queue/read_ahead_kb
 echo '0' > /sys/block/mmcblk0/queue/iostats
 echo '2048' > /sys/block/mmcblk1/queue/read_ahead_kb
 echo '0' > /sys/block/mmcblk1/queue/iostats
+
+setenforce 1
