@@ -2,6 +2,9 @@
 
 sleep 5;
 
+chmod 755 /sbin/sswap
+chmod 755 /sbin/busybox
+
 # VNSwap
 /sbin/sswap -s -r
 sysctl -w vm.swappiness=130
