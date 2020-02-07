@@ -1,15 +1,11 @@
-# AnyKernel2 Ramdisk Mod Script
-#
-# Original and credits: osm0sis @ xda-developers
-#
-# Modified by sunilpaulmathew @ xda-developers.com
+# AnyKernel3 Ramdisk Mod Script
+# osm0sis @ xda-developers
 
 ## AnyKernel setup
 # begin properties
 properties() { '
 kernel.string=Intelli-kernel by pascua28 @ xda-developers
 do.devicecheck=1
-do.initd=0
 do.modules=0
 do.cleanup=1
 do.cleanuponabort=0
@@ -37,28 +33,21 @@ supersu_exclusions=""
 is_slot_device=0;
 ramdisk_compression=auto;
 
-
 ## AnyKernel methods (DO NOT CHANGE)
 # import patching functions/variables - see for reference
-. /tmp/anykernel/tools/ak2-core.sh;
+. tools/ak3-core.sh;
 
 
 ## AnyKernel file attributes
 # set permissions/ownership for included ramdisk files
-chmod 775 $ramdisk/sbin
-chmod 755 $ramdisk/sbin/busybox
-chmod 755 $ramdisk/sbin/sswap
-chmod 755 $ramdisk/sbin/intellikernel.sh
-
-chmod 775 $ramdisk/res
-chmod -R 755 $ramdisk/res/bc
-chmod -R 755 $ramdisk/res/misc
-
-chown -R root:root $ramdisk/*;
+set_perm_recursive 0 0 755 644 $ramdisk/*;
+set_perm_recursive 0 0 750 750 $ramdisk/init* $ramdisk/sbin;
 
 
 ## AnyKernel install
 dump_boot;
+
+# begin ramdisk changes
 
 ASD=$(cat /system/build.prop | grep ro.build.version.sdk | cut -d "=" -f 2)
 
@@ -82,4 +71,3 @@ remove_line init.qcom.rc "exec u:r:init:s0 root root -- /sbin/intellikernel.sh"
 write_boot;
 
 ## end install
-
