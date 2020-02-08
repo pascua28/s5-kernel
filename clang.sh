@@ -1,5 +1,8 @@
 #!/bin/bash
 
+K_NAME="Intelli-Kernel"
+K_VERSION="v14b1"
+
 cp defconfig .config
 find arch/arm/boot/ -name "*.dtb" -type f -delete
 
@@ -7,6 +10,7 @@ case "$1" in
 	klte)
     make ARCH=arm oldconfig
     echo "Compiling kernel for klte"
+    DEVICE_NAME="klte"
     ;;
 
 	kltedv)
@@ -24,6 +28,7 @@ CONFIG_BCM2079X_NFC_I2C=y
 
     make ARCH=arm oldconfig
     echo "Compiling kernel for kltedv"
+    DEVICE_NAME="kltedv"
     ;;
 
 	kltekdi)
@@ -57,6 +62,7 @@ CONFIG_NFC_FELICA=y
 
     make ARCH=arm oldconfig
     echo "Compiling kernel for kltekdi"
+    DEVICE_NAME="kltedi"
     ;;
 
 	kltechn)
@@ -86,6 +92,7 @@ CONFIG_SENSORS_FPRINT_SECURE=y
 
     make ARCH=arm oldconfig
     echo "Compiling kernel for kltechn"
+    DEVICE_NAME="kltechn"
     ;;
 
 	kltekor)
@@ -115,6 +122,7 @@ CONFIG_SENSORS_SSP_SHTC1=y
 
     make ARCH=arm oldconfig
     echo "Compiling kernel for kltekor"
+    DEVICE_NAME="kltekor"
     ;;
 
 	klteduos)
@@ -128,6 +136,7 @@ CONFIG_MACH_KLTE_LTNDUOS=y
 
     make ARCH=arm oldconfig
     echo "Compiling kernel for klteduos"
+    DEVICE_NAME="klteduos"
     ;;
 
 	klteactive)
@@ -159,6 +168,17 @@ CONFIG_MACH_KACTIVELTE_EUR=y
 
     make ARCH=arm oldconfig
     echo "Compiling kernel for klteactive"
+    DEVICE_NAME="klteactive"
+;;
+esac
+
+case "$2" in
+	test)
+    K_NAME=""
+    K_VERSION="test"
+    DEVICE_NAME="s5"
+    patch -p1 < patches/1.diff
+    echo "This is a test build!!!"
 ;;
 esac
 
@@ -179,5 +199,20 @@ tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
 
 DATE_END=$(date +"%s")
 DIFF=$(($DATE_END - $DATE_START))
+
+ZIP_NAME=$K_NAME-$K_VERSION-$DEVICE_NAME.zip
+
+mv arch/arm/boot/zImage build/zImage
+mv arch/arm/boot/dtb build/dtb
+
+cd build/
+zip -r -9 ../../$ZIP_NAME *
+rm zImage
+rm dtb
+
+if [ "$K_VERSION" == "test" ]; then
+	cd ../
+	patch -p1 -R < patches/1.diff
+fi
 
 echo "Time: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
