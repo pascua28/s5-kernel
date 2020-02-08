@@ -1672,11 +1672,6 @@ CONFIG_EEPROM_93CX6=y
 # CONFIG_SEC_MODEM is not set
 
 #
-# Altera FPGA firmware download module
-#
-CONFIG_DUALWAVE=y
-
-#
 # SCSI device support
 #
 CONFIG_SCSI_MOD=y

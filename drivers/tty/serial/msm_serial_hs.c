@@ -73,93 +73,6 @@
 static void *ipc_msm_hs_log_ctxt;
 #define IPC_MSM_HS_LOG_PAGES 30
 
-
-#define _DW_ENABLED
-
-#ifdef _DW_ENABLED
-#define MAX_DUALWAVE_MESSAGE_SIZE 128
-
-#include <linux/syscalls.h>
-#include <asm/uaccess.h>
-
-#define DUALWAVE_INACTIVE	0
-#define DUALWAVE_PLAYBACK	1
-#define DUALWAVE_CAPTURE	2
-
-extern int send_uevent_wh_ble_info(char *prEnvInfoLists[3]);
-extern int checkDualWaveStatus(void);
-
-#define GET_CUR_TIME_ON(tCurTimespec)											\
-	do {																		\
-		long int llErrTime = 0;													\
-		struct timespec tMyTime;												\
-		mm_segment_t tOldfs;													\
-		tOldfs = get_fs();														\
-		set_fs(KERNEL_DS);														\
-																				\
-		llErrTime = sys_clock_gettime(CLOCK_REALTIME, &tMyTime);				\
-		set_fs(tOldfs);															\
-																				\
-		tCurTimespec = tMyTime;													\
-	}while(0)
-
-char *g_szSysTime;
-char *g_szRefTime;	
-
-inline void UpdateTime(char *pchBuffer, int iLen)
-{
-	struct timespec tSysTimespec;
-	char *pEnv[3];
-
-
-	int iRead=0;
-	int iEventLength=0;
-	int iNumHciCmdPackets=0;
-	unsigned short *psCmdOpCode =NULL;
-	int iStatus = 0;
-	unsigned int *puiBtClock;
-
-	GET_CUR_TIME_ON(tSysTimespec);
-
-	g_szSysTime = kzalloc(MAX_DUALWAVE_MESSAGE_SIZE, GFP_KERNEL);
-	g_szRefTime = kzalloc(MAX_DUALWAVE_MESSAGE_SIZE, GFP_KERNEL);
-
-	pEnv[0] = g_szSysTime;
-	pEnv[1] = g_szRefTime;
-	pEnv[2] = NULL;
-
-
-	switch (pchBuffer[iRead++])
-	{
-		case 0x04:
-		{
-			if(pchBuffer[iRead++] == 0x0E)
-			{
-				iEventLength = pchBuffer[iRead++];
-				iNumHciCmdPackets = pchBuffer[iRead++];
-				psCmdOpCode = (short*) (pchBuffer+iRead); iRead += 2;
-				iStatus = pchBuffer[iRead++];
-				puiBtClock = (unsigned int*)(pchBuffer+iRead); iRead +=4;
-				if ( *psCmdOpCode == (unsigned short)0xFCEE && iStatus == 0x00)
-				{
-					sprintf(g_szSysTime,"SYS_TIME=%ld.%09ld",tSysTimespec.tv_sec,tSysTimespec.tv_nsec);
-					sprintf(g_szRefTime,"BT_CLK=%d",*puiBtClock);
-					send_uevent_wh_ble_info(pEnv);
-				}
-			}
-		}
-		break;
-		default:
-		break;
-	}
-
-	kfree(g_szSysTime);
-	kfree(g_szRefTime);
-
-}
-
-#endif
-
 /* If the debug_mask gets set to FATAL_LEV,
  * a fatal error has happened and further IPC logging
  * is disabled so that this problem can be detected
@@ -1626,14 +1539,6 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 			msm_uport->rx.buffer_pending |= CHARS_NORMAL |
 				retval << 5 | (rx_count - retval) << 16;
 		}
-	#ifdef _DW_ENABLED
-		else
-		{
-			if (checkDualWaveStatus() != DUALWAVE_INACTIVE) {
-				UpdateTime(msm_uport->rx.buffer, rx_count);
-			}
-		}
-	#endif
 	}
 	if (!msm_uport->rx.buffer_pending && !msm_uport->rx.rx_cmd_queued) {
 		msm_uport->rx.flush = FLUSH_NONE;
