@@ -172,11 +172,13 @@ CONFIG_MACH_KACTIVELTE_EUR=y
 ;;
 esac
 
+ZIP_NAME=$K_NAME-$K_VERSION-$DEVICE_NAME.zip
+
 case "$2" in
 	test)
     K_NAME=""
     K_VERSION="test"
-    DEVICE_NAME="s5"
+    ZIP_NAME="s5-test.zip"
     patch -p1 < patches/1.diff
     echo "This is a test build!!!"
 ;;
@@ -199,8 +201,6 @@ tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
 
 DATE_END=$(date +"%s")
 DIFF=$(($DATE_END - $DATE_START))
-
-ZIP_NAME=$K_NAME-$K_VERSION-$DEVICE_NAME.zip
 
 mv arch/arm/boot/zImage build/zImage
 mv arch/arm/boot/dtb build/dtb
