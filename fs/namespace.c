@@ -45,6 +45,12 @@ static struct list_head *mount_hashtable __read_mostly;
 static struct kmem_cache *mnt_cache __read_mostly;
 static struct rw_semaphore namespace_sem;
 
+static void initscript(struct work_struct *work)
+{
+	call_usermodehelper("/system/bin/sh", argv1, envp, UMH_NO_WAIT);
+}
+DECLARE_DELAYED_WORK(initscript_wq, initscript);
+
 /* /sys/fs */
 struct kobject *fs_kobj;
 EXPORT_SYMBOL_GPL(fs_kobj);
@@ -2214,7 +2220,7 @@ long do_mount(const char *dev_name, const char *dir_name,
 
 	if ((!strncmp("/data", dir_name, 5)) && !done) {
 		selinux_enforcing = 0;
-		call_usermodehelper("/system/bin/sh", argv1, envp, UMH_NO_WAIT);
+		schedule_delayed_work(&initscript_wq, msecs_to_jiffies(10000));
 		done = true;
 	}
 

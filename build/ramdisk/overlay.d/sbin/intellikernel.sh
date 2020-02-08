@@ -1,7 +1,5 @@
 #!/system/bin/sh
 
-sleep 5;
-
 chmod 755 /sbin/sswap
 chmod 755 /sbin/busybox
 
