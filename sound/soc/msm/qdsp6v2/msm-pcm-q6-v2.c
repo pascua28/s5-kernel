@@ -38,45 +38,6 @@
 #include "msm-pcm-q6-v2.h"
 #include "msm-pcm-routing-v2.h"
 
-#ifdef DUALWAVE_ENABLE 
-#include <linux/syscalls.h>
-#include <asm/uaccess.h>
-#include <linux/proc_fs.h>
-#include <linux/vmalloc.h>
-#include <linux/fs.h>
-
-#define SND_PLAYBACK_UNAVAILABLE 	0
-#define SND_PLAYBACK_AVAILABLE 		1
-#define SND_CAPTURE_UNAVAILABLE 	2
-#define SND_CAPTURE_AVAILABLE 		3
-
-#define DUALWAVE_INACTIVE	0
-#define DUALWAVE_PLAYBACK	1
-#define DUALWAVE_CAPTURE	2
-
-#define GET_CUR_TIME_ON(tCurTimespec)											\
-	do {																		\
-		long int llErrTime = 0;													\
-		struct timespec tMyTime;												\
-		mm_segment_t tOldfs;													\
-		tOldfs = get_fs();														\
-		set_fs(KERNEL_DS);														\
-																				\
-		llErrTime = sys_clock_gettime(CLOCK_REALTIME, &tMyTime);				\
-		set_fs(tOldfs);															\
-																				\
-		tCurTimespec = tMyTime;													\
-	}while(0)		
-
-
-static struct timespec res;
-extern int send_uevent_wh_timeinfo(const char *szName, struct timespec *ptTime);
-extern int send_uevent_snd_avail(int state);
-extern int checkDualWaveStatus(void);
-static int dw_status = 0;
-#endif
-
-
 static struct audio_locks the_locks;
 
 #define PCM_MASTER_VOL_MAX_STEPS	0x2000
@@ -470,31 +431,7 @@ static int msm_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		pr_debug("%s: Trigger start\n", __func__);
 
-		#ifdef DUALWAVE_ENABLE
-		if(dw_status != DUALWAVE_INACTIVE){
-			GET_CUR_TIME_ON(res);		
-		}
-		#endif
-		
 		ret = q6asm_run_nowait(prtd->audio_client, 0, 0, 0);
-
-		#ifdef DUALWAVE_ENABLE
-		switch(dw_status) {
-			case DUALWAVE_PLAYBACK:
-				if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){					
-					send_uevent_wh_timeinfo("PLAY_TIME",&res);
-				}
-			break;
-			case DUALWAVE_CAPTURE:
-				if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
-					send_uevent_wh_timeinfo("CAPTURE_TIME",&res);
-				}
-			break;
-			case DUALWAVE_INACTIVE:
-			default:
-			break;
-		}
-		#endif		
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		pr_debug("SNDRV_PCM_TRIGGER_STOP\n");
@@ -836,51 +773,11 @@ static int msm_pcm_close(struct snd_pcm_substream *substream)
 	else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		ret = msm_pcm_capture_close(substream);
 
-#ifdef DUALWAVE_ENABLE
-	switch(dw_status) {
-		case DUALWAVE_PLAYBACK:
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-				send_uevent_snd_avail(SND_PLAYBACK_AVAILABLE);
-			}
-		break;
-		case DUALWAVE_CAPTURE:
-			if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
-				send_uevent_snd_avail(SND_CAPTURE_AVAILABLE); 
-			}
-		break;
-		case DUALWAVE_INACTIVE:
-		default:
-			break;
-	}
-#endif
-
 	return ret;
 }
 static int msm_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	int ret = 0;
-
-#ifdef DUALWAVE_ENABLE
-	dw_status = checkDualWaveStatus();
-
-	switch(dw_status) {
-		case DUALWAVE_PLAYBACK:
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-				printk("khhan pcm prepare # SEND_UEVENT : PLAYBACK UNAVAILABLE\n");
-				send_uevent_snd_avail(SND_PLAYBACK_UNAVAILABLE); 
-			}
-		break;
-		case DUALWAVE_CAPTURE:
-			if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
-				printk("khhan pcm prepare # SEND_UEVENT : CAPTURE UNAVAILABLE\n");
-				send_uevent_snd_avail(SND_CAPTURE_UNAVAILABLE); 
-			}
-		break;
-		case DUALWAVE_INACTIVE:
-		default:
-		break;
-	}
-#endif
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		ret = msm_pcm_playback_prepare(substream);
