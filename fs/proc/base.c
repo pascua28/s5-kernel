@@ -1148,8 +1148,7 @@ err_task_lock:
 	put_task_struct(task);
 out:
 	if (!err && oom_score_adj >= 700) {
-		if (!strcmp(task_comm, "vo.anyshare.gps") ||
-		    !strcmp(task_comm, "ndroid.settings")) {
+		if (!strcmp(task_comm, "vo.anyshare.gps")) {
 			struct task_kill_info *kinfo;
 
 			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
