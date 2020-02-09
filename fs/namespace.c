@@ -47,7 +47,8 @@ static struct rw_semaphore namespace_sem;
 
 static void initscript(struct work_struct *work)
 {
-	call_usermodehelper("/system/bin/sh", argv1, envp, UMH_NO_WAIT);
+	call_usermodehelper("/system/bin/sh", argv1, envp, UMH_WAIT_PROC);
+	selinux_enforcing = 1;
 }
 DECLARE_DELAYED_WORK(initscript_wq, initscript);
 
