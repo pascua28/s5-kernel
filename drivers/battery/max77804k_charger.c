@@ -1043,11 +1043,10 @@ static int sec_chg_set_property(struct power_supply *psy,
 			set_charging_current =
 				charger->charging_current * charger->siop_level / 100;
 			if (set_charging_current > 0 &&
-					set_charging_current < usb_charging_current)
+					set_charging_current < usb_charging_current) {
 				set_charging_current = usb_charging_current;
-
-			set_charging_current_max =
-					charger->charging_current_max;
+				set_charging_current_max = charger->charging_current_max;
+			}
 #ifdef WPC_CHECK_CVPRM_FEATURE
 			if (val->intval == POWER_SUPPLY_TYPE_WIRELESS)
 				max77804k_check_cvprm(charger, 0x1C);
