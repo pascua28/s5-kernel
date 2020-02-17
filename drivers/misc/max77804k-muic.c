@@ -937,7 +937,7 @@ int max77804k_muic_get_charging_type(void)
 		return CABLE_TYPE_NONE_MUIC;
 }
 
-extern int system_rev;
+extern unsigned int system_rev;
 static int max77804k_muic_set_charging_type(struct max77804k_muic_info *info,
 					   bool force_disable)
 {
