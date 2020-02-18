@@ -203,12 +203,13 @@ DATE_END=$(date +"%s")
 DIFF=$(($DATE_END - $DATE_START))
 
 mv arch/arm/boot/zImage build/zImage
-mv arch/arm/boot/dtb build/dtb
+mv arch/arm/boot/dtb build/dt
 
 cd build/
 zip -r -9 ../../$ZIP_NAME *
 rm zImage
-rm dtb
+rm dt
+rm -rf ramdisk/sbin/
 
 if [ "$K_VERSION" == "test" ]; then
 	cd ../
