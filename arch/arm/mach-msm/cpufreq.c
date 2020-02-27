@@ -259,13 +259,6 @@ static unsigned int msm_cpufreq_get_freq(unsigned int cpu)
 	return acpuclk_get_rate(cpu);
 }
 
-static void bootboost_stop(struct work_struct *work)
-{
-	struct cpufreq_policy *policy = cpufreq_cpu_get(0);
-	policy->max = 2265600;
-}
-DECLARE_DELAYED_WORK(booststop_wq, bootboost_stop);
-
 static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 {
 	int cur_freq;
@@ -301,10 +294,8 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #endif
 	}
 
-	policy->max = 2611200;
-	policy->min = 300000;
-
-	schedule_delayed_work(&booststop_wq, msecs_to_jiffies(90000));
+	policy->min = 268800;
+	policy->max = 2457600;
 
 	if (is_clk)
 		cur_freq = clk_get_rate(cpu_clk[policy->cpu])/1000;
