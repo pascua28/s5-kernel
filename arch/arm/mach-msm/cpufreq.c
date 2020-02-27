@@ -294,8 +294,8 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #endif
 	}
 
-	policy->min = 268800;
-	policy->max = 2457600;
+	policy->min = 300000;
+	policy->max = 2611200;
 
 	if (is_clk)
 		cur_freq = clk_get_rate(cpu_clk[policy->cpu])/1000;
