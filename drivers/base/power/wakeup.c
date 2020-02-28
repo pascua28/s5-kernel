@@ -664,33 +664,29 @@ bool pm_wakeup_pending(void)
 /**
  * pm_get_wakeup_count - Read the number of registered wakeup events.
  * @count: Address to store the value at.
- * @block: Whether or not to block.
  *
- * Store the number of registered wakeup events at the address in @count.  If
- * @block is set, block until the current number of wakeup events being
- * processed is zero.
+ * Store the number of registered wakeup events at the address in @count.  Block
+ * if the current number of wakeup events being processed is nonzero.
  *
- * Return 'false' if the current number of wakeup events being processed is
- * nonzero.  Otherwise return 'true'.
+ * Return 'false' if the wait for the number of wakeup events being processed to
+ * drop down to zero has been interrupted by a signal (and the current number
+ * of wakeup events being processed is still nonzero).  Otherwise return 'true'.
  */
-bool pm_get_wakeup_count(unsigned int *count, bool block)
+bool pm_get_wakeup_count(unsigned int *count)
 {
 	unsigned int cnt, inpr;
+	DEFINE_WAIT(wait);
 
-	if (block) {
-		DEFINE_WAIT(wait);
+	for (;;) {
+		prepare_to_wait(&wakeup_count_wait_queue, &wait,
+				TASK_INTERRUPTIBLE);
+		split_counters(&cnt, &inpr);
+		if (inpr == 0 || signal_pending(current))
+			break;
 
-		for (;;) {
-			prepare_to_wait(&wakeup_count_wait_queue, &wait,
-					TASK_INTERRUPTIBLE);
-			split_counters(&cnt, &inpr);
-			if (inpr == 0 || signal_pending(current))
-				break;
-
-			schedule();
-		}
-		finish_wait(&wakeup_count_wait_queue, &wait);
+		schedule();
 	}
+	finish_wait(&wakeup_count_wait_queue, &wait);
 
 	split_counters(&cnt, &inpr);
 	*count = cnt;
