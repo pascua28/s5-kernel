@@ -70,7 +70,7 @@ extern unsigned long ebi1_phys_offset;
 
 #ifndef __ASSEMBLY__
 void *allocate_contiguous_ebi(unsigned long, unsigned long, int);
-phys_addr_t allocate_contiguous_ebi_nomap(unsigned long, unsigned long);
+unsigned long allocate_contiguous_ebi_nomap(unsigned long, unsigned long);
 void clean_and_invalidate_caches(unsigned long, unsigned long, unsigned long);
 void clean_caches(unsigned long, unsigned long, unsigned long);
 void invalidate_caches(unsigned long, unsigned long, unsigned long);
