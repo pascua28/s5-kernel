@@ -241,7 +241,7 @@ SECTIONS
 		/*
 		 * The exception fixup table (might need resorting at runtime)
 		 */
-		. = ALIGN(4);
+		. = ALIGN(L1_CACHE_BYTES);
 		__start___ex_table = .;
 #ifdef CONFIG_MMU
 		*(__ex_table)
