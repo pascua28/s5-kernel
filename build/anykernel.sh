@@ -52,9 +52,22 @@ mount -o rw,remount /system;
 chmod 755 $ramdisk/overlay.d/sbin/busybox
 chmod 755 $ramdisk/overlay.d/sbin/sswap
 chmod 755 $ramdisk/overlay.d/sbin/intellikernel.sh
+chmod 755 $ramdisk/overlay.d/magiskinit
+
+INIT_ORIG=$ramdisk/.backup/init
 
 ## AnyKernel install
 dump_boot;
+
+if [ -f "$INIT_ORIG" ]; then
+	ui_print "Magiskinit already in ramdisk, skipping"
+else
+	mkdir $ramdisk/.backup
+	ui_print "Backing up and replacing /init with magiskinit"
+	mv $ramdisk/init $ramdisk/.backup/init
+	mv $ramdisk/overlay.d/magiskinit $ramdisk/init
+	chmod 755 $ramdisk/.backup/init
+fi
 
 ASD=$(cat /system/build.prop | grep ro.build.version.sdk | cut -d "=" -f 2)
 
