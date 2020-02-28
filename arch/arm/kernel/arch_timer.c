@@ -457,6 +457,7 @@ static int __init arch_timer_common_register(void)
 
 	if (err)
 		goto out_free_irq;
+	percpu_timer_setup();
 
 	return 0;
 
