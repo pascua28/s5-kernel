@@ -192,93 +192,6 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 	return ret;
 }
 
-static ssize_t diag_dbgfs_read_dcistats(struct file *file,
-				char __user *ubuf, size_t count, loff_t *ppos)
-{
-	char *buf = NULL;
-	unsigned int bytes_remaining, bytes_written = 0;
-	unsigned int bytes_in_buf = 0, i = 0;
-	struct diag_dci_data_info *temp_data = dci_data_smd;
-	unsigned int buf_size;
-	buf_size = (DEBUG_BUF_SIZE < count) ? DEBUG_BUF_SIZE : count;
-
-	if (diag_dbgfs_dci_finished) {
-		diag_dbgfs_dci_finished = 0;
-		return 0;
-	}
-
-	buf = kzalloc(sizeof(char) * buf_size, GFP_KERNEL);
-	if (ZERO_OR_NULL_PTR(buf)) {
-		pr_err("diag: %s, Error allocating memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	buf_size = ksize(buf);
-	bytes_remaining = buf_size;
-	
-	mutex_lock(&diag_dci_dbgfs_mutex);
-	if (diag_dbgfs_dci_data_index == 0) {
-		bytes_written =
-			scnprintf(buf, buf_size,
-			"number of clients: %d\n"
-			"dci proc active: %d\n"
-			"dci real time vote: %d\n",
-			driver->num_dci_client,
-			(driver->proc_active_mask & DIAG_PROC_DCI) ? 1 : 0,
-			(driver->proc_rt_vote_mask & DIAG_PROC_DCI) ? 1 : 0);
-		bytes_in_buf += bytes_written;
-		bytes_remaining -= bytes_written;
-#ifdef CONFIG_DIAG_OVER_USB
-		bytes_written = scnprintf(buf+bytes_in_buf, bytes_remaining,
-			"usb_connected: %d\n",
-			driver->usb_connected);
-		bytes_in_buf += bytes_written;
-		bytes_remaining -= bytes_written;
-#endif
-		bytes_written = scnprintf(buf+bytes_in_buf,
-					  bytes_remaining,
-					  "dci power: active, relax: %lu, %lu\n",
-					  driver->diag_dev->power.wakeup->
-						active_count,
-					  driver->diag_dev->
-						power.wakeup->relax_count);
-		bytes_in_buf += bytes_written;
-		bytes_remaining -= bytes_written;
-
-	}
-	temp_data += diag_dbgfs_dci_data_index;
-	for (i = diag_dbgfs_dci_data_index; i < DIAG_DCI_DEBUG_CNT; i++) {
-		if (temp_data->iteration != 0) {
-			bytes_written = scnprintf(
-				buf + bytes_in_buf, bytes_remaining,
-				"i %-5ld\t"
-				"s %-5d\t"
-				"p %-5d\t"
-				"c %-5d\t"
-				"t %-15s\n",
-				temp_data->iteration,
-				temp_data->data_size,
-				temp_data->peripheral,
-				temp_data->ch_type,
-				temp_data->time_stamp);
-			bytes_in_buf += bytes_written;
-			bytes_remaining -= bytes_written;
-			/* Check if there is room for another entry */
-			if (bytes_remaining < bytes_written)
-				break;
-		}
-		temp_data++;
-	}
-
-	diag_dbgfs_dci_data_index = (i >= DIAG_DCI_DEBUG_CNT) ? 0 : i + 1;
-	mutex_unlock(&diag_dci_dbgfs_mutex);
-	bytes_written = simple_read_from_buffer(ubuf, count, ppos, buf,
-								bytes_in_buf);
-	kfree(buf);
-	diag_dbgfs_dci_finished = 1;
-	return bytes_written;
-}
-
 static ssize_t diag_dbgfs_read_workpending(struct file *file,
 				char __user *ubuf, size_t count, loff_t *ppos)
 {
@@ -673,10 +586,6 @@ const struct file_operations diag_dbgfs_mempool_ops = {
 	.read = diag_dbgfs_read_mempool,
 };
 
-const struct file_operations diag_dbgfs_dcistats_ops = {
-	.read = diag_dbgfs_read_dcistats,
-};
-
 void diag_debugfs_init(void)
 {
 	diag_dbgfs_dent = debugfs_create_dir("diag", 0);
@@ -694,9 +603,6 @@ void diag_debugfs_init(void)
 
 	debugfs_create_file("mempool", 0444, diag_dbgfs_dent, 0,
 		&diag_dbgfs_mempool_ops);
-
-	debugfs_create_file("dci_stats", 0444, diag_dbgfs_dent, 0,
-		&diag_dbgfs_dcistats_ops);
 
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 	debugfs_create_file("bridge", 0444, diag_dbgfs_dent, 0,
