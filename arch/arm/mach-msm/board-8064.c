@@ -182,7 +182,7 @@ static void __init reserve_rtb_memory(void)
 #endif
 }
 
-static int apq8064_paddr_to_memtype(phys_addr_t paddr)
+static int apq8064_paddr_to_memtype(unsigned int paddr)
 {
 	return MEMTYPE_EBI1;
 }
