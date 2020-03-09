@@ -11,7 +11,7 @@
  */
 
 /dts-v1/;
-#include "qcom/msm8974pro-ac-pm8941.dtsi"
+#include "qcom/msm8974pro-ac-pma8084.dtsi"
 #include "klte/msm8974-klte.dtsi"
 
 / {
