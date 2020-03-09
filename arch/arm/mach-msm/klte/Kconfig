@@ -1,0 +1,10 @@
+config MACH_KLTE
+	bool
+	depends on ARCH_MSM
+
+config MSM_SAMSUNG_KLTE
+	depends on ARCH_MSM8974
+	select MACH_KLTE
+	bool "Samsung KLTE MSM8974 Platform"
+	help
+	  Support for Samsung MSM8974 device.

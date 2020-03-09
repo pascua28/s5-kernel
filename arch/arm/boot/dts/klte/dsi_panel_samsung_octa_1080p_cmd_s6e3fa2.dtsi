@@ -1,0 +1,100 @@
+/* Copyright (c) 2012, Samsung Electronics Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+
+	dsi_samsung_fhd: mdss_dsi_samsung_1080p_cmd_fa2{
+		compatible = "qcom,mdss-dsi-panel";
+		status = "ok";
+		qcom,mdss-dsi-panel-name = "samsung,mdss-amoled-dsi-panel";
+		label = "samsung amoled 1080p command mode dsi S6E3FA2 panel";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,mdss-dsi-panel-width = <1080>;
+		qcom,mdss-dsi-panel-height = <1920>;
+		qcom,mdss-dsi-h-front-porch = <162>;
+		qcom,mdss-dsi-h-back-porch = <36>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-h-pulse-width = <10>;
+		qcom,mdss-dsi-h-sync-pulse = <1>;
+		qcom,mdss-dsi-v-back-porch = <3>;
+		qcom,mdss-dsi-v-front-porch = <13>;
+		qcom,mdss-dsi-v-pulse-width = <2>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-panel-clockrate=<898000000>;
+		qcom,mdss-dsi-panel-timings = [FA 4B 41 00 66 81 34 4B 41 03 04 A0];
+		qcom,mdss-dsi-on-command = [
+				29 01 00 00 00 00 03 F0 5A 5A		/* TEST KEY Enable */
+				29 01 00 00 00 00 03 FC 5A 5A		/* TEST KEY Enable */
+
+				/* MIPI Interface (Single DSI) */
+				05 01 00 00 00 00 02 F2 07
+				05 01 00 00 05 00 02 F9 09
+
+				05 01 00 00 14 00 02 11 00			/* Sleep out, wait 20ms(0x14) */
+
+				/* Brightness condition set */
+				29 01 00 00 00 00 22				/* 1) Gamma 2.2 Setting */
+					CA 01 00 01 00 01 00 80
+					80 80 80 80 80 80 80 80
+					80 80 80 80 80 80 80 80
+					80 80 80 80 80 80 80 00
+					00 00
+				29 01 00 00 00 00 05 B2 00 0E 00 0E /* AID 0% */
+
+				29 01 00 00 00 00 15				/* CAPS ELVSS Set */
+					B6 98 04 00 00 00 00
+					00 03 55 54 20
+					00 0A AA AF 0F
+					02 22 22 10
+				29 01 00 00 00 00 02 B5 41			/* 16 frame Averaging (0x41) */
+
+				23 01 00 00 00 00 02 F7 03			/* 2) Gamma, LTPS(AID) update */
+				23 01 00 00 00 00 02 F7 00
+
+				/* TE Vsync ON  */
+				29 01 00 00 00 00 02 B0 02
+				29 01 00 00 00 00 02 FD 0A
+				29 01 00 00 00 00 02 FE 80
+				29 01 00 00 00 00 02 FE 00
+				29 01 00 00 00 00 02 35 00
+
+				/* Touch Hsync */
+				29 01 00 00 00 00 04 BD 05 02 02	/* Touch Hsync Enable */
+													/* wait 120ms(0x78) */
+
+				29 01 00 00 00 00 03 F0 A5 A5		/* TEST KEY Disable */
+				29 01 00 00 00 00 03 FC A5 A5		/* TEST KEY Disable */
+			];
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command = [
+				05 01 00 00 0A 00 02 28 00			/* wait 10ms(0x0A) */
+				05 01 00 00 78 00 02 10 00			/* wait 120ms(0x78) */
+			];
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-lane-2-state;
+		qcom,mdss-dsi-lane-3-state;
+		qcom,mdss-dsi-te-check-enable;
+		qcom,mdss-dsi-te-using-te-pin;
+		qcom,mdss-dsi-t-clk-post = <0x4>;
+		qcom,mdss-dsi-t-clk-pre = <0x2A>;
+		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,cont-splash-enabled;
+		qcom,ulps-enabled;
+
+	};
+};
+
