@@ -17,5 +17,5 @@
 / {
 	model = "SAMSUNG K PROJECT";
 	compatible = "qcom,msm8974-mtp", "qcom,msm8974", "qcom,mtp";
-	qcom,board-id = <8 0>;
+	qcom,msm-id = <0xC208FF01 3 0x10000>;
 };
