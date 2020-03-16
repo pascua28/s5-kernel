@@ -54,18 +54,19 @@ chmod 755 $ramdisk/overlay.d/sbin/sswap
 chmod 755 $ramdisk/overlay.d/sbin/intellikernel.sh
 chmod 755 $ramdisk/overlay.d/magiskinit
 
-INIT_ORIG=$ramdisk/.backup/init
+MAGISK=$ramdisk/.backup/.magisk
 
 ## AnyKernel install
 dump_boot;
 
-if [ -f "$INIT_ORIG" ]; then
+if [ -f "$MAGISK" ]; then
 	ui_print "Magiskinit already in ramdisk, skipping"
 else
 	mkdir $ramdisk/.backup
 	ui_print "Backing up and replacing /init with magiskinit"
 	mv $ramdisk/init $ramdisk/.backup/init
 	mv $ramdisk/overlay.d/magiskinit $ramdisk/init
+	mv $ramdisk/overlay.d/.magisk $ramdisk/.backup/.magisk
 	chmod 755 $ramdisk/.backup/init
 fi
 
