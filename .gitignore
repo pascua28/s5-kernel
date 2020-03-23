@@ -95,3 +95,4 @@ arch/arm/boot/dt.img
 
 # Generated firmware files
 firmware/epen/*.bin
+clang.sh
