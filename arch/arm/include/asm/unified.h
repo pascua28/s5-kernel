@@ -92,6 +92,7 @@
 	.macro	iteee, cond
 	.endm
 #else	/* !__ASSEMBLY__ */
+#ifndef CONFIG_LTO
 __asm__(
 "	.macro	it, cond\n"
 "	.endm\n"
@@ -123,6 +124,7 @@ __asm__(
 "	.endm\n"
 "	.macro	iteee, cond\n"
 "	.endm\n");
+#endif	/* ! CONFIG_LTO */
 #endif	/* __ASSEMBLY__ */
 
 #endif	/* CONFIG_ARM_ASM_UNIFIED */
