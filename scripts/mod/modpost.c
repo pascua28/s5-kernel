@@ -594,6 +594,15 @@ static void handle_modversions(struct module *mod, struct elf_info *info,
 {
 	unsigned int crc;
 	enum export export;
+	char newname[strlen(symname) + 1];
+	char *p;
+
+	/* Remove .number postfixes */
+	if (symname[0] && (p = strchr(symname + 1, '.')) != NULL) {
+		strcpy(newname, symname);
+		newname[p - symname] = 0;
+		symname = newname;
+	}
 
 	if ((!is_vmlinux(mod->name) || mod->is_dot_o) &&
 	    strncmp(symname, "__ksymtab", 9) == 0)
@@ -1876,7 +1885,7 @@ static void add_header(struct buffer *b, struct module *mod)
 	buf_printf(b, "\n");
 	buf_printf(b, "MODULE_INFO(vermagic, VERMAGIC_STRING);\n");
 	buf_printf(b, "\n");
-	buf_printf(b, "struct module __this_module\n");
+	buf_printf(b, "__visible struct module __this_module\n");
 	buf_printf(b, "__attribute__((section(\".gnu.linkonce.this_module\"))) = {\n");
 	buf_printf(b, " .name = KBUILD_MODNAME,\n");
 	if (mod->has_init)
