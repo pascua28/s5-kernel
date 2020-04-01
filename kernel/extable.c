@@ -32,8 +32,8 @@
  */
 DEFINE_MUTEX(text_mutex);
 
-extern struct exception_table_entry __start___ex_table[];
-extern struct exception_table_entry __stop___ex_table[];
+extern __visible struct exception_table_entry __start___ex_table[];
+extern __visible struct exception_table_entry __stop___ex_table[];
 
 /* Sort the kernel's built-in exception table */
 void __init sort_main_extable(void)

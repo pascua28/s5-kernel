@@ -58,7 +58,7 @@ static const char *isa_modes[] = {
   "ARM" , "Thumb" , "Jazelle", "ThumbEE"
 };
 
-extern void setup_mm_for_reboot(void);
+extern __visible void setup_mm_for_reboot(void);
 
 static volatile int hlt_counter;
 

@@ -19,6 +19,7 @@
 #include <linux/types.h>
 #include <linux/ptrace.h>
 #include <linux/percpu.h>
+#include <linux/linkage.h>
 
 #define __ARCH_WANT_KPROBES_INSN_SLOT
 #define MAX_INSN_SIZE			2
@@ -57,7 +58,7 @@ struct kprobe_ctlblk {
 	char jprobes_stack[MAX_STACK_SIZE];
 };
 
-void arch_remove_kprobe(struct kprobe *);
+asmlinkage void arch_remove_kprobe(struct kprobe *);
 int kprobe_fault_handler(struct pt_regs *regs, unsigned int fsr);
 int kprobe_exceptions_notify(struct notifier_block *self,
 			     unsigned long val, void *data);

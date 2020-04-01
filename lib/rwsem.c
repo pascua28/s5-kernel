@@ -169,7 +169,8 @@ __rwsem_do_wake(struct rw_semaphore *sem, int wake_type)
 /*
  * wait for a lock to be granted
  */
-static struct rw_semaphore __sched *
+__visible
+struct rw_semaphore __sched *
 rwsem_down_failed_common(struct rw_semaphore *sem,
 			 unsigned int flags, signed long adjustment)
 {

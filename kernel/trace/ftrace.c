@@ -3981,8 +3981,8 @@ struct notifier_block ftrace_module_exit_nb = {
 	.priority = INT_MIN,	/* Run after anything that can remove kprobes */
 };
 
-extern unsigned long __start_mcount_loc[];
-extern unsigned long __stop_mcount_loc[];
+extern __visible unsigned long __start_mcount_loc[];
+extern __visible unsigned long __stop_mcount_loc[];
 
 void __init ftrace_init(void)
 {

@@ -2,6 +2,7 @@
 #define __ASM_ARM_CP15_H
 
 #include <asm/barrier.h>
+#include <linux/linkage.h>
 
 /*
  * CR1 bits (CP#15 CR1)
@@ -43,7 +44,7 @@
 #endif
 
 extern unsigned long cr_no_alignment;	/* defined in entry-armv.S */
-extern unsigned long cr_alignment;	/* defined in entry-armv.S */
+extern asmlinkage unsigned long cr_alignment;	/* defined in entry-armv.S */
 
 static inline unsigned int get_cr(void)
 {
