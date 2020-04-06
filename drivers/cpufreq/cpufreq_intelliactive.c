@@ -283,7 +283,7 @@ static unsigned int choose_freq(
 	unsigned int freq = pcpu->policy->cur;
 	unsigned int prevfreq, freqmin, freqmax;
 	unsigned int tl;
-	int index;
+	unsigned int index;
 
 	freqmin = 0;
 	freqmax = UINT_MAX;
