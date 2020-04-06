@@ -314,7 +314,7 @@ static unsigned int choose_freq(
 				 */
 				if (cpufreq_frequency_table_target(
 					    pcpu->policy, pcpu->freq_table,
-					    freqmax - 1, CPUFREQ_RELATION_H,
+					    freqmax - 1, CPUFREQ_RELATION_C,
 					    &index))
 					break;
 				freq = pcpu->freq_table[index].frequency;
@@ -679,7 +679,7 @@ static int cpufreq_interactive_speedchange_task(void *data)
 			if (max_freq != pcpu->policy->cur)
 				__cpufreq_driver_target(pcpu->policy,
 							max_freq,
-							CPUFREQ_RELATION_H);
+							CPUFREQ_RELATION_C);
 
 			up_read(&pcpu->enable_sem);
 		}
