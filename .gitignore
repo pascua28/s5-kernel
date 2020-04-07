@@ -97,3 +97,6 @@ arch/arm/boot/dt.img
 firmware/epen/*.bin
 clang.sh
 arch/arm/boot/compressed/bswapsdi2.S
+
+# Generated firmware files
+firmware/epen/*.bin
