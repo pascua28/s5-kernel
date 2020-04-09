@@ -413,11 +413,14 @@ KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_FLAGS)
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
-		   -Wno-format-security -Wmisleading-indentation \
+		   -Wno-format-security \
 		   -Wduplicate-decl-specifier -Warray-bounds \
-		   -Wbool-compare \
 		   -std=gnu89 \
 		   $(CLANG_FLAGS)
+
+ifeq ($(cc-name),gcc)
+KBUILD_CFLAGS += -Wmisleading-indentation -Wbool-compare
+endif
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
