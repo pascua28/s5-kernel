@@ -89,6 +89,20 @@ config BCMDHD_NVRAM_PATH
 	---help---
 	  Path to the calibration file.
 
+config BCMDHD_FW_PATH_NOUGAT
+        depends on WLAN
+        string "Firmware path"
+        default "/system/etc/firmware/fw_bcmdhd.bin"
+        ---help---
+          Path to the firmware file.
+
+config BCMDHD_NVRAM_PATH_NOUGAT
+        depends on WLAN
+        string "NVRAM path"
+        default "/system/etc/wifi/bcmdhd.cal"
+        ---help---
+          Path to the calibration file.
+
 config DHD_USE_STATIC_BUF
 	bool "Enable memory preallocation"
 	depends on BCMDHD
