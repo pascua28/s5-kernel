@@ -281,8 +281,11 @@ static int msm_companion_fw_binary_set(struct companion_device *companion_dev, s
 				}
 				offset += size;
 
+				/* I will use this 'SD' path to point to /vendor, so don't touch it --fbs */
+#if 0
 				if (fw_p == FW_PATH_SD && fw_n == FW_NAME_ISP)
 					snprintf(fw_name[fw_p][fw_n], 64, "%s", ISP_COMPANION_BINARY_PATH);
+#endif
 
 				// print debug message
 				pr_err("[syscamera][%s::%d] PathIDX = %d, NameIDX = %d, path = %s\n", __FUNCTION__, __LINE__, fw_p, fw_n, fw_name[fw_p][fw_n]);
@@ -661,17 +664,17 @@ static int msm_companion_fw_write(struct companion_device *companion_dev)
 
 	if (companion_version_info == COMP_EVT0) {
 		pr_err("[syscamera][%s::%d][Companion EVT 0]\n", __FUNCTION__, __LINE__);
-//		fw_name[FW_PATH_SD][FW_NAME_ISP][REV_OFFSET_ISP_SD] = '0';
+		fw_name[FW_PATH_SD][FW_NAME_ISP][REV_OFFSET_ISP_CC] = '0';
 		fw_name[FW_PATH_CC][FW_NAME_ISP][REV_OFFSET_ISP_CC] = '0';
 
-		fw_name[FW_PATH_SD][FW_NAME_MASTER][REV_OFFSET_MASTER_SD] = '0';
+		fw_name[FW_PATH_SD][FW_NAME_MASTER][REV_OFFSET_MASTER_CC] = '0';
 		fw_name[FW_PATH_CC][FW_NAME_MASTER][REV_OFFSET_MASTER_CC] = '0';
 	} else if (companion_version_info == COMP_EVT1) {
 		pr_err("[syscamera][%s::%d][Companion EVT 1]\n", __FUNCTION__, __LINE__);
-//		fw_name[FW_PATH_SD][FW_NAME_ISP][REV_OFFSET_ISP_SD] = '1';
+		fw_name[FW_PATH_SD][FW_NAME_ISP][REV_OFFSET_ISP_CC] = '1';
 		fw_name[FW_PATH_CC][FW_NAME_ISP][REV_OFFSET_ISP_CC] = '1';
 
-		fw_name[FW_PATH_SD][FW_NAME_MASTER][REV_OFFSET_MASTER_SD] = '1';
+		fw_name[FW_PATH_SD][FW_NAME_MASTER][REV_OFFSET_MASTER_CC] = '1';
 		fw_name[FW_PATH_CC][FW_NAME_MASTER][REV_OFFSET_MASTER_CC] = '1';
 	} else {
 		pr_err("[syscamera][%s::%d][Invalid Companion Version : %d]\n", __FUNCTION__, __LINE__, companion_version_info);
