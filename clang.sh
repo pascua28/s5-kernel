@@ -185,8 +185,6 @@ esac
 
 DATE_START=$(date +"%s")
 
-git apply gcc_prebuilts
-
 export KBUILD_COMPILER_STRING=$(~/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 
 make ARCH=arm CC="ccache /home/pascua14/clang/bin/clang" \
@@ -194,7 +192,6 @@ CLANG_TRIPLE=arm-linux-gnueabihf- \
 CROSS_COMPILE=arm-linux-gnueabihf- \
 -j$(nproc --all)
 
-git apply -R gcc_prebuilts
 git apply -R patches/1.diff
 tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
 
