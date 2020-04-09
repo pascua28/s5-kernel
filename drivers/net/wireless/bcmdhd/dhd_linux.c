@@ -4431,12 +4431,21 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 
 	/* set default firmware and nvram path for built-in type driver */
 	if (!dhd_download_fw_on_driverload) {
+		struct file *f;
 #ifdef CONFIG_BCMDHD_FW_PATH
 		fw = CONFIG_BCMDHD_FW_PATH;
 #endif /* CONFIG_BCMDHD_FW_PATH */
 #ifdef CONFIG_BCMDHD_NVRAM_PATH
 		nv = CONFIG_BCMDHD_NVRAM_PATH;
 #endif /* CONFIG_BCMDHD_NVRAM_PATH */
+#if defined(CONFIG_BCMDHD_FW_PATH_NOUGAT) && defined(CONFIG_BCMDHD_NVRAM_PATH_NOUGAT)
+	        f = filp_open("/nougat", O_RDONLY, 0);
+	        if (!IS_ERR(f)) {
+			fw = CONFIG_BCMDHD_FW_PATH_NOUGAT;
+			nv = CONFIG_BCMDHD_NVRAM_PATH_NOUGAT;
+	                filp_close(f, NULL);
+	        }
+#endif
 	}
 
 	/* check if we need to initialize the path */
