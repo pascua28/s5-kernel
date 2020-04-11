@@ -275,7 +275,7 @@ sg_open(struct inode *inode, struct file *filp)
 		}
 		res = 0;
 		__wait_event_interruptible(sdp->o_excl_wait,
-					   ((!list_empty(&sdp->sfds) || sdp->exclude) ? 0 : (sdp->exclude = 1)), res);
+					   ((!list_empty(&sdp->sfds) || sdp->exclude) ? 0 : (sdp->exclude = 1)));
 		if (res) {
 			retval = res;	/* -ERESTARTSYS because signal hit process */
 			goto error_out;
@@ -286,8 +286,7 @@ sg_open(struct inode *inode, struct file *filp)
 			goto error_out;
 		}
 		res = 0;
-		__wait_event_interruptible(sdp->o_excl_wait, (!sdp->exclude),
-					   res);
+		__wait_event_interruptible(sdp->o_excl_wait, (!sdp->exclude));
 		if (res) {
 			retval = res;	/* -ERESTARTSYS because signal hit process */
 			goto error_out;
@@ -410,8 +409,7 @@ sg_read(struct file *filp, char __user *buf, size_t count, loff_t * ppos)
 			retval = 0; /* following macro beats race condition */
 			__wait_event_interruptible(sfp->read_wait,
 				(sdp->detached ||
-				(srp = sg_get_rq_mark(sfp, req_pack_id))), 
-				retval);
+				(srp = sg_get_rq_mark(sfp, req_pack_id))));
 			if (sdp->detached) {
 				retval = -ENODEV;
 				goto free_old_hdr;
@@ -820,8 +818,7 @@ sg_ioctl(struct file *filp, unsigned int cmd_in, unsigned long arg)
 			while (1) {
 				result = 0;	/* following macro to beat race condition */
 				__wait_event_interruptible(sfp->read_wait,
-					(srp->done || sdp->detached),
-					result);
+					(srp->done || sdp->detached));
 				if (sdp->detached)
 					return -ENODEV;
 				write_lock_irq(&sfp->rq_list_lock);
