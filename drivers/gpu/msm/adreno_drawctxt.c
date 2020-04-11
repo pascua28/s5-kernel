@@ -157,7 +157,7 @@ static void wait_callback(struct kgsl_device *device,
 	if (io)                                                               \
 		__wait_io_event_interruptible(wq, condition, __ret);          \
 	else                                                                  \
-		__wait_event_interruptible(wq, condition, __ret);             \
+		__wait_event_interruptible(wq, condition);		      \
 	__ret;                                                                \
 })
 
