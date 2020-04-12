@@ -693,6 +693,7 @@ static int cpufreq_interactive_speedchange_task(void *data)
 }
 
 static DEFINE_PER_CPU(struct cpufreq_frequency_table *, cpufreq_table);
+static int boost_running = 0;
 
 static void cpufreq_interactive_boost(bool touchevent)
 {
@@ -702,6 +703,7 @@ static void cpufreq_interactive_boost(bool touchevent)
 	unsigned long flags;
 	struct cpufreq_interactive_cpuinfo *pcpu;
 
+	boost_running = 1;
 	spin_lock_irqsave(&speedchange_cpumask_lock, flags);
 
 	for_each_online_cpu(i) {
@@ -743,6 +745,8 @@ static void cpufreq_interactive_boost(bool touchevent)
 
 	if (anyboost)
 		wake_up_process(speedchange_task);
+
+	boost_running = 0;
 }
 
 static int cpufreq_interactive_notifier(
@@ -1116,9 +1120,9 @@ static ssize_t store_boost(struct kobject *kobj, struct attribute *attr,
 
 	boost_val = val;
 
-	if (boost_val) {
-		cpufreq_interactive_boost(false);
-	}
+	if (boost_val)
+		if (!boost_running)
+			cpufreq_interactive_boost(false);
 
 	return count;
 }
@@ -1136,7 +1140,9 @@ static ssize_t store_boostpulse(struct kobject *kobj, struct attribute *attr,
 		return ret;
 
 	boostpulse_endtime = ktime_to_us(ktime_get()) + boostpulse_duration_val;
-	cpufreq_interactive_boost(false);
+
+	if (!boost_running)
+		cpufreq_interactive_boost(false);
 	return count;
 }
 
@@ -1285,7 +1291,8 @@ static void interactive_input_event(struct input_handle *handle,
 	if (type == EV_SYN && code == SYN_REPORT) {
 		boostpulse_endtime = ktime_to_us(ktime_get()) +
 			boostpulse_duration_val;
-		cpufreq_interactive_boost(true);
+		if (!boost_running)
+			cpufreq_interactive_boost(true);
 	}
 }
 
