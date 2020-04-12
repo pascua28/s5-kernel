@@ -2,6 +2,8 @@
 # Makefile for the Linux TCP/IP (INET6) layer.
 #
 
+CFLAGS_KERNEL := -fno-strict-aliasing
+
 obj-$(CONFIG_IPV6) += ipv6.o
 
 ipv6-objs :=	af_inet6.o anycast.o ip6_output.o ip6_input.o addrconf.o \

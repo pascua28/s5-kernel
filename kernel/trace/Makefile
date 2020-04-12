@@ -21,6 +21,8 @@ CFLAGS_trace_events_filter.o := -I$(src)
 # Make the trace clocks available generally: it's infrastructure
 # relied on by ptrace for example:
 #
+CFLAGS_ring_buffer.o := -fno-strict-aliasing
+
 obj-y += trace_clock.o
 
 obj-$(CONFIG_FUNCTION_TRACER) += libftrace.o
