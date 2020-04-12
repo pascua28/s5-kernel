@@ -190,7 +190,7 @@ export KBUILD_COMPILER_STRING=$(~/clang/bin/clang --version | head -n 1 | perl -
 make ARCH=arm CC="ccache /home/pascua14/clang/bin/clang" \
 CLANG_TRIPLE=arm-linux-gnueabihf- \
 CROSS_COMPILE=arm-linux-gnueabihf- \
--j$(nproc --all)
+-j$(nproc --all) 2>&1 | tee ../compile.log
 
 git apply -R patches/1.diff
 tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
