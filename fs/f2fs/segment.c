@@ -543,7 +543,7 @@ static int f2fs_issue_flush_thread(void *data)
 	wait_queue_head_t *q = &fcc->flush_wait_queue;
 	flush_thread_run = 0;
 repeat:
-	if (kthread_should_stop() || completion_done(&issue_flush_thread))
+	if (kthread_should_stop())
 		return 0;
 
 	flush_thread_run = 1;
@@ -644,7 +644,6 @@ init_thread:
 				"f2fs_flush-%u:%u", MAJOR(dev), MINOR(dev));
 	if (IS_ERR(fcc->f2fs_issue_flush)) {
 		err = PTR_ERR(fcc->f2fs_issue_flush);
-		complete_and_exit(&issue_flush_thread, 0);
 		kfree(fcc);
 		SM_I(sbi)->fcc_info = NULL;
 		return err;
