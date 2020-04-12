@@ -16,7 +16,6 @@
 #include <linux/kthread.h>
 #include <linux/swap.h>
 #include <linux/timer.h>
-#include <linux/completion.h>
 
 #include "f2fs.h"
 #include "segment.h"
@@ -532,21 +531,14 @@ static int submit_flush_wait(struct f2fs_sb_info *sbi)
 	return ret;
 }
 
-static DECLARE_COMPLETION(issue_flush_thread);
-
-static int flush_thread_run;
-
-static int f2fs_issue_flush_thread(void *data)
+static int issue_flush_thread(void *data)
 {
 	struct f2fs_sb_info *sbi = data;
 	struct flush_cmd_control *fcc = SM_I(sbi)->fcc_info;
 	wait_queue_head_t *q = &fcc->flush_wait_queue;
-	flush_thread_run = 0;
 repeat:
 	if (kthread_should_stop())
 		return 0;
-
-	flush_thread_run = 1;
 
 	if (!llist_empty(&fcc->issue_list)) {
 		struct flush_cmd *cmd, *next;
@@ -568,7 +560,6 @@ repeat:
 
 	wait_event_interruptible(*q,
 		kthread_should_stop() || !llist_empty(&fcc->issue_list));
-	complete_and_exit(&issue_flush_thread, 0);
 	goto repeat;
 }
 
@@ -638,9 +629,7 @@ int create_flush_cmd_control(struct f2fs_sb_info *sbi)
 		return err;
 
 init_thread:
-	if (flush_thread_run)
-		wait_for_completion(&issue_flush_thread);
-	fcc->f2fs_issue_flush = kthread_run(f2fs_issue_flush_thread, sbi,
+	fcc->f2fs_issue_flush = kthread_run(issue_flush_thread, sbi,
 				"f2fs_flush-%u:%u", MAJOR(dev), MINOR(dev));
 	if (IS_ERR(fcc->f2fs_issue_flush)) {
 		err = PTR_ERR(fcc->f2fs_issue_flush);
