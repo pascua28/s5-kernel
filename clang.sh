@@ -5,7 +5,6 @@ K_VERSION="v15"
 
 cp defconfig .config
 find arch/arm/boot/ -name "*.dtb" -type f -delete
-git apply patches/1.diff
 case "$1" in
 	klte)
     make ARCH=arm oldconfig
@@ -192,7 +191,6 @@ CLANG_TRIPLE=arm-linux-gnueabihf- \
 CROSS_COMPILE=arm-linux-gnueabihf- \
 -j$(nproc --all) 2>&1 | tee ../compile.log
 
-git apply -R patches/1.diff
 tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
 
 DATE_END=$(date +"%s")
