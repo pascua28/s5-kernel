@@ -422,6 +422,17 @@ ifeq ($(cc-name),gcc)
 KBUILD_CFLAGS += -Wmisleading-indentation -Wbool-compare
 endif
 
+ifeq ($(cc-name),clang)
+KBUILD_CFLAGS += -mllvm -polly \
+-mllvm -polly-run-dce \
+-mllvm -polly-run-inliner \
+-mllvm -polly-opt-fusion=max \
+-mllvm -polly-ast-use-context \
+-mllvm -polly-detect-keep-going \
+-mllvm -polly-vectorizer=stripmine \
+-mllvm -polly-invariant-load-hoisting
+endif
+
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__ $(CLANG_FLAGS)
