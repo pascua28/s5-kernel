@@ -141,12 +141,7 @@ extern unsigned long nr_uninterruptible(void);
 extern unsigned long nr_iowait(void);
 extern unsigned long nr_iowait_cpu(int cpu);
 extern unsigned long this_cpu_load(void);
-#ifdef CONFIG_RUNTIME_COMPCACHE
-extern unsigned long this_cpu_loadx(int i);
-#endif /* CONFIG_RUNTIME_COMPCACHE */
 
-extern void sched_update_nr_prod(int cpu, unsigned long nr, bool inc);
-extern void sched_get_nr_running_avg(int *avg, int *iowait_avg);
 
 extern void calc_global_load(unsigned long ticks);
 
@@ -673,9 +668,6 @@ struct signal_struct {
 	struct mutex cred_guard_mutex;	/* guard against foreign influences on
 					 * credential calculations
 					 * (notably. ptrace) */
-#ifdef CONFIG_SAMP_HOTNESS
-	int hotness_adj;
-#endif
 };
 
 /* Context switch must be unlocked if interrupts are to be enabled */
@@ -728,8 +720,6 @@ struct user_struct {
 	unsigned long mq_bytes;	/* How many bytes can be allocated to mqueue? */
 #endif
 	unsigned long locked_shm; /* How many pages of mlocked shm ? */
-	unsigned long unix_inflight;	/* How many files in flight in unix sockets */
-	atomic_long_t pipe_bufs;  /* how many pages are allocated in pipe buffers */
 
 #ifdef CONFIG_KEYS
 	struct key *uid_keyring;	/* UID specific keyring */
@@ -1401,8 +1391,6 @@ struct task_struct {
 
 	cputime_t utime, stime, utimescaled, stimescaled;
 	cputime_t gtime;
-	unsigned long long cpu_power;
-
 #ifndef CONFIG_VIRT_CPU_ACCOUNTING
 	cputime_t prev_utime, prev_stime;
 #endif
@@ -1730,15 +1718,13 @@ static inline pid_t task_tgid_nr(struct task_struct *tsk)
 	return tsk->tgid;
 }
 
-static inline pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns)
-{
-	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, ns);
-}
+pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns);
 
 static inline pid_t task_tgid_vnr(struct task_struct *tsk)
 {
-	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, NULL);
+	return pid_vnr(task_tgid(tsk));
 }
+
 
 static inline pid_t task_pgrp_nr_ns(struct task_struct *tsk,
 					struct pid_namespace *ns)
@@ -2044,7 +2030,6 @@ extern unsigned int sysctl_sched_latency;
 extern unsigned int sysctl_sched_min_granularity;
 extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_child_runs_first;
-extern unsigned int sysctl_sched_wake_to_idle;
 
 enum sched_tunable_scaling {
 	SCHED_TUNABLESCALING_NONE,
@@ -2307,7 +2292,7 @@ static inline void mmdrop(struct mm_struct * mm)
 }
 
 /* mmput gets rid of the mappings and all user-space */
-extern int mmput(struct mm_struct *);
+extern void mmput(struct mm_struct *);
 /* Grab a reference to a task's mm, if it is not already going away */
 extern struct mm_struct *get_task_mm(struct task_struct *task);
 /*
@@ -2702,16 +2687,7 @@ static inline void thread_group_cputime_init(struct signal_struct *sig)
 extern void recalc_sigpending_and_wake(struct task_struct *t);
 extern void recalc_sigpending(void);
 
-extern void signal_wake_up_state(struct task_struct *t, unsigned int state);
-
-static inline void signal_wake_up(struct task_struct *t, bool resume)
-{
-	signal_wake_up_state(t, resume ? TASK_WAKEKILL : 0);
-}
-static inline void ptrace_signal_wake_up(struct task_struct *t, bool resume)
-{
-	signal_wake_up_state(t, resume ? __TASK_TRACED : 0);
-}
+extern void signal_wake_up(struct task_struct *t, int resume_stopped);
 
 /*
  * Wrappers for p->thread_info->cpu access. No-op on UP.
@@ -2737,8 +2713,6 @@ static inline void set_task_cpu(struct task_struct *p, unsigned int cpu)
 }
 
 #endif /* CONFIG_SMP */
-
-extern struct atomic_notifier_head migration_notifier_head;
 
 extern long sched_setaffinity(pid_t pid, const struct cpumask *new_mask);
 extern long sched_getaffinity(pid_t pid, struct cpumask *mask);

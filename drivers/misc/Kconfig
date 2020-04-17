@@ -1077,12 +1077,6 @@ config TI_DRV2667
 	  To compile this driver as a module, choose M here: the
 	  module will be called ti_drv2667.
 
-config UID_CPUTIME
-	tristate "Per-UID cpu time statistics"
-	depends on PROFILING
-	help
-	  Per UID based cpu time statistics exported to /proc/uid_cputime
-
 config RT8973_JIG_WAKEUP
         bool "enable JIG wakeup when send Jig command"
         default n

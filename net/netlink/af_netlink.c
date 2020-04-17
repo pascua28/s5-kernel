@@ -137,8 +137,6 @@ static void netlink_destroy_callback(struct netlink_callback *cb);
 static DEFINE_RWLOCK(nl_table_lock);
 static atomic_t nl_table_users = ATOMIC_INIT(0);
 
-#define nl_deref_protected(X) rcu_dereference_protected(X, lockdep_is_held(&nl_table_lock));
-
 static ATOMIC_NOTIFIER_HEAD(netlink_chain);
 
 static inline u32 netlink_group_mask(u32 group)
@@ -332,11 +330,6 @@ netlink_update_listeners(struct sock *sk)
 	struct hlist_node *node;
 	unsigned long mask;
 	unsigned int i;
-	struct listeners *listeners;
-
-	listeners = nl_deref_protected(tbl->listeners);
-	if (!listeners)
-		return;
 
 	for (i = 0; i < NLGRPLONGS(tbl->groups); i++) {
 		mask = 0;
@@ -344,7 +337,7 @@ netlink_update_listeners(struct sock *sk)
 			if (i < NLGRPLONGS(nlk_sk(sk)->ngroups))
 				mask |= nlk_sk(sk)->groups[i];
 		}
-		listeners->masks[i] = mask;
+		tbl->listeners->masks[i] = mask;
 	}
 	/* this function is only called with the netlink table "grabbed", which
 	 * makes sure updates are visible before bind or setsockopt return. */
@@ -525,11 +518,7 @@ static int netlink_release(struct socket *sock)
 	if (netlink_is_kernel(sk)) {
 		BUG_ON(nl_table[sk->sk_protocol].registered == 0);
 		if (--nl_table[sk->sk_protocol].registered == 0) {
-			struct listeners *old;
-
-			old = nl_deref_protected(nl_table[sk->sk_protocol].listeners);
-			RCU_INIT_POINTER(nl_table[sk->sk_protocol].listeners, NULL);
-			kfree_rcu(old, rcu);
+			kfree(nl_table[sk->sk_protocol].listeners);
 			nl_table[sk->sk_protocol].module = NULL;
 			nl_table[sk->sk_protocol].registered = 0;
 		}
@@ -959,7 +948,7 @@ int netlink_has_listeners(struct sock *sk, unsigned int group)
 	rcu_read_lock();
 	listeners = rcu_dereference(nl_table[sk->sk_protocol].listeners);
 
-	if (listeners && group - 1 < nl_table[sk->sk_protocol].groups)
+	if (group - 1 < nl_table[sk->sk_protocol].groups)
 		res = test_bit(group - 1, listeners->masks);
 
 	rcu_read_unlock();
@@ -1340,7 +1329,7 @@ static int netlink_sendmsg(struct kiocb *kiocb, struct socket *sock,
 	if (NULL == siocb->scm)
 		siocb->scm = &scm;
 
-	err = scm_send(sock, msg, siocb->scm, true);
+	err = scm_send(sock, msg, siocb->scm);
 	if (err < 0)
 		return err;
 
@@ -1590,7 +1579,7 @@ int __netlink_change_ngroups(struct sock *sk, unsigned int groups)
 		new = kzalloc(sizeof(*new) + NLGRPSZ(groups), GFP_ATOMIC);
 		if (!new)
 			return -ENOMEM;
-		old = nl_deref_protected(tbl->listeners);
+		old = rcu_dereference_protected(tbl->listeners, 1);
 		memcpy(new->masks, old->masks, NLGRPSZ(tbl->groups));
 		rcu_assign_pointer(tbl->listeners, new);
 

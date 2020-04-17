@@ -416,60 +416,22 @@ krait_l2_pmu_generic_free_irq(int irq)
 static int msm_l2_test_set_ev_constraint(struct perf_event *event)
 {
 	u32 evt_type = event->attr.config & L2_EVT_MASK;
-	u8 evt_prefix = (evt_type & EVENT_PREFIX_MASK) >> EVENT_PREFIX_SHIFT;
 	u8 reg   = (evt_type & 0x0F000) >> 12;
-	u8 group = evt_type & 0x0000F;
-	u8 code = (evt_type & 0x00FF0) >> 4;
+	u8 group =  evt_type & 0x0000F;
 	unsigned long flags;
-	int err = 0;
+	u32 err = 0;
 	u64 bitmap_t;
-	u32 shift_idx;
-
-	if (evt_prefix == L2_TRACECTR_PREFIX)
-		return err;
-	/*
-	 * Cycle counter collision is detected in
-	 * get_event_idx().
-	 */
-	if (evt_type == L2CYCLE_CTR_RAW_CODE)
-		return err;
 
 	raw_spin_lock_irqsave(&l2_pmu_constraints.lock, flags);
-
-	shift_idx = ((reg * 4) + group);
-
-	if (shift_idx >= PMU_CODES_SIZE) {
-		err =  -EINVAL;
-		goto out;
-	}
-
-	bitmap_t = 1 << shift_idx;
+	bitmap_t = 1 << ((reg * 4) + group);
 
 	if (!(l2_pmu_constraints.pmu_bitmap & bitmap_t)) {
 		l2_pmu_constraints.pmu_bitmap |= bitmap_t;
-		l2_pmu_constraints.codes[shift_idx] = code;
 		goto out;
-	} else {
-		/*
-		 * If NRCCG's are identical,
-		 * its not column exclusion.
-		 */
-		if (l2_pmu_constraints.codes[shift_idx] != code)
-			err = -EPERM;
-		else
-			/*
-			 * If the event is counted in syswide mode
-			 * then we want to count only on one CPU
-			 * and set its filter to count from all.
-			 * This sets the event OFF on all but one
-			 * CPU.
-			 */
-			if (!(event->cpu < 0)) {
-				event->state = PERF_EVENT_STATE_OFF;
-				event->attr.constraint_duplicate = 1;
-				err = -EPERM;
-			}
 	}
+
+	/* Bit is already set. Constraint failed. */
+	err = -EPERM;
 out:
 	raw_spin_unlock_irqrestore(&l2_pmu_constraints.lock, flags);
 	return err;
@@ -478,35 +440,20 @@ out:
 static int msm_l2_clear_ev_constraint(struct perf_event *event)
 {
 	u32 evt_type = event->attr.config & L2_EVT_MASK;
-	u8 evt_prefix = (evt_type & EVENT_PREFIX_MASK) >> EVENT_PREFIX_SHIFT;
 	u8 reg   = (evt_type & 0x0F000) >> 12;
 	u8 group =  evt_type & 0x0000F;
 	unsigned long flags;
 	u64 bitmap_t;
-	u32 shift_idx;
-	int err = 1;
 
-	if (evt_prefix == L2_TRACECTR_PREFIX)
-		return 1;
 	raw_spin_lock_irqsave(&l2_pmu_constraints.lock, flags);
 
-	shift_idx = ((reg * 4) + group);
-
-	if (shift_idx >= PMU_CODES_SIZE) {
-		err = -EINVAL;
-		goto out;
-	}
-
-	bitmap_t = 1 << shift_idx;
+	bitmap_t = 1 << ((reg * 4) + group);
 
 	/* Clear constraint bit. */
 	l2_pmu_constraints.pmu_bitmap &= ~bitmap_t;
 
-	/* Clear code. */
-	l2_pmu_constraints.codes[shift_idx] = -1;
-out:
 	raw_spin_unlock_irqrestore(&l2_pmu_constraints.lock, flags);
-	return err;
+	return 1;
 }
 
 int get_num_events(void)
