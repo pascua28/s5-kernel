@@ -29,6 +29,7 @@
 #include <linux/fault-inject.h>
 #include <linux/list_sort.h>
 #include <linux/delay.h>
+#include <linux/ratelimit.h>
 #include <linux/pm_runtime.h>
 
 #define CREATE_TRACE_POINTS
@@ -298,26 +299,13 @@ EXPORT_SYMBOL(blk_sync_queue);
  * Description:
  *    See @blk_run_queue. This variant must be called with the queue lock
  *    held and interrupts disabled.
- *    Device driver will be notified of an urgent request
- *    pending under the following conditions:
- *    1. The driver and the current scheduler support urgent reques handling
- *    2. There is an urgent request pending in the scheduler
- *    3. There isn't already an urgent request in flight, meaning previously
- *       notified urgent request completed (!q->notified_urgent)
  */
 void __blk_run_queue(struct request_queue *q)
 {
 	if (unlikely(blk_queue_stopped(q)))
 		return;
 
-	if (!q->notified_urgent &&
-		q->elevator->type->ops.elevator_is_urgent_fn &&
-		q->urgent_request_fn &&
-		q->elevator->type->ops.elevator_is_urgent_fn(q)) {
-		q->notified_urgent = true;
-		q->urgent_request_fn(q);
-	} else
-		q->request_fn(q);
+	q->request_fn(q);
 }
 EXPORT_SYMBOL(__blk_run_queue);
 
@@ -1080,16 +1068,6 @@ void blk_requeue_request(struct request_queue *q, struct request *rq)
 
 	BUG_ON(blk_queued_rq(rq));
 
-	if (rq->cmd_flags & REQ_URGENT) {
-		/*
-		 * It's not compliant with the design to re-insert
-		 * urgent requests. We want to be able to track this
-		 * down.
-		 */
-		pr_debug("%s(): requeueing an URGENT request", __func__);
-		WARN_ON(!q->dispatched_urgent);
-		q->dispatched_urgent = false;
-	}
 	elv_requeue_request(q, rq);
 }
 EXPORT_SYMBOL(blk_requeue_request);
@@ -1123,7 +1101,7 @@ int blk_reinsert_request(struct request_queue *q, struct request *rq)
 		 * urgent requests. We want to be able to track this
 		 * down.
 		 */
-		pr_err("%s(): requeueing an URGENT request", __func__);
+		pr_debug("%s(): reinserting an URGENT request", __func__);
 		WARN_ON(!q->dispatched_urgent);
 		q->dispatched_urgent = false;
 	}
@@ -1131,22 +1109,6 @@ int blk_reinsert_request(struct request_queue *q, struct request *rq)
 	return elv_reinsert_request(q, rq);
 }
 EXPORT_SYMBOL(blk_reinsert_request);
-
-/**
- * blk_reinsert_req_sup() - check whether the scheduler supports
- *          reinsertion of requests
- * @q:		request queue
- *
- * Returns true if the current scheduler supports reinserting
- * request. False otherwise
- */
-bool blk_reinsert_req_sup(struct request_queue *q)
-{
-	if (unlikely(!q))
-		return false;
-	return q->elevator->type->ops.elevator_reinsert_req_fn ? true : false;
-}
-EXPORT_SYMBOL(blk_reinsert_req_sup);
 
 static void add_acct_request(struct request_queue *q, struct request *rq,
 			     int where)
@@ -1219,9 +1181,8 @@ void __blk_put_request(struct request_queue *q, struct request *req)
 
 	elv_completed_request(q, req);
 
-	/* this is a bio leak if the bio is not tagged with BIO_DONTFREE */
-	WARN_ON(req->bio && !bio_flagged(req->bio, BIO_DONTFREE));
-
+	/* this is a bio leak */
+	WARN_ON(req->bio != NULL);
 
 	/*
 	 * Request may not have originated from ll_rw_blk. if not,
@@ -2191,17 +2152,8 @@ struct request *blk_fetch_request(struct request_queue *q)
 	struct request *rq;
 
 	rq = blk_peek_request(q);
-	if (rq) {
-		/*
-		 * Assumption: the next request fetched from scheduler after we
-		 * notified "urgent request pending" - will be the urgent one
-		 */
-		if (q->notified_urgent && !q->dispatched_urgent) {
-			q->dispatched_urgent = true;
-			(void)blk_mark_rq_urgent(rq);
-		}
+	if (rq)
 		blk_start_request(rq);
-	}
 	return rq;
 }
 EXPORT_SYMBOL(blk_fetch_request);
@@ -2276,15 +2228,6 @@ bool blk_update_request(struct request *req, int error, unsigned int nr_bytes)
 	blk_account_io_completion(req, nr_bytes);
 
 	total_bytes = bio_nbytes = 0;
-
-	/*
-	 * Check for this if flagged, Req based dm needs to perform
-	 * post processing, hence dont end bios or request.DM
-	 * layer takes care.
-	 */
-	if (bio_flagged(req->bio, BIO_DONTFREE))
-		return false;
-
 	while ((bio = req->bio) != NULL) {
 		int nbytes;
 

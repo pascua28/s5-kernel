@@ -1073,9 +1073,8 @@ void umount_tree(struct mount *mnt, int propagate, struct list_head *kill)
 		list_del_init(&p->mnt_expire);
 		list_del_init(&p->mnt_list);
 		__touch_mnt_namespace(p->mnt_ns);
-		if (p->mnt_ns)
-			__mnt_make_shortterm(p);
 		p->mnt_ns = NULL;
+		__mnt_make_shortterm(p);
 		list_del_init(&p->mnt_child);
 		if (mnt_has_parent(p)) {
 			p->mnt_parent->mnt_ghosts++;
@@ -1309,11 +1308,8 @@ struct vfsmount *collect_mounts(struct path *path)
 {
 	struct mount *tree;
 	down_write(&namespace_sem);
-	if (!check_mnt(real_mount(path->mnt)))
-		tree = ERR_PTR(-EINVAL);
-	else
-		tree = copy_tree(real_mount(path->mnt), path->dentry,
-				CL_COPY_ALL | CL_PRIVATE);
+	tree = copy_tree(real_mount(path->mnt), path->dentry,
+			 CL_COPY_ALL | CL_PRIVATE);
 	up_write(&namespace_sem);
 	return tree ? &tree->mnt : NULL;
 }
@@ -2508,9 +2504,6 @@ SYSCALL_DEFINE2(pivot_root, const char __user *, new_root,
 		goto out4; /* not attached */
 	/* make sure we can reach put_old from new_root */
 	if (!is_path_reachable(real_mount(old.mnt), old.dentry, &new))
-		goto out4;
-	/* make certain new is below the root */
-	if (!is_path_reachable(new_mnt, new.dentry, &root))
 		goto out4;
 	br_write_lock(vfsmount_lock);
 	detach_mnt(new_mnt, &parent_path);
