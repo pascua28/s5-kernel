@@ -21,7 +21,7 @@
 #include "power/power.h"
 
 /* /sys/devices/system */
-static struct kset *system_kset;
+struct kset *system_kset;
 
 #define to_bus_attr(_attr) container_of(_attr, struct bus_attribute, attr)
 
