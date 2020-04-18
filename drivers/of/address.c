@@ -1,5 +1,4 @@
 
-#include <linux/device.h>
 #include <linux/io.h>
 #include <linux/ioport.h>
 #include <linux/module.h>

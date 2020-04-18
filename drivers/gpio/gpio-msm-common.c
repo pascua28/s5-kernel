@@ -662,6 +662,7 @@ int __init msm_gpio_of_init(struct device_node *node,
 
 	return 0;
 }
+EXPORT_SYMBOL(msm_gpio_of_init);
 #endif
 
 MODULE_AUTHOR("Gregory Bean <gbean@codeaurora.org>");

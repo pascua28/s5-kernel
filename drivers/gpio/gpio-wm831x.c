@@ -102,8 +102,10 @@ static int wm831x_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 	struct wm831x_gpio *wm831x_gpio = to_wm831x_gpio(chip);
 	struct wm831x *wm831x = wm831x_gpio->wm831x;
 
-	return irq_create_mapping(wm831x->irq_domain,
-				  WM831X_IRQ_GPIO_1 + offset);
+	if (!wm831x->irq_base)
+		return -EINVAL;
+
+	return wm831x->irq_base + WM831X_IRQ_GPIO_1 + offset;
 }
 
 static int wm831x_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
