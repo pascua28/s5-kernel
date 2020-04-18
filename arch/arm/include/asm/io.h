@@ -68,10 +68,6 @@ extern void __raw_readsl(const void __iomem *addr, void *data, int longlen);
 #define __raw_writel_no_log(v, a)	(__chk_io_ptr(a), *(volatile unsigned int __force *)(a) = (v))
 #define __raw_writell_no_log(v, a)	(__chk_io_ptr(a), *(volatile unsigned long long __force *)(a) = (v))
 
-
-#define __raw_writeb(v, a)	__raw_write_logged((v), (a), b)
-#define __raw_writew(v, a)	__raw_write_logged((v), (a), w)
-#define __raw_writel(v, a)	__raw_write_logged((v), (a), l)
 #define __raw_writell(v, a)	__raw_write_logged((v), (a), ll)
 
 #define __raw_readb_no_log(a)		(__chk_io_ptr(a), *(volatile unsigned char __force  *)(a))
