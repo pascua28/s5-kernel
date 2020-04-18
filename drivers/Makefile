@@ -159,5 +159,4 @@ obj-$(CONFIG_IRDA_COMMON_LDO)	+= irda/
 
 obj-$(CONFIG_MACH_BAFFIN2_SGLTE) += qsc/
 obj-$(CONFIG_MEMORY)		+= memory/
-obj-$(CONFIG_IIO)		+= iio/
 obj-$(CONFIG_VME_BUS)		+= vme/

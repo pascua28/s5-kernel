@@ -708,7 +708,7 @@ static int msm_companion_fw_write(struct companion_device *companion_dev)
 		isp_filp->f_pos = 0;
 		ret = vfs_read(isp_filp, (char __user*)isp_vbuf, isp_size, &isp_filp->f_pos);
 		if (ret != isp_size) {
-			err("failed to read Concord info, %ld Bytes\n", ret);
+			pr_err("failed to read Concord info, %ld Bytes\n", ret);
 			ret = -EIO;
 			goto isp_filp_verr_iter;
 		}
@@ -719,7 +719,7 @@ static int msm_companion_fw_write(struct companion_device *companion_dev)
 
 		ret = vfs_read(isp_filp, (char __user*)isp_fbuf, isp_fsize, &isp_filp->f_pos);
 		if (ret != isp_fsize) {
-			err("failed to read Isp, %ld Bytes\n", ret);
+			pr_err("failed to read Isp, %ld Bytes\n", ret);
 			ret = -EIO;
 			goto isp_filp_ferr_iter;
 		}
@@ -994,7 +994,7 @@ static int msm_companion_master_write(struct companion_device *companion_dev)
 	cc_filp->f_pos = cc_fsize;
 	ret = vfs_read(cc_filp, (char __user*)cc_vbuf, cc_vsize, &cc_filp->f_pos);
 	if (ret != cc_vsize) {
-		err("failed to read Concord info, %ld Bytes\n", ret);
+		pr_err("failed to read Concord info, %ld Bytes\n", ret);
 		ret = -EIO;
 		goto cc_filp_verr;
 	}
@@ -1004,7 +1004,7 @@ static int msm_companion_master_write(struct companion_device *companion_dev)
 	cc_filp->f_pos = 0;     //swap
 	ret = vfs_read(cc_filp, (char __user*)cc_fbuf, cc_fsize, &cc_filp->f_pos);
 	if (ret != cc_fsize) {
-		err("failed to read Concord, %ld Bytes\n", ret);
+		pr_err("failed to read Concord, %ld Bytes\n", ret);
 		ret = -EIO;
 		goto cc_filp_ferr;
 	}

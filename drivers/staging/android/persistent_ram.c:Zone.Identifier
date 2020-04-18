@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=about:client
+HostUrl=https://gitlab.com/pascua14/s5-kernel/-/raw/android-10/drivers/staging/android/persistent_ram.c?inline=false
