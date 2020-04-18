@@ -66,7 +66,6 @@ enum ipi_msg_type {
 
 static DECLARE_COMPLETION(cpu_running);
 
-#if 0
 static struct smp_operations smp_ops;
 
 void __init smp_set_ops(struct smp_operations *ops)
@@ -74,9 +73,6 @@ void __init smp_set_ops(struct smp_operations *ops)
 	if (ops)
 		smp_ops = *ops;
 };
-
-int __cpuinit __cpu_up(unsigned int cpu)
-#endif
 
 int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 {
