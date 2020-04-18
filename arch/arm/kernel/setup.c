@@ -836,6 +836,14 @@ static int __init customize_machine(void)
 }
 arch_initcall(customize_machine);
 
+static int __init init_machine_late(void)
+{
+	if (machine_desc->init_late)
+		machine_desc->init_late();
+	return 0;
+}
+late_initcall(init_machine_late);
+
 #ifdef CONFIG_KEXEC
 static inline unsigned long long get_total_mem(void)
 {
@@ -974,9 +982,6 @@ void __init setup_arch(char **cmdline_p)
 		mdesc = setup_machine_tags(machine_arch_type);
 	machine_desc = mdesc;
 	machine_name = mdesc->name;
-#ifdef CONFIG_SEC_DEBUG_SUBSYS
-	unit_name = machine_name;
-#endif
 
 	setup_dma_zone(mdesc);
 

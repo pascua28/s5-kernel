@@ -145,6 +145,7 @@ extern int iommu_group_register_notifier(struct iommu_group *group,
 extern int iommu_group_unregister_notifier(struct iommu_group *group,
 					   struct notifier_block *nb);
 extern int iommu_group_id(struct iommu_group *group);
+extern int iommu_device_group(struct device *dev, unsigned int *groupid);
 
 /**
  * report_iommu_fault() - report about an IOMMU fault to the IOMMU framework

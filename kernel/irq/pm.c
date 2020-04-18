@@ -103,14 +103,14 @@ int check_wakeup_irqs(void)
 	int irq;
 
 	for_each_irq_desc(irq, desc) {
+		/*
+		 * Only interrupts which are marked as wakeup source
+		 * and have not been disabled before the suspend check
+		 * can abort suspend.
+		 */
 		if (irqd_is_wakeup_set(&desc->irq_data)) {
-			if (desc->istate & IRQS_PENDING) {
-				pr_info("Wakeup IRQ %d %s pending, suspend aborted\n",
-					irq,
-					desc->action && desc->action->name ?
-					desc->action->name : "");
+			if (desc->depth == 1 && desc->istate & IRQS_PENDING)
 				return -EBUSY;
-			}
 			continue;
 		}
 		/*
@@ -125,6 +125,5 @@ int check_wakeup_irqs(void)
 		    irq_desc_get_chip(desc)->flags & IRQCHIP_MASK_ON_SUSPEND)
 			mask_irq(desc);
 	}
-
 	return 0;
 }

@@ -368,7 +368,7 @@ static int cap_file_receive(struct file *file)
 	return 0;
 }
 
-static int cap_dentry_open(struct file *file, const struct cred *cred)
+static int cap_file_open(struct file *file, const struct cred *cred)
 {
 	return 0;
 }
@@ -973,7 +973,8 @@ void __init security_fixup_ops(struct security_operations *ops)
 	set_to_cap_if_null(ops, file_alloc_security);
 	set_to_cap_if_null(ops, file_free_security);
 	set_to_cap_if_null(ops, file_ioctl);
-	set_to_cap_if_null(ops, file_mmap);
+	set_to_cap_if_null(ops, mmap_addr);
+	set_to_cap_if_null(ops, mmap_file);
 	set_to_cap_if_null(ops, file_mprotect);
 	set_to_cap_if_null(ops, file_lock);
 	set_to_cap_if_null(ops, file_fcntl);

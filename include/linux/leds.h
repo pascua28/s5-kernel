@@ -74,6 +74,8 @@ struct led_classdev {
 	struct led_trigger	*trigger;
 	struct list_head	 trig_list;
 	void			*trigger_data;
+	/* true if activated - deactivate routine uses it to do cleanup */
+	bool			activated;
 #endif
 };
 

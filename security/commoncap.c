@@ -88,12 +88,12 @@ int cap_capable(const struct cred *cred, struct user_namespace *targ_ns,
 #endif
 
 	for (;;) {
-		/* The creator of the user namespace has all caps. */
-		if (targ_ns != &init_user_ns && targ_ns->creator == cred->user)
+		/* The owner of the user namespace has all caps. */
+		if (targ_ns != &init_user_ns && targ_ns->owner == cred->user)
 			return 0;
 
 		/* Do we have the necessary capabilities? */
-		if (targ_ns == cred->user->user_ns)
+		if (targ_ns == cred->user_ns)
 			return cap_raised(cred->cap_effective, cap) ? 0 : -EPERM;
 
 		/* Have we tried all of the parent namespaces? */
@@ -104,7 +104,7 @@ int cap_capable(const struct cred *cred, struct user_namespace *targ_ns,
 		 *If you have a capability in a parent user ns, then you have
 		 * it over all children user namespaces as well.
 		 */
-		targ_ns = targ_ns->creator->user_ns;
+		targ_ns = targ_ns->parent;
 	}
 
 	/* We never get here */
@@ -148,10 +148,10 @@ int cap_ptrace_access_check(struct task_struct *child, unsigned int mode)
 	rcu_read_lock();
 	cred = current_cred();
 	child_cred = __task_cred(child);
-	if (cred->user->user_ns == child_cred->user->user_ns &&
+	if (cred->user_ns == child_cred->user_ns &&
 	    cap_issubset(child_cred->cap_permitted, cred->cap_permitted))
 		goto out;
-	if (ns_capable(child_cred->user->user_ns, CAP_SYS_PTRACE))
+	if (ns_capable(child_cred->user_ns, CAP_SYS_PTRACE))
 		goto out;
 	ret = -EPERM;
 out:
@@ -180,10 +180,10 @@ int cap_ptrace_traceme(struct task_struct *parent)
 	rcu_read_lock();
 	cred = __task_cred(parent);
 	child_cred = current_cred();
-	if (cred->user->user_ns == child_cred->user->user_ns &&
+	if (cred->user_ns == child_cred->user_ns &&
 	    cap_issubset(child_cred->cap_permitted, cred->cap_permitted))
 		goto out;
-	if (has_ns_capability(parent, child_cred->user->user_ns, CAP_SYS_PTRACE))
+	if (has_ns_capability(parent, child_cred->user_ns, CAP_SYS_PTRACE))
 		goto out;
 	ret = -EPERM;
 out:
@@ -226,7 +226,7 @@ static inline int cap_inh_is_capped(void)
 	/* they are so limited unless the current task has the CAP_SETPCAP
 	 * capability
 	 */
-	if (cap_capable(current_cred(), current_cred()->user->user_ns,
+	if (cap_capable(current_cred(), current_cred()->user_ns,
 			CAP_SETPCAP, SECURITY_CAP_AUDIT) == 0)
 		return 0;
 	return 1;
@@ -523,14 +523,17 @@ skip:
 
 
 	/* Don't let someone trace a set[ug]id/setpcap binary with the revised
-	 * credentials unless they have the appropriate permit
+	 * credentials unless they have the appropriate permit.
+	 *
+	 * In addition, if NO_NEW_PRIVS, then ensure we get no new privs.
 	 */
 	if ((new->euid != old->uid ||
 	     new->egid != old->gid ||
 	     !cap_issubset(new->cap_permitted, old->cap_permitted)) &&
 	    bprm->unsafe & ~LSM_UNSAFE_PTRACE_CAP) {
 		/* downgrade; they get no more than they had, and maybe less */
-		if (!capable(CAP_SETUID)) {
+		if (!capable(CAP_SETUID) ||
+		    (bprm->unsafe & LSM_UNSAFE_NO_NEW_PRIVS)) {
 			new->euid = new->uid;
 			new->egid = new->gid;
 		}
@@ -883,7 +886,7 @@ int cap_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 		    || ((new->securebits & SECURE_ALL_LOCKS & ~arg2))	/*[2]*/
 		    || (arg2 & ~(SECURE_ALL_LOCKS | SECURE_ALL_BITS))	/*[3]*/
 		    || (cap_capable(current_cred(),
-				    current_cred()->user->user_ns, CAP_SETPCAP,
+				    current_cred()->user_ns, CAP_SETPCAP,
 				    SECURITY_CAP_AUDIT) != 0)		/*[4]*/
 			/*
 			 * [1] no changing of bits that are locked
@@ -955,22 +958,15 @@ int cap_vm_enough_memory(struct mm_struct *mm, long pages)
 }
 
 /*
- * cap_file_mmap - check if able to map given addr
- * @file: unused
- * @reqprot: unused
- * @prot: unused
- * @flags: unused
+ * cap_mmap_addr - check if able to map given addr
  * @addr: address attempting to be mapped
- * @addr_only: unused
  *
  * If the process is attempting to map memory below dac_mmap_min_addr they need
  * CAP_SYS_RAWIO.  The other parameters to this function are unused by the
  * capability security module.  Returns 0 if this mapping should be allowed
  * -EPERM if not.
  */
-int cap_file_mmap(struct file *file, unsigned long reqprot,
-		  unsigned long prot, unsigned long flags,
-		  unsigned long addr, unsigned long addr_only)
+int cap_mmap_addr(unsigned long addr)
 {
 	int ret = 0;
 
@@ -982,4 +978,10 @@ int cap_file_mmap(struct file *file, unsigned long reqprot,
 			current->flags |= PF_SUPERPRIV;
 	}
 	return ret;
+}
+
+int cap_mmap_file(struct file *file, unsigned long reqprot,
+		  unsigned long prot, unsigned long flags)
+{
+	return 0;
 }

@@ -174,4 +174,10 @@ source "drivers/irda/Kconfig"
 
 source "drivers/qsc/Kconfig"
 
+source "drivers/memory/Kconfig"
+
+source "drivers/iio/Kconfig"
+
+source "drivers/vme/Kconfig"
+
 endmenu

@@ -46,6 +46,7 @@
 #include <linux/skbuff.h>
 #include <net/pkt_sched.h>
 #include <net/inet_ecn.h>
+#include <linux/reciprocal_div.h>
 
 /* Controlling Queue Delay (CoDel) algorithm
  * =========================================
@@ -123,6 +124,7 @@ struct codel_params {
  *			entered dropping state
  * @lastcount:		count at entry to dropping state
  * @dropping:		set to true if in dropping state
+ * @rec_inv_sqrt:	reciprocal value of sqrt(count) >> 1
  * @first_above_time:	when we went (or will go) continuously above target
  *			for interval
  * @drop_next:		time to drop next packet, or when we dropped last
@@ -132,10 +134,15 @@ struct codel_vars {
 	u32		count;
 	u32		lastcount;
 	bool		dropping;
+	u16		rec_inv_sqrt;
 	codel_time_t	first_above_time;
 	codel_time_t	drop_next;
 	codel_time_t	ldelay;
 };
+
+#define REC_INV_SQRT_BITS (8 * sizeof(u16)) /* or sizeof_in_bits(rec_inv_sqrt) */
+/* needed shift to get a Q0.32 number from rec_inv_sqrt */
+#define REC_INV_SQRT_SHIFT (32 - REC_INV_SQRT_BITS)
 
 /**
  * struct codel_stats - contains codel shared variables and stats
@@ -158,11 +165,7 @@ static void codel_params_init(struct codel_params *params)
 
 static void codel_vars_init(struct codel_vars *vars)
 {
-	vars->drop_next = 0;
-	vars->first_above_time = 0;
-	vars->dropping = false; /* exit dropping state */
-	vars->count = 0;
-	vars->lastcount = 0;
+	memset(vars, 0, sizeof(*vars));
 }
 
 static void codel_stats_init(struct codel_stats *stats)
@@ -170,39 +173,39 @@ static void codel_stats_init(struct codel_stats *stats)
 	stats->maxpacket = 256;
 }
 
-/* return interval/sqrt(x) with good precision
- * relies on int_sqrt(unsigned long x) kernel implementation
+/*
+ * http://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Iterative_methods_for_reciprocal_square_roots
+ * new_invsqrt = (invsqrt / 2) * (3 - count * invsqrt^2)
+ *
+ * Here, invsqrt is a fixed point number (< 1.0), 32bit mantissa, aka Q0.32
  */
-static u32 codel_inv_sqrt(u32 _interval, u32 _x)
+static void codel_Newton_step(struct codel_vars *vars)
 {
-	u64 interval = _interval;
-	unsigned long x = _x;
+	u32 invsqrt = ((u32)vars->rec_inv_sqrt) << REC_INV_SQRT_SHIFT;
+	u32 invsqrt2 = ((u64)invsqrt * invsqrt) >> 32;
+	u64 val = (3LL << 32) - ((u64)vars->count * invsqrt2);
 
-	/* Scale operands for max precision */
+	val >>= 2; /* avoid overflow in following multiply */
+	val = (val * invsqrt) >> (32 - 2 + 1);
 
-#if BITS_PER_LONG == 64
-	x <<= 32; /* On 64bit arches, we can prescale x by 32bits */
-	interval <<= 16;
-#endif
-
-	while (x < (1UL << (BITS_PER_LONG - 2))) {
-		x <<= 2;
-		interval <<= 1;
-	}
-	do_div(interval, int_sqrt(x));
-	return (u32)interval;
+	vars->rec_inv_sqrt = val >> REC_INV_SQRT_SHIFT;
 }
 
+/*
+ * CoDel control_law is t + interval/sqrt(count)
+ * We maintain in rec_inv_sqrt the reciprocal value of sqrt(count) to avoid
+ * both sqrt() and divide operation.
+ */
 static codel_time_t codel_control_law(codel_time_t t,
 				      codel_time_t interval,
-				      u32 count)
+				      u32 rec_inv_sqrt)
 {
-	return t + codel_inv_sqrt(interval, count);
+	return t + reciprocal_divide(interval, rec_inv_sqrt << REC_INV_SQRT_SHIFT);
 }
 
 
-static bool codel_should_drop(struct sk_buff *skb,
-			      unsigned int *backlog,
+static bool codel_should_drop(const struct sk_buff *skb,
+			      struct Qdisc *sch,
 			      struct codel_vars *vars,
 			      struct codel_params *params,
 			      struct codel_stats *stats,
@@ -216,13 +219,13 @@ static bool codel_should_drop(struct sk_buff *skb,
 	}
 
 	vars->ldelay = now - codel_get_enqueue_time(skb);
-	*backlog -= qdisc_pkt_len(skb);
+	sch->qstats.backlog -= qdisc_pkt_len(skb);
 
 	if (unlikely(qdisc_pkt_len(skb) > stats->maxpacket))
 		stats->maxpacket = qdisc_pkt_len(skb);
 
 	if (codel_time_before(vars->ldelay, params->target) ||
-	    *backlog <= stats->maxpacket) {
+	    sch->qstats.backlog <= stats->maxpacket) {
 		/* went below - stay below for at least interval */
 		vars->first_above_time = 0;
 		return false;
@@ -246,8 +249,7 @@ static struct sk_buff *codel_dequeue(struct Qdisc *sch,
 				     struct codel_params *params,
 				     struct codel_vars *vars,
 				     struct codel_stats *stats,
-				     codel_skb_dequeue_t dequeue_func,
-				     u32 *backlog)
+				     codel_skb_dequeue_t dequeue_func)
 {
 	struct sk_buff *skb = dequeue_func(vars, sch);
 	codel_time_t now;
@@ -258,7 +260,7 @@ static struct sk_buff *codel_dequeue(struct Qdisc *sch,
 		return skb;
 	}
 	now = codel_get_time();
-	drop = codel_should_drop(skb, backlog, vars, params, stats, now);
+	drop = codel_should_drop(skb, sch, vars, params, stats, now);
 	if (vars->dropping) {
 		if (!drop) {
 			/* sojourn time below target - leave dropping state */
@@ -274,20 +276,22 @@ static struct sk_buff *codel_dequeue(struct Qdisc *sch,
 			 */
 			while (vars->dropping &&
 			       codel_time_after_eq(now, vars->drop_next)) {
-				if (++vars->count == 0) /* avoid zero divides */
-					vars->count = ~0U;
+				vars->count++; /* dont care of possible wrap
+						* since there is no more divide
+						*/
+				codel_Newton_step(vars);
 				if (params->ecn && INET_ECN_set_ce(skb)) {
 					stats->ecn_mark++;
 					vars->drop_next =
 						codel_control_law(vars->drop_next,
 								  params->interval,
-								  vars->count);
+								  vars->rec_inv_sqrt);
 					goto end;
 				}
 				qdisc_drop(skb, sch);
 				stats->drop_count++;
 				skb = dequeue_func(vars, sch);
-				if (!codel_should_drop(skb, backlog,
+				if (!codel_should_drop(skb, sch,
 						       vars, params, stats, now)) {
 					/* leave dropping state */
 					vars->dropping = false;
@@ -296,7 +300,7 @@ static struct sk_buff *codel_dequeue(struct Qdisc *sch,
 					vars->drop_next =
 						codel_control_law(vars->drop_next,
 								  params->interval,
-								  vars->count);
+								  vars->rec_inv_sqrt);
 				}
 			}
 		}
@@ -308,7 +312,7 @@ static struct sk_buff *codel_dequeue(struct Qdisc *sch,
 			stats->drop_count++;
 
 			skb = dequeue_func(vars, sch);
-			drop = codel_should_drop(skb, backlog, vars, params,
+			drop = codel_should_drop(skb, sch, vars, params,
 						 stats, now);
 		}
 		vars->dropping = true;
@@ -319,12 +323,18 @@ static struct sk_buff *codel_dequeue(struct Qdisc *sch,
 		if (codel_time_before(now - vars->drop_next,
 				      16 * params->interval)) {
 			vars->count = (vars->count - vars->lastcount) | 1;
+			/* we dont care if rec_inv_sqrt approximation
+			 * is not very precise :
+			 * Next Newton steps will correct it quadratically.
+			 */
+			codel_Newton_step(vars);
 		} else {
 			vars->count = 1;
+			vars->rec_inv_sqrt = ~0U >> REC_INV_SQRT_SHIFT;
 		}
 		vars->lastcount = vars->count;
 		vars->drop_next = codel_control_law(now, params->interval,
-						    vars->count);
+						    vars->rec_inv_sqrt);
 	}
 end:
 	return skb;

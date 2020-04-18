@@ -217,13 +217,14 @@ static int fq_codel_enqueue(struct sk_buff *skb, struct Qdisc *sch)
  */
 static struct sk_buff *dequeue(struct codel_vars *vars, struct Qdisc *sch)
 {
+	struct fq_codel_sched_data *q = qdisc_priv(sch);
 	struct fq_codel_flow *flow;
 	struct sk_buff *skb = NULL;
 
 	flow = container_of(vars, struct fq_codel_flow, cvars);
 	if (flow->head) {
 		skb = dequeue_head(flow);
-		sch->qstats.backlog -= qdisc_pkt_len(skb);
+		q->backlogs[flow - q->flows] -= qdisc_pkt_len(skb);
 		sch->q.qlen--;
 	}
 	return skb;
@@ -256,7 +257,7 @@ begin:
 	prev_ecn_mark = q->cstats.ecn_mark;
 
 	skb = codel_dequeue(sch, &q->cparams, &flow->cvars, &q->cstats,
-			    dequeue, &q->backlogs[flow - q->flows]);
+			    dequeue);
 
 	flow->dropped += q->cstats.drop_count - prev_drop_count;
 	flow->dropped += q->cstats.ecn_mark - prev_ecn_mark;
@@ -461,12 +462,13 @@ static int fq_codel_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
 	struct fq_codel_sched_data *q = qdisc_priv(sch);
 	struct tc_fq_codel_xstats st = {
 		.type				= TCA_FQ_CODEL_XSTATS_QDISC,
-		.qdisc_stats.maxpacket		= q->cstats.maxpacket,
-		.qdisc_stats.drop_overlimit	= q->drop_overlimit,
-		.qdisc_stats.ecn_mark		= q->cstats.ecn_mark,
-		.qdisc_stats.new_flow_count	= q->new_flow_count,
 	};
 	struct list_head *pos;
+
+	st.qdisc_stats.maxpacket = q->cstats.maxpacket;
+	st.qdisc_stats.drop_overlimit = q->drop_overlimit;
+	st.qdisc_stats.ecn_mark = q->cstats.ecn_mark;
+	st.qdisc_stats.new_flow_count = q->new_flow_count;
 
 	list_for_each(pos, &q->new_flows)
 		st.qdisc_stats.new_flows_len++;
@@ -607,9 +609,6 @@ static struct Qdisc_ops fq_codel_qdisc_ops __read_mostly = {
 	.dump_stats =	fq_codel_dump_stats,
 	.owner		=	THIS_MODULE,
 };
-
-const struct Qdisc_ops *default_qdisc_ops = &fq_codel_qdisc_ops;
-EXPORT_SYMBOL(default_qdisc_ops);
 
 static int __init fq_codel_module_init(void)
 {
