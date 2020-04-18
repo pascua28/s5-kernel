@@ -1232,6 +1232,7 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 	int exthdrlen;
 	int dst_exthdrlen;
 	int hh_len;
+	int mtu;
 	int copy;
 	int err;
 	int offset = 0;
