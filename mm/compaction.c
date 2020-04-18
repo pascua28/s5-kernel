@@ -226,7 +226,7 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 	unsigned long last_pageblock_nr = 0, pageblock_nr;
 	unsigned long nr_scanned = 0, nr_isolated = 0;
 	struct list_head *migratelist = &cc->migratepages;
-	isolate_mode_t mode = ISOLATE_ACTIVE|ISOLATE_INACTIVE;
+	isolate_mode_t mode = 0;
 	struct lruvec *lruvec;
 
 	/*
