@@ -1530,8 +1530,10 @@ CONFIG_OF_EARLY_FLATTREE=y
 CONFIG_OF_ADDRESS=y
 CONFIG_OF_IRQ=y
 CONFIG_OF_DEVICE=y
+CONFIG_OF_GPIO=y
 CONFIG_OF_I2C=y
 CONFIG_OF_NET=y
+CONFIG_OF_SPI=y
 CONFIG_OF_SPMI=y
 CONFIG_OF_SLIMBUS=y
 CONFIG_OF_BATTERYDATA=y
@@ -2240,10 +2242,8 @@ CONFIG_SLIMBUS_MSM_NGD=y
 #
 # Enable Device Drivers -> PPS to see the PTP clock options.
 #
-CONFIG_ARCH_HAVE_CUSTOM_GPIO_H=y
 CONFIG_ARCH_REQUIRE_GPIOLIB=y
 CONFIG_GPIOLIB=y
-CONFIG_OF_GPIO=y
 CONFIG_DEBUG_GPIO=y
 CONFIG_GPIO_SYSFS=y
 
@@ -2251,7 +2251,7 @@ CONFIG_GPIO_SYSFS=y
 # Memory mapped GPIO drivers:
 #
 # CONFIG_GPIO_GENERIC_PLATFORM is not set
-# CONFIG_GPIO_EM is not set
+# CONFIG_GPIO_MSM_V1 is not set
 # CONFIG_GPIO_MSM_V2 is not set
 CONFIG_GPIO_MSM_V3=y
 # CONFIG_GPIO_FSM9XXX is not set
@@ -3161,22 +3161,18 @@ CONFIG_SND_SOC_ES705_SLIM=y
 # CONFIG_SND_SOC_ES704_TEMP is not set
 # CONFIG_SND_SOC_ES515 is not set
 # CONFIG_SOUND_PRIME is not set
-
-#
-# HID support
-#
+CONFIG_HID_SUPPORT=y
 CONFIG_HID=y
 # CONFIG_HID_BATTERY_STRENGTH is not set
 CONFIG_HIDRAW=y
 CONFIG_UHID=y
 
 #
-# USB HID support
+# USB Input Devices
 #
 CONFIG_USB_HID=y
 # CONFIG_HID_PID is not set
 # CONFIG_USB_HIDDEV is not set
-# CONFIG_HID_GENERIC is not set
 
 #
 # Special HID drivers
@@ -3185,7 +3181,6 @@ CONFIG_HID_A4TECH=y
 CONFIG_HID_ACRUX=y
 # CONFIG_HID_ACRUX_FF is not set
 CONFIG_HID_APPLE=y
-# CONFIG_HID_AUREAL is not set
 CONFIG_HID_BELKIN=y
 CONFIG_HID_CHERRY=y
 CONFIG_HID_CHICONY=y
@@ -3243,16 +3238,13 @@ CONFIG_HID_TOPSEED=y
 CONFIG_HID_THRUSTMASTER=y
 # CONFIG_THRUSTMASTER_FF is not set
 CONFIG_HID_WACOM=y
+CONFIG_HID_WACOM_POWER_SUPPLY=y
 # CONFIG_HID_WIIMOTE is not set
 CONFIG_HID_ZAGG=y
 CONFIG_HID_ZEROPLUS=y
 # CONFIG_ZEROPLUS_FF is not set
 CONFIG_HID_ZYDACRON=y
 # CONFIG_HID_OVR is not set
-
-#
-# USB HID support
-#
 # CONFIG_USB_ARCH_HAS_OHCI is not set
 CONFIG_USB_ARCH_HAS_EHCI=y
 CONFIG_USB_ARCH_HAS_XHCI=y
@@ -3266,6 +3258,8 @@ CONFIG_USB_ANNOUNCE_NEW_DEVICES=y
 #
 # Miscellaneous USB options
 #
+# CONFIG_USB_DEVICEFS is not set
+CONFIG_USB_DEVICE_CLASS=y
 # CONFIG_USB_DYNAMIC_MINORS is not set
 CONFIG_USB_SUSPEND=y
 # CONFIG_USB_OTG is not set
@@ -3293,7 +3287,6 @@ CONFIG_USB_XHCI_PLATFORM=y
 # CONFIG_USB_PEHCI_HCD is not set
 # CONFIG_USB_ICE40_HCD is not set
 # CONFIG_USB_MUSB_HDRC is not set
-# CONFIG_USB_CHIPIDEA is not set
 # CONFIG_USB_RENESAS_USBHS is not set
 
 #
@@ -3421,11 +3414,6 @@ CONFIG_USB_SERIAL_PL2303=y
 # CONFIG_USB_QCOM_DIAG_BRIDGE is not set
 # CONFIG_USB_QCOM_MDM_BRIDGE is not set
 # CONFIG_USB_QCOM_KS_BRIDGE is not set
-
-#
-# USB Physical Layer drivers
-#
-# CONFIG_USB_ISP1301 is not set
 CONFIG_USB_GADGET=y
 # CONFIG_USB_GADGET_DEBUG is not set
 CONFIG_USB_GADGET_DEBUG_FILES=y
@@ -3685,7 +3673,153 @@ CONFIG_STAGING=y
 # CONFIG_TRANZPORT is not set
 # CONFIG_LINE6_USB is not set
 # CONFIG_USB_SERIAL_QUATECH2 is not set
+CONFIG_IIO=y
+CONFIG_IIO_ST_HWMON=y
+CONFIG_IIO_BUFFER=y
+# CONFIG_IIO_SW_RING is not set
+CONFIG_IIO_KFIFO_BUF=y
+CONFIG_IIO_TRIGGER=y
+CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
+
+#
+# Accelerometers
+#
+# CONFIG_ADIS16201 is not set
+# CONFIG_ADIS16203 is not set
+# CONFIG_ADIS16204 is not set
+# CONFIG_ADIS16209 is not set
+# CONFIG_ADIS16220 is not set
+# CONFIG_ADIS16240 is not set
+# CONFIG_KXSD9 is not set
+# CONFIG_LIS3L02DQ is not set
+# CONFIG_SCA3000 is not set
+
+#
+# Analog to digital converters
+#
+# CONFIG_AD7291 is not set
+# CONFIG_AD7298 is not set
+# CONFIG_AD7606 is not set
+# CONFIG_AD799X is not set
+# CONFIG_AD7476 is not set
+# CONFIG_AD7887 is not set
+# CONFIG_AD7780 is not set
+# CONFIG_AD7793 is not set
+# CONFIG_AD7816 is not set
+# CONFIG_AD7192 is not set
+# CONFIG_ADT7310 is not set
+# CONFIG_ADT7410 is not set
+# CONFIG_AD7280 is not set
+# CONFIG_MAX1363 is not set
+
+#
+# Analog digital bi-direction converters
+#
+# CONFIG_ADT7316 is not set
+
+#
+# Capacitance to digital converters
+#
+# CONFIG_AD7150 is not set
+# CONFIG_AD7152 is not set
+# CONFIG_AD7746 is not set
+
+#
+# Digital to analog converters
+#
+# CONFIG_AD5064 is not set
+# CONFIG_AD5360 is not set
+# CONFIG_AD5380 is not set
+# CONFIG_AD5421 is not set
+# CONFIG_AD5624R_SPI is not set
+# CONFIG_AD5446 is not set
+# CONFIG_AD5504 is not set
+# CONFIG_AD5764 is not set
+# CONFIG_AD5791 is not set
+# CONFIG_AD5686 is not set
+# CONFIG_MAX517 is not set
+
+#
+# Direct Digital Synthesis
+#
+# CONFIG_AD5930 is not set
+# CONFIG_AD9832 is not set
+# CONFIG_AD9834 is not set
+# CONFIG_AD9850 is not set
+# CONFIG_AD9852 is not set
+# CONFIG_AD9910 is not set
+# CONFIG_AD9951 is not set
+
+#
+# Digital gyroscope sensors
+#
+# CONFIG_ADIS16060 is not set
+# CONFIG_ADIS16080 is not set
+# CONFIG_ADIS16130 is not set
+# CONFIG_ADIS16260 is not set
+# CONFIG_ADXRS450 is not set
+
+#
+# Network Analyzer, Impedance Converters
+#
+# CONFIG_AD5933 is not set
+
+#
+# Inertial measurement units
+#
+# CONFIG_ADIS16400 is not set
+# CONFIG_INV_MPU_IIO is not set
+# CONFIG_INV_MPU_IIO_PRIMARY is not set
+# CONFIG_INV_MPU_IIO_MPL is not set
 # CONFIG_INPUT_MPU6500_SELFTEST is not set
+# CONFIG_INV_SENSORS_IIO is not set
+# CONFIG_INV_SENSORS_MPU65XX is not set
+# CONFIG_INV_SENSORS_DMP is not set
+# CONFIG_INV_SENSORS_DMP_K520S is not set
+# CONFIG_INV_SENSORS_DBG is not set
+# CONFIG_INV_SENSORS_DTS_SUPPORT is not set
+
+#
+# Light sensors
+#
+# CONFIG_SENSORS_GP2A_IIO is not set
+# CONFIG_SENSORS_ISL29018 is not set
+# CONFIG_SENSORS_TSL2563 is not set
+# CONFIG_TSL2583 is not set
+
+#
+# Magnetometer sensors
+#
+# CONFIG_SENSORS_HMC5843 is not set
+
+#
+# Active energy metering IC
+#
+# CONFIG_ADE7753 is not set
+# CONFIG_ADE7754 is not set
+# CONFIG_ADE7758 is not set
+# CONFIG_ADE7759 is not set
+# CONFIG_ADE7854 is not set
+
+#
+# Resolver to digital converters
+#
+# CONFIG_AD2S90 is not set
+# CONFIG_AD2S1200 is not set
+# CONFIG_AD2S1210 is not set
+
+#
+# Triggers - standalone
+#
+# CONFIG_IIO_PERIODIC_RTC_TRIGGER is not set
+# CONFIG_IIO_GPIO_TRIGGER is not set
+# CONFIG_IIO_SYSFS_TRIGGER is not set
+
+#
+# Grip sensors
+#
+# CONFIG_SENSORS_ASP01_IIO is not set
+# CONFIG_IIO_SIMPLE_DUMMY is not set
 # CONFIG_FB_SM7XX is not set
 # CONFIG_BCM_WIMAX is not set
 # CONFIG_FT1000 is not set
@@ -3913,6 +4047,7 @@ CONFIG_EXTCON=y
 # Extcon Device Drivers
 #
 # CONFIG_EXTCON_GPIO is not set
+# CONFIG_EXTCON_ADC_JACK is not set
 # CONFIG_EXTCON_FSA9485 is not set
 # CONFIG_EXTCON_TSU6721 is not set
 CONFIG_EXTCON_MAX77804K=y
