@@ -105,18 +105,6 @@ static inline int ddebug_remove_module(const char *mod)
 	return 0;
 }
 
-static inline int ddebug_dyndbg_module_param_cb(char *param, char *val,
-						const char *modname)
-{
-	if (strstr(param, "dyndbg")) {
-		/* avoid pr_warn(), which wants pr_fmt() fully defined */
-		printk(KERN_WARNING "dyndbg param is supported only in "
-			"CONFIG_DYNAMIC_DEBUG builds\n");
-		return 0; /* allow and ignore */
-	}
-	return -EINVAL;
-}
-
 #define dynamic_pr_debug(fmt, ...)					\
 	do { if (0) printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__); } while (0)
 #define dynamic_dev_dbg(dev, fmt, ...)					\
