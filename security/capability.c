@@ -981,7 +981,7 @@ void __init security_fixup_ops(struct security_operations *ops)
 	set_to_cap_if_null(ops, file_set_fowner);
 	set_to_cap_if_null(ops, file_send_sigiotask);
 	set_to_cap_if_null(ops, file_receive);
-	set_to_cap_if_null(ops, dentry_open);
+	set_to_cap_if_null(ops, file_open);
 	set_to_cap_if_null(ops, task_create);
 	set_to_cap_if_null(ops, task_free);
 	set_to_cap_if_null(ops, cred_alloc_blank);
