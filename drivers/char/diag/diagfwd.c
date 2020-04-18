@@ -126,10 +126,6 @@ static int has_device_tree(void)
 
 int chk_config_get_id(void)
 {
-	/* For all Fusion targets,  Modem will always be present */
-	if (machine_is_msm8x60_fusion() || machine_is_msm8x60_fusn_ffa())
-		return 0;
-
 	if (driver->use_device_tree) {
 		if (machine_is_msm8974())
 			return MSM8974_TOOLS_ID;
