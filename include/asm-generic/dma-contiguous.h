@@ -11,13 +11,15 @@ static inline struct cma *dev_get_cma_area(struct device *dev)
 {
 	if (dev && dev->cma_area)
 		return dev->cma_area;
-	return dma_contiguous_def_area;
+	return dma_contiguous_default_area;
 }
 
 static inline void dev_set_cma_area(struct device *dev, struct cma *cma)
 {
 	if (dev)
 		dev->cma_area = cma;
+	if (!dev && !dma_contiguous_default_area)
+		dma_contiguous_default_area = cma;
 }
 
 #endif
