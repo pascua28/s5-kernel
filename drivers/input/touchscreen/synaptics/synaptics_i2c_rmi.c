@@ -2167,11 +2167,11 @@ int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 
 		if (rmi4_data->dt_data->extra_config[3])
 		retval = request_threaded_irq(rmi4_data->irq, NULL,
-				synaptics_rmi4_irq, TSP_IRQ_TYPE_LEVEL, 
+				synaptics_rmi4_irq, TSP_IRQ_TYPE_LEVEL | IRQF_ONESHOT, 
 				DRIVER_NAME, rmi4_data);
 		else
 			retval = request_threaded_irq(rmi4_data->irq, NULL,
-				synaptics_rmi4_irq, TSP_IRQ_TYPE_EDGE, 
+				synaptics_rmi4_irq, TSP_IRQ_TYPE_EDGE | IRQF_ONESHOT, 
 				DRIVER_NAME, rmi4_data);
 
 		if (retval < 0) {
