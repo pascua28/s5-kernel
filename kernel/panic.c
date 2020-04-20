@@ -116,7 +116,7 @@ void panic(const char *fmt, ...)
 	if (!test_taint(TAINT_DIE) && oops_in_progress <= 1)
 		dump_stack();
 #endif
-#ifdef CONFIG_SEC_DEBUG_SUBSYS
+#ifdef CONFIG_SEC_DEBUG
 			sec_debug_save_panic_info(buf,
 				(unsigned int)__builtin_return_address(0));
 #endif
