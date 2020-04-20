@@ -610,7 +610,7 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 		if (fuelgauge->fg_irq > 0) {
 			ret = request_threaded_irq(fuelgauge->fg_irq,
 					NULL, sec_fg_irq_thread,
-					IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+					IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 					"fuelgauge-irq", fuelgauge);
 			if (ret) {
 				dev_err(&client->dev,

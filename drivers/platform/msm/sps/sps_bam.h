@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -176,6 +176,7 @@ struct sps_pipe {
 	u32 irq_mask;
 	int polled;
 	int hybrid;
+	bool late_eot;
 	u32 irq_gen_addr;
 	enum sps_mode mode;
 	u32 num_descs; /* Size (number of elements) of descriptor FIFO */
@@ -213,6 +214,9 @@ struct sps_bam {
 	/* Statistics */
 	u32 irq_from_disabled_pipe;
 	u32 event_trigger_failures;
+
+	/* Desc cache pointers */
+	u8 *desc_cache_pointers[BAM_MAX_PIPES];
 
 };
 
@@ -568,4 +572,24 @@ int sps_bam_pipe_timer_ctrl(struct sps_bam *dev, u32 pipe_index,
 int sps_bam_pipe_get_unused_desc_num(struct sps_bam *dev, u32 pipe_index,
 					u32 *desc_num);
 
+/*
+ * sps_bam_check_irq - check IRQ of a BAM device.
+ * @dev - pointer to BAM device descriptor
+ *
+ * This function checks any pending interrupt of a BAM device.
+ *
+ * Return: 0 on success, negative value on error
+ */
+int sps_bam_check_irq(struct sps_bam *dev);
+
+/*
+ * sps_bam_pipe_pending_desc - checking pending descriptor.
+ * @dev:	BAM device handle
+ * @pipe_index:	pipe index
+ *
+ * This function checks if a pipe of a BAM has any pending descriptor.
+ *
+ * @return true if there is any desc pending
+ */
+bool sps_bam_pipe_pending_desc(struct sps_bam *dev, u32 pipe_index);
 #endif	/* _SPSBAM_H_ */
