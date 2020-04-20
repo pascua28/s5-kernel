@@ -448,9 +448,9 @@ static int save_image(struct swap_map_handle *handle,
 	struct timeval start;
 	struct timeval stop;
 
-	printk(KERN_INFO "PM: Saving image data pages (%u pages)...\n",
+	printk(KERN_INFO "PM: Saving image data pages (%u pages) ...     ",
 		nr_to_write);
-	m = nr_to_write / 10;
+	m = nr_to_write / 100;
 	if (!m)
 		m = 1;
 	nr_pages = 0;
@@ -464,8 +464,7 @@ static int save_image(struct swap_map_handle *handle,
 		if (ret)
 			break;
 		if (!(nr_pages % m))
-			printk(KERN_INFO "PM: Image saving progress: %3d%%\n",
-			       nr_pages / m * 10);
+			printk(KERN_CONT "\b\b\b\b%3d%%", nr_pages / m);
 		nr_pages++;
 	}
 	err2 = hib_wait_on_bio_chain(&bio);
@@ -473,7 +472,9 @@ static int save_image(struct swap_map_handle *handle,
 	if (!ret)
 		ret = err2;
 	if (!ret)
-		printk(KERN_INFO "PM: Image saving done.\n");
+		printk(KERN_CONT "\b\b\b\bdone\n");
+	else
+		printk(KERN_CONT "\n");
 	swsusp_show_speed(&start, &stop, nr_to_write, "Wrote");
 	return ret;
 }
@@ -667,9 +668,9 @@ static int save_image_lzo(struct swap_map_handle *handle,
 
 	printk(KERN_INFO
 		"PM: Using %u thread(s) for compression.\n"
-		"PM: Compressing and saving image data (%u pages)...\n",
+		"PM: Compressing and saving image data (%u pages) ...     ",
 		nr_threads, nr_to_write);
-	m = nr_to_write / 10;
+	m = nr_to_write / 100;
 	if (!m)
 		m = 1;
 	nr_pages = 0;
@@ -689,10 +690,8 @@ static int save_image_lzo(struct swap_map_handle *handle,
 				       data_of(*snapshot), PAGE_SIZE);
 
 				if (!(nr_pages % m))
-					printk(KERN_INFO
-					       "PM: Image saving progress: "
-					       "%3d%%\n",
-				               nr_pages / m * 10);
+					printk(KERN_CONT "\b\b\b\b%3d%%",
+				               nr_pages / m);
 				nr_pages++;
 			}
 			if (!off)
@@ -762,8 +761,11 @@ out_finish:
 	do_gettimeofday(&stop);
 	if (!ret)
 		ret = err2;
-	if (!ret)
-		printk(KERN_INFO "PM: Image saving done.\n");
+	if (!ret) {
+		printk(KERN_CONT "\b\b\b\bdone\n");
+	} else {
+		printk(KERN_CONT "\n");
+	}
 	swsusp_show_speed(&start, &stop, nr_to_write, "Wrote");
 out_clean:
 	if (crc) {
@@ -971,9 +973,9 @@ static int load_image(struct swap_map_handle *handle,
 	int err2;
 	unsigned nr_pages;
 
-	printk(KERN_INFO "PM: Loading image data pages (%u pages)...\n",
+	printk(KERN_INFO "PM: Loading image data pages (%u pages) ...     ",
 		nr_to_read);
-	m = nr_to_read / 10;
+	m = nr_to_read / 100;
 	if (!m)
 		m = 1;
 	nr_pages = 0;
@@ -991,8 +993,7 @@ static int load_image(struct swap_map_handle *handle,
 		if (ret)
 			break;
 		if (!(nr_pages % m))
-			printk(KERN_INFO "PM: Image loading progress: %3d%%\n",
-			       nr_pages / m * 10);
+			printk("\b\b\b\b%3d%%", nr_pages / m);
 		nr_pages++;
 	}
 	err2 = hib_wait_on_bio_chain(&bio);
@@ -1000,11 +1001,12 @@ static int load_image(struct swap_map_handle *handle,
 	if (!ret)
 		ret = err2;
 	if (!ret) {
-		printk(KERN_INFO "PM: Image loading done.\n");
+		printk("\b\b\b\bdone\n");
 		snapshot_write_finalize(snapshot);
 		if (!snapshot_image_loaded(snapshot))
 			ret = -ENODATA;
-	}
+	} else
+		printk("\n");
 	swsusp_show_speed(&start, &stop, nr_to_read, "Read");
 	return ret;
 }
@@ -1183,9 +1185,9 @@ static int load_image_lzo(struct swap_map_handle *handle,
 
 	printk(KERN_INFO
 		"PM: Using %u thread(s) for decompression.\n"
-		"PM: Loading and decompressing image data (%u pages)...\n",
+		"PM: Loading and decompressing image data (%u pages) ...     ",
 		nr_threads, nr_to_read);
-	m = nr_to_read / 10;
+	m = nr_to_read / 100;
 	if (!m)
 		m = 1;
 	nr_pages = 0;
@@ -1317,10 +1319,7 @@ static int load_image_lzo(struct swap_map_handle *handle,
 				       data[thr].unc + off, PAGE_SIZE);
 
 				if (!(nr_pages % m))
-					printk(KERN_INFO
-					       "PM: Image loading progress: "
-					       "%3d%%\n",
-					       nr_pages / m * 10);
+					printk("\b\b\b\b%3d%%", nr_pages / m);
 				nr_pages++;
 
 				ret = snapshot_write_next(snapshot);
@@ -1345,7 +1344,7 @@ out_finish:
 	}
 	do_gettimeofday(&stop);
 	if (!ret) {
-		printk(KERN_INFO "PM: Image loading done.\n");
+		printk("\b\b\b\bdone\n");
 		snapshot_write_finalize(snapshot);
 		if (!snapshot_image_loaded(snapshot))
 			ret = -ENODATA;
@@ -1358,7 +1357,8 @@ out_finish:
 				}
 			}
 		}
-	}
+	} else
+		printk("\n");
 	swsusp_show_speed(&start, &stop, nr_to_read, "Read");
 out_clean:
 	for (i = 0; i < ring_size; i++)
