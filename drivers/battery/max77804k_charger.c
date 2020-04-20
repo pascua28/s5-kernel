@@ -1712,7 +1712,7 @@ static void max77804k_chgin_init_work(struct work_struct *work)
 
 	if (charger->irq_battery > 0) {
 		ret = request_threaded_irq(charger->irq_battery, NULL,
-				max77804k_battery_irq, IRQF_TRIGGER_FALLING,
+				max77804k_battery_irq, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 				"battery-irq", charger);
 
 		if (ret < 0)

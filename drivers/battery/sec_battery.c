@@ -5294,7 +5294,7 @@ static int __devinit sec_battery_probe(struct platform_device *pdev)
 	if (battery->pdata->bat_irq) {
 		ret = request_threaded_irq(battery->pdata->bat_irq,
 				NULL, sec_bat_irq_thread,
-				battery->pdata->bat_irq_attr,
+				battery->pdata->bat_irq_attr | IRQF_ONESHOT,
 				"battery-irq", battery);
 		if (ret) {
 			dev_err(battery->dev,
@@ -5313,7 +5313,7 @@ static int __devinit sec_battery_probe(struct platform_device *pdev)
 	if (battery->pdata->ta_irq) {
 		ret = request_threaded_irq(battery->pdata->ta_irq,
 				NULL, sec_ta_irq_thread,
-				battery->pdata->ta_irq_attr,
+				battery->pdata->ta_irq_attr | IRQF_ONESHOT,
 				"ta-irq", battery);
 		if (ret) {
 			dev_err(battery->dev,
