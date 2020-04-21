@@ -108,7 +108,7 @@ int es705_gpio_init(struct es705_priv *es705)
 	if (es705->pdata->gpiob_gpio) {
 		rc = request_threaded_irq(es705->pdata->irq_base,
 					  NULL,
-					  es705_irq_event, IRQF_TRIGGER_RISING,
+					  es705_irq_event, IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 					  "es705-irq-event", es705);
 		if (rc) {
 			dev_err(es705->dev, "%s(): event request_irq() failed\n",
