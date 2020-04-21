@@ -88,9 +88,6 @@ struct vfsspi_devData {
 	unsigned int miso_alt;
 	unsigned int cs_alt;
 	unsigned int clk_alt;
-#ifdef FEATURE_SPI_WAKELOCK
-	struct wake_lock fp_spi_lock;
-#endif
 #endif
 	unsigned int orient;
 #ifdef CONFIG_SENSORS_FINGERPRINT_SYSFS
@@ -782,9 +779,6 @@ long vfsspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 								__func__);
 					}
 					usleep_range(950, 1000);
-#ifdef FEATURE_SPI_WAKELOCK
-					wake_lock(&vfsSpiDev->fp_spi_lock);
-#endif
 					vfsSpiDev->enabled_clk = true;
 				}
 #endif
@@ -1041,9 +1035,6 @@ long vfsspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 			spi_dev_put(spidev);
 			usleep_range(950, 1000);
-#ifdef FEATURE_SPI_WAKELOCK
-			wake_unlock(&vfsSpiDev->fp_spi_lock);
-#endif
 			vfsSpiDev->enabled_clk = false;
 		}
 		break;
@@ -1327,10 +1318,6 @@ int vfsspi_platformInit(struct vfsspi_devData *vfsSpiDev)
 		}
 
 #ifdef ENABLE_SENSORS_FPRINT_SECURE
-#ifdef FEATURE_SPI_WAKELOCK
-		wake_lock_init(&vfsSpiDev->fp_spi_lock,
-			WAKE_LOCK_SUSPEND, "vfsspi_wake_lock");
-#endif
 		vfsspi_disable_irq(vfsSpiDev);
 #endif
 		pr_info("%s drdy value =%d\n"
@@ -1361,10 +1348,6 @@ void vfsspi_platformUninit(struct vfsspi_devData *vfsSpiDev)
 
 	if (vfsSpiDev != NULL) {
 #ifndef ENABLE_SENSORS_FPRINT_SECURE
-#ifdef FEATURE_SPI_WAKELOCK
-		wake_lock_destroy(&vfsSpiDev->fp_spi_lock);
-#endif
-
 		vfsSpiDev->freqTable = NULL;
 		vfsSpiDev->freqTableSize = 0;
 #endif
