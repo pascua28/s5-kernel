@@ -1169,7 +1169,7 @@ static int max86900_gpio_setup(struct max86900_device_data *data)
 	data->irq = gpio_to_irq(data->hrm_int);
 
 	errorno = request_threaded_irq(data->irq, NULL,
-		max86900_irq_handler, IRQF_TRIGGER_FALLING,
+		max86900_irq_handler, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 		"hrm_sensor_irq", data);
 
 	if (errorno < 0) {
