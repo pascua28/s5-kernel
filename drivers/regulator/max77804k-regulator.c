@@ -464,6 +464,7 @@ static __devinit int max77804k_pmic_probe(struct platform_device *pdev)
 	struct regulator_dev **rdev;
 	struct max77804k_data *max77804k;
 	struct i2c_client *i2c;
+	struct regulator_config config = {};
 	int i, ret, size;
 	dev_info(&pdev->dev, "%s\n", __func__);
 
@@ -492,6 +493,9 @@ static __devinit int max77804k_pmic_probe(struct platform_device *pdev)
 	max77804k->num_regulators = pdata->num_regulators;
 	platform_set_drvdata(pdev, max77804k);
 	i2c = max77804k->iodev->i2c;
+
+	config.dev = max77804k->dev;
+
 	pr_info("[%s:%d] pdata->num_regulators:%d\n", __FILE__, __LINE__,
 		pdata->num_regulators);
 	for (i = 0; i < pdata->num_regulators; i++) {
@@ -504,9 +508,10 @@ static __devinit int max77804k_pmic_probe(struct platform_device *pdev)
 		if (id == MAX77804K_ESAFEOUT1 || id == MAX77804K_ESAFEOUT2)
 			regulators[id].n_voltages = 4;
 
-		rdev[i] = regulator_register(&regulators[id], max77804k->dev,
-					     pdata->regulators[i].initdata,
-					     max77804k, NULL);
+		config.init_data = pdata->regulators[i].initdata;
+		config.driver_data = max77804k;
+
+		rdev[i] = regulator_register(&regulators[id], &config);
 		if (IS_ERR(rdev[i])) {
 			ret = PTR_ERR(rdev[i]);
 			dev_err(max77804k->dev, "regulator init failed for %d\n",

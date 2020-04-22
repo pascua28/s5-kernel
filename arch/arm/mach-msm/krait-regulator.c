@@ -1227,6 +1227,7 @@ static void glb_init(void __iomem *apcs_gcc_base)
 static int __devinit krait_power_probe(struct platform_device *pdev)
 {
 	struct krait_power_vreg *kvreg;
+	struct regulator_config config = {};
 	struct resource *res, *res_mdd;
 	struct regulator_init_data *init_data = pdev->dev.platform_data;
 	int rc = 0;
@@ -1393,8 +1394,12 @@ static int __devinit krait_power_probe(struct platform_device *pdev)
 
 	per_cpu(krait_vregs, cpu_num) = kvreg;
 
-	kvreg->rdev = regulator_register(&kvreg->desc, &pdev->dev, init_data,
-					 kvreg, pdev->dev.of_node);
+	config.dev = &pdev->dev;
+	config.init_data = init_data;
+	config.driver_data = kvreg;
+	config.of_node = pdev->dev.of_node;
+
+	kvreg->rdev = regulator_register(&kvreg->desc, &config);
 	if (IS_ERR(kvreg->rdev)) {
 		rc = PTR_ERR(kvreg->rdev);
 		pr_err("regulator_register failed, rc=%d.\n", rc);

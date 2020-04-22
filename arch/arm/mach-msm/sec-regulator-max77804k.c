@@ -13,6 +13,7 @@
  */
 
 #include <linux/mfd/max77804k.h>
+#include <linux/regulator/consumer.h>
 
 static struct regulator_consumer_supply safeout1_supply[] = {
        REGULATOR_SUPPLY("safeout1", NULL),

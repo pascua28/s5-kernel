@@ -432,6 +432,7 @@ static int __devinit max77826_setup_regulators(struct max77826_dev *max77826,
 	struct max77826_platform_data *pdata)
 {
 	int i, err;
+	struct regulator_config config = {};
 
 	max77826->num_regulators = pdata->num_regulators;
 	max77826->rdev = kcalloc(pdata->num_regulators,
@@ -441,12 +442,16 @@ static int __devinit max77826_setup_regulators(struct max77826_dev *max77826,
 		goto err_nomem;
 	}
 
+	config.dev = max77826->dev;
+
 	/* Register the regulators */
 	for (i = 0; i < pdata->num_regulators; i++) {
 		struct max77826_regulator_subdev *reg = &pdata->regulators[i];
 
-		max77826->rdev[i] = regulator_register(&regulators[reg->id],
-					max77826->dev, reg->initdata, max77826, NULL);
+		config.init_data = reg->initdata;
+		config.driver_data = max77826;
+
+		max77826->rdev[i] = regulator_register(&regulators[reg->id], &config);
 		if (IS_ERR(max77826->rdev[i])) {
 			err = PTR_ERR(max77826->rdev[i]);
 			dev_err(max77826->dev, "regulator init failed: %d\n",

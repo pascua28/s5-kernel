@@ -1360,6 +1360,7 @@ static int __devinit rpm_vreg_device_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
+	struct regulator_config config = {};
 	struct regulator_init_data *init_data;
 	struct rpm_vreg *rpm_vreg;
 	struct rpm_regulator *reg;
@@ -1518,7 +1519,12 @@ static int __devinit rpm_vreg_device_probe(struct platform_device *pdev)
 	list_add(&reg->list, &rpm_vreg->reg_list);
 	rpm_vreg_unlock(rpm_vreg);
 
-	reg->rdev = regulator_register(&reg->rdesc, dev, init_data, reg, node);
+	config.dev = dev;
+	config.init_data = init_data;
+	config.driver_data = reg;
+	config.of_node = node;
+
+	reg->rdev = regulator_register(&reg->rdesc, &config);
 	if (IS_ERR(reg->rdev)) {
 		rc = PTR_ERR(reg->rdev);
 		reg->rdev = NULL;
