@@ -1093,7 +1093,7 @@ unlock:
 	if (status)
 		goto fail;
 
-	pr_info("gpiochip_add: registered GPIOs %d to %d on device: %s\n",
+	pr_debug("gpiochip_add: registered GPIOs %d to %d on device: %s\n",
 		chip->base, chip->base + chip->ngpio - 1,
 		chip->label ? : "generic");
 
@@ -1154,9 +1154,9 @@ EXPORT_SYMBOL_GPL(gpiochip_remove);
  * non-zero, this function will return to the caller and not iterate over any
  * more gpio_chips.
  */
-struct gpio_chip *gpiochip_find(const void *data,
+struct gpio_chip *gpiochip_find(void *data,
 				int (*match)(struct gpio_chip *chip,
-					     const void *data))
+					     void *data))
 {
 	struct gpio_chip *chip = NULL;
 	unsigned long flags;
