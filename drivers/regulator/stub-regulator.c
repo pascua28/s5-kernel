@@ -146,6 +146,7 @@ static int __devinit regulator_stub_probe(struct platform_device *pdev)
 	struct stub_regulator_pdata *vreg_pdata;
 	struct regulator_desc *rdesc;
 	struct regulator_stub *vreg_priv;
+	struct regulator_config config = {};
 	int rc;
 
 	vreg_priv = kzalloc(sizeof(*vreg_priv), GFP_KERNEL);
@@ -233,8 +234,12 @@ static int __devinit regulator_stub_probe(struct platform_device *pdev)
 	else
 		vreg_priv->mode = REGULATOR_MODE_IDLE;
 
-	vreg_priv->rdev = regulator_register(rdesc, dev, init_data, vreg_priv,
-						dev->of_node);
+	config.dev = dev;
+	config.init_data = init_data;
+	config.driver_data = vreg_priv;
+	config.of_node = dev->of_node;
+
+	vreg_priv->rdev = regulator_register(rdesc, &config);
 
 	if (IS_ERR(vreg_priv->rdev)) {
 		rc = PTR_ERR(vreg_priv->rdev);

@@ -1400,6 +1400,7 @@ static int __devinit qpnp_regulator_probe(struct spmi_device *spmi)
 	struct regulator_desc *rdesc;
 	struct qpnp_regulator_platform_data of_pdata;
 	struct regulator_init_data *init_data;
+	struct regulator_config config = {};
 	char *reg_name;
 	int rc;
 	bool is_dt;
@@ -1531,8 +1532,12 @@ static int __devinit qpnp_regulator_probe(struct spmi_device *spmi)
 		INIT_DELAYED_WORK(&vreg->ocp_work, qpnp_regulator_vs_ocp_work);
 	}
 
-	vreg->rdev = regulator_register(rdesc, &spmi->dev,
-			&(pdata->init_data), vreg, spmi->dev.of_node);
+	config.dev = &spmi->dev;
+	config.init_data = &(pdata->init_data);
+	config.driver_data = vreg;
+	config.of_node = spmi->dev.of_node;
+
+	vreg->rdev = regulator_register(rdesc, &config);
 	if (IS_ERR(vreg->rdev)) {
 		rc = PTR_ERR(vreg->rdev);
 		if (rc != -EPROBE_DEFER)
