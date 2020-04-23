@@ -212,50 +212,6 @@ static inline pte_t *pmd_page_vaddr(pmd_t pmd)
 #define timal2group_pte_clear(mm,addr,ptep,tima_l2group_entry_ptr) cpu_v7_timal2group_set_pte_ext(ptep, __pte(0), 0, tima_l2group_entry_ptr)
 #endif /* CONFIG_TIMA_RKP_L2_GROUP */
 
-#if __LINUX_ARM_ARCH__ < 6
-static inline void __sync_icache_dcache(pte_t pteval)
-{
-}
-#else
-extern void __sync_icache_dcache(pte_t pteval);
-#endif
-
-static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
-			      pte_t *ptep, pte_t pteval)
-{
-	if (addr >= TASK_SIZE)
-		set_pte_ext(ptep, pteval, 0);
-	else {
-		__sync_icache_dcache(pteval);
-		set_pte_ext(ptep, pteval, PTE_EXT_NG);
-	}
-}
-
-#ifdef CONFIG_TIMA_RKP_L2_GROUP
-static inline void timal2group_set_pte_at(pte_t *ptep, pte_t pteval, 
-			unsigned long tima_l2group_entry_ptr, unsigned long addr,
-			unsigned long *tima_l2group_buffer_index)
-{
-	int ret;
-	if (addr >= TASK_SIZE) {
-		ret = cpu_v7_timal2group_set_pte_ext(ptep, pteval, 0, tima_l2group_entry_ptr);
-		if (ret == 0)
-			(*tima_l2group_buffer_index)++;
-	} else	{
-		__sync_icache_dcache(pteval);
-		ret = cpu_v7_timal2group_set_pte_ext(ptep, pteval, PTE_EXT_NG, tima_l2group_entry_ptr);
-		if (ret == 0)
-			(*tima_l2group_buffer_index)++;
-	}
-}
-static inline void timal2group_set_pte_commit(void *tima_l2group_entry_ptr,
-					unsigned long tima_l2group_entries_count)
-{
-	cpu_v7_timal2group_set_pte_commit(tima_l2group_entry_ptr,
-					 tima_l2group_entries_count);
-}
-#endif /* CONFIG_TIMA_RKP_L2_GROUP */
-
 #define pte_none(pte)		(!pte_val(pte))
 #define pte_present(pte)	(pte_val(pte) & L_PTE_PRESENT)
 #define pte_write(pte)		(!(pte_val(pte) & L_PTE_RDONLY))
@@ -267,6 +223,27 @@ static inline void timal2group_set_pte_commit(void *tima_l2group_entry_ptr,
 #define pte_present_user(pte) \
 	((pte_val(pte) & (L_PTE_PRESENT | L_PTE_USER)) == \
 	 (L_PTE_PRESENT | L_PTE_USER))
+
+#if __LINUX_ARM_ARCH__ < 6
+static inline void __sync_icache_dcache(pte_t pteval)
+{
+}
+#else
+extern void __sync_icache_dcache(pte_t pteval);
+#endif
+
+static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
+			      pte_t *ptep, pte_t pteval)
+{
+	unsigned long ext = 0;
+
+	if (addr < TASK_SIZE && pte_present_user(pteval)) {
+		__sync_icache_dcache(pteval);
+		ext |= PTE_EXT_NG;
+	}
+
+	set_pte_ext(ptep, pteval, ext);
+}
 
 #define PTE_BIT_FUNC(fn,op) \
 static inline pte_t pte_##fn(pte_t pte) { pte_val(pte) op; return pte; }
@@ -293,13 +270,13 @@ static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
  *
  *   3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
  *   1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
- *   <--------------- offset --------------------> <- type --> 0 0 0
+ *   <--------------- offset ----------------------> < type -> 0 0 0
  *
- * This gives us up to 63 swap files and 32GB per swap file.  Note that
+ * This gives us up to 31 swap files and 64GB per swap file.  Note that
  * the offset field is always non-zero.
  */
 #define __SWP_TYPE_SHIFT	3
-#define __SWP_TYPE_BITS		6
+#define __SWP_TYPE_BITS		5
 #define __SWP_TYPE_MASK		((1 << __SWP_TYPE_BITS) - 1)
 #define __SWP_OFFSET_SHIFT	(__SWP_TYPE_BITS + __SWP_TYPE_SHIFT)
 

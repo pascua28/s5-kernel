@@ -650,7 +650,6 @@ static int armv6_map_event(struct perf_event *event)
 }
 
 static struct arm_pmu armv6pmu = {
-	.id			= ARM_PERF_PMU_ID_V6,
 	.name			= "v6",
 	.handle_irq		= armv6pmu_handle_irq,
 	.request_pmu_irq	= armpmu_generic_request_irq,
@@ -687,7 +686,6 @@ static int armv6mpcore_map_event(struct perf_event *event)
 }
 
 static struct arm_pmu armv6mpcore_pmu = {
-	.id			= ARM_PERF_PMU_ID_V6MP,
 	.name			= "v6mpcore",
 	.handle_irq		= armv6pmu_handle_irq,
 	.request_pmu_irq	= armpmu_generic_request_irq,

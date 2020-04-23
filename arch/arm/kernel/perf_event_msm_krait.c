@@ -651,7 +651,6 @@ int get_krait_ver(void)
 
 static struct arm_pmu *__init armv7_krait_pmu_init(void)
 {
-	krait_pmu.id		= ARM_PERF_PMU_ID_KRAIT;
 	krait_pmu.name	        = "ARMv7 Krait";
 	krait_pmu.map_event	= krait_8960_map_event;
 	krait_pmu.num_events	= armv7_read_num_pmnc_events();

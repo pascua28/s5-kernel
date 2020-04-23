@@ -11,8 +11,11 @@ struct arch_timer {
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 int arch_timer_register(struct arch_timer *);
+#include <asm/errno.h>
+
+#define ARCH_HAS_READ_CURRENT_TIMER
 int arch_timer_of_register(void);
-cycle_t arch_counter_get_cntpct(void);
+u64 arch_counter_get_cntpct(void);
 #else
 static inline int arch_timer_register(struct arch_timer *at)
 {

@@ -1024,7 +1024,6 @@ static int gpio_keys_get_devtree_pdata(struct device *dev,
 			return -EINVAL;
 	}
 	/* First count the subnodes */
-	pdata->nbuttons = 0;
 	pp = NULL;
 	while ((pp = of_get_next_child(node, pp)))
 		pdata->nbuttons++;

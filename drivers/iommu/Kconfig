@@ -13,6 +13,10 @@ menuconfig IOMMU_SUPPORT
 
 if IOMMU_SUPPORT
 
+config OF_IOMMU
+       def_bool y
+       depends on OF
+
 # MSM IOMMU support
 
 # MSM_IOMMU always gets selected by whoever wants it.
@@ -236,7 +240,7 @@ config TEGRA_IOMMU_GART
 
 config TEGRA_IOMMU_SMMU
 	bool "Tegra SMMU IOMMU Support"
-	depends on ARCH_TEGRA_3x_SOC
+	depends on ARCH_TEGRA_3x_SOC && TEGRA_AHB
 	select IOMMU_API
 	help
 	  Enables support for remapping discontiguous physical memory

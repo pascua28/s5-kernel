@@ -9,6 +9,7 @@ endif
 ifdef CONFIG_MSM_IOMMU_V1
 obj-$(CONFIG_MSM_IOMMU_PMON) += msm_iommu_perfmon-v1.o
 endif
+obj-$(CONFIG_OF_IOMMU)	+= of_iommu.o
 obj-$(CONFIG_AMD_IOMMU) += amd_iommu.o amd_iommu_init.o
 obj-$(CONFIG_AMD_IOMMU_V2) += amd_iommu_v2.o
 obj-$(CONFIG_DMAR_TABLE) += dmar.o

@@ -35,22 +35,11 @@
 #include <linux/kallsyms.h>
 #include <linux/proc_fs.h>
 
+#include <asm/perftypes.h>
 #include <asm/exception.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/irq.h>
 #include <asm/mach/time.h>
-
-#include <asm/perftypes.h>
-#ifdef CONFIG_SEC_DEBUG
-#include <mach/sec_debug.h>
-#endif
-
-/*
- * No architecture-specific irq_finish function defined in arm/arch/irqs.h.
- */
-#ifndef irq_finish
-#define irq_finish(irq) do { } while (0)
-#endif
 
 unsigned long irq_err_count;
 
@@ -95,9 +84,6 @@ void handle_IRQ(unsigned int irq, struct pt_regs *regs)
 	} else {
 		generic_handle_irq(irq);
 	}
-
-	/* AT91 specific workaround */
-	irq_finish(irq);
 
 	irq_exit();
 #ifdef CONFIG_SEC_DEBUG

@@ -43,6 +43,8 @@ static void __iomem *timer_base;
 
 static struct delay_timer arch_delay_timer;
 
+extern void init_current_timer_delay(unsigned long freq);
+
 /*
  * Architected system timer support.
  */
@@ -352,6 +354,16 @@ static unsigned long arch_timer_read_current_timer(void)
 	return arch_counter_get_cntpct();
 }
 
+#if 0
+int read_current_timer(unsigned long *timer_val)
+{
+	if (!arch_timer_rate)
+		return -ENXIO;
+	*timer_val = arch_counter_get_cntpct();
+	return 0;
+}
+#endif
+
 static struct clocksource clocksource_counter = {
 	.name	= "arch_sys_counter",
 	.rating	= 400,
@@ -459,6 +471,7 @@ static int __init arch_timer_common_register(void)
 		goto out_free_irq;
 	percpu_timer_setup();
 
+	init_current_timer_delay(arch_timer_rate);
 	return 0;
 
 out_free_irq:

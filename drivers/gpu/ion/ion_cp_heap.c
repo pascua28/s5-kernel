@@ -772,12 +772,12 @@ struct ion_heap *ion_cp_heap_create(struct ion_platform_heap *heap_data)
 		}
 		if (extra_data->setup_region)
 			cp_heap->bus_id = extra_data->setup_region();
-		if (extra_data->request_region)
+		if (extra_data->msm_request_region)
 			cp_heap->heap_request_region =
-				extra_data->request_region;
-		if (extra_data->release_region)
+				extra_data->msm_request_region;
+		if (extra_data->msm_release_region)
 			cp_heap->heap_release_region =
-				extra_data->release_region;
+				extra_data->msm_release_region;
 		cp_heap->cma = extra_data->is_cma;
 		cp_heap->allow_non_secure_allocation =
 			extra_data->allow_nonsecure_alloc;

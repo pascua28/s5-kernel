@@ -279,7 +279,7 @@ static int max77804k_i2c_probe(struct i2c_client *i2c,
 		MAX77804K_PMIC_REG_MAINCTRL1, reg_data);
 
 	ret = mfd_add_devices(max77804k->dev, -1, max77804k_devs,
-			ARRAY_SIZE(max77804k_devs), NULL, 0);
+			ARRAY_SIZE(max77804k_devs), NULL, 0, NULL);
 	if (ret < 0)
 		goto err_mfd;
 

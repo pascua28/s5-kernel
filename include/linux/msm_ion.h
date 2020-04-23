@@ -149,9 +149,9 @@ enum cp_mem_usage {
  * @fixed_position	If nonzero, position in the fixed area.
  * @iommu_map_all:	Indicates whether we should map whole heap into IOMMU.
  * @iommu_2x_map_domain: Indicates the domain to use for overmapping.
- * @request_region:	function to be called when the number of allocations
+ * @msm_request_region:	function to be called when the number of allocations
  *			goes from 0 -> 1
- * @release_region:	function to be called when the number of allocations
+ * @msm_release_region:	function to be called when the number of allocations
  *			goes from 1 -> 0
  * @setup_region:	function to be called upon ion registration
  * @memory_type:Memory type used for the heap
@@ -169,8 +169,8 @@ struct ion_cp_heap_pdata {
 	enum ion_fixed_position fixed_position;
 	int iommu_map_all;
 	int iommu_2x_map_domain;
-	int (*request_region)(void *);
-	int (*release_region)(void *);
+	int (*msm_request_region)(void *);
+	int (*msm_release_region)(void *);
 	void *(*setup_region)(void);
 	enum ion_memory_types memory_type;
 	int allow_nonsecure_alloc;
@@ -181,7 +181,7 @@ struct ion_cp_heap_pdata {
  * @adjacent_mem_id:	Id of heap that this heap must be adjacent to.
  * @align:		Alignment requirement for the memory
  * @fixed_position	If nonzero, position in the fixed area.
- * @request_region:	function to be called when the number of allocations
+ * @msm_request_region:	function to be called when the number of allocations
  *			goes from 0 -> 1
  * @release_region:	function to be called when the number of allocations
  *			goes from 1 -> 0
@@ -193,8 +193,8 @@ struct ion_co_heap_pdata {
 	int adjacent_mem_id;
 	unsigned int align;
 	enum ion_fixed_position fixed_position;
-	int (*request_region)(void *);
-	int (*release_region)(void *);
+	int (*msm_request_region)(void *);
+	int (*msm_release_region)(void *);
 	void *(*setup_region)(void);
 	enum ion_memory_types memory_type;
 };

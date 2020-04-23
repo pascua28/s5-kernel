@@ -22,12 +22,6 @@
 static DEFINE_RAW_SPINLOCK(cpu_asid_lock);
 unsigned int cpu_last_asid = ASID_FIRST_VERSION;
 
-#if 0
-#ifdef CONFIG_SMP
-DEFINE_PER_CPU(struct mm_struct *, current_mm);
-#endif
-#endif
-
 #ifdef CONFIG_ARM_LPAE
 void cpu_set_reserved_ttbr0(void)
 {
@@ -57,25 +51,10 @@ void cpu_set_reserved_ttbr0(void)
 }
 #endif
 
-static void write_contextidr(u32 contextidr)
-{
-	uncached_logk(LOGK_CTXID, (void *)contextidr);
-	asm("mcr	p15, 0, %0, c13, c0, 1" : : "r" (contextidr));
-	isb();
-}
-
 #ifdef CONFIG_PID_IN_CONTEXTIDR
-static u32 read_contextidr(void)
-{
-	u32 contextidr;
-	asm("mrc	p15, 0, %0, c13, c0, 1" : "=r" (contextidr));
-	return contextidr;
-}
-
 static int contextidr_notifier(struct notifier_block *unused, unsigned long cmd,
 			       void *t)
 {
-	unsigned long flags;
 	u32 contextidr;
 	pid_t pid;
 	struct thread_info *thread = t;
@@ -83,13 +62,15 @@ static int contextidr_notifier(struct notifier_block *unused, unsigned long cmd,
 	if (cmd != THREAD_NOTIFY_SWITCH)
 		return NOTIFY_DONE;
 
-	pid = task_pid_nr(thread->task);
-	local_irq_save(flags);
-	contextidr = read_contextidr();
-	contextidr &= ~ASID_MASK;
-	contextidr |= pid << ASID_BITS;
-	write_contextidr(contextidr);
-	local_irq_restore(flags);
+	pid = task_pid_nr(thread->task) << ASID_BITS;
+	asm volatile(
+	"	mrc	p15, 0, %0, c13, c0, 1\n"
+	"	and	%0, %0, %2\n"
+	"	orr	%0, %0, %1\n"
+	"	mcr	p15, 0, %0, c13, c0, 1\n"
+	: "=r" (contextidr), "+r" (pid)
+	: "I" (~ASID_MASK));
+	isb();
 
 	return NOTIFY_OK;
 }
@@ -103,19 +84,6 @@ static int __init contextidr_notifier_init(void)
 	return thread_register_notifier(&contextidr_notifier_block);
 }
 arch_initcall(contextidr_notifier_init);
-
-static void set_asid(unsigned int asid)
-{
-	u32 contextidr = read_contextidr();
-	contextidr &= ASID_MASK;
-	contextidr |= asid & ~ASID_MASK;
-	write_contextidr(contextidr);
-}
-#else
-static void set_asid(unsigned int asid)
-{
-	write_contextidr(asid);
-}
 #endif
 
 /*
@@ -130,10 +98,6 @@ void __init_new_context(struct task_struct *tsk, struct mm_struct *mm)
 
 static void flush_context(void)
 {
-#if 0
-	/* set the reserved ASID before flushing the TLB */
-	set_asid(0);
-#endif
 	cpu_set_reserved_ttbr0();
 	local_flush_tlb_all();
 	if (icache_is_vivt_asid_tagged()) {
@@ -186,11 +150,6 @@ static void reset_context(void *info)
 
 	flush_context();
 	set_mm_context(mm, asid);
-
-#if 0
-	/* set the new ASID */
-	set_asid(mm->context.id);
-#endif
 
 	cpu_switch_mm(mm->pgd, mm);
 }

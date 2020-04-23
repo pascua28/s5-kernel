@@ -114,10 +114,9 @@ struct pmu_hw_events {
 
 struct arm_pmu {
 	struct pmu	pmu;
-	enum arm_perf_pmu_ids id;
 	enum arm_pmu_type type;
 	cpumask_t	active_irqs;
-	const char	*name;
+	char		*name;
 	irqreturn_t	(*handle_irq)(int irq_num, void *dev);
 	int		(*request_pmu_irq)(int irq, irq_handler_t *irq_h);
 	void		(*free_pmu_irq)(int irq);

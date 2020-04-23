@@ -644,7 +644,7 @@ static int __qpnpint_handle_irq(struct spmi_controller *spmi_ctrl,
 	}
 
 	domain = chip_lookup[busno]->domain;
-	irq = irq_radix_revmap_lookup(domain, hwirq);
+	irq = irq_find_mapping(domain, hwirq);
 
 #ifdef CONFIG_SEC_PM_DEBUG
 	if (msm_qpnp_int_debug_mask & MSM_QPNP_INT_DBG_SHOW_IRQ) {

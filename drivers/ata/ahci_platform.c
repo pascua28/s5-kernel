@@ -15,13 +15,13 @@
 #include <linux/kernel.h>
 #include <linux/gfp.h>
 #include <linux/module.h>
+#include <linux/pm.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/libata.h>
 #include <linux/ahci_platform.h>
-#include <linux/pm_runtime.h>
 #include "ahci.h"
 
 enum ahci_type {
@@ -74,7 +74,7 @@ static struct scsi_host_template ahci_platform_sht = {
 	AHCI_SHT("ahci_platform"),
 };
 
-static int __devinit ahci_probe(struct platform_device *pdev)
+static int __init ahci_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct ahci_platform_data *pdata = dev_get_platdata(dev);
@@ -193,14 +193,6 @@ static int __devinit ahci_probe(struct platform_device *pdev)
 	if (rc)
 		goto err0;
 
-	rc = pm_runtime_set_active(dev);
-	if (rc) {
-		dev_warn(dev, "Unable to set runtime pm active err=%d\n", rc);
-	} else {
-		pm_runtime_enable(dev);
-		pm_runtime_forbid(dev);
-	}
-
 	return 0;
 err0:
 	if (pdata && pdata->exit)
@@ -232,9 +224,6 @@ static int ahci_suspend(struct device *dev)
 	u32 ctl;
 	int rc;
 
-	if (pm_runtime_suspended(dev))
-		return 0;
-
 	if (hpriv->flags & AHCI_HFLAG_NO_SUSPEND) {
 		dev_err(dev, "firmware update required for suspend/resume\n");
 		return -EIO;
@@ -259,7 +248,7 @@ static int ahci_suspend(struct device *dev)
 	return 0;
 }
 
-static int ahci_resume_common(struct device *dev)
+static int ahci_resume(struct device *dev)
 {
 	struct ahci_platform_data *pdata = dev_get_platdata(dev);
 	struct ata_host *host = dev_get_drvdata(dev);
@@ -283,54 +272,31 @@ static int ahci_resume_common(struct device *dev)
 
 	return 0;
 }
-
-static int ahci_resume(struct device *dev)
-{
-	int rc;
-
-	rc = ahci_resume_common(dev);
-	if (!rc) {
-		pm_runtime_disable(dev);
-		pm_runtime_set_active(dev);
-		pm_runtime_enable(dev);
-	}
-
-	return rc;
-}
-
-static struct dev_pm_ops ahci_pm_ops = {
-	.suspend		= &ahci_suspend,
-	.resume			= &ahci_resume,
-	.runtime_suspend	= &ahci_suspend,
-	.runtime_resume		= &ahci_resume_common,
-};
 #endif
+
+SIMPLE_DEV_PM_OPS(ahci_pm_ops, ahci_suspend, ahci_resume);
 
 static const struct of_device_id ahci_of_match[] = {
 	{ .compatible = "calxeda,hb-ahci", },
 	{ .compatible = "snps,spear-ahci", },
-	{ .compatible = "qcom,msm-ahci", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ahci_of_match);
 
 static struct platform_driver ahci_driver = {
-	.probe	= ahci_probe,
 	.remove = __devexit_p(ahci_remove),
 	.driver = {
 		.name = "ahci",
 		.owner = THIS_MODULE,
 		.of_match_table = ahci_of_match,
-#ifdef CONFIG_PM
 		.pm = &ahci_pm_ops,
-#endif
 	},
 	.id_table	= ahci_devtype,
 };
 
 static int __init ahci_init(void)
 {
-	return platform_driver_register(&ahci_driver);
+	return platform_driver_probe(&ahci_driver, ahci_probe);
 }
 module_init(ahci_init);
 
