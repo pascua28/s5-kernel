@@ -3083,7 +3083,6 @@ static int create_video_urbs(struct easycap *peasycap)
 		peasycap->allocation_video_urb += 1;
 		pdata_urb = kzalloc(sizeof(struct data_urb), GFP_KERNEL);
 		if (!pdata_urb) {
-			usb_free_urb(purb);
 			SAM("ERROR: Could not allocate struct data_urb.\n");
 			return -ENOMEM;
 		}
@@ -3468,6 +3467,7 @@ static int easycap_register_video(struct easycap *peasycap)
 
 	if (0 != (video_register_device(&(peasycap->video_device),
 					VFL_TYPE_GRABBER, -1))) {
+		err("Not able to register with videodev");
 		videodev_release(&(peasycap->video_device));
 		return -ENODEV;
 	}
@@ -3855,11 +3855,8 @@ static int easycap_usb_probe(struct usb_interface *intf,
 			peasycap->v4l2_device.name);
 
 		rc = easycap_register_video(peasycap);
-		if (rc < 0) {
-			dev_err(&intf->dev,
-				"Not able to register with videodev\n");
+		if (rc < 0)
 			return -ENODEV;
-		}
 		break;
 	}
 	/* 1: Audio control */
@@ -3999,8 +3996,7 @@ static int easycap_usb_probe(struct usb_interface *intf,
 
 		rc = easycap_alsa_probe(peasycap);
 		if (rc) {
-			dev_err(&intf->dev, "easycap_alsa_probe() rc = %i\n",
-				rc);
+			err("easycap_alsa_probe() rc = %i\n", rc);
 			return -ENODEV;
 		}
 
