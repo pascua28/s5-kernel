@@ -59,15 +59,6 @@ const char *perf_pmu_name(void)
 }
 EXPORT_SYMBOL_GPL(perf_pmu_name);
 
-enum arm_perf_pmu_ids
-armpmu_get_pmu_id(void)
-{
-	int id = -ENODEV;
-
-	return id;
-}
-EXPORT_SYMBOL_GPL(armpmu_get_pmu_id);
-
 int perf_num_counters(void)
 {
 	int max_events = 0;
