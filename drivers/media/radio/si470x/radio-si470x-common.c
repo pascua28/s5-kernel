@@ -164,7 +164,6 @@ MODULE_PARM_DESC(seek_timeout, "Seek timeout: *5000*");
 static int si470x_set_chan(struct si470x_device *radio, unsigned short chan)
 {
 	int retval;
-	unsigned long timeout;
 	bool timed_out = 0;
 
 	/* start tuning */
@@ -174,26 +173,12 @@ static int si470x_set_chan(struct si470x_device *radio, unsigned short chan)
 	if (retval < 0)
 		goto done;
 
-	/* currently I2C driver only uses interrupt way to tune */
-	if (radio->stci_enabled) {
-		INIT_COMPLETION(radio->completion);
-
-		/* wait till tune operation has completed */
-		retval = wait_for_completion_timeout(&radio->completion,
-				msecs_to_jiffies(tune_timeout));
-		if (!retval)
-			timed_out = true;
-	} else {
-		/* wait till tune operation has completed */
-		timeout = jiffies + msecs_to_jiffies(tune_timeout);
-		do {
-			retval = si470x_get_register(radio, STATUSRSSI);
-			if (retval < 0)
-				goto stop;
-			timed_out = time_after(jiffies, timeout);
-		} while (((radio->registers[STATUSRSSI] & STATUSRSSI_STC) == 0)
-				&& (!timed_out));
-	}
+	/* wait till tune operation has completed */
+	INIT_COMPLETION(radio->completion);
+	retval = wait_for_completion_timeout(&radio->completion,
+			msecs_to_jiffies(tune_timeout));
+	if (!retval)
+		timed_out = true;
 
 	if ((radio->registers[STATUSRSSI] & STATUSRSSI_STC) == 0)
 		dev_warn(&radio->videodev.dev, "tune does not complete\n");
@@ -201,7 +186,6 @@ static int si470x_set_chan(struct si470x_device *radio, unsigned short chan)
 		dev_warn(&radio->videodev.dev,
 			"tune timed out after %u ms\n", tune_timeout);
 
-stop:
 	/* stop tuning */
 	radio->registers[CHANNEL] &= ~CHANNEL_TUNE;
 	retval = si470x_set_register(radio, CHANNEL);
@@ -312,7 +296,6 @@ static int si470x_set_seek(struct si470x_device *radio,
 		unsigned int wrap_around, unsigned int seek_upward)
 {
 	int retval = 0;
-	unsigned long timeout;
 	bool timed_out = 0;
 
 	/* start seeking */
@@ -329,26 +312,12 @@ static int si470x_set_seek(struct si470x_device *radio,
 	if (retval < 0)
 		return retval;
 
-	/* currently I2C driver only uses interrupt way to seek */
-	if (radio->stci_enabled) {
-		INIT_COMPLETION(radio->completion);
-
-		/* wait till seek operation has completed */
-		retval = wait_for_completion_timeout(&radio->completion,
-				msecs_to_jiffies(seek_timeout));
-		if (!retval)
-			timed_out = true;
-	} else {
-		/* wait till seek operation has completed */
-		timeout = jiffies + msecs_to_jiffies(seek_timeout);
-		do {
-			retval = si470x_get_register(radio, STATUSRSSI);
-			if (retval < 0)
-				goto stop;
-			timed_out = time_after(jiffies, timeout);
-		} while (((radio->registers[STATUSRSSI] & STATUSRSSI_STC) == 0)
-				&& (!timed_out));
-	}
+	/* wait till tune operation has completed */
+	INIT_COMPLETION(radio->completion);
+	retval = wait_for_completion_timeout(&radio->completion,
+			msecs_to_jiffies(seek_timeout));
+	if (!retval)
+		timed_out = true;
 
 	if ((radio->registers[STATUSRSSI] & STATUSRSSI_STC) == 0)
 		dev_warn(&radio->videodev.dev, "seek does not complete\n");
@@ -356,7 +325,6 @@ static int si470x_set_seek(struct si470x_device *radio,
 		dev_warn(&radio->videodev.dev,
 			"seek failed / band limit reached\n");
 
-stop:
 	/* stop seeking */
 	radio->registers[POWERCFG] &= ~POWERCFG_SEEK;
 	retval = si470x_set_register(radio, POWERCFG);
@@ -391,7 +359,7 @@ int si470x_start(struct si470x_device *radio)
 
 	/* sysconfig 2 */
 	radio->registers[SYSCONFIG2] =
-		(0x3f  << 8) |				/* SEEKTH */
+		(0x1f  << 8) |				/* SEEKTH */
 		((band  << 6) & SYSCONFIG2_BAND)  |	/* BAND */
 		((space << 4) & SYSCONFIG2_SPACE) |	/* SPACE */
 		15;					/* VOLUME (max) */
@@ -583,14 +551,16 @@ static int si470x_vidioc_g_tuner(struct file *file, void *priv,
 		struct v4l2_tuner *tuner)
 {
 	struct si470x_device *radio = video_drvdata(file);
-	int retval;
+	int retval = 0;
 
 	if (tuner->index != 0)
 		return -EINVAL;
 
-	retval = si470x_get_register(radio, STATUSRSSI);
-	if (retval < 0)
-		return retval;
+	if (!radio->status_rssi_auto_update) {
+		retval = si470x_get_register(radio, STATUSRSSI);
+		if (retval < 0)
+			return retval;
+	}
 
 	/* driver constants */
 	strcpy(tuner->name, "FM");

@@ -160,7 +160,7 @@ struct si470x_device {
 	unsigned int wr_index;
 
 	struct completion completion;
-	bool stci_enabled;		/* Seek/Tune Complete Interrupt */
+	bool status_rssi_auto_update;	/* Does RSSI get updated automatic? */
 
 #if defined(CONFIG_USB_SI470X) || defined(CONFIG_USB_SI470X_MODULE)
 	/* reference to USB and video device */
@@ -189,7 +189,7 @@ struct si470x_device {
  * Firmware Versions
  **************************************************************************/
 
-#define RADIO_FW_VERSION	15
+#define RADIO_FW_VERSION	12
 
 
 
