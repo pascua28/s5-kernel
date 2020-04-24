@@ -1161,7 +1161,7 @@ int msm_vidc_subscribe_event(void *inst, struct v4l2_event_subscription *sub)
 	if (!inst || !sub)
 		return -EINVAL;
 
-	rc = v4l2_event_subscribe(&vidc_inst->event_handler, sub, MAX_EVENTS);
+	rc = v4l2_event_subscribe(&vidc_inst->event_handler, sub, MAX_EVENTS, NULL);
 	return rc;
 }
 

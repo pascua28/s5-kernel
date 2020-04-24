@@ -1992,7 +1992,7 @@ int msm_companion_subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
 				  struct v4l2_event_subscription *sub)
 {
 	pr_err("[syscamera][%s::%d][E]-[sd::%s][navailable::%d]\n", __FUNCTION__, __LINE__, sd->name, fh->navailable);
-	return v4l2_event_subscribe(fh, sub, 30);
+	return v4l2_event_subscribe(fh, sub, 30, NULL);
 }
 
 int msm_companion_unsubscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,

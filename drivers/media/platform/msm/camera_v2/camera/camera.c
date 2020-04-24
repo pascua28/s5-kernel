@@ -445,7 +445,7 @@ static int camera_v4l2_subscribe_event(struct v4l2_fh *fh,
 	int rc = 0;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
 
-	rc = v4l2_event_subscribe(&sp->fh, sub, 5);
+	rc = v4l2_event_subscribe(&sp->fh, sub, 5, NULL);
 
 	return rc;
 }
