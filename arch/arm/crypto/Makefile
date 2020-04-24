@@ -2,8 +2,6 @@
 # Arch-specific CryptoAPI modules.
 #
 
-CFLAGS_KERNEL := -fno-strict-aliasing
-
 #Keep this at the top
 obj-$(CONFIG_CRYPTO_FIPS) += first_file_asm.o
 

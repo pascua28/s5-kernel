@@ -2,19 +2,6 @@
 # Makefile for the linux kernel.
 #
 
-CFLAGS_fork.o := -fno-strict-aliasing
-CFLAGS_exit.o := -fno-strict-aliasing
-CFLAGS_sysctl_binary.o := -fno-strict-aliasing
-CFLAGS_sysctl.o := -fno-strict-aliasing
-CFLAGS_pid.o := -fno-strict-aliasing
-CFLAGS_signal.o := -fno-strict-aliasing
-CFLAGS_workqueue.o := -fno-strict-aliasing
-CFLAGS_cred.o := -fno-strict-aliasing
-CFLAGS_nsproxy.o := -fno-strict-aliasing
-CFLAGS_audit.o := -fno-strict-aliasing
-CFLAGS_auditfilter.o := -fno-strict-aliasing
-CFLAGS_cgroup.o := -fno-strict-aliasing
-
 obj-y     = fork.o exec_domain.o panic.o printk.o \
 	    cpu.o exit.o itimer.o time.o softirq.o resource.o \
 	    sysctl.o sysctl_binary.o capability.o ptrace.o timer.o user.o \

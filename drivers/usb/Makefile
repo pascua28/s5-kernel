@@ -4,8 +4,6 @@
 
 # Object files in subdirectories
 
-CFLAGS_KERNEL := -fno-strict-aliasing
-
 obj-$(CONFIG_USB)		+= core/
 
 obj-$(CONFIG_USB_OTG_UTILS)	+= otg/
