@@ -151,20 +151,6 @@ static void set_evfilter_task_mode(int ctr, unsigned int is_slv)
 	set_l2_indirect_reg(filter_reg, filter_val);
 }
 
-static void set_evfilter_sys_mode(int ctr, unsigned int is_slv, int cpu,
-		unsigned int is_tracectr)
-{
-	u32 filter_reg = (ctr * 16) + IA_L2PMXEVFILTER_BASE;
-	u32 filter_val = l2_orig_filter_prefix | 0xf;
-
-	if (is_slv == 1)
-		filter_val = l2_slv_filter_prefix;
-	if (is_tracectr == 1)
-		filter_val = l2_orig_filter_prefix | 1 << cpu;
-
-	set_l2_indirect_reg(filter_reg, filter_val);
-}
-
 static void enable_intenset(u32 idx)
 {
 	if (idx == l2_cycle_ctr_idx)
@@ -229,7 +215,7 @@ static void krait_l2_stop_counter(struct hw_perf_event *hwc, int idx)
 			hwc->config_base, idx);
 }
 
-static void krait_l2_enable(struct hw_perf_event *hwc, int idx, int cpu)
+static void krait_l2_enable(struct hw_perf_event *hwc, int idx)
 {
 	struct event_desc evdesc;
 	unsigned long iflags;
@@ -262,11 +248,7 @@ static void krait_l2_enable(struct hw_perf_event *hwc, int idx, int cpu)
 	set_evres(evdesc.event_groupsel, evdesc.event_reg,
 		  evdesc.event_group_code);
 
-	if (cpu < 0)
-		set_evfilter_task_mode(idx, is_slv);
-	else
-		set_evfilter_sys_mode(idx, is_slv, cpu, is_tracectr);
-
+	set_evfilter_task_mode(idx, is_slv);
 out:
 	enable_intenset(idx);
 	enable_counter(idx);
