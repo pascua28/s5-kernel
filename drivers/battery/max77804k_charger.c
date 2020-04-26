@@ -1704,7 +1704,7 @@ static void max77804k_chgin_init_work(struct work_struct *work)
 
 	pr_info("%s \n", __func__);
 	ret = request_threaded_irq(charger->irq_chgin, NULL,
-			max77804k_chgin_irq, IRQF_ONESHOT, "chgin-irq", charger);
+			max77804k_chgin_irq, 0, "chgin-irq", charger);
 	if (ret < 0) {
 		pr_err("%s: fail to request chgin IRQ: %d: %d\n",
 				__func__, charger->irq_chgin, ret);
@@ -1919,7 +1919,7 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 	charger->wc_w_irq = pdata->irq_base + MAX77804K_CHG_IRQ_WCIN_I;
 	ret = request_threaded_irq(charger->wc_w_irq,
 			NULL, wpc_charger_irq,
-			IRQF_ONESHOT, "wpc-int", charger);
+			0, "wpc-int", charger);
 	if (ret) {
 		pr_err("%s: Failed to Reqeust IRQ\n", __func__);
 		goto err_wc_irq;
@@ -1962,7 +1962,7 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 
 	charger->irq_bypass = pdata->irq_base + MAX77804K_CHG_IRQ_BYP_I;
 	ret = request_threaded_irq(charger->irq_bypass, NULL,
-			max77804k_bypass_irq, IRQF_ONESHOT, "bypass-irq", charger);
+			max77804k_bypass_irq, 0, "bypass-irq", charger);
 	if (ret < 0)
 		pr_err("%s: fail to request bypass IRQ: %d: %d\n",
 				__func__, charger->irq_bypass, ret);
