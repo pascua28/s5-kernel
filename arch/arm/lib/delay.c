@@ -47,7 +47,6 @@ int read_current_timer(unsigned long *timer_val)
 }
 EXPORT_SYMBOL_GPL(read_current_timer);
 
-#ifdef ARCH_HAS_READ_CURRENT_TIMER
 static void __timer_delay(unsigned long cycles)
 {
 	cycles_t start = get_cycles();
@@ -84,19 +83,8 @@ void __init register_current_timer_delay(const struct delay_timer *timer)
 	}
 }
 
-void __init init_current_timer_delay(unsigned long freq)
-{
-	pr_info("Switching to timer-based delay loop\n");
-	lpj_fine			= freq / HZ;
-	loops_per_jiffy			= lpj_fine;
-	arm_delay_ops.delay		= __timer_delay;
-	arm_delay_ops.const_udelay	= __timer_const_udelay;
-	arm_delay_ops.udelay		= __timer_udelay;
-}
-
 unsigned long __cpuinit calibrate_delay_is_known(void)
 {
 	delay_calibrated = true;
 	return lpj_fine;
 }
-#endif

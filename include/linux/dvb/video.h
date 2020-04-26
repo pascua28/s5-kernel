@@ -20,12 +20,9 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  *
  */
-
 #ifndef _DVBVIDEO_H_
 #define _DVBVIDEO_H_
 
-#include <linux/types.h>
-#ifdef __KERNEL__
 #include <linux/compiler.h>
 #else
 #include <stdint.h>

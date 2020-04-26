@@ -124,7 +124,7 @@ struct apparmor_audit_data {
 			const char *target;
 			u32 request;
 			u32 denied;
-			uid_t ouid;
+			kuid_t ouid;
 		} fs;
 	};
 };

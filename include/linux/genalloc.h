@@ -29,6 +29,20 @@
 
 #ifndef __GENALLOC_H__
 #define __GENALLOC_H__
+/**
+ * Allocation callback function type definition
+ * @map: Pointer to bitmap
+ * @size: The bitmap size in bits
+ * @start: The bitnumber to start searching at
+ * @nr: The number of zeroed bits we're looking for
+ * @data: optional additional data used by @genpool_algo_t
+ */
+typedef unsigned long (*genpool_algo_t)(unsigned long *map,
+			unsigned long size,
+			unsigned long start,
+			unsigned int nr,
+			void *data);
+
 /*
  *  General purpose special memory pool descriptor.
  */
@@ -36,6 +50,9 @@ struct gen_pool {
 	spinlock_t lock;
 	struct list_head chunks;	/* list of chunks in this pool */
 	int min_alloc_order;		/* minimum allocation order */
+
+	genpool_algo_t algo;		/* allocation function */
+	void *data;
 };
 
 /*
@@ -72,28 +89,20 @@ static inline int gen_pool_add(struct gen_pool *pool, unsigned long addr,
 	return gen_pool_add_virt(pool, addr, -1, size, nid);
 }
 extern void gen_pool_destroy(struct gen_pool *);
+extern unsigned long gen_pool_alloc(struct gen_pool *, size_t);
 extern void gen_pool_free(struct gen_pool *, unsigned long, size_t);
 extern void gen_pool_for_each_chunk(struct gen_pool *,
 	void (*)(struct gen_pool *, struct gen_pool_chunk *, void *), void *);
 extern size_t gen_pool_avail(struct gen_pool *);
 extern size_t gen_pool_size(struct gen_pool *);
 
-unsigned long __must_check
-gen_pool_alloc_aligned(struct gen_pool *pool, size_t size,
-                       unsigned alignment_order);
+extern void gen_pool_set_algo(struct gen_pool *pool, genpool_algo_t algo,
+		void *data);
 
-/**
- * gen_pool_alloc() - allocate special memory from the pool
- * @pool:       Pool to allocate from.
- * @size:       Number of bytes to allocate from the pool.
- *
- * Allocate the requested number of bytes from the specified pool.
- * Uses a first-fit algorithm.
- */
-static inline unsigned long __must_check
-gen_pool_alloc(struct gen_pool *pool, size_t size)
-{
-        return gen_pool_alloc_aligned(pool, size, 0);
-}
+extern unsigned long gen_pool_first_fit(unsigned long *map, unsigned long size,
+		unsigned long start, unsigned int nr, void *data);
+
+extern unsigned long gen_pool_best_fit(unsigned long *map, unsigned long size,
+		unsigned long start, unsigned int nr, void *data);
 
 #endif /* __GENALLOC_H__ */

@@ -26,3 +26,4 @@ obj-$(CONFIG_HW_RANDOM_PPC4XX) += ppc4xx-rng.o
 obj-$(CONFIG_HW_RANDOM_MSM) += msm_rng.o fips_drbg.o ctr_drbg.o msm_fips_selftest.o
 obj-$(CONFIG_HW_RANDOM_PSERIES) += pseries-rng.o
 obj-$(CONFIG_HW_RANDOM_EXYNOS)	+= exynos-rng.o
+obj-$(CONFIG_HW_RANDOM_TPM) += tpm-rng.o

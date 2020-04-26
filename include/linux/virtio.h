@@ -253,6 +253,8 @@ static inline unsigned int virtqueue_get_impl_size(struct virtqueue *vq)
 	return vq->vq_ops->get_impl_size(vq);
 }
 
+int virtqueue_get_queue_index(struct virtqueue *vq);
+
 /**
  * virtio_device - representation of a device using virtio
  * @index: unique position on the virtio bus

@@ -13,6 +13,7 @@
 
 #define DMA_ERROR_CODE	(~0)
 extern struct dma_map_ops arm_dma_ops;
+extern struct dma_map_ops arm_coherent_dma_ops;
 
 static inline struct dma_map_ops *get_dma_ops(struct device *dev)
 {
@@ -106,46 +107,6 @@ static inline void *dma_alloc_noncoherent(struct device *dev, size_t size,
 static inline void dma_free_noncoherent(struct device *dev, size_t size,
 		void *cpu_addr, dma_addr_t handle)
 {
-}
-
-
-/*
- * dma_coherent_pre_ops - barrier functions for coherent memory before DMA.
- * A barrier is required to ensure memory operations are complete before the
- * initiation of a DMA xfer.
- * If the coherent memory is Strongly Ordered
- * - pre ARMv7 and 8x50 guarantees ordering wrt other mem accesses
- * - ARMv7 guarantees ordering only within a 1KB block, so we need a barrier
- * If coherent memory is normal then we need a barrier to prevent
- * reordering
- */
-static inline void dma_coherent_pre_ops(void)
-{
-#if COHERENT_IS_NORMAL == 1
-	dmb();
-#else
-	if (arch_is_coherent())
-		dmb();
-	else
-		barrier();
-#endif
-}
-/*
- * dma_post_coherent_ops - barrier functions for coherent memory after DMA.
- * If the coherent memory is Strongly Ordered we dont need a barrier since
- * there are no speculative fetches to Strongly Ordered memory.
- * If coherent memory is normal then we need a barrier to prevent reordering
- */
-static inline void dma_coherent_post_ops(void)
-{
-#if COHERENT_IS_NORMAL == 1
-	dmb();
-#else
-	if (arch_is_coherent())
-		dmb();
-	else
-		barrier();
-#endif
 }
 
 extern int dma_supported(struct device *dev, u64 mask);
@@ -249,58 +210,6 @@ static inline void dma_free_writecombine(struct device *dev, size_t size,
  */
 extern void __init init_dma_coherent_pool_size(unsigned long size);
 
-static inline void *dma_alloc_stronglyordered(struct device *dev, size_t size,
-				       dma_addr_t *dma_handle, gfp_t flag)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
-	return dma_alloc_attrs(dev, size, dma_handle, flag, &attrs);
-}
-
-static inline void dma_free_stronglyordered(struct device *dev, size_t size,
-				     void *cpu_addr, dma_addr_t dma_handle)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
-	return dma_free_attrs(dev, size, cpu_addr, dma_handle, &attrs);
-}
-
-static inline int dma_mmap_stronglyordered(struct device *dev,
-		struct vm_area_struct *vma, void *cpu_addr,
-		dma_addr_t dma_addr, size_t size)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
-	return dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, &attrs);
-}
-
-static inline void *dma_alloc_nonconsistent(struct device *dev, size_t size,
-				       dma_addr_t *dma_handle, gfp_t flag)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
-	return dma_alloc_attrs(dev, size, dma_handle, flag, &attrs);
-}
-
-static inline void dma_free_nonconsistent(struct device *dev, size_t size,
-				     void *cpu_addr, dma_addr_t dma_handle)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
-	return dma_free_attrs(dev, size, cpu_addr, dma_handle, &attrs);
-}
-
-static inline int dma_mmap_nonconsistent(struct device *dev,
-		struct vm_area_struct *vma, void *cpu_addr,
-		dma_addr_t dma_addr, size_t size)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
-	return dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, &attrs);
-}
-
-
-
 /*
  * This can be called during boot to increase the size of the consistent
  * DMA region above it's default value of 2MB. It must be called before the
@@ -349,57 +258,6 @@ extern void dmabounce_unregister_dev(struct device *);
 
 
 
-/**
- * dma_cache_pre_ops - clean or invalidate cache before dma transfer is
- *                     initiated and perform a barrier operation.
- * @virtual_addr: A kernel logical or kernel virtual address
- * @size: size of buffer to map
- * @dir: DMA transfer direction
- *
- * Ensure that any data held in the cache is appropriately discarded
- * or written back.
- *
- */
-static inline void dma_cache_pre_ops(void *virtual_addr,
-		size_t size, enum dma_data_direction dir)
-{
-	extern void ___dma_single_cpu_to_dev(const void *, size_t,
-		enum dma_data_direction);
-
-	BUG_ON(!valid_dma_direction(dir));
-
-	if (!arch_is_coherent())
-		___dma_single_cpu_to_dev(virtual_addr, size, dir);
-}
-
-/**
- * dma_cache_post_ops - clean or invalidate cache after dma transfer is
- *                     initiated and perform a barrier operation.
- * @virtual_addr: A kernel logical or kernel virtual address
- * @size: size of buffer to map
- * @dir: DMA transfer direction
- *
- * Ensure that any data held in the cache is appropriately discarded
- * or written back.
- *
- */
-static inline void dma_cache_post_ops(void *virtual_addr,
-		size_t size, enum dma_data_direction dir)
-{
-	extern void ___dma_single_cpu_to_dev(const void *, size_t,
-		enum dma_data_direction);
-
-	BUG_ON(!valid_dma_direction(dir));
-
-	if (arch_has_speculative_dfetch() && !arch_is_coherent()
-	 && dir != DMA_TO_DEVICE)
-		/*
-		 * Treat DMA_BIDIRECTIONAL and DMA_FROM_DEVICE
-		 * identically: invalidate
-		 */
-		___dma_single_cpu_to_dev(virtual_addr,
-					 size, DMA_FROM_DEVICE);
-}
 /*
  * The scatter list versions of the above methods.
  */
