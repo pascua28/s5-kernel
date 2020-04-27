@@ -5220,50 +5220,6 @@ static int __devinit sii8240_cbus_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-#ifdef CONFIG_OF
-static int __devinit of_sii8240_probe_dt(struct i2c_client *client,
-			const struct i2c_device_id *id)
-{
-	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
-	const struct i2c_device_id *id_table = client->driver->id_table;
-	struct sii8240_platform_data *pdata = NULL;
-	u32 client_id = -1;
-
-	if (!client->dev.of_node) {
-		dev_err(&client->dev, "sii8240: Client node not-found\n");
-		return -1;
-	}
-
-	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
-		return -EIO;
-
-	/* going to use block read/write, so check for this too */
-	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_I2C_BLOCK))
-		return -EIO;
-
-	if (of_property_read_u32(client->dev.of_node, "sii8240,client_id", &client_id))
-		dev_err(&client->dev, "Wrong Client_id# %d", client_id);
-
-	if (0 == client_id) {
-		pdata = platform_init_data(client);
-		client->dev.platform_data = pdata;
-		sii8240_tmds_i2c_probe(client, id_table);
-	} else if (g_sii8240) {
-		client->dev.platform_data = g_sii8240->pdata;
-		if (1 == client_id)
-			sii8240_hdmi_i2c_probe(client, id_table);
-		else if (2 == client_id)
-			sii8240_disc_i2c_probe(client, id_table);
-		else if (3 == client_id)
-			sii8240_tpi_i2c_probe(client, id_table);
-		else if (4 == client_id)
-			sii8240_cbus_i2c_probe(client, id_table);
-	 }
-
-	return 0;
-}
-#endif
-
 static int __devexit sii8240_tmds_remove(struct i2c_client *client)
 {
 	return 0;
@@ -5316,36 +5272,6 @@ MODULE_DEVICE_TABLE(i2c, sii8240_disc_id);
 MODULE_DEVICE_TABLE(i2c, sii8240_tpi_id);
 MODULE_DEVICE_TABLE(i2c, sii8240_cbus_id);
 
-#ifdef CONFIG_OF
-static struct of_device_id sii8240_dt_ids[] = {
-	{ .compatible = "sii8240,tmds",},
-	{ .compatible = "sii8240,hdmi",},
-	{ .compatible = "sii8240,disc",},
-	{ .compatible = "sii8240,tpi",},
-	{ .compatible = "sii8240,cbus",},
-	{}
-};
-MODULE_DEVICE_TABLE(of, sii8240_dt_ids);
-
-static const struct i2c_device_id sii8240_id[] = {
-	{"sii8240_mhlv2", 0},
-	{}
-};
-
-MODULE_DEVICE_TABLE(i2c, sii8240_id);
-
-static struct i2c_driver sii8240_i2c_driver = {
-	.driver = {
-		.owner = THIS_MODULE,
-		.name = "sii8240_mhlv2dt",
-		.of_match_table = of_match_ptr(sii8240_dt_ids),
-		.pm = &sii8240_pm_ops,
-	},
-	.id_table = sii8240_id,
-	.probe = of_sii8240_probe_dt,
-};
-#else
-
 static struct i2c_driver sii8240_tmds_i2c_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
@@ -5392,20 +5318,12 @@ static struct i2c_driver sii8240_cbus_i2c_driver = {
 	.probe = sii8240_cbus_i2c_probe,
 	.remove = __devexit_p(sii8240_cbus_remove),
 };
-#endif
 
 static int __init sii8240_init(void)
 {
 	int ret;
 
 	pr_info("%s sii8240: check mhl\n", __func__);
-#ifdef CONFIG_OF
-	ret = i2c_add_driver(&sii8240_i2c_driver);
-	if (ret < 0) {
-		pr_err("[ERROR] sii8240: mhl_v2 i2c driver init failed");
-		return ret;
-	}
-#else
 	ret = i2c_add_driver(&sii8240_tmds_i2c_driver);
 	if (unlikely(ret < 0)) {
 		pr_err("[ERROR] sii8240: tmds i2c driver init failed");
@@ -5435,10 +5353,8 @@ static int __init sii8240_init(void)
 		pr_err("[ERROR] sii8240: cbus i2c driver init failed");
 		goto err_cbus;
 	}
-#endif
 	return 0;
 
-#ifndef CONFIG_OF
 err_cbus:
 	i2c_del_driver(&sii8240_cbus_i2c_driver);
 err_tpi:
@@ -5449,23 +5365,15 @@ err_hdmi:
 	i2c_del_driver(&sii8240_hdmi_i2c_driver);
 err_tmds:
 	i2c_del_driver(&sii8240_tmds_i2c_driver);
-#endif
-#ifdef CONFIG_OF
-	i2c_del_driver(&sii8240_i2c_driver);
-#endif
 	return ret;
 }
 static void __exit sii8240_exit(void)
 {
-#ifdef CONFIG_OF
-	i2c_del_driver(&sii8240_i2c_driver);
-#else
 	i2c_del_driver(&sii8240_cbus_i2c_driver);
 	i2c_del_driver(&sii8240_tpi_i2c_driver);
 	i2c_del_driver(&sii8240_disc_i2c_driver);
 	i2c_del_driver(&sii8240_hdmi_i2c_driver);
 	i2c_del_driver(&sii8240_tmds_i2c_driver);
-#endif
 }
 module_init(sii8240_init);
 module_exit(sii8240_exit);
