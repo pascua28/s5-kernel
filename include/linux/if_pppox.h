@@ -1,3 +1,4 @@
+
 /***************************************************************************
  * Linux PPP over X - Generic PPP transport layer sockets
  * Linux PPP over Ethernet (PPPoE) Socket Implementation (RFC 2516) 
@@ -20,6 +21,8 @@
 #include <linux/ppp_channel.h>
 #include <linux/skbuff.h>
 #include <uapi/linux/if_pppox.h>
+
+#define PX_PROTO_OLAC  3
 
 static inline struct pppoe_hdr *pppoe_hdr(const struct sk_buff *skb)
 {

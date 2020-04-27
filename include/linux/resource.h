@@ -3,12 +3,6 @@
 
 #include <uapi/linux/resource.h>
 
-/*
- * Secure Storage wants 64MB of mlocked memory, to make sure
- * the authentication of an application using Secure Storage.
- */
-#define MLOCK_LIMIT ((PAGE_SIZE > 64*1024*1024) ? PAGE_SIZE : 64*1024*1024)
-
 struct task_struct;
 
 int getrusage(struct task_struct *p, int who, struct rusage __user *ru);
