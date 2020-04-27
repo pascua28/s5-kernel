@@ -339,15 +339,16 @@ static int wm831x_buckv_set_current_limit(struct regulator_dev *rdev,
 	u16 reg = dcdc->base + WM831X_DCDC_CONTROL_2;
 	int i;
 
-	for (i = ARRAY_SIZE(wm831x_dcdc_ilim) - 1; i >= 0; i--) {
+	for (i = 0; i < ARRAY_SIZE(wm831x_dcdc_ilim); i++) {
 		if ((min_uA <= wm831x_dcdc_ilim[i]) &&
 		    (wm831x_dcdc_ilim[i] <= max_uA))
-			return wm831x_set_bits(wm831x, reg,
-					       WM831X_DC1_HC_THR_MASK,
-						i << WM831X_DC1_HC_THR_SHIFT);
+			break;
 	}
+	if (i == ARRAY_SIZE(wm831x_dcdc_ilim))
+		return -EINVAL;
 
-	return -EINVAL;
+	return wm831x_set_bits(wm831x, reg, WM831X_DC1_HC_THR_MASK,
+			       i << WM831X_DC1_HC_THR_SHIFT);
 }
 
 static int wm831x_buckv_get_current_limit(struct regulator_dev *rdev)
@@ -475,9 +476,9 @@ static __devinit int wm831x_buckv_probe(struct platform_device *pdev)
 
 	dcdc->wm831x = wm831x;
 
-	res = platform_get_resource(pdev, IORESOURCE_REG, 0);
+	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
 	if (res == NULL) {
-		dev_err(&pdev->dev, "No REG resource\n");
+		dev_err(&pdev->dev, "No I/O resource\n");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -650,9 +651,9 @@ static __devinit int wm831x_buckp_probe(struct platform_device *pdev)
 
 	dcdc->wm831x = wm831x;
 
-	res = platform_get_resource(pdev, IORESOURCE_REG, 0);
+	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
 	if (res == NULL) {
-		dev_err(&pdev->dev, "No REG resource\n");
+		dev_err(&pdev->dev, "No I/O resource\n");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -794,9 +795,9 @@ static __devinit int wm831x_boostp_probe(struct platform_device *pdev)
 
 	dcdc->wm831x = wm831x;
 
-	res = platform_get_resource(pdev, IORESOURCE_REG, 0);
+	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
 	if (res == NULL) {
-		dev_err(&pdev->dev, "No REG resource\n");
+		dev_err(&pdev->dev, "No I/O resource\n");
 		ret = -EINVAL;
 		goto err;
 	}
