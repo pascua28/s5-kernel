@@ -101,7 +101,7 @@ static int blkpg_ioctl(struct block_device *bdev, struct blkpg_ioctl_arg __user 
 			    sizeof(long long) > sizeof(long)) {
 				long pstart = start, plength = length;
 				if (pstart != start || plength != length
-				    || pstart < 0 || plength < 0)
+				    || pstart < 0 || plength < 0 || partno > 65535)
 					return -EINVAL;
 			}
 			part = disk_get_part(disk, partno);
@@ -188,6 +188,22 @@ static int blk_ioctl_discard(struct block_device *bdev, uint64_t start,
 static int blk_ioctl_sanitize(struct block_device *bdev)
 {
 	return blkdev_issue_sanitize(bdev, GFP_KERNEL);
+}
+
+static int blk_ioctl_zeroout(struct block_device *bdev, uint64_t start,
+			     uint64_t len)
+{
+	if (start & 511)
+		return -EINVAL;
+	if (len & 511)
+		return -EINVAL;
+	start >>= 9;
+	len >>= 9;
+
+	if (start + len > (i_size_read(bdev->bd_inode) >> 9))
+		return -EINVAL;
+
+	return blkdev_issue_zeroout(bdev, start, len, GFP_KERNEL);
 }
 
 static int put_ushort(unsigned long arg, unsigned short val)
@@ -292,9 +308,12 @@ int blkdev_ioctl(struct block_device *bdev, fmode_t mode, unsigned cmd,
 		set_device_ro(bdev, n);
 		return 0;
 
-	case BLKSANITIZE:
+#if 0
+	case BLKSANITIZE: {
 		ret = blk_ioctl_sanitize(bdev);
 		break;
+	}
+#endif
 
 	case BLKDISCARD:
 	case BLKSECDISCARD: {
@@ -308,6 +327,18 @@ int blkdev_ioctl(struct block_device *bdev, fmode_t mode, unsigned cmd,
 
 		return blk_ioctl_discard(bdev, range[0], range[1],
 					 cmd == BLKSECDISCARD);
+	}
+
+	case BLKZEROOUT: {
+		uint64_t range[2];
+
+		if (!(mode & FMODE_WRITE))
+			return -EBADF;
+
+		if (copy_from_user(range, (void __user *)arg, sizeof(range)))
+			return -EFAULT;
+
+		return blk_ioctl_zeroout(bdev, range[0], range[1]);
 	}
 
 	case HDIO_GETGEO: {
