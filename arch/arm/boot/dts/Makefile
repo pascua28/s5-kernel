@@ -41,8 +41,6 @@ dtb-$(CONFIG_ARCH_KIRKWOOD) += kirkwood-dns320.dtb \
 	kirkwood-lsxhl.dtb \
 	kirkwood-ts219-6281.dtb \
 	kirkwood-ts219-6282.dtb
-dtb-$(CONFIG_ARCH_MSM) += msm8660-surf.dtb \
-	msm8960-cdp.dtb
 dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
 	armada-xp-db.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx51-babbage.dtb \
