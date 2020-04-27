@@ -198,7 +198,7 @@ static int hid_synaptics_probe(struct hid_device *hdev, const struct hid_device_
 	input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
 					1024, 5888, 0, 0);
 
-	input_mt_init_slots(input_dev, 5);
+	input_mt_init_slots(input_dev, 5, 1);
 
 	syntp_data->input = input_dev;
 	ret = input_register_device(syntp_data->input);
