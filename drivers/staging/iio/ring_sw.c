@@ -65,7 +65,7 @@ static inline void __iio_free_sw_ring_buffer(struct iio_sw_ring_buffer *ring)
 /* Lock always held if their is a chance this may be called */
 /* Only one of these per ring may run concurrently - enforced by drivers */
 static int iio_store_to_sw_ring(struct iio_sw_ring_buffer *ring,
-				unsigned char *data)
+				unsigned char *data, s64 timestamp)
 {
 	int ret = 0;
 	unsigned char *temp_ptr, *change_test_ptr;
@@ -256,10 +256,11 @@ error_ret:
 }
 
 static int iio_store_to_sw_rb(struct iio_buffer *r,
-			      u8 *data)
+			      u8 *data,
+			      s64 timestamp)
 {
 	struct iio_sw_ring_buffer *ring = iio_to_sw_ring(r);
-	return iio_store_to_sw_ring(ring, data);
+	return iio_store_to_sw_ring(ring, data, timestamp);
 }
 
 static int iio_request_update_sw_rb(struct iio_buffer *r)

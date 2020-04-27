@@ -417,7 +417,7 @@ EXPORT_SYMBOL_GPL(tty_ldisc_flush);
 static void tty_set_termios_ldisc(struct tty_struct *tty, int num)
 {
 	mutex_lock(&tty->termios_mutex);
-	tty->termios.c_line = num;
+	tty->termios->c_line = num;
 	mutex_unlock(&tty->termios_mutex);
 	
 	tty->disc_data = NULL;
@@ -575,7 +575,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 	if (IS_ERR(new_ldisc))
 		return PTR_ERR(new_ldisc);
 
-	tty_lock(tty);
+	tty_lock();
 	/*
 	 *	We need to look at the tty locking here for pty/tty pairs
 	 *	when both sides try to change in parallel.
@@ -589,12 +589,12 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 	 */
 
 	if (tty->ldisc->ops->num == ldisc) {
-		tty_unlock(tty);
+		tty_unlock();
 		tty_ldisc_put(new_ldisc);
 		return 0;
 	}
 
-	tty_unlock(tty);
+	tty_unlock();
 	/*
 	 *	Problem: What do we do if this blocks ?
 	 *	We could deadlock here
@@ -602,7 +602,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	tty_wait_until_sent(tty, 0);
 
-	tty_lock(tty);
+	tty_lock();
 	mutex_lock(&tty->ldisc_mutex);
 
 	/*
@@ -612,10 +612,10 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	while (test_bit(TTY_LDISC_CHANGING, &tty->flags)) {
 		mutex_unlock(&tty->ldisc_mutex);
-		tty_unlock(tty);
+		tty_unlock();
 		wait_event(tty_ldisc_wait,
 			test_bit(TTY_LDISC_CHANGING, &tty->flags) == 0);
-		tty_lock(tty);
+		tty_lock();
 		mutex_lock(&tty->ldisc_mutex);
 	}
 
@@ -630,7 +630,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	o_ldisc = tty->ldisc;
 
-	tty_unlock(tty);
+	tty_unlock();
 	/*
 	 *	Make sure we don't change while someone holds a
 	 *	reference to the line discipline. The TTY_LDISC bit
@@ -657,7 +657,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	retval = tty_ldisc_wait_idle(tty, 5 * HZ);
 
-	tty_lock(tty);
+	tty_lock();
 	mutex_lock(&tty->ldisc_mutex);
 
 	/* handle wait idle failure locked */
@@ -672,7 +672,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 		clear_bit(TTY_LDISC_CHANGING, &tty->flags);
 		mutex_unlock(&tty->ldisc_mutex);
 		tty_ldisc_put(new_ldisc);
-		tty_unlock(tty);
+		tty_unlock();
 		return -EIO;
 	}
 
@@ -715,7 +715,7 @@ enable:
 	if (o_work)
 		schedule_work(&o_tty->buf.work);
 	mutex_unlock(&tty->ldisc_mutex);
-	tty_unlock(tty);
+	tty_unlock();
 	return retval;
 }
 
@@ -729,9 +729,9 @@ enable:
 static void tty_reset_termios(struct tty_struct *tty)
 {
 	mutex_lock(&tty->termios_mutex);
-	tty->termios = tty->driver->init_termios;
-	tty->termios.c_ispeed = tty_termios_input_baud_rate(&tty->termios);
-	tty->termios.c_ospeed = tty_termios_baud_rate(&tty->termios);
+	*tty->termios = tty->driver->init_termios;
+	tty->termios->c_ispeed = tty_termios_input_baud_rate(tty->termios);
+	tty->termios->c_ospeed = tty_termios_baud_rate(tty->termios);
 	mutex_unlock(&tty->termios_mutex);
 }
 
@@ -823,11 +823,11 @@ void tty_ldisc_hangup(struct tty_struct *tty)
 	 * need to wait for another function taking the BTM
 	 */
 	clear_bit(TTY_LDISC, &tty->flags);
-	tty_unlock(tty);
+	tty_unlock();
 	cancel_work_sync(&tty->buf.work);
 	mutex_unlock(&tty->ldisc_mutex);
 retry:
-	tty_lock(tty);
+	tty_lock();
 	mutex_lock(&tty->ldisc_mutex);
 
 	/* At this point we have a closed ldisc and we want to
@@ -838,7 +838,7 @@ retry:
 		if (atomic_read(&tty->ldisc->users) != 1) {
 			char cur_n[TASK_COMM_LEN], tty_n[64];
 			long timeout = 3 * HZ;
-			tty_unlock(tty);
+			tty_unlock();
 
 			while (tty_ldisc_wait_idle(tty, timeout) == -EBUSY) {
 				timeout = MAX_SCHEDULE_TIMEOUT;
@@ -853,7 +853,7 @@ retry:
 
 		if (reset == 0) {
 
-			if (!tty_ldisc_reinit(tty, tty->termios.c_line))
+			if (!tty_ldisc_reinit(tty, tty->termios->c_line))
 				err = tty_ldisc_open(tty, tty->ldisc);
 			else
 				err = 1;
@@ -901,23 +901,6 @@ int tty_ldisc_setup(struct tty_struct *tty, struct tty_struct *o_tty)
 	tty_ldisc_enable(tty);
 	return 0;
 }
-
-static void tty_ldisc_kill(struct tty_struct *tty)
-{
-	mutex_lock(&tty->ldisc_mutex);
-	/*
-	 * Now kill off the ldisc
-	 */
-	tty_ldisc_close(tty, tty->ldisc);
-	tty_ldisc_put(tty->ldisc);
-	/* Force an oops if we mess this up */
-	tty->ldisc = NULL;
-
-	/* Ensure the next open requests the N_TTY ldisc */
-	tty_set_termios_ldisc(tty, N_TTY);
-	mutex_unlock(&tty->ldisc_mutex);
-}
-
 /**
  *	tty_ldisc_release		-	release line discipline
  *	@tty: tty being shut down
@@ -936,21 +919,28 @@ void tty_ldisc_release(struct tty_struct *tty, struct tty_struct *o_tty)
 	 * race with the set_ldisc code path.
 	 */
 
-	tty_lock_pair(tty, o_tty);
+	tty_unlock();
 	tty_ldisc_halt(tty);
 	tty_ldisc_flush_works(tty);
-	if (o_tty) {
-		tty_ldisc_halt(o_tty);
-		tty_ldisc_flush_works(o_tty);
-	}
+	tty_lock();
+
+	mutex_lock(&tty->ldisc_mutex);
+	/*
+	 * Now kill off the ldisc
+	 */
+	tty_ldisc_close(tty, tty->ldisc);
+	tty_ldisc_put(tty->ldisc);
+	/* Force an oops if we mess this up */
+	tty->ldisc = NULL;
+
+	/* Ensure the next open requests the N_TTY ldisc */
+	tty_set_termios_ldisc(tty, N_TTY);
+	mutex_unlock(&tty->ldisc_mutex);
 
 	/* This will need doing differently if we need to lock */
-	tty_ldisc_kill(tty);
-
 	if (o_tty)
-		tty_ldisc_kill(o_tty);
+		tty_ldisc_release(o_tty, NULL);
 
-	tty_unlock_pair(tty, o_tty);
 	/* And the memory resources remaining (buffers, termios) will be
 	   disposed of when the kref hits zero */
 }

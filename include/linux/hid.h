@@ -409,7 +409,7 @@ struct hid_field {
 	__u16 dpad;			/* dpad input code */
 };
 
-#define HID_MAX_FIELDS 256
+#define HID_MAX_FIELDS 128
 
 struct hid_report {
 	struct list_head list;
@@ -621,7 +621,6 @@ struct hid_usage_id {
  * @report_fixup: called before report descriptor parsing (NULL means nop)
  * @input_mapping: invoked on input registering before mapping an usage
  * @input_mapped: invoked on input registering after mapping an usage
- * @input_configured: invoked just before the device is registered
  * @feature_mapping: invoked on feature registering
  * @input_register: called just before input device is registered after reports
  * 		    are parsed.
@@ -668,8 +667,6 @@ struct hid_driver {
 	int (*input_mapped)(struct hid_device *hdev,
 			struct hid_input *hidinput, struct hid_field *field,
 			struct hid_usage *usage, unsigned long **bit, int *max);
-	void (*input_configured)(struct hid_device *hdev,
-				 struct hid_input *hidinput);
 	void (*feature_mapping)(struct hid_device *hdev,
 			struct hid_field *field,
 			struct hid_usage *usage);

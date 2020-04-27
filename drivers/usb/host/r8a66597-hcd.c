@@ -2033,14 +2033,15 @@ static int r8a66597_get_frame(struct usb_hcd *hcd)
 static void collect_usb_address_map(struct usb_device *udev, unsigned long *map)
 {
 	int chix;
-	struct usb_device *childdev;
 
 	if (udev->state == USB_STATE_CONFIGURED &&
 	    udev->parent && udev->parent->devnum > 1 &&
 	    udev->parent->descriptor.bDeviceClass == USB_CLASS_HUB)
 		map[udev->devnum/32] |= (1 << (udev->devnum % 32));
 
-	usb_hub_for_each_child(udev, chix, childdev) {
+	for (chix = 0; chix < udev->maxchild; chix++) {
+		struct usb_device *childdev = udev->children[chix];
+
 		if (childdev)
 			collect_usb_address_map(childdev, map);
 	}

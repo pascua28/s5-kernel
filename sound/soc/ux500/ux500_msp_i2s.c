@@ -663,6 +663,7 @@ int ux500_msp_i2s_init_msp(struct platform_device *pdev,
 			struct ux500_msp **msp_p,
 			struct msp_i2s_platform_data *platform_data)
 {
+	int ret = 0;
 	struct resource *res = NULL;
 	struct i2s_controller *i2s_cont;
 	struct ux500_msp *msp;
@@ -684,14 +685,15 @@ int ux500_msp_i2s_init_msp(struct platform_device *pdev,
 	if (res == NULL) {
 		dev_err(&pdev->dev, "%s: ERROR: Unable to get resource!\n",
 			__func__);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_res;
 	}
 
-	msp->registers = devm_ioremap(&pdev->dev, res->start,
-				      resource_size(res));
+	msp->registers = ioremap(res->start, (res->end - res->start + 1));
 	if (msp->registers == NULL) {
 		dev_err(&pdev->dev, "%s: ERROR: ioremap failed!\n", __func__);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_res;
 	}
 
 	msp->msp_state = MSP_STATE_IDLE;
@@ -703,7 +705,7 @@ int ux500_msp_i2s_init_msp(struct platform_device *pdev,
 		dev_err(&pdev->dev,
 			"%s: ERROR: Failed to allocate I2S-controller!\n",
 			__func__);
-		return -ENOMEM;
+		goto err_i2s_cont;
 	}
 	i2s_cont->dev.parent = &pdev->dev;
 	i2s_cont->data = (void *)msp;
@@ -714,6 +716,14 @@ int ux500_msp_i2s_init_msp(struct platform_device *pdev,
 	msp->i2s_cont = i2s_cont;
 
 	return 0;
+
+err_i2s_cont:
+	iounmap(msp->registers);
+
+err_res:
+	devm_kfree(&pdev->dev, msp);
+
+	return ret;
 }
 
 void ux500_msp_i2s_cleanup_msp(struct platform_device *pdev,
@@ -722,6 +732,11 @@ void ux500_msp_i2s_cleanup_msp(struct platform_device *pdev,
 	dev_dbg(msp->dev, "%s: Enter (id = %d).\n", __func__, msp->id);
 
 	device_unregister(&msp->i2s_cont->dev);
+	devm_kfree(&pdev->dev, msp->i2s_cont);
+
+	iounmap(msp->registers);
+
+	devm_kfree(&pdev->dev, msp);
 }
 
 MODULE_LICENSE("GPLv2");

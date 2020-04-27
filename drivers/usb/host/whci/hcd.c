@@ -238,16 +238,16 @@ static struct hc_driver whc_hc_driver = {
 
 static int whc_probe(struct umc_dev *umc)
 {
-	int ret;
+	int ret = -ENOMEM;
 	struct usb_hcd *usb_hcd;
-	struct wusbhc *wusbhc;
-	struct whc *whc;
+	struct wusbhc *wusbhc = NULL;
+	struct whc *whc = NULL;
 	struct device *dev = &umc->dev;
 
 	usb_hcd = usb_create_hcd(&whc_hc_driver, dev, "whci");
 	if (usb_hcd == NULL) {
 		dev_err(dev, "unable to create hcd\n");
-		return -ENOMEM;
+		goto error;
 	}
 
 	usb_hcd->wireless = 1;

@@ -662,7 +662,7 @@ void dma_controller_destroy(struct dma_controller *c)
 	kfree(tusb_dma);
 }
 
-struct dma_controller *__devinit
+struct dma_controller *__init
 dma_controller_create(struct musb *musb, void __iomem *base)
 {
 	void __iomem		*tbase = musb->ctrl_base;

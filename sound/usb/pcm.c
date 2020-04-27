@@ -1110,12 +1110,6 @@ static void retire_playback_urb(struct snd_usb_substream *subs,
 	int stride = runtime->frame_bits >> 3;
 	int processed = urb->transfer_buffer_length / stride;
 
-	/* ignore the delay accounting when procssed=0 is given, i.e.
-	 * silent payloads are procssed before handling the actual data
-	 */
-	if (!processed)
-		return;
-
 	spin_lock_irqsave(&subs->lock, flags);
 	if (processed > runtime->delay)
 		runtime->delay = 0;

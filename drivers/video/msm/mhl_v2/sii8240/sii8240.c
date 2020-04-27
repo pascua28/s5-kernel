@@ -5220,7 +5220,8 @@ static int __devinit sii8240_cbus_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-#ifdef CONFIG_OF
+#if 0
+//#ifdef CONFIG_OF
 static int __devinit of_sii8240_probe_dt(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -5316,7 +5317,8 @@ MODULE_DEVICE_TABLE(i2c, sii8240_disc_id);
 MODULE_DEVICE_TABLE(i2c, sii8240_tpi_id);
 MODULE_DEVICE_TABLE(i2c, sii8240_cbus_id);
 
-#ifdef CONFIG_OF
+#if 0
+//#ifdef CONFIG_OF
 static struct of_device_id sii8240_dt_ids[] = {
 	{ .compatible = "sii8240,tmds",},
 	{ .compatible = "sii8240,hdmi",},
@@ -5399,7 +5401,8 @@ static int __init sii8240_init(void)
 	int ret;
 
 	pr_info("%s sii8240: check mhl\n", __func__);
-#ifdef CONFIG_OF
+#if 0
+//#ifdef CONFIG_OF
 	ret = i2c_add_driver(&sii8240_i2c_driver);
 	if (ret < 0) {
 		pr_err("[ERROR] sii8240: mhl_v2 i2c driver init failed");
@@ -5438,7 +5441,8 @@ static int __init sii8240_init(void)
 #endif
 	return 0;
 
-#ifndef CONFIG_OF
+#if 1
+//#ifndef CONFIG_OF
 err_cbus:
 	i2c_del_driver(&sii8240_cbus_i2c_driver);
 err_tpi:
@@ -5450,14 +5454,16 @@ err_hdmi:
 err_tmds:
 	i2c_del_driver(&sii8240_tmds_i2c_driver);
 #endif
-#ifdef CONFIG_OF
+#if 0
+//#ifdef CONFIG_OF
 	i2c_del_driver(&sii8240_i2c_driver);
 #endif
 	return ret;
 }
 static void __exit sii8240_exit(void)
 {
-#ifdef CONFIG_OF
+#if 0
+//#ifdef CONFIG_OF
 	i2c_del_driver(&sii8240_i2c_driver);
 #else
 	i2c_del_driver(&sii8240_cbus_i2c_driver);

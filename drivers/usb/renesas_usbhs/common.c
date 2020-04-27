@@ -432,16 +432,17 @@ static int usbhs_probe(struct platform_device *pdev)
 	}
 
 	/* usb private data */
-	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv) {
 		dev_err(&pdev->dev, "Could not allocate priv\n");
 		return -ENOMEM;
 	}
 
-	priv->base = devm_request_and_ioremap(&pdev->dev, res);
+	priv->base = ioremap_nocache(res->start, resource_size(res));
 	if (!priv->base) {
 		dev_err(&pdev->dev, "ioremap error.\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto probe_end_kfree;
 	}
 
 	/*
@@ -484,7 +485,7 @@ static int usbhs_probe(struct platform_device *pdev)
 	/* call pipe and module init */
 	ret = usbhs_pipe_probe(priv);
 	if (ret < 0)
-		return ret;
+		goto probe_end_iounmap;
 
 	ret = usbhs_fifo_probe(priv);
 	if (ret < 0)
@@ -545,6 +546,10 @@ probe_end_fifo_exit:
 	usbhs_fifo_remove(priv);
 probe_end_pipe_exit:
 	usbhs_pipe_remove(priv);
+probe_end_iounmap:
+	iounmap(priv->base);
+probe_end_kfree:
+	kfree(priv);
 
 	dev_info(&pdev->dev, "probe failed\n");
 
@@ -571,6 +576,8 @@ static int __devexit usbhs_remove(struct platform_device *pdev)
 	usbhs_mod_remove(priv);
 	usbhs_fifo_remove(priv);
 	usbhs_pipe_remove(priv);
+	iounmap(priv->base);
+	kfree(priv);
 
 	return 0;
 }

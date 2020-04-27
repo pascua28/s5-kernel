@@ -652,8 +652,10 @@ static ssize_t fill_periodic_buffer(struct debug_buffer *buf)
 						seen [seen_count++].qh = p.qh;
 				} else
 					temp = 0;
-				tag = Q_NEXT_TYPE(ehci, hw->hw_next);
-				p = p.qh->qh_next;
+				if (p.qh) {
+					tag = Q_NEXT_TYPE(ehci, hw->hw_next);
+					p = p.qh->qh_next;
+				}
 				break;
 			case Q_TYPE_FSTN:
 				temp = scnprintf (next, size,

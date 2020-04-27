@@ -261,7 +261,8 @@ static void move_head_to_tail(struct list_head *list)
 	struct list_head *node = list->next;
 
 	if (!list_empty(list)) {
-		list_move_tail(node, list);
+		list_del(node);
+		list_add_tail(node, list);
 	}
 }
 

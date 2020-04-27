@@ -73,34 +73,25 @@ static int __devinit ux500_probe(struct platform_device *pdev)
 		goto err0;
 	}
 
-	/* get the musb id */
-	musbid = musb_get_id(&pdev->dev, GFP_KERNEL);
-	if (musbid < 0) {
-		dev_err(&pdev->dev, "failed to allocate musb id\n");
-		ret = -ENOMEM;
-		goto err1;
-	}
-
-	musb = platform_device_alloc("musb-hdrc", musbid);
+	musb = platform_device_alloc("musb-hdrc", -1);
 	if (!musb) {
 		dev_err(&pdev->dev, "failed to allocate musb device\n");
-		goto err2;
+		goto err1;
 	}
 
 	clk = clk_get(&pdev->dev, "usb");
 	if (IS_ERR(clk)) {
 		dev_err(&pdev->dev, "failed to get clock\n");
 		ret = PTR_ERR(clk);
-		goto err3;
+		goto err2;
 	}
 
 	ret = clk_enable(clk);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to enable clock\n");
-		goto err4;
+		goto err3;
 	}
 
-	musb->id			= musbid;
 	musb->dev.parent		= &pdev->dev;
 	musb->dev.dma_mask		= pdev->dev.dma_mask;
 	musb->dev.coherent_dma_mask	= pdev->dev.coherent_dma_mask;
@@ -117,34 +108,31 @@ static int __devinit ux500_probe(struct platform_device *pdev)
 			pdev->num_resources);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to add resources\n");
-		goto err5;
+		goto err4;
 	}
 
 	ret = platform_device_add_data(musb, pdata, sizeof(*pdata));
 	if (ret) {
 		dev_err(&pdev->dev, "failed to add platform_data\n");
-		goto err5;
+		goto err4;
 	}
 
 	ret = platform_device_add(musb);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register musb device\n");
-		goto err5;
+		goto err4;
 	}
 
 	return 0;
 
-err5:
+err4:
 	clk_disable(clk);
 
-err4:
+err3:
 	clk_put(clk);
 
-err3:
-	platform_device_put(musb);
-
 err2:
-	musb_put_id(&pdev->dev, musbid);
+	platform_device_put(musb);
 
 err1:
 	kfree(glue);
@@ -157,7 +145,6 @@ static int __devexit ux500_remove(struct platform_device *pdev)
 {
 	struct ux500_glue	*glue = platform_get_drvdata(pdev);
 
-	musb_put_id(&pdev->dev, glue->musb->id);
 	platform_device_del(glue->musb);
 	platform_device_put(glue->musb);
 	clk_disable(glue->clk);

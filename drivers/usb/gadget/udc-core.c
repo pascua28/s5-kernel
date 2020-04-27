@@ -118,7 +118,7 @@ EXPORT_SYMBOL_GPL(usb_gadget_unmap_request);
  */
 static inline int usb_gadget_start(struct usb_gadget *gadget,
 		struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *))
+		int (*bind)(struct usb_gadget *))
 {
 	return gadget->ops->start(driver, bind);
 }
@@ -262,8 +262,8 @@ static void usb_gadget_remove_driver(struct usb_udc *udc)
 	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
 
 	if (udc_is_newstyle(udc)) {
-		usb_gadget_disconnect(udc->gadget);
 		udc->driver->disconnect(udc->gadget);
+		usb_gadget_disconnect(udc->gadget);
 		udc->driver->unbind(udc->gadget);
 		usb_gadget_udc_stop(udc->gadget, udc->driver);
 	} else {
@@ -311,12 +311,13 @@ EXPORT_SYMBOL_GPL(usb_del_gadget_udc);
 
 /* ------------------------------------------------------------------------- */
 
-int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
+int usb_gadget_probe_driver(struct usb_gadget_driver *driver,
+		int (*bind)(struct usb_gadget *))
 {
 	struct usb_udc		*udc = NULL;
 	int			ret;
 
-	if (!driver || !driver->bind || !driver->setup)
+	if (!driver || !bind || !driver->setup)
 		return -EINVAL;
 
 	mutex_lock(&udc_lock);
@@ -339,7 +340,7 @@ found:
 	udc->dev.driver = &driver->driver;
 
 	if (udc_is_newstyle(udc)) {
-		ret = driver->bind(udc->gadget, driver);
+		ret = bind(udc->gadget);
 		if (ret)
 			goto err1;
 		ret = usb_gadget_udc_start(udc->gadget, driver);
@@ -349,7 +350,7 @@ found:
 		}
 	} else {
 
-		ret = usb_gadget_start(udc->gadget, driver, driver->bind);
+		ret = usb_gadget_start(udc->gadget, driver, bind);
 		if (ret)
 			goto err1;
 

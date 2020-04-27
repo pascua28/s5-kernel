@@ -125,14 +125,12 @@ static struct usb_driver wdm_driver;
 /* return intfdata if we own the interface, else look up intf in the list */
 static struct wdm_device *wdm_find_device(struct usb_interface *intf)
 {
-	struct wdm_device *desc;
+	struct wdm_device *desc = NULL;
 
 	spin_lock(&wdm_device_list_lock);
 	list_for_each_entry(desc, &wdm_device_list, device_list)
 		if (desc->intf == intf)
-			goto found;
-	desc = NULL;
-found:
+			break;
 	spin_unlock(&wdm_device_list_lock);
 
 	return desc;
@@ -140,14 +138,12 @@ found:
 
 static struct wdm_device *wdm_find_device_by_minor(int minor)
 {
-	struct wdm_device *desc;
+	struct wdm_device *desc = NULL;
 
 	spin_lock(&wdm_device_list_lock);
 	list_for_each_entry(desc, &wdm_device_list, device_list)
 		if (desc->intf->minor == minor)
-			goto found;
-	desc = NULL;
-found:
+			break;
 	spin_unlock(&wdm_device_list_lock);
 
 	return desc;

@@ -1,5 +1,5 @@
 /*
- *  Probe for 8250/16550-type ISAPNP serial ports.
+ *  Probe module for 8250/16550-type ISAPNP serial ports.
  *
  *  Based on drivers/char/serial.c, by Linus Torvalds, Theodore Ts'o.
  *
@@ -25,7 +25,7 @@
 #include "8250.h"
 
 #define UNKNOWN_DEV 0x3000
-#define CIR_PORT	0x0800
+
 
 static const struct pnp_device_id pnp_dev_table[] = {
 	/* Archtek America Corp. */
@@ -362,9 +362,6 @@ static const struct pnp_device_id pnp_dev_table[] = {
 	{	"PNPCXXX",		UNKNOWN_DEV	},
 	/* More unknown PnP modems */
 	{	"PNPDXXX",		UNKNOWN_DEV	},
-	/* Winbond CIR port, should not be probed. We should keep track
-	   of it to prevent the legacy serial driver from probing it */
-	{	"WEC1022",		CIR_PORT	},
 	{	"",			0	}
 };
 
@@ -412,7 +409,7 @@ static int __devinit check_resources(struct pnp_dev *dev)
  * PnP modems, alternatively we must hardcode all modems in pnp_devices[]
  * table.
  */
-static int __devinit serial_pnp_guess_board(struct pnp_dev *dev)
+static int __devinit serial_pnp_guess_board(struct pnp_dev *dev, int *flags)
 {
 	if (!(check_name(pnp_dev_name(dev)) ||
 		(dev->card && check_name(dev->card->name))))
@@ -427,49 +424,42 @@ static int __devinit serial_pnp_guess_board(struct pnp_dev *dev)
 static int __devinit
 serial_pnp_probe(struct pnp_dev *dev, const struct pnp_device_id *dev_id)
 {
-	struct uart_8250_port uart;
+	struct uart_port port;
 	int ret, line, flags = dev_id->driver_data;
 
 	if (flags & UNKNOWN_DEV) {
-		ret = serial_pnp_guess_board(dev);
+		ret = serial_pnp_guess_board(dev, &flags);
 		if (ret < 0)
 			return ret;
 	}
 
-	memset(&uart, 0, sizeof(uart));
+	memset(&port, 0, sizeof(struct uart_port));
 	if (pnp_irq_valid(dev, 0))
-		uart.port.irq = pnp_irq(dev, 0);
-	if ((flags & CIR_PORT) && pnp_port_valid(dev, 2)) {
-		uart.port.iobase = pnp_port_start(dev, 2);
-		uart.port.iotype = UPIO_PORT;
-	} else if (pnp_port_valid(dev, 0)) {
-		uart.port.iobase = pnp_port_start(dev, 0);
-		uart.port.iotype = UPIO_PORT;
+		port.irq = pnp_irq(dev, 0);
+	if (pnp_port_valid(dev, 0)) {
+		port.iobase = pnp_port_start(dev, 0);
+		port.iotype = UPIO_PORT;
 	} else if (pnp_mem_valid(dev, 0)) {
-		uart.port.mapbase = pnp_mem_start(dev, 0);
-		uart.port.iotype = UPIO_MEM;
-		uart.port.flags = UPF_IOREMAP;
+		port.mapbase = pnp_mem_start(dev, 0);
+		port.iotype = UPIO_MEM;
+		port.flags = UPF_IOREMAP;
 	} else
 		return -ENODEV;
 
 #ifdef SERIAL_DEBUG_PNP
 	printk(KERN_DEBUG
 		"Setup PNP port: port %x, mem 0x%lx, irq %d, type %d\n",
-		       uart.port.iobase, uart.port.mapbase, uart.port.irq, uart.port.iotype);
+		       port.iobase, port.mapbase, port.irq, port.iotype);
 #endif
-	if (flags & CIR_PORT) {
-		uart.port.flags |= UPF_FIXED_PORT | UPF_FIXED_TYPE;
-		uart.port.type = PORT_8250_CIR;
-	}
 
-	uart.port.flags |= UPF_SKIP_TEST | UPF_BOOT_AUTOCONF;
+	port.flags |= UPF_SKIP_TEST | UPF_BOOT_AUTOCONF;
 	if (pnp_irq_flags(dev, 0) & IORESOURCE_IRQ_SHAREABLE)
-		uart.port.flags |= UPF_SHARE_IRQ;
-	uart.port.uartclk = 1843200;
-	uart.port.dev = &dev->dev;
+		port.flags |= UPF_SHARE_IRQ;
+	port.uartclk = 1843200;
+	port.dev = &dev->dev;
 
-	line = serial8250_register_8250_port(&uart);
-	if (line < 0 || (flags & CIR_PORT))
+	line = serial8250_register_port(&port);
+	if (line < 0)
 		return -ENODEV;
 
 	pnp_set_drvdata(dev, (void *)((long)line + 1));
@@ -517,13 +507,18 @@ static struct pnp_driver serial_pnp_driver = {
 	.id_table	= pnp_dev_table,
 };
 
-int serial8250_pnp_init(void)
+static int __init serial8250_pnp_init(void)
 {
 	return pnp_register_driver(&serial_pnp_driver);
 }
 
-void serial8250_pnp_exit(void)
+static void __exit serial8250_pnp_exit(void)
 {
 	pnp_unregister_driver(&serial_pnp_driver);
 }
 
+module_init(serial8250_pnp_init);
+module_exit(serial8250_pnp_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Generic 8250/16x50 PnP serial driver");

@@ -173,7 +173,7 @@ error_ret:
 }
 
 /* fixme, confirm ordering in this function */
-static int __devexit adis16080_remove(struct spi_device *spi)
+static int adis16080_remove(struct spi_device *spi)
 {
 	iio_device_unregister(spi_get_drvdata(spi));
 	iio_free_device(spi_get_drvdata(spi));

@@ -32,6 +32,8 @@
  * an examples of 1D barcode types are EAN, UPC, Code39, IATA etc.. */
 #define DRIVER_DESC	"Opticon USB barcode to serial driver (1D)"
 
+static bool debug;
+
 static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x065a, 0x0009) },
 	{ },
@@ -78,16 +80,17 @@ static void opticon_read_bulk_callback(struct urb *urb)
 	case -ENOENT:
 	case -ESHUTDOWN:
 		/* this urb is terminated, clean up */
-		dev_dbg(&priv->udev->dev, "%s - urb shutting down with status: %d\n",
-			__func__, status);
+		dbg("%s - urb shutting down with status: %d",
+		    __func__, status);
 		return;
 	default:
-		dev_dbg(&priv->udev->dev, "%s - nonzero urb status received: %d\n",
-			__func__, status);
+		dbg("%s - nonzero urb status received: %d",
+		    __func__, status);
 		goto exit;
 	}
 
-	usb_serial_debug_data(&port->dev, __func__, urb->actual_length, data);
+	usb_serial_debug_data(debug, &port->dev, __func__, urb->actual_length,
+			      data);
 
 	if (urb->actual_length > 2) {
 		data_length = urb->actual_length - 2;
@@ -232,8 +235,8 @@ static void opticon_write_control_callback(struct urb *urb)
 	kfree(urb->setup_packet);
 
 	if (status)
-		dev_dbg(&priv->udev->dev, "%s - nonzero write bulk status received: %d\n",
-			__func__, status);
+		dbg("%s - nonzero write bulk status received: %d",
+		    __func__, status);
 
 	spin_lock_irqsave(&priv->lock, flags);
 	--priv->outstanding_urbs;
@@ -258,7 +261,7 @@ static int opticon_write(struct tty_struct *tty, struct usb_serial_port *port,
 	spin_lock_irqsave(&priv->lock, flags);
 	if (priv->outstanding_urbs > URB_UPPER_LIMIT) {
 		spin_unlock_irqrestore(&priv->lock, flags);
-		dev_dbg(&port->dev, "%s - write limit hit\n", __func__);
+		dbg("%s - write limit hit", __func__);
 		return 0;
 	}
 	priv->outstanding_urbs++;
@@ -281,7 +284,7 @@ static int opticon_write(struct tty_struct *tty, struct usb_serial_port *port,
 
 	memcpy(buffer, buf, count);
 
-	usb_serial_debug_data(&port->dev, __func__, count, buffer);
+	usb_serial_debug_data(debug, &port->dev, __func__, count, buffer);
 
 	/* The conncected devices do not have a bulk write endpoint,
 	 * to transmit data to de barcode device the control endpoint is used */
@@ -345,7 +348,7 @@ static int opticon_write_room(struct tty_struct *tty)
 	spin_lock_irqsave(&priv->lock, flags);
 	if (priv->outstanding_urbs > URB_UPPER_LIMIT * 2 / 3) {
 		spin_unlock_irqrestore(&priv->lock, flags);
-		dev_dbg(&port->dev, "%s - write limit hit\n", __func__);
+		dbg("%s - write limit hit", __func__);
 		return 0;
 	}
 	spin_unlock_irqrestore(&priv->lock, flags);
@@ -408,7 +411,7 @@ static int opticon_tiocmget(struct tty_struct *tty)
 		result |= TIOCM_CTS;
 	spin_unlock_irqrestore(&priv->lock, flags);
 
-	dev_dbg(&port->dev, "%s - %x\n", __func__, result);
+	dbg("%s - %x", __func__, result);
 	return result;
 }
 
@@ -473,7 +476,7 @@ static int opticon_ioctl(struct tty_struct *tty,
 	struct usb_serial_port *port = tty->driver_data;
 	struct opticon_private *priv = usb_get_serial_data(port->serial);
 
-	dev_dbg(&port->dev, "%s - port %d, cmd = 0x%x\n", __func__, port->number, cmd);
+	dbg("%s - port %d, cmd = 0x%x", __func__, port->number, cmd);
 
 	switch (cmd) {
 	case TIOCGSERIAL:
@@ -632,3 +635,6 @@ module_usb_serial_driver(opticon_driver, serial_drivers);
 
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
+
+module_param(debug, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(debug, "Debug enabled or not");

@@ -591,7 +591,7 @@ static int __devinit altera_uart_probe(struct platform_device *pdev)
 	port->ops = &altera_uart_ops;
 	port->flags = UPF_BOOT_AUTOCONF;
 
-	platform_set_drvdata(pdev, port);
+	dev_set_drvdata(&pdev->dev, port);
 
 	uart_add_one_port(&altera_uart_driver, port);
 
@@ -600,11 +600,11 @@ static int __devinit altera_uart_probe(struct platform_device *pdev)
 
 static int __devexit altera_uart_remove(struct platform_device *pdev)
 {
-	struct uart_port *port = platform_get_drvdata(pdev);
+	struct uart_port *port = dev_get_drvdata(&pdev->dev);
 
 	if (port) {
 		uart_remove_one_port(&altera_uart_driver, port);
-		platform_set_drvdata(pdev, NULL);
+		dev_set_drvdata(&pdev->dev, NULL);
 		port->mapbase = 0;
 	}
 

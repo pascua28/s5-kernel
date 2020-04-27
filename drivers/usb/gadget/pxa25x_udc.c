@@ -32,6 +32,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/irq.h>
 #include <linux/clk.h>
+#include <linux/err.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/io.h>
@@ -999,7 +1000,7 @@ static int pxa25x_udc_vbus_draw(struct usb_gadget *_gadget, unsigned mA)
 }
 
 static int pxa25x_start(struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *));
+		int (*bind)(struct usb_gadget *));
 static int pxa25x_stop(struct usb_gadget_driver *driver);
 
 static const struct usb_gadget_ops pxa25x_udc_ops = {
@@ -1258,7 +1259,7 @@ static void udc_enable (struct pxa25x_udc *dev)
  * the driver might get unbound.
  */
 static int pxa25x_start(struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *))
+		int (*bind)(struct usb_gadget *))
 {
 	struct pxa25x_udc	*dev = the_controller;
 	int			retval;
@@ -1286,7 +1287,7 @@ fail:
 		dev->gadget.dev.driver = NULL;
 		return retval;
 	}
-	retval = bind(&dev->gadget, driver);
+	retval = bind(&dev->gadget);
 	if (retval) {
 		DMSG("bind to driver %s --> error %d\n",
 				driver->driver.name, retval);

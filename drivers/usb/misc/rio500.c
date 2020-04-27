@@ -330,7 +330,7 @@ write_rio(struct file *file, const char __user *buffer,
 				thistime -= partial;
 			} else
 				break;
-		}
+		};
 		if (result) {
 			err("Write Whoops - %x", result);
 			errn = -EIO;

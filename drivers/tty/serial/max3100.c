@@ -827,16 +827,14 @@ static int __devexit max3100_remove(struct spi_device *spi)
 
 	/* find out the index for the chip we are removing */
 	for (i = 0; i < MAX_MAX3100; i++)
-		if (max3100s[i] == s) {
-			dev_dbg(&spi->dev, "%s: removing port %d\n", __func__, i);
-			uart_remove_one_port(&max3100_uart_driver, &max3100s[i]->port);
-			kfree(max3100s[i]);
-			max3100s[i] = NULL;
+		if (max3100s[i] == s)
 			break;
-		}
 
-	WARN_ON(i == MAX_MAX3100);
-	
+	dev_dbg(&spi->dev, "%s: removing port %d\n", __func__, i);
+	uart_remove_one_port(&max3100_uart_driver, &max3100s[i]->port);
+	kfree(max3100s[i]);
+	max3100s[i] = NULL;
+
 	/* check if this is the last chip we have */
 	for (i = 0; i < MAX_MAX3100; i++)
 		if (max3100s[i]) {
@@ -912,7 +910,17 @@ static struct spi_driver max3100_driver = {
 	.resume		= max3100_resume,
 };
 
-module_spi_driver(max3100_driver);
+static int __init max3100_init(void)
+{
+	return spi_register_driver(&max3100_driver);
+}
+module_init(max3100_init);
+
+static void __exit max3100_exit(void)
+{
+	spi_unregister_driver(&max3100_driver);
+}
+module_exit(max3100_exit);
 
 MODULE_DESCRIPTION("MAX3100 driver");
 MODULE_AUTHOR("Christian Pellegrin <chripell@evolware.org>");

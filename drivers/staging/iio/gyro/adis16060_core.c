@@ -180,7 +180,7 @@ error_ret:
 }
 
 /* fixme, confirm ordering in this function */
-static int __devexit adis16060_r_remove(struct spi_device *spi)
+static int adis16060_r_remove(struct spi_device *spi)
 {
 	iio_device_unregister(spi_get_drvdata(spi));
 	iio_free_device(spi_get_drvdata(spi));
@@ -206,7 +206,7 @@ error_ret:
 	return ret;
 }
 
-static int __devexit adis16060_w_remove(struct spi_device *spi)
+static int adis16060_w_remove(struct spi_device *spi)
 {
 	return 0;
 }

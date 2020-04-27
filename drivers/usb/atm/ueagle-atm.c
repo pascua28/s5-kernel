@@ -307,34 +307,6 @@ enum {
 #define FW_GET_BYTE(p) (*((__u8 *) (p)))
 
 #define FW_DIR "ueagle-atm/"
-#define EAGLE_FIRMWARE FW_DIR "eagle.fw"
-#define ADI930_FIRMWARE FW_DIR "adi930.fw"
-#define EAGLE_I_FIRMWARE FW_DIR "eagleI.fw"
-#define EAGLE_II_FIRMWARE FW_DIR "eagleII.fw"
-#define EAGLE_III_FIRMWARE FW_DIR "eagleIII.fw"
-#define EAGLE_IV_FIRMWARE FW_DIR "eagleIV.fw"
-
-#define DSP4I_FIRMWARE FW_DIR "DSP4i.bin"
-#define DSP4P_FIRMWARE FW_DIR "DSP4p.bin"
-#define DSP9I_FIRMWARE FW_DIR "DSP9i.bin"
-#define DSP9P_FIRMWARE FW_DIR "DSP9p.bin"
-#define DSPEI_FIRMWARE FW_DIR "DSPei.bin"
-#define DSPEP_FIRMWARE FW_DIR "DSPep.bin"
-#define FPGA930_FIRMWARE FW_DIR "930-fpga.bin"
-
-#define CMV4P_FIRMWARE FW_DIR "CMV4p.bin"
-#define CMV4PV2_FIRMWARE FW_DIR "CMV4p.bin.v2"
-#define CMV4I_FIRMWARE FW_DIR "CMV4i.bin"
-#define CMV4IV2_FIRMWARE FW_DIR "CMV4i.bin.v2"
-#define CMV9P_FIRMWARE FW_DIR "CMV9p.bin"
-#define CMV9PV2_FIRMWARE FW_DIR "CMV9p.bin.v2"
-#define CMV9I_FIRMWARE FW_DIR "CMV9i.bin"
-#define CMV9IV2_FIRMWARE FW_DIR "CMV9i.bin.v2"
-#define CMVEP_FIRMWARE FW_DIR "CMVep.bin"
-#define CMVEPV2_FIRMWARE FW_DIR "CMVep.bin.v2"
-#define CMVEI_FIRMWARE FW_DIR "CMVei.bin"
-#define CMVEIV2_FIRMWARE FW_DIR "CMVei.bin.v2"
-
 #define UEA_FW_NAME_MAX 30
 #define NB_MODEM 4
 
@@ -722,26 +694,26 @@ err:
 static int uea_load_firmware(struct usb_device *usb, unsigned int ver)
 {
 	int ret;
-	char *fw_name = EAGLE_FIRMWARE;
+	char *fw_name = FW_DIR "eagle.fw";
 
 	uea_enters(usb);
 	uea_info(usb, "pre-firmware device, uploading firmware\n");
 
 	switch (ver) {
 	case ADI930:
-		fw_name = ADI930_FIRMWARE;
+		fw_name = FW_DIR "adi930.fw";
 		break;
 	case EAGLE_I:
-		fw_name = EAGLE_I_FIRMWARE;
+		fw_name = FW_DIR "eagleI.fw";
 		break;
 	case EAGLE_II:
-		fw_name = EAGLE_II_FIRMWARE;
+		fw_name = FW_DIR "eagleII.fw";
 		break;
 	case EAGLE_III:
-		fw_name = EAGLE_III_FIRMWARE;
+		fw_name = FW_DIR "eagleIII.fw";
 		break;
 	case EAGLE_IV:
-		fw_name = EAGLE_IV_FIRMWARE;
+		fw_name = FW_DIR "eagleIV.fw";
 		break;
 	}
 
@@ -897,19 +869,19 @@ static int request_dsp(struct uea_softc *sc)
 
 	if (UEA_CHIP_VERSION(sc) == EAGLE_IV) {
 		if (IS_ISDN(sc))
-			dsp_name = DSP4I_FIRMWARE;
+			dsp_name = FW_DIR "DSP4i.bin";
 		else
-			dsp_name = DSP4P_FIRMWARE;
+			dsp_name = FW_DIR "DSP4p.bin";
 	} else if (UEA_CHIP_VERSION(sc) == ADI930) {
 		if (IS_ISDN(sc))
-			dsp_name = DSP9I_FIRMWARE;
+			dsp_name = FW_DIR "DSP9i.bin";
 		else
-			dsp_name = DSP9P_FIRMWARE;
+			dsp_name = FW_DIR "DSP9p.bin";
 	} else {
 		if (IS_ISDN(sc))
-			dsp_name = DSPEI_FIRMWARE;
+			dsp_name = FW_DIR "DSPei.bin";
 		else
-			dsp_name = DSPEP_FIRMWARE;
+			dsp_name = FW_DIR "DSPep.bin";
 	}
 
 	ret = request_firmware(&sc->dsp_firm, dsp_name, &sc->usb_dev->dev);
@@ -1957,7 +1929,7 @@ static int load_XILINX_firmware(struct uea_softc *sc)
 	int ret, size, u, ln;
 	const u8 *pfw;
 	u8 value;
-	char *fw_name = FPGA930_FIRMWARE;
+	char *fw_name = FW_DIR "930-fpga.bin";
 
 	uea_enters(INS_TO_USBDEV(sc));
 
@@ -2786,28 +2758,3 @@ module_usb_driver(uea_driver);
 MODULE_AUTHOR("Damien Bergamini/Matthieu Castet/Stanislaw W. Gruszka");
 MODULE_DESCRIPTION("ADI 930/Eagle USB ADSL Modem driver");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_FIRMWARE(EAGLE_FIRMWARE);
-MODULE_FIRMWARE(ADI930_FIRMWARE);
-MODULE_FIRMWARE(EAGLE_I_FIRMWARE);
-MODULE_FIRMWARE(EAGLE_II_FIRMWARE);
-MODULE_FIRMWARE(EAGLE_III_FIRMWARE);
-MODULE_FIRMWARE(EAGLE_IV_FIRMWARE);
-MODULE_FIRMWARE(DSP4I_FIRMWARE);
-MODULE_FIRMWARE(DSP4P_FIRMWARE);
-MODULE_FIRMWARE(DSP9I_FIRMWARE);
-MODULE_FIRMWARE(DSP9P_FIRMWARE);
-MODULE_FIRMWARE(DSPEI_FIRMWARE);
-MODULE_FIRMWARE(DSPEP_FIRMWARE);
-MODULE_FIRMWARE(FPGA930_FIRMWARE);
-MODULE_FIRMWARE(CMV4P_FIRMWARE);
-MODULE_FIRMWARE(CMV4PV2_FIRMWARE);
-MODULE_FIRMWARE(CMV4I_FIRMWARE);
-MODULE_FIRMWARE(CMV4IV2_FIRMWARE);
-MODULE_FIRMWARE(CMV9P_FIRMWARE);
-MODULE_FIRMWARE(CMV9PV2_FIRMWARE);
-MODULE_FIRMWARE(CMV9I_FIRMWARE);
-MODULE_FIRMWARE(CMV9IV2_FIRMWARE);
-MODULE_FIRMWARE(CMVEP_FIRMWARE);
-MODULE_FIRMWARE(CMVEPV2_FIRMWARE);
-MODULE_FIRMWARE(CMVEI_FIRMWARE);
-MODULE_FIRMWARE(CMVEIV2_FIRMWARE);

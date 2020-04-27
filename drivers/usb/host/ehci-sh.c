@@ -135,27 +135,33 @@ static int ehci_hcd_sh_probe(struct platform_device *pdev)
 	hcd->rsrc_start = res->start;
 	hcd->rsrc_len = resource_size(res);
 
-	hcd->regs = devm_request_and_ioremap(&pdev->dev, res);
+	if (!request_mem_region(hcd->rsrc_start, hcd->rsrc_len,
+				driver->description)) {
+		dev_dbg(&pdev->dev, "controller already in use\n");
+		ret = -EBUSY;
+		goto fail_request_resource;
+	}
+
+	hcd->regs = ioremap_nocache(hcd->rsrc_start, hcd->rsrc_len);
 	if (hcd->regs == NULL) {
 		dev_dbg(&pdev->dev, "error mapping memory\n");
 		ret = -ENXIO;
-		goto fail_request_resource;
+		goto fail_ioremap;
 	}
 
-	priv = devm_kzalloc(&pdev->dev, sizeof(struct ehci_sh_priv),
-			    GFP_KERNEL);
+	priv = kmalloc(sizeof(struct ehci_sh_priv), GFP_KERNEL);
 	if (!priv) {
 		dev_dbg(&pdev->dev, "error allocating priv data\n");
 		ret = -ENOMEM;
-		goto fail_request_resource;
+		goto fail_alloc;
 	}
 
 	/* These are optional, we don't care if they fail */
-	priv->fclk = devm_clk_get(&pdev->dev, "usb_fck");
+	priv->fclk = clk_get(&pdev->dev, "usb_fck");
 	if (IS_ERR(priv->fclk))
 		priv->fclk = NULL;
 
-	priv->iclk = devm_clk_get(&pdev->dev, "usb_ick");
+	priv->iclk = clk_get(&pdev->dev, "usb_ick");
 	if (IS_ERR(priv->iclk))
 		priv->iclk = NULL;
 
@@ -177,6 +183,14 @@ fail_add_hcd:
 	clk_disable(priv->iclk);
 	clk_disable(priv->fclk);
 
+	clk_put(priv->iclk);
+	clk_put(priv->fclk);
+
+	kfree(priv);
+fail_alloc:
+	iounmap(hcd->regs);
+fail_ioremap:
+	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 fail_request_resource:
 	usb_put_hcd(hcd);
 fail_create_hcd:
@@ -191,11 +205,18 @@ static int __exit ehci_hcd_sh_remove(struct platform_device *pdev)
 	struct usb_hcd *hcd = priv->hcd;
 
 	usb_remove_hcd(hcd);
+	iounmap(hcd->regs);
+	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 	usb_put_hcd(hcd);
 	platform_set_drvdata(pdev, NULL);
 
 	clk_disable(priv->fclk);
 	clk_disable(priv->iclk);
+
+	clk_put(priv->fclk);
+	clk_put(priv->iclk);
+
+	kfree(priv);
 
 	return 0;
 }

@@ -218,7 +218,7 @@ static int serial_install(struct tty_driver *driver, struct tty_struct *tty)
 	if (retval)
 		goto error_get_interface;
 
-	retval = tty_port_install(&port->port, driver, tty);
+	retval = tty_standard_install(driver, tty);
 	if (retval)
 		goto error_init_termios;
 
@@ -316,7 +316,8 @@ static void serial_close(struct tty_struct *tty, struct file *filp)
  * Do the resource freeing and refcount dropping for the port.
  * Avoid freeing the console.
  *
- * Called asynchronously after the last tty kref is dropped.
+ * Called asynchronously after the last tty kref is dropped,
+ * and the tty layer has already done the tty_shutdown(tty);
  */
 static void serial_cleanup(struct tty_struct *tty)
 {
@@ -433,7 +434,7 @@ static void serial_set_termios(struct tty_struct *tty, struct ktermios *old)
 	if (port->serial->type->set_termios)
 		port->serial->type->set_termios(tty, port, old);
 	else
-		tty_termios_copy_hw(&tty->termios, old);
+		tty_termios_copy_hw(tty->termios, old);
 }
 
 static int serial_break(struct tty_struct *tty, int break_state)

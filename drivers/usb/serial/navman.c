@@ -21,6 +21,8 @@
 #include <linux/usb.h>
 #include <linux/usb/serial.h>
 
+static bool debug;
+
 static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x0a99, 0x0001) },	/* Talon Technology device */
 	{ USB_DEVICE(0x0df7, 0x0900) },	/* Mobile Action i-gotU */
@@ -60,7 +62,8 @@ static void navman_read_int_callback(struct urb *urb)
 		goto exit;
 	}
 
-	usb_serial_debug_data(&port->dev, __func__, urb->actual_length, data);
+	usb_serial_debug_data(debug, &port->dev, __func__,
+			      urb->actual_length, data);
 
 	tty = tty_port_tty_get(&port->port);
 	if (tty && urb->actual_length) {
@@ -132,3 +135,6 @@ static struct usb_serial_driver * const serial_drivers[] = {
 module_usb_serial_driver(navman_driver, serial_drivers);
 
 MODULE_LICENSE("GPL");
+
+module_param(debug, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(debug, "Debug enabled or not");

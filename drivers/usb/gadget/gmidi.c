@@ -22,6 +22,7 @@
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/utsname.h>
 #include <linux/module.h>
 #include <linux/device.h>
 
@@ -30,13 +31,16 @@
 #include <sound/rawmidi.h>
 
 #include <linux/usb/ch9.h>
-#include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/audio.h>
 #include <linux/usb/midi.h>
 
 #include "gadget_chips.h"
 
+#include "composite.c"
+#include "usbstring.c"
+#include "config.c"
+#include "epautoconf.c"
 #include "f_midi.c"
 
 /*-------------------------------------------------------------------------*/
@@ -46,8 +50,6 @@ MODULE_LICENSE("GPL v2");
 
 static const char shortname[] = "g_midi";
 static const char longname[] = "MIDI Gadget";
-
-USB_GADGET_COMPOSITE_OPTIONS();
 
 static int index = SNDRV_DEFAULT_IDX1;
 module_param(index, int, S_IRUGO);
@@ -83,7 +85,9 @@ MODULE_PARM_DESC(out_ports, "Number of MIDI output ports");
 
 /* string IDs are assigned dynamically */
 
-#define STRING_DESCRIPTION_IDX		USB_GADGET_FIRST_AVAIL_IDX
+#define STRING_MANUFACTURER_IDX		0
+#define STRING_PRODUCT_IDX		1
+#define STRING_DESCRIPTION_IDX		2
 
 static struct usb_device_descriptor device_desc = {
 	.bLength =		USB_DT_DEVICE_SIZE,
@@ -98,9 +102,8 @@ static struct usb_device_descriptor device_desc = {
 };
 
 static struct usb_string strings_dev[] = {
-	[USB_GADGET_MANUFACTURER_IDX].s	= "Grey Innovation",
-	[USB_GADGET_PRODUCT_IDX].s	= "MIDI Gadget",
-	[USB_GADGET_SERIAL_IDX].s	= "",
+	[STRING_MANUFACTURER_IDX].s	= "Grey Innovation",
+	[STRING_PRODUCT_IDX].s		= "MIDI Gadget",
 	[STRING_DESCRIPTION_IDX].s	= "MIDI",
 	{  } /* end of list */
 };
@@ -137,35 +140,61 @@ static int __init midi_bind_config(struct usb_configuration *c)
 
 static int __init midi_bind(struct usb_composite_dev *cdev)
 {
-	int status;
+	struct usb_gadget *gadget = cdev->gadget;
+	int gcnum, status;
 
-	status = usb_string_ids_tab(cdev, strings_dev);
+	status = usb_string_id(cdev);
 	if (status < 0)
 		return status;
-	device_desc.iManufacturer = strings_dev[USB_GADGET_MANUFACTURER_IDX].id;
-	device_desc.iProduct = strings_dev[USB_GADGET_PRODUCT_IDX].id;
-	midi_config.iConfiguration = strings_dev[STRING_DESCRIPTION_IDX].id;
+	strings_dev[STRING_MANUFACTURER_IDX].id = status;
+	device_desc.iManufacturer = status;
+
+	status = usb_string_id(cdev);
+	if (status < 0)
+		return status;
+	strings_dev[STRING_PRODUCT_IDX].id = status;
+	device_desc.iProduct = status;
+
+	/* config description */
+	status = usb_string_id(cdev);
+	if (status < 0)
+		return status;
+	strings_dev[STRING_DESCRIPTION_IDX].id = status;
+
+	midi_config.iConfiguration = status;
+
+	gcnum = usb_gadget_controller_number(gadget);
+	if (gcnum < 0) {
+		/* gmidi is so simple (no altsettings) that
+		 * it SHOULD NOT have problems with bulk-capable hardware.
+		 * so warn about unrecognized controllers, don't panic.
+		 */
+		pr_warning("%s: controller '%s' not recognized\n",
+			   __func__, gadget->name);
+		device_desc.bcdDevice = cpu_to_le16(0x9999);
+	} else {
+		device_desc.bcdDevice = cpu_to_le16(0x0200 + gcnum);
+	}
 
 	status = usb_add_config(cdev, &midi_config, midi_bind_config);
 	if (status < 0)
 		return status;
-	usb_composite_overwrite_options(cdev, &coverwrite);
+
 	pr_info("%s\n", longname);
 	return 0;
 }
 
-static __refdata struct usb_composite_driver midi_driver = {
+static struct usb_composite_driver midi_driver = {
 	.name		= (char *) longname,
 	.dev		= &device_desc,
 	.strings	= dev_strings,
 	.max_speed	= USB_SPEED_HIGH,
-	.bind		= midi_bind,
 	.unbind		= __exit_p(midi_unbind),
 };
 
 static int __init midi_init(void)
 {
-	return usb_composite_probe(&midi_driver);
+	return usb_composite_probe(&midi_driver, midi_bind);
 }
 module_init(midi_init);
 

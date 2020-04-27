@@ -135,6 +135,7 @@ struct s3c_hsudc_req {
  * @dev: The device reference used by probe function.
  * @lock: Lock to synchronize the usage of Endpoints (EP's are indexed).
  * @regs: Remapped base address of controller's register space.
+ * @mem_rsrc: Device memory resource used for remapping device register space.
  * irq: IRQ number used by the controller.
  * uclk: Reference to the controller clock.
  * ep0state: Current state of EP0.
@@ -149,6 +150,7 @@ struct s3c_hsudc {
 	struct regulator_bulk_data supplies[ARRAY_SIZE(s3c_hsudc_supply_names)];
 	spinlock_t lock;
 	void __iomem *regs;
+	struct resource *mem_rsrc;
 	int irq;
 	struct clk *uclk;
 	int ep0state;
@@ -834,9 +836,9 @@ static struct usb_request *s3c_hsudc_alloc_request(struct usb_ep *_ep,
 {
 	struct s3c_hsudc_req *hsreq;
 
-	hsreq = kzalloc(sizeof(*hsreq), gfp_flags);
+	hsreq = kzalloc(sizeof *hsreq, gfp_flags);
 	if (!hsreq)
-		return NULL;
+		return 0;
 
 	INIT_LIST_HEAD(&hsreq->queue);
 	return &hsreq->req;
@@ -905,16 +907,16 @@ static int s3c_hsudc_queue(struct usb_ep *_ep, struct usb_request *_req,
 			csr = readl((u32)hsudc->regs + offset);
 			if (!(csr & S3C_ESR_TX_SUCCESS) &&
 				(s3c_hsudc_write_fifo(hsep, hsreq) == 1))
-				hsreq = NULL;
+				hsreq = 0;
 		} else {
 			csr = readl((u32)hsudc->regs + offset);
 			if ((csr & S3C_ESR_RX_SUCCESS)
 				   && (s3c_hsudc_read_fifo(hsep, hsreq) == 1))
-				hsreq = NULL;
+				hsreq = 0;
 		}
 	}
 
-	if (hsreq)
+	if (hsreq != 0)
 		list_add_tail(&hsreq->queue, &hsep->queue);
 
 	spin_unlock_irqrestore(&hsudc->lock, flags);
@@ -1271,7 +1273,7 @@ static int __devinit s3c_hsudc_probe(struct platform_device *pdev)
 	struct s3c24xx_hsudc_platdata *pd = pdev->dev.platform_data;
 	int ret, i;
 
-	hsudc = devm_kzalloc(&pdev->dev, sizeof(struct s3c_hsudc) +
+	hsudc = kzalloc(sizeof(struct s3c_hsudc) +
 			sizeof(struct s3c_hsudc_ep) * pd->epnum,
 			GFP_KERNEL);
 	if (!hsudc) {
@@ -1296,12 +1298,25 @@ static int __devinit s3c_hsudc_probe(struct platform_device *pdev)
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(dev, "unable to obtain driver resource data\n");
+		ret = -ENODEV;
+		goto err_res;
+	}
 
-	hsudc->regs = devm_request_and_ioremap(&pdev->dev, res);
+	hsudc->mem_rsrc = request_mem_region(res->start, resource_size(res),
+				dev_name(&pdev->dev));
+	if (!hsudc->mem_rsrc) {
+		dev_err(dev, "failed to reserve register area\n");
+		ret = -ENODEV;
+		goto err_res;
+	}
+
+	hsudc->regs = ioremap(res->start, resource_size(res));
 	if (!hsudc->regs) {
 		dev_err(dev, "error mapping device register area\n");
 		ret = -EBUSY;
-		goto err_res;
+		goto err_remap;
 	}
 
 	spin_lock_init(&hsudc->lock);
@@ -1324,22 +1339,21 @@ static int __devinit s3c_hsudc_probe(struct platform_device *pdev)
 	ret = platform_get_irq(pdev, 0);
 	if (ret < 0) {
 		dev_err(dev, "unable to obtain IRQ number\n");
-		goto err_res;
+		goto err_irq;
 	}
 	hsudc->irq = ret;
 
-	ret = devm_request_irq(&pdev->dev, hsudc->irq, s3c_hsudc_irq, 0,
-				driver_name, hsudc);
+	ret = request_irq(hsudc->irq, s3c_hsudc_irq, 0, driver_name, hsudc);
 	if (ret < 0) {
 		dev_err(dev, "irq request failed\n");
-		goto err_res;
+		goto err_irq;
 	}
 
-	hsudc->uclk = devm_clk_get(&pdev->dev, "usb-device");
+	hsudc->uclk = clk_get(&pdev->dev, "usb-device");
 	if (IS_ERR(hsudc->uclk)) {
 		dev_err(dev, "failed to find usb-device clock source\n");
 		ret = PTR_ERR(hsudc->uclk);
-		goto err_res;
+		goto err_clk;
 	}
 	clk_enable(hsudc->uclk);
 
@@ -1365,12 +1379,21 @@ err_add_udc:
 	device_unregister(&hsudc->gadget.dev);
 err_add_device:
 	clk_disable(hsudc->uclk);
+	clk_put(hsudc->uclk);
+err_clk:
+	free_irq(hsudc->irq, hsudc);
+err_irq:
+	iounmap(hsudc->regs);
+
+err_remap:
+	release_mem_region(res->start, resource_size(res));
 err_res:
 	if (hsudc->transceiver)
 		usb_put_transceiver(hsudc->transceiver);
 
 	regulator_bulk_free(ARRAY_SIZE(hsudc->supplies), hsudc->supplies);
 err_supplies:
+	kfree(hsudc);
 	return ret;
 }
 

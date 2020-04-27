@@ -711,11 +711,15 @@ static void ldisc_receive_buf(struct tty_struct *tty,
 
 /* tty callbacks */
 
-static int install(struct tty_driver *driver, struct tty_struct *tty)
+/* Called when a port is opened.  Init and enable port.
+ */
+static int open(struct tty_struct *tty, struct file *filp)
 {
 	SLMP_INFO *info;
-	int line = tty->index;
+	int retval, line;
+	unsigned long flags;
 
+	line = tty->index;
 	if (line >= synclinkmp_device_count) {
 		printk("%s(%d): open with invalid line #%d.\n",
 			__FILE__,__LINE__,line);
@@ -723,30 +727,17 @@ static int install(struct tty_driver *driver, struct tty_struct *tty)
 	}
 
 	info = synclinkmp_device_list;
-	while (info && info->line != line)
+	while(info && info->line != line)
 		info = info->next_device;
 	if (sanity_check(info, tty->name, "open"))
 		return -ENODEV;
-	if (info->init_error) {
+	if ( info->init_error ) {
 		printk("%s(%d):%s device is not allocated, init error=%d\n",
-			__FILE__, __LINE__, info->device_name,
-			info->init_error);
+			__FILE__,__LINE__,info->device_name,info->init_error);
 		return -ENODEV;
 	}
 
 	tty->driver_data = info;
-
-	return tty_port_install(&info->port, driver, tty);
-}
-
-/* Called when a port is opened.  Init and enable port.
- */
-static int open(struct tty_struct *tty, struct file *filp)
-{
-	SLMP_INFO *info = tty->driver_data;
-	unsigned long flags;
-	int retval;
-
 	info->port.tty = tty;
 
 	if (debug_level >= DEBUG_LEVEL_INFO)
@@ -882,7 +873,7 @@ static void set_termios(struct tty_struct *tty, struct ktermios *old_termios)
 
 	/* Handle transition to B0 status */
 	if (old_termios->c_cflag & CBAUD &&
-	    !(tty->termios.c_cflag & CBAUD)) {
+	    !(tty->termios->c_cflag & CBAUD)) {
 		info->serial_signals &= ~(SerialSignal_RTS + SerialSignal_DTR);
 		spin_lock_irqsave(&info->lock,flags);
 	 	set_signals(info);
@@ -891,9 +882,9 @@ static void set_termios(struct tty_struct *tty, struct ktermios *old_termios)
 
 	/* Handle transition away from B0 status */
 	if (!(old_termios->c_cflag & CBAUD) &&
-	    tty->termios.c_cflag & CBAUD) {
+	    tty->termios->c_cflag & CBAUD) {
 		info->serial_signals |= SerialSignal_DTR;
- 		if (!(tty->termios.c_cflag & CRTSCTS) ||
+ 		if (!(tty->termios->c_cflag & CRTSCTS) ||
  		    !test_bit(TTY_THROTTLED, &tty->flags)) {
 			info->serial_signals |= SerialSignal_RTS;
  		}
@@ -904,7 +895,7 @@ static void set_termios(struct tty_struct *tty, struct ktermios *old_termios)
 
 	/* Handle turning off CRTSCTS */
 	if (old_termios->c_cflag & CRTSCTS &&
-	    !(tty->termios.c_cflag & CRTSCTS)) {
+	    !(tty->termios->c_cflag & CRTSCTS)) {
 		tty->hw_stopped = 0;
 		tx_release(tty);
 	}
@@ -1482,7 +1473,7 @@ static void throttle(struct tty_struct * tty)
 	if (I_IXOFF(tty))
 		send_xchar(tty, STOP_CHAR(tty));
 
- 	if (tty->termios.c_cflag & CRTSCTS) {
+ 	if (tty->termios->c_cflag & CRTSCTS) {
 		spin_lock_irqsave(&info->lock,flags);
 		info->serial_signals &= ~SerialSignal_RTS;
 	 	set_signals(info);
@@ -1511,7 +1502,7 @@ static void unthrottle(struct tty_struct * tty)
 			send_xchar(tty, START_CHAR(tty));
 	}
 
- 	if (tty->termios.c_cflag & CRTSCTS) {
+ 	if (tty->termios->c_cflag & CRTSCTS) {
 		spin_lock_irqsave(&info->lock,flags);
 		info->serial_signals |= SerialSignal_RTS;
 	 	set_signals(info);
@@ -2500,7 +2491,7 @@ static void isr_io_pin( SLMP_INFO *info, u16 status )
 			}
 		}
 
-		if (tty_port_cts_enabled(&info->port) &&
+		if ( (info->port.flags & ASYNC_CTS_FLOW) &&
 		     (status & MISCSTATUS_CTS_LATCHED) ) {
 			if ( info->port.tty ) {
 				if (info->port.tty->hw_stopped) {
@@ -2717,7 +2708,7 @@ static void shutdown(SLMP_INFO * info)
 
 	reset_port(info);
 
- 	if (!info->port.tty || info->port.tty->termios.c_cflag & HUPCL) {
+ 	if (!info->port.tty || info->port.tty->termios->c_cflag & HUPCL) {
  		info->serial_signals &= ~(SerialSignal_DTR + SerialSignal_RTS);
 		set_signals(info);
 	}
@@ -2758,7 +2749,7 @@ static void program_hw(SLMP_INFO *info)
 
 	get_signals(info);
 
-	if (info->netcount || (info->port.tty && info->port.tty->termios.c_cflag & CREAD) )
+	if (info->netcount || (info->port.tty && info->port.tty->termios->c_cflag & CREAD) )
 		rx_start(info);
 
 	spin_unlock_irqrestore(&info->lock,flags);
@@ -2771,14 +2762,14 @@ static void change_params(SLMP_INFO *info)
 	unsigned cflag;
 	int bits_per_char;
 
-	if (!info->port.tty)
+	if (!info->port.tty || !info->port.tty->termios)
 		return;
 
 	if (debug_level >= DEBUG_LEVEL_INFO)
 		printk("%s(%d):%s change_params()\n",
 			 __FILE__,__LINE__, info->device_name );
 
-	cflag = info->port.tty->termios.c_cflag;
+	cflag = info->port.tty->termios->c_cflag;
 
 	/* if B0 rate (hangup) specified then negate DTR and RTS */
 	/* otherwise assert DTR and RTS */
@@ -3315,7 +3306,7 @@ static int block_til_ready(struct tty_struct *tty, struct file *filp,
 		return 0;
 	}
 
-	if (tty->termios.c_cflag & CLOCAL)
+	if (tty->termios->c_cflag & CLOCAL)
 		do_clocal = true;
 
 	/* Wait for carrier detect and the line to become
@@ -3341,7 +3332,7 @@ static int block_til_ready(struct tty_struct *tty, struct file *filp,
 	port->blocked_open++;
 
 	while (1) {
-		if (tty->termios.c_cflag & CBAUD)
+		if (tty->termios->c_cflag & CBAUD)
 			tty_port_raise_dtr_rts(port);
 
 		set_current_state(TASK_INTERRUPTIBLE);
@@ -3366,9 +3357,9 @@ static int block_til_ready(struct tty_struct *tty, struct file *filp,
 			printk("%s(%d):%s block_til_ready() count=%d\n",
 				 __FILE__,__LINE__, tty->driver->name, port->count );
 
-		tty_unlock(tty);
+		tty_unlock();
 		schedule();
-		tty_lock(tty);
+		tty_lock();
 	}
 
 	set_current_state(TASK_RUNNING);
@@ -3890,7 +3881,6 @@ static void device_init(int adapter_num, struct pci_dev *pdev)
 }
 
 static const struct tty_operations ops = {
-	.install = install,
 	.open = open,
 	.close = close,
 	.write = write,

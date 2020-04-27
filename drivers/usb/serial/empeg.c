@@ -28,6 +28,8 @@
 #include <linux/usb.h>
 #include <linux/usb/serial.h>
 
+static bool debug;
+
 /*
  * Version Information
  */
@@ -94,7 +96,7 @@ static int empeg_startup(struct usb_serial *serial)
 
 static void empeg_init_termios(struct tty_struct *tty)
 {
-	struct ktermios *termios = &tty->termios;
+	struct ktermios *termios = tty->termios;
 
 	/*
 	 * The empeg-car player wants these particular tty settings.
@@ -141,3 +143,6 @@ module_usb_serial_driver(empeg_driver, serial_drivers);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
+
+module_param(debug, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(debug, "Debug enabled or not");

@@ -32,7 +32,6 @@
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
-#include <linux/usb/nop-usb-xceiv.h>
 
 #include <mach/cputype.h>
 
@@ -114,7 +113,8 @@ static void davinci_musb_enable(struct musb *musb)
 		dma_off = 0;
 
 	/* force a DRVVBUS irq so we can start polling for ID change */
-	musb_writel(musb->ctrl_base, DAVINCI_USB_INT_SET_REG,
+	if (is_otg_enabled(musb))
+		musb_writel(musb->ctrl_base, DAVINCI_USB_INT_SET_REG,
 			DAVINCI_INTR_DRVVBUS << DAVINCI_USB_USBINT_SHIFT);
 }
 
@@ -232,8 +232,10 @@ static void otg_timer(unsigned long _musb)
 			MUSB_INTR_VBUSERROR << DAVINCI_USB_USBINT_SHIFT);
 		break;
 	case OTG_STATE_B_IDLE:
-		/*
-		 * There's no ID-changed IRQ, so we have no good way to tell
+		if (!is_peripheral_enabled(musb))
+			break;
+
+		/* There's no ID-changed IRQ, so we have no good way to tell
 		 * when to switch to the A-Default state machine (by setting
 		 * the DEVCTL.SESSION flag).
 		 *
@@ -311,7 +313,8 @@ static irqreturn_t davinci_musb_interrupt(int irq, void *__hci)
 		u8	devctl = musb_readb(mregs, MUSB_DEVCTL);
 		int	err = musb->int_usb & MUSB_INTR_VBUSERROR;
 
-		err = musb->int_usb & MUSB_INTR_VBUSERROR;
+		err = is_host_enabled(musb)
+				&& (musb->int_usb & MUSB_INTR_VBUSERROR);
 		if (err) {
 			/* The Mentor core doesn't debounce VBUS as needed
 			 * to cope with device connect current spikes. This
@@ -327,7 +330,7 @@ static irqreturn_t davinci_musb_interrupt(int irq, void *__hci)
 			musb->xceiv->state = OTG_STATE_A_WAIT_VFALL;
 			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 			WARNING("VBUS error workaround (delay coming)\n");
-		} else if (drvvbus) {
+		} else if (is_host_enabled(musb) && drvvbus) {
 			MUSB_HST_MODE(musb);
 			otg->default_a = 1;
 			musb->xceiv->state = OTG_STATE_A_WAIT_VRISE;
@@ -360,7 +363,8 @@ static irqreturn_t davinci_musb_interrupt(int irq, void *__hci)
 	musb_writel(tibase, DAVINCI_USB_EOI_REG, 0);
 
 	/* poll for ID change */
-	if (musb->xceiv->state == OTG_STATE_B_IDLE)
+	if (is_otg_enabled(musb)
+			&& musb->xceiv->state == OTG_STATE_B_IDLE)
 		mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 
 	spin_unlock_irqrestore(&musb->lock, flags);
@@ -391,7 +395,8 @@ static int davinci_musb_init(struct musb *musb)
 	if (revision == 0)
 		goto fail;
 
-	setup_timer(&otg_workaround, otg_timer, (unsigned long) musb);
+	if (is_host_enabled(musb))
+		setup_timer(&otg_workaround, otg_timer, (unsigned long) musb);
 
 	davinci_musb_source_power(musb, 0, 1);
 
@@ -412,7 +417,12 @@ static int davinci_musb_init(struct musb *musb)
 	if (cpu_is_davinci_dm355()) {
 		u32	deepsleep = __raw_readl(DM355_DEEPSLEEP);
 
-		deepsleep &= ~DRVVBUS_FORCE;
+		if (is_host_enabled(musb)) {
+			deepsleep &= ~DRVVBUS_OVERRIDE;
+		} else {
+			deepsleep &= ~DRVVBUS_FORCE;
+			deepsleep |= DRVVBUS_OVERRIDE;
+		}
 		__raw_writel(deepsleep, DM355_DEEPSLEEP);
 	}
 
@@ -441,7 +451,8 @@ unregister:
 
 static int davinci_musb_exit(struct musb *musb)
 {
-	del_timer_sync(&otg_workaround);
+	if (is_host_enabled(musb))
+		del_timer_sync(&otg_workaround);
 
 	/* force VBUS off */
 	if (cpu_is_davinci_dm355()) {
@@ -455,7 +466,7 @@ static int davinci_musb_exit(struct musb *musb)
 	davinci_musb_source_power(musb, 0 /*off*/, 1);
 
 	/* delay, to avoid problems with module reload */
-	if (musb->xceiv->otg->default_a) {
+	if (is_host_enabled(musb) && musb->xceiv->otg->default_a) {
 		int	maxdelay = 30;
 		u8	devctl, warn = 0;
 
@@ -510,7 +521,6 @@ static int __devinit davinci_probe(struct platform_device *pdev)
 	struct clk			*clk;
 
 	int				ret = -ENOMEM;
-	int				musbid;
 
 	glue = kzalloc(sizeof(*glue), GFP_KERNEL);
 	if (!glue) {
@@ -518,34 +528,25 @@ static int __devinit davinci_probe(struct platform_device *pdev)
 		goto err0;
 	}
 
-	/* get the musb id */
-	musbid = musb_get_id(&pdev->dev, GFP_KERNEL);
-	if (musbid < 0) {
-		dev_err(&pdev->dev, "failed to allocate musb id\n");
-		ret = -ENOMEM;
-		goto err1;
-	}
-
-	musb = platform_device_alloc("musb-hdrc", musbid);
+	musb = platform_device_alloc("musb-hdrc", -1);
 	if (!musb) {
 		dev_err(&pdev->dev, "failed to allocate musb device\n");
-		goto err2;
+		goto err1;
 	}
 
 	clk = clk_get(&pdev->dev, "usb");
 	if (IS_ERR(clk)) {
 		dev_err(&pdev->dev, "failed to get clock\n");
 		ret = PTR_ERR(clk);
-		goto err3;
+		goto err2;
 	}
 
 	ret = clk_enable(clk);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to enable clock\n");
-		goto err4;
+		goto err3;
 	}
 
-	musb->id			= musbid;
 	musb->dev.parent		= &pdev->dev;
 	musb->dev.dma_mask		= &davinci_dmamask;
 	musb->dev.coherent_dma_mask	= davinci_dmamask;
@@ -562,34 +563,31 @@ static int __devinit davinci_probe(struct platform_device *pdev)
 			pdev->num_resources);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to add resources\n");
-		goto err5;
+		goto err4;
 	}
 
 	ret = platform_device_add_data(musb, pdata, sizeof(*pdata));
 	if (ret) {
 		dev_err(&pdev->dev, "failed to add platform_data\n");
-		goto err5;
+		goto err4;
 	}
 
 	ret = platform_device_add(musb);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register musb device\n");
-		goto err5;
+		goto err4;
 	}
 
 	return 0;
 
-err5:
+err4:
 	clk_disable(clk);
 
-err4:
+err3:
 	clk_put(clk);
 
-err3:
-	platform_device_put(musb);
-
 err2:
-	musb_put_id(&pdev->dev, musbid);
+	platform_device_put(musb);
 
 err1:
 	kfree(glue);
@@ -602,7 +600,6 @@ static int __devexit davinci_remove(struct platform_device *pdev)
 {
 	struct davinci_glue		*glue = platform_get_drvdata(pdev);
 
-	musb_put_id(&pdev->dev, glue->musb->id);
 	platform_device_del(glue->musb);
 	platform_device_put(glue->musb);
 	clk_disable(glue->clk);

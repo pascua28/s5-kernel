@@ -176,6 +176,12 @@ static int __devinit ehci_hcd_xilinx_of_probe(struct platform_device *op)
 	hcd->rsrc_start = res.start;
 	hcd->rsrc_len = resource_size(&res);
 
+	if (!request_mem_region(hcd->rsrc_start, hcd->rsrc_len, hcd_name)) {
+		printk(KERN_ERR "%s: request_mem_region failed\n", __FILE__);
+		rv = -EBUSY;
+		goto err_rmr;
+	}
+
 	irq = irq_of_parse_and_map(dn, 0);
 	if (!irq) {
 		printk(KERN_ERR "%s: irq_of_parse_and_map failed\n", __FILE__);
@@ -183,11 +189,11 @@ static int __devinit ehci_hcd_xilinx_of_probe(struct platform_device *op)
 		goto err_irq;
 	}
 
-	hcd->regs = devm_request_and_ioremap(&op->dev, &res);
+	hcd->regs = ioremap(hcd->rsrc_start, hcd->rsrc_len);
 	if (!hcd->regs) {
-		pr_err("%s: devm_request_and_ioremap failed\n", __FILE__);
+		printk(KERN_ERR "%s: ioremap failed\n", __FILE__);
 		rv = -ENOMEM;
-		goto err_irq;
+		goto err_ioremap;
 	}
 
 	ehci = hcd_to_ehci(hcd);
@@ -223,7 +229,12 @@ static int __devinit ehci_hcd_xilinx_of_probe(struct platform_device *op)
 	if (rv == 0)
 		return 0;
 
+	iounmap(hcd->regs);
+
+err_ioremap:
 err_irq:
+	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
+err_rmr:
 	usb_put_hcd(hcd);
 
 	return rv;
@@ -244,6 +255,9 @@ static int ehci_hcd_xilinx_of_remove(struct platform_device *op)
 	dev_dbg(&op->dev, "stopping XILINX-OF USB Controller\n");
 
 	usb_remove_hcd(hcd);
+
+	iounmap(hcd->regs);
+	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 
 	usb_put_hcd(hcd);
 

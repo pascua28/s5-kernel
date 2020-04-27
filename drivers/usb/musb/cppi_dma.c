@@ -1315,7 +1315,7 @@ irqreturn_t cppi_interrupt(int irq, void *dev_id)
 }
 
 /* Instantiate a software object representing a DMA controller. */
-struct dma_controller *__devinit
+struct dma_controller *__init
 dma_controller_create(struct musb *musb, void __iomem *mregs)
 {
 	struct cppi		*controller;
