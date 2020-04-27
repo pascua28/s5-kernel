@@ -111,6 +111,39 @@ static inline void dma_free_noncoherent(struct device *dev, size_t size,
 
 extern int dma_supported(struct device *dev, u64 mask);
 
+/*
+ * dma_coherent_pre_ops - barrier functions for coherent memory before DMA.
+ * A barrier is required to ensure memory operations are complete before the
+ * initiation of a DMA xfer.
+ * If the coherent memory is Strongly Ordered
+ * - pre ARMv7 and 8x50 guarantees ordering wrt other mem accesses
+ * - ARMv7 guarantees ordering only within a 1KB block, so we need a barrier
+ * If coherent memory is normal then we need a barrier to prevent
+ * reordering
+ */
+static inline void dma_coherent_pre_ops(void)
+{
+#if COHERENT_IS_NORMAL == 1
+	dmb();
+#else
+	barrier();
+#endif
+}
+/*
+ * dma_post_coherent_ops - barrier functions for coherent memory after DMA.
+ * If the coherent memory is Strongly Ordered we dont need a barrier since
+ * there are no speculative fetches to Strongly Ordered memory.
+ * If coherent memory is normal then we need a barrier to prevent reordering
+ */
+static inline void dma_coherent_post_ops(void)
+{
+#if COHERENT_IS_NORMAL == 1
+	dmb();
+#else
+	barrier();
+#endif
+}
+
 /**
  * arm_dma_alloc - allocate consistent memory for DMA
  * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
@@ -201,6 +234,56 @@ static inline void dma_free_writecombine(struct device *dev, size_t size,
 	DEFINE_DMA_ATTRS(attrs);
 	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
 	return dma_free_attrs(dev, size, cpu_addr, dma_handle, &attrs);
+}
+
+static inline void *dma_alloc_stronglyordered(struct device *dev, size_t size,
+				       dma_addr_t *dma_handle, gfp_t flag)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
+	return dma_alloc_attrs(dev, size, dma_handle, flag, &attrs);
+}
+
+static inline void dma_free_stronglyordered(struct device *dev, size_t size,
+				     void *cpu_addr, dma_addr_t dma_handle)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
+	return dma_free_attrs(dev, size, cpu_addr, dma_handle, &attrs);
+}
+
+static inline int dma_mmap_stronglyordered(struct device *dev,
+		struct vm_area_struct *vma, void *cpu_addr,
+		dma_addr_t dma_addr, size_t size)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
+	return dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, &attrs);
+}
+
+static inline void *dma_alloc_nonconsistent(struct device *dev, size_t size,
+				       dma_addr_t *dma_handle, gfp_t flag)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+	return dma_alloc_attrs(dev, size, dma_handle, flag, &attrs);
+}
+
+static inline void dma_free_nonconsistent(struct device *dev, size_t size,
+				     void *cpu_addr, dma_addr_t dma_handle)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+	return dma_free_attrs(dev, size, cpu_addr, dma_handle, &attrs);
+}
+
+static inline int dma_mmap_nonconsistent(struct device *dev,
+		struct vm_area_struct *vma, void *cpu_addr,
+		dma_addr_t dma_addr, size_t size)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+	return dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, &attrs);
 }
 
 /*
