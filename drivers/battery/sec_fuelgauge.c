@@ -601,7 +601,7 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 	}
 
 	if (fuelgauge->pdata->fg_irq > 0) {
-		INIT_DELAYED_WORK_DEFERRABLE(
+		INIT_DEFERRABLE_WORK(
 			&fuelgauge->isr_work, sec_fg_isr_work);
 
 		fuelgauge->fg_irq = gpio_to_irq(fuelgauge->pdata->fg_irq);

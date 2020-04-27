@@ -1904,7 +1904,7 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 	}
 
 	if (charger->pdata->chg_irq) {
-		INIT_DELAYED_WORK_DEFERRABLE(
+		INIT_DEFERRABLE_WORK(
 				&charger->isr_work, sec_chg_isr_work);
 		ret = request_threaded_irq(charger->pdata->chg_irq,
 				NULL, sec_chg_irq_thread,
