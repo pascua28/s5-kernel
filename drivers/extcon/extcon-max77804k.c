@@ -184,6 +184,45 @@ struct max77804k_muic_info {
 #endif
 };
 
+static const char *max77804k_extcon_cable[] = {
+	[EXTCON_USB]		= "USB",
+	[EXTCON_USB_HOST]	= "USB-Host",
+	[EXTCON_USB_HOST_5V]	= "USB-Host-5V",
+	[EXTCON_TA]		= "TA",
+	[EXTCON_UNDEFINED_CHARGER]	= "Undefined-Charger",
+	[EXTCON_CEA936_CHG]	= "CEA936",
+	[EXTCON_CHARGE_DOWNSTREAM]	= "Charge-downstream",
+#if defined(CONFIG_MUIC_DET_JACK)
+	[EXTCON_EARJACK]	= "Earjack",
+#endif
+	[EXTCON_MHL]		= "MHL",
+	[EXTCON_MHL_VB]		= "MHL-VB",
+	[EXTCON_DESKDOCK]	= "Desk-dock",
+	[EXTCON_DESKDOCK_VB]	= "Desk-dock-VB",
+	[EXTCON_CARDOCK]	= "Car-dock",
+	[EXTCON_CARDOCK_VB]	= "Car-dock-VB",
+	[EXTCON_AUDIODOCK]	= "Audio-dock",
+	[EXTCON_SMARTDOCK]	= "Smart-dock",
+	[EXTCON_SMARTDOCK_TA]	= "Smart-dock-TA",
+	[EXTCON_SMARTDOCK_USB]	= "Smart-dock-USB",
+	[EXTCON_JIG_UARTOFF]	= "JIG-UART-OFF",
+	[EXTCON_JIG_UARTOFF_VB]	= "JIG-UART-OFF-VB",
+	[EXTCON_JIG_UARTON]	= "JIG-UART-ON",
+	[EXTCON_JIG_USBOFF]	= "JIG-USB-OFF",
+	[EXTCON_JIG_USBON]	= "JIG-USB-ON",
+	[EXTCON_INCOMPATIBLE]	= "Incompatible-TA",
+	[EXTCON_CHARGING_CABLE]	= "Charging-Cable",
+#if defined(CONFIG_MUIC_MAX77804K_SUPPORT_HMT_DETECTION)
+	[EXTCON_HMT]	= "HMT",
+#endif
+#if defined(CONFIG_MUIC_MAX77804K_SUPPORT_LANHUB)
+	[EXTCON_LANHUB]		= "Lan-Hub",
+	[EXTCON_LANHUB_TA]	= "Lan-Hub-TA",
+#endif
+	[EXTCON_NONE] = "None",
+	NULL,
+};
+
 #if defined(CONFIG_MUIC_DET_JACK)
 static struct switch_dev switch_earjack = {
 	.name = "h2w",		/* /sys/class/switch/h2w/state */
@@ -2252,7 +2291,7 @@ static int __devinit max77804k_muic_probe(struct platform_device *pdev)
 	}
 
 	info->edev->name=EXTCON_DEV_NAME;
-	info->edev->supported_cable = extcon_cable_name;
+	info->edev->supported_cable = max77804k_extcon_cable;
 
 	ret = extcon_dev_register(info->edev, NULL);
 	if (ret) {
