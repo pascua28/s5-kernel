@@ -206,7 +206,6 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
 #include <linux/cache.h>
 #include <linux/list.h>
 #include <linux/radix-tree.h>
-#include <linux/prio_tree.h>
 #include <linux/init.h>
 #include <linux/pid.h>
 #include <linux/bug.h>
