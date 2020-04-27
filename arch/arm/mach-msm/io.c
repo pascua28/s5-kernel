@@ -31,6 +31,8 @@
 #include <linux/of_fdt.h>
 
 #include <mach/board.h>
+
+#include "common.h"
 #include "board-dt.h"
 
 #define MSM_CHIP_DEVICE_TYPE(name, chip, mem_type) { \
