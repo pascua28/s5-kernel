@@ -36,6 +36,7 @@
 #define __LINUX_REGULATOR_CONSUMER_H_
 
 #include <linux/compiler.h>
+#include <linux/types.h>
 
 struct device;
 struct notifier_block;
