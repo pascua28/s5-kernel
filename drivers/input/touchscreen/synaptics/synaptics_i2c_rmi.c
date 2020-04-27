@@ -3952,7 +3952,7 @@ static void synaptics_rmi4_set_input_data(struct synaptics_rmi4_data *rmi4_data)
 #endif
 
 	input_mt_init_slots(rmi4_data->input_dev,
-			rmi4_data->num_of_fingers);
+			rmi4_data->num_of_fingers, 0);
 
 	f1a = NULL;
 	if (!list_empty(&rmi->support_fn_list)) {
