@@ -105,4 +105,8 @@ extern unsigned long gen_pool_first_fit(unsigned long *map, unsigned long size,
 extern unsigned long gen_pool_best_fit(unsigned long *map, unsigned long size,
 		unsigned long start, unsigned int nr, void *data);
 
+u64 __must_check
+gen_pool_alloc_aligned(struct gen_pool *pool, size_t size,
+                       unsigned alignment_order);
+
 #endif /* __GENALLOC_H__ */
