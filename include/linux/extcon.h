@@ -87,7 +87,7 @@ enum extcon_cable_name {
 #define SUPPORTED_CABLE_MAX (EXTCON_NONE + 1)
 #define CABLE_NAME_MAX		SUPPORTED_CABLE_MAX
 
-extern const char *extcon_cable_name[CABLE_NAME_MAX + 1];
+extern const char extcon_cable_name[][CABLE_NAME_MAX + 1];
 
 struct extcon_cable;
 
