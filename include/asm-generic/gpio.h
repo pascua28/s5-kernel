@@ -23,7 +23,9 @@
  * actually an estimate of a board-specific value.
  */
 
-#ifndef ARCH_NR_GPIOS
+#ifdef CONFIG_ARCH_HAVE_CUSTOM_GPIO_H
+#include <mach/gpio.h>
+#else
 #define ARCH_NR_GPIOS		256
 #endif
 
