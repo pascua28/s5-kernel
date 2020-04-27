@@ -452,7 +452,6 @@ int get_num_events(void)
 }
 
 static struct arm_pmu krait_l2_pmu = {
-	.type		=	ARM_PMU_DEVICE_L2CC,
 	.name		=	"Krait L2CC PMU",
 	.start		=	krait_l2_start,
 	.stop		=	krait_l2_stop,
