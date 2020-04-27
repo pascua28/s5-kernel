@@ -339,15 +339,16 @@ static int wm831x_buckv_set_current_limit(struct regulator_dev *rdev,
 	u16 reg = dcdc->base + WM831X_DCDC_CONTROL_2;
 	int i;
 
-	for (i = ARRAY_SIZE(wm831x_dcdc_ilim) - 1; i >= 0; i--) {
+	for (i = 0; i < ARRAY_SIZE(wm831x_dcdc_ilim); i++) {
 		if ((min_uA <= wm831x_dcdc_ilim[i]) &&
 		    (wm831x_dcdc_ilim[i] <= max_uA))
-			return wm831x_set_bits(wm831x, reg,
-					       WM831X_DC1_HC_THR_MASK,
-						i << WM831X_DC1_HC_THR_SHIFT);
+			break;
 	}
+	if (i == ARRAY_SIZE(wm831x_dcdc_ilim))
+		return -EINVAL;
 
-	return -EINVAL;
+	return wm831x_set_bits(wm831x, reg, WM831X_DC1_HC_THR_MASK,
+			       i << WM831X_DC1_HC_THR_SHIFT);
 }
 
 static int wm831x_buckv_get_current_limit(struct regulator_dev *rdev)
