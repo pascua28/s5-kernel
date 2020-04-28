@@ -21,6 +21,9 @@ config ASHMEM
 	  POSIX SHM but with different behavior and sporting a simpler
 	  file-based API.
 
+	  It is, in theory, a good memory allocator for low-memory devices,
+	  because it can discard shared memory units when under memory pressure.
+
 config ANDROID_LOGGER
 	tristate "Android log driver"
 	default n
@@ -117,16 +120,7 @@ config EXCLUDE_LRU_LIVING_IN_CMA
           so that LMK will kill a process to release memory pressure
 	  This feature based on reclamation prohibition for CMA area.
 
-# source "drivers/staging/android/switch/Kconfig"
-
-config ANDROID_INTF_ALARM_DEV
-	bool "Android alarm driver"
-	depends on RTC_CLASS
-	default n
-	help
-	  Provides non-wakeup and rtc backed wakeup alarms based on rtc or
-	  elapsed realtime, and a non-wakeup alarm on the monotonic clock.
-	  Also exports the alarm interface to user-space.
+source "drivers/staging/android/switch/Kconfig"
 
 config RUNTIME_COMPCACHE
 	bool "Android rtcc v3"
@@ -147,6 +141,15 @@ config SAMP_HOTNESS
 	default n
 	help
 	  This option change kill hidden process policy in LMK
+
+config ANDROID_INTF_ALARM_DEV
+	bool "Android alarm driver"
+	depends on RTC_CLASS
+	default n
+	help
+	  Provides non-wakeup and rtc backed wakeup alarms based on rtc or
+	  elapsed realtime, and a non-wakeup alarm on the monotonic clock.
+	  Also exports the alarm interface to user-space.
 
 endif # if ANDROID
 
