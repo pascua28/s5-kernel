@@ -2691,7 +2691,7 @@ static irqreturn_t max77804k_muic_irq(int irq, void *data)
 #define REQUEST_IRQ(_irq, _name)					\
 do {									\
 	ret = request_threaded_irq(_irq, NULL, max77804k_muic_irq,	\
-				    0, _name, info);			\
+				    IRQF_ONESHOT, _name, info);			\
 	if (ret < 0)							\
 		dev_err(info->dev, "Failed to request IRQ #%d: %d\n",	\
 			_irq, ret);					\
