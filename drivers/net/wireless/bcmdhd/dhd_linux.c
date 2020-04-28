@@ -162,6 +162,7 @@ extern void dhd_dump_eapol_4way_message(char *dump_data, bool direction);
 
 #include <wl_android.h>
 
+extern bool android_n;
 
 #ifdef ARP_OFFLOAD_SUPPORT
 void aoe_update_host_ipv4_table(dhd_pub_t *dhd_pub, u32 ipa, bool add, int idx);
@@ -4439,12 +4440,13 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 
 	/* set default firmware and nvram path for built-in type driver */
 	if (!dhd_download_fw_on_driverload) {
-#ifdef CONFIG_BCMDHD_FW_PATH
-		fw = CONFIG_BCMDHD_FW_PATH;
-#endif /* CONFIG_BCMDHD_FW_PATH */
-#ifdef CONFIG_BCMDHD_NVRAM_PATH
-		nv = CONFIG_BCMDHD_NVRAM_PATH;
-#endif /* CONFIG_BCMDHD_NVRAM_PATH */
+		if (android_n) {
+			fw = "/system/etc/wifi/bcmdhd_sta.bin";
+			nv = "/system/etc/wifi/nvram_net.txt";
+		} else {
+			fw = "/vendor/etc/wifi/bcmdhd_sta.bin";
+			nv = "/vendor/etc/wifi/nvram_net.txt";
+		}
 	}
 
 	/* check if we need to initialize the path */

@@ -68,20 +68,6 @@ config BCM43454
 	  This module adds support for wireless adapters based on
 	  Broadcom 43454 chipset.
 
-config BCMDHD_FW_PATH
-	depends on WLAN
-	string "Firmware path"
-	default "/system/etc/firmware/fw_bcmdhd.bin"
-	---help---
-	  Path to the firmware file.
-
-config BCMDHD_NVRAM_PATH
-	depends on WLAN
-	string "NVRAM path"
-	default "/system/etc/wifi/bcmdhd.cal"
-	---help---
-	  Path to the calibration file.
-
 config DHD_USE_STATIC_BUF
 	bool "Enable memory preallocation"
 	depends on BCMDHD
