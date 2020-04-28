@@ -5,6 +5,8 @@ export CROSS_COMPILE=~/ubertc/bin/arm-eabi-
 
 mkdir output
 
+DATE_START=$(date +"%s")
+
 if [ -e output/.config ]
     then
         make -j4 O=output oldconfig
@@ -18,3 +20,7 @@ make -j4 CONFIG_NO_ERROR_ON_MISMATCH=y \
 
 cp output/arch/arm/boot/Image $(pwd)/arch/arm/boot/zImage
 tools/dtbTool -2 -o output/arch/arm/boot/dt.img -s 2048 -p output/scripts/dtc/ output/arch/arm/boot/
+
+DATE_END=$(date +"%s")
+DIFF=$(($DATE_END - $DATE_START))
+echo "Time: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
