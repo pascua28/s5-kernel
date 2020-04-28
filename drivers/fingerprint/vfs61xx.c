@@ -1307,7 +1307,7 @@ int vfsspi_platformInit(struct vfsspi_devData *vfsSpiDev)
 			status = request_threaded_irq(
 					vfsSpiDev->ocp_irq, NULL,
 					vfsspi_ocp_irq_thread,
-					IRQF_TRIGGER_FALLING,
+					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 					"vfsspi_ocp", vfsSpiDev);
 			if (status < 0) {
 				pr_err("%s ocp irq request failed error %d\n",
