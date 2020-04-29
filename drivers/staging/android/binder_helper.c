@@ -26,8 +26,6 @@ MODULE_AUTHOR("S. G. Pascua");
 extern int binder_init(void);
 extern int binder32_init(void);
 
-android_n = false;
-
 static int binder_helper_init(void)
 {
 	struct file *f;
@@ -36,7 +34,6 @@ static int binder_helper_init(void)
 		binder_init();
 	} else {
 		binder32_init();
-		android_n = true;
 		filp_close(f, NULL);
 	}
 	return 0;
