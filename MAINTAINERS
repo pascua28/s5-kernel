@@ -2990,7 +2990,8 @@ W:	http://palosaari.fi/linux/
 Q:	http://patchwork.linuxtv.org/project/linux-media/list/
 T:	git git://linuxtv.org/anttip/media_tree.git
 S:	Maintained
-F:	drivers/media/tuners/fc2580*
+F:	drivers/media/tuners/fc0011.h
+F:	drivers/media/tuners/fc0011.c
 
 FANOTIFY
 M:	Eric Paris <eparis@redhat.com>

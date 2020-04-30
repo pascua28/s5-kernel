@@ -2,32 +2,6 @@
 # Generic video config states
 #
 
-config VIDEO_V4L2
-	tristate
-	depends on VIDEO_DEV && VIDEO_V4L2_COMMON
-	default VIDEO_DEV && VIDEO_V4L2_COMMON
-
-config VIDEOBUF_GEN
-	tristate
-
-config VIDEOBUF_DMA_SG
-	depends on HAS_DMA
-	select VIDEOBUF_GEN
-	tristate
-
-config VIDEOBUF_VMALLOC
-	select VIDEOBUF_GEN
-	tristate
-
-config VIDEOBUF_DMA_CONTIG
-	depends on HAS_DMA
-	select VIDEOBUF_GEN
-	tristate
-
-config VIDEOBUF_DVB
-	tristate
-	select VIDEOBUF_GEN
-
 config VIDEO_BTCX
 	depends on PCI
 	tristate
@@ -35,37 +9,6 @@ config VIDEO_BTCX
 config VIDEO_TVEEPROM
 	tristate
 	depends on I2C
-
-config VIDEO_TUNER
-	tristate
-	depends on MEDIA_TUNER
-
-config V4L2_MEM2MEM_DEV
-	tristate
-	depends on VIDEOBUF2_CORE
-
-config VIDEOBUF2_CORE
-	tristate
-
-config VIDEOBUF2_MEMOPS
-	tristate
-
-config VIDEOBUF2_DMA_CONTIG
-	select VIDEOBUF2_CORE
-	select VIDEOBUF2_MEMOPS
-	tristate
-
-config VIDEOBUF2_VMALLOC
-	select VIDEOBUF2_CORE
-	select VIDEOBUF2_MEMOPS
-	tristate
-
-
-config VIDEOBUF2_DMA_SG
-	#depends on HAS_DMA
-	select VIDEOBUF2_CORE
-	select VIDEOBUF2_MEMOPS
-	tristate
 
 config VIDEOBUF2_MSM_MEM
 	tristate "MSM videobuf2 extensions"
@@ -86,23 +29,6 @@ menuconfig VIDEO_CAPTURE_DRIVERS
 	  Some of those devices also supports FM radio.
 
 if VIDEO_CAPTURE_DRIVERS && VIDEO_V4L2
-
-config VIDEO_ADV_DEBUG
-	bool "Enable advanced debug functionality"
-	default n
-	---help---
-	  Say Y here to enable advanced debugging functionality on some
-	  V4L devices.
-	  In doubt, say N.
-
-config VIDEO_FIXED_MINOR_RANGES
-	bool "Enable old-style fixed minor ranges for video devices"
-	default n
-	---help---
-	  Say Y here to enable the old-style fixed-range minor assignments.
-	  Only useful if you rely on the old behavior and use mknod instead of udev.
-
-	  When in doubt, say N.
 
 config VIDEO_HELPER_CHIPS_AUTO
 	bool "Autoselect pertinent encoders/decoders and other helper chips"

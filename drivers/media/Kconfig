@@ -48,11 +48,6 @@ config VIDEO_DEV
 	  To compile this driver as a module, choose M here: the
 	  module will be called videodev.
 
-config VIDEO_V4L2_COMMON
-	tristate
-	depends on (I2C || I2C=n) && VIDEO_DEV
-	default (I2C || I2C=n) && VIDEO_DEV
-
 config VIDEO_V4L2_SUBDEV_API
 	bool "V4L2 sub-device userspace API (EXPERIMENTAL)"
 	depends on VIDEO_DEV && MEDIA_CONTROLLER && EXPERIMENTAL
@@ -61,6 +56,8 @@ config VIDEO_V4L2_SUBDEV_API
 	  video format, size and frame rate between hardware blocks.
 
 	  This API is mostly used by camera interfaces in embedded platforms.
+
+source "drivers/media/v4l2-core/Kconfig"
 
 #
 # DVB Core
@@ -97,6 +94,8 @@ config DVB_NET
 	  You may want to disable the network support on embedded devices. If
 	  unsure say Y.
 
+source "drivers/media/dvb-core/Kconfig"
+
 config VIDEO_MEDIA
 	tristate
 	default (DVB_CORE && (VIDEO_DEV = n)) || (VIDEO_DEV && (DVB_CORE = n)) || (DVB_CORE && VIDEO_DEV)
@@ -112,7 +111,7 @@ source "drivers/media/platform/Kconfig"
 # Tuner drivers for DVB and V4L
 #
 
-source "drivers/media/common/tuners/Kconfig"
+source "drivers/media/tuners/Kconfig"
 
 #
 # Video/Radio/Hybrid adapters
@@ -146,5 +145,9 @@ source "drivers/media/isdbt/Kconfig"
 # MTV Drivers
 #
 source "drivers/media/mtv/Kconfig"
+
+comment "Supported DVB Frontends"
+        depends on DVB_CORE
+source "drivers/media/dvb-frontends/Kconfig"
 
 endif # MEDIA_SUPPORT
