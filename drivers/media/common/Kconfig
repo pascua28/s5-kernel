@@ -9,5 +9,4 @@ config VIDEO_SAA7146_VV
 	select VIDEO_SAA7146
 
 source "drivers/media/common/b2c2/Kconfig"
-source "drivers/media/common/saa7146/Kconfig"
 source "drivers/media/common/siano/Kconfig"

@@ -21,25 +21,6 @@ config VIDEO_VIVI
 	  In doubt, say N.
 
 #
-
-source "drivers/media/video/au0828/Kconfig"
-
-source "drivers/media/video/pvrusb2/Kconfig"
-
-source "drivers/media/video/hdpvr/Kconfig"
-
-source "drivers/media/video/em28xx/Kconfig"
-
-source "drivers/media/video/tlg2300/Kconfig"
-
-source "drivers/media/video/cx231xx/Kconfig"
-
-source "drivers/media/video/tm6000/Kconfig"
-
-source "drivers/media/video/usbvision/Kconfig"
-
-source "drivers/media/video/sn9c102/Kconfig"
-
 # PCI drivers configuration - No devices here are for webcams
 #
 
