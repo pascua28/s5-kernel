@@ -1704,7 +1704,7 @@ static void max77804k_chgin_init_work(struct work_struct *work)
 
 	pr_info("%s \n", __func__);
 	ret = request_threaded_irq(charger->irq_chgin, NULL,
-			max77804k_chgin_irq, IRQF_ONESHOT, "chgin-irq", charger);
+			max77804k_chgin_irq, 0, "chgin-irq", charger);
 	if (ret < 0) {
 		pr_err("%s: fail to request chgin IRQ: %d: %d\n",
 				__func__, charger->irq_chgin, ret);
@@ -1712,7 +1712,7 @@ static void max77804k_chgin_init_work(struct work_struct *work)
 
 	if (charger->irq_battery > 0) {
 		ret = request_threaded_irq(charger->irq_battery, NULL,
-				max77804k_battery_irq, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+				max77804k_battery_irq, IRQF_TRIGGER_FALLING,
 				"battery-irq", charger);
 
 		if (ret < 0)
@@ -1823,8 +1823,8 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 
 	pr_info("%s: MAX77804K Charger driver probe\n", __func__);
 
-	charger = kzalloc(sizeof(*charger), GFP_KERNEL);
-	if (!charger)
+	charger = kzalloc(sizeof(struct max77804k_charger_data), GFP_KERNEL);
+	if (charger == NULL)
 		return -ENOMEM;
 
 	pdata->charger_data = kzalloc(sizeof(sec_battery_platform_data_t), GFP_KERNEL);
@@ -1908,7 +1908,7 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 				&charger->isr_work, sec_chg_isr_work);
 		ret = request_threaded_irq(charger->pdata->chg_irq,
 				NULL, sec_chg_irq_thread,
-				charger->pdata->chg_irq_attr | IRQF_ONESHOT,
+				charger->pdata->chg_irq_attr,
 				"charger-irq", charger);
 		if (ret) {
 			pr_err("%s: Failed to Reqeust IRQ\n", __func__);
@@ -1919,7 +1919,7 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 	charger->wc_w_irq = pdata->irq_base + MAX77804K_CHG_IRQ_WCIN_I;
 	ret = request_threaded_irq(charger->wc_w_irq,
 			NULL, wpc_charger_irq,
-			IRQF_ONESHOT, "wpc-int", charger);
+			0, "wpc-int", charger);
 	if (ret) {
 		pr_err("%s: Failed to Reqeust IRQ\n", __func__);
 		goto err_wc_irq;
@@ -1962,7 +1962,7 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 
 	charger->irq_bypass = pdata->irq_base + MAX77804K_CHG_IRQ_BYP_I;
 	ret = request_threaded_irq(charger->irq_bypass, NULL,
-			max77804k_bypass_irq, IRQF_ONESHOT, "bypass-irq", charger);
+			max77804k_bypass_irq, 0, "bypass-irq", charger);
 	if (ret < 0)
 		pr_err("%s: fail to request bypass IRQ: %d: %d\n",
 				__func__, charger->irq_bypass, ret);
