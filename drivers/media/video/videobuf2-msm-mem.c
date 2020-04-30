@@ -307,24 +307,6 @@ static struct vb2_mem_ops msm_vb2_mem_ops = {
 	.mmap = msm_vb2_mem_ops_mmap
 };
 
-void videobuf2_queue_pmem_contig_init(struct vb2_queue *q,
-					enum v4l2_buf_type type,
-					const struct vb2_ops *ops,
-					unsigned int size,
-					void *priv)
-{
-	memset(q, 0, sizeof(struct vb2_queue));
-	q->mem_ops = &msm_vb2_mem_ops;
-	q->ops = ops;
-	q->drv_priv = priv;
-	q->type = type;
-	q->io_modes = VB2_MMAP | VB2_USERPTR;
-	q->io_flags = 0;
-	q->buf_struct_size = size;
-	vb2_queue_init(q);
-}
-EXPORT_SYMBOL_GPL(videobuf2_queue_pmem_contig_init);
-
 unsigned long videobuf2_to_pmem_contig(struct vb2_buffer *vb,
 				unsigned int plane_no)
 {
