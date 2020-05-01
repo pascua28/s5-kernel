@@ -1813,7 +1813,7 @@ err:
 }
 #endif
 
-static __devinit int max77804k_charger_probe(struct platform_device *pdev)
+static int max77804k_charger_probe(struct platform_device *pdev)
 {
 	struct max77804k_dev *iodev = dev_get_drvdata(pdev->dev.parent);
 	struct max77804k_platform_data *pdata = dev_get_platdata(iodev->dev);
@@ -1985,7 +1985,7 @@ err_free:
 
 }
 
-static int __devexit max77804k_charger_remove(struct platform_device *pdev)
+static int max77804k_charger_remove(struct platform_device *pdev)
 {
 	struct max77804k_charger_data *charger =
 				platform_get_drvdata(pdev);
@@ -2050,7 +2050,7 @@ static struct platform_driver max77804k_charger_driver = {
 		.shutdown = max77804k_charger_shutdown,
 	},
 	.probe = max77804k_charger_probe,
-	.remove = __devexit_p(max77804k_charger_remove),
+	.remove = max77804k_charger_remove,
 };
 
 static int __init max77804k_charger_init(void)

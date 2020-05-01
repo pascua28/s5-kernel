@@ -66,7 +66,7 @@ static void cb_data_reset(struct gpio_info *info)
 	INIT_COMPLETION(info->cb_completion);
 }
 
-static int __devinit smp2p_gpio_test_probe(struct platform_device *pdev)
+static int smp2p_gpio_test_probe(struct platform_device *pdev)
 {
 	int id;
 	int cnt;
@@ -120,7 +120,7 @@ static int __devinit smp2p_gpio_test_probe(struct platform_device *pdev)
  * NOTE:  Instead of match table and device driver, you may be able to just
  * call of_find_compatible_node() in your init function.
  */
-static struct of_device_id msm_smp2p_match_table[] __devinitdata = {
+static struct of_device_id msm_smp2p_match_table[] = {
 	/* modem */
 	{.compatible = "qcom,smp2pgpio_test_smp2p_1_out", },
 	{.compatible = "qcom,smp2pgpio_test_smp2p_1_in", },

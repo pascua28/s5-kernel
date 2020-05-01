@@ -502,7 +502,7 @@ static int venus_ramdump(int enable, const struct subsys_desc *desc)
 	return pil_do_ramdump(&drv->desc, drv->ramdump_dev);
 }
 
-static int __devinit pil_venus_probe(struct platform_device *pdev)
+static int pil_venus_probe(struct platform_device *pdev)
 {
 	struct venus_data *drv;
 	struct resource *res;
@@ -600,7 +600,7 @@ err_ramdump:
 	return rc;
 }
 
-static int __devexit pil_venus_remove(struct platform_device *pdev)
+static int pil_venus_remove(struct platform_device *pdev)
 {
 	struct venus_data *drv = platform_get_drvdata(pdev);
 	subsys_unregister(drv->subsys);
@@ -618,7 +618,7 @@ static const struct of_device_id msm_pil_venus_match[] = {
 
 static struct platform_driver pil_venus_driver = {
 	.probe = pil_venus_probe,
-	.remove = __devexit_p(pil_venus_remove),
+	.remove = pil_venus_remove,
 	.driver = {
 		.name = "pil_venus",
 		.owner = THIS_MODULE,

@@ -226,7 +226,7 @@ static struct platform_driver adsp_loader_driver = {
 		.of_match_table = adsp_loader_dt_match,
 	},
 	.probe = adsp_loader_probe,
-	.remove = __devexit_p(adsp_loader_remove),
+	.remove = adsp_loader_remove,
 };
 
 static int __init adsp_loader_init(void)

@@ -237,7 +237,7 @@ static void mss_stop(const struct subsys_desc *desc)
 	pil_shutdown(&drv->q6->desc);
 }
 
-static int __devinit pil_subsys_init(struct modem_data *drv,
+static int pil_subsys_init(struct modem_data *drv,
 					struct platform_device *pdev)
 {
 	int ret;
@@ -288,7 +288,7 @@ err_subsys:
 	return ret;
 }
 
-static int __devinit pil_mss_loadable_init(struct modem_data *drv,
+static int pil_mss_loadable_init(struct modem_data *drv,
 					struct platform_device *pdev)
 {
 	struct q6v5_data *q6;
@@ -394,7 +394,7 @@ err_mba_desc:
 
 }
 
-static int __devinit pil_mss_driver_probe(struct platform_device *pdev)
+static int pil_mss_driver_probe(struct platform_device *pdev)
 {
 	struct modem_data *drv;
 	int ret, is_not_loadable;
@@ -418,7 +418,7 @@ static int __devinit pil_mss_driver_probe(struct platform_device *pdev)
 	return pil_subsys_init(drv, pdev);
 }
 
-static int __devexit pil_mss_driver_exit(struct platform_device *pdev)
+static int pil_mss_driver_exit(struct platform_device *pdev)
 {
 	struct modem_data *drv = platform_get_drvdata(pdev);
 
@@ -438,7 +438,7 @@ static struct of_device_id mss_match_table[] = {
 
 static struct platform_driver pil_mss_driver = {
 	.probe = pil_mss_driver_probe,
-	.remove = __devexit_p(pil_mss_driver_exit),
+	.remove = pil_mss_driver_exit,
 	.driver = {
 		.name = "pil-q6v5-mss",
 		.of_match_table = mss_match_table,

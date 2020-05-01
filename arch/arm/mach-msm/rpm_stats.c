@@ -310,7 +310,7 @@ static const struct file_operations msm_rpmstats_fops = {
 	.llseek   = no_llseek,
 };
 
-static  int __devinit msm_rpmstats_probe(struct platform_device *pdev)
+static  int msm_rpmstats_probe(struct platform_device *pdev)
 {
 	struct dentry *dent = NULL;
 	struct msm_rpmstats_platform_data *pdata;
@@ -366,7 +366,7 @@ static  int __devinit msm_rpmstats_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __devexit msm_rpmstats_remove(struct platform_device *pdev)
+static int msm_rpmstats_remove(struct platform_device *pdev)
 {
 	struct dentry *dent;
 
@@ -383,7 +383,7 @@ static struct of_device_id rpm_stats_table[] = {
 
 static struct platform_driver msm_rpmstats_driver = {
 	.probe	= msm_rpmstats_probe,
-	.remove = __devexit_p(msm_rpmstats_remove),
+	.remove = msm_rpmstats_remove,
 	.driver = {
 		.name = "msm_rpm_stat",
 		.owner = THIS_MODULE,

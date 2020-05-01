@@ -327,7 +327,7 @@ static struct hwrng msm_rng = {
 	.read = msm_rng_read,
 };
 
-static int __devinit msm_rng_enable_hw(struct msm_rng_device *msm_rng_dev)
+static int msm_rng_enable_hw(struct msm_rng_device *msm_rng_dev)
 {
 	unsigned long val = 0;
 	unsigned long reg_val = 0;
@@ -393,7 +393,7 @@ static void _first_msm_drbg_init(struct msm_rng_device *msm_rng_dev)
 }
 #endif
 
-static int __devinit msm_rng_probe(struct platform_device *pdev)
+static int msm_rng_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct msm_rng_device *msm_rng_dev = NULL;
@@ -513,7 +513,7 @@ err_exit:
 	return error;
 }
 
-static int __devexit msm_rng_remove(struct platform_device *pdev)
+static int msm_rng_remove(struct platform_device *pdev)
 {
 	struct msm_rng_device *msm_rng_dev = platform_get_drvdata(pdev);
 
@@ -542,7 +542,7 @@ static struct of_device_id qrng_match[] = {
 
 static struct platform_driver rng_driver = {
 	.probe      = msm_rng_probe,
-	.remove     = __devexit_p(msm_rng_remove),
+	.remove     = msm_rng_remove,
 	.driver     = {
 		.name   = DRIVER_NAME,
 		.owner  = THIS_MODULE,

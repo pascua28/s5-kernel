@@ -314,7 +314,7 @@ static const struct file_operations msm_rpm_log_file_fops = {
 	.release = msm_rpm_log_file_close,
 };
 
-static int __devinit msm_rpm_log_probe(struct platform_device *pdev)
+static int msm_rpm_log_probe(struct platform_device *pdev)
 {
 	struct dentry *dent;
 	struct msm_rpm_log_platform_data *pdata;
@@ -484,7 +484,7 @@ fail:
 	return ret;
 }
 
-static int __devexit msm_rpm_log_remove(struct platform_device *pdev)
+static int msm_rpm_log_remove(struct platform_device *pdev)
 {
 	struct dentry *dent;
 	struct msm_rpm_log_platform_data *pdata;
@@ -508,7 +508,7 @@ static struct of_device_id rpm_log_table[] = {
 
 static struct platform_driver msm_rpm_log_driver = {
 	.probe		= msm_rpm_log_probe,
-	.remove		= __devexit_p(msm_rpm_log_remove),
+	.remove		= msm_rpm_log_remove,
 	.driver		= {
 		.name = "msm_rpm_log",
 		.owner = THIS_MODULE,

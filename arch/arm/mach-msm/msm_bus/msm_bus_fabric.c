@@ -738,7 +738,7 @@ static int msm_bus_fabric_hw_init(struct msm_bus_fabric_registration *pdata,
 	return ret;
 }
 
-static int __devinit msm_bus_fabric_probe(struct platform_device *pdev)
+static int msm_bus_fabric_probe(struct platform_device *pdev)
 {
 	int ctx, ret = 0;
 	struct msm_bus_fabric *fabric;
