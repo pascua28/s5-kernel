@@ -267,5 +267,3 @@ static inline int dma_buf_mmap(struct dma_buf *dmabuf,
 
 void *dma_buf_vmap(struct dma_buf *);
 void dma_buf_vunmap(struct dma_buf *, void *vaddr);
-
-#endif /* __DMA_BUF_H__ */
