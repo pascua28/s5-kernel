@@ -540,7 +540,7 @@ static int aica_pcmvolume_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-static struct snd_kcontrol_new snd_aica_pcmswitch_control = {
+static struct snd_kcontrol_new snd_aica_pcmswitch_control __devinitdata = {
 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name = "PCM Playback Switch",
 	.index = 0,
@@ -549,7 +549,7 @@ static struct snd_kcontrol_new snd_aica_pcmswitch_control = {
 	.put = aica_pcmswitch_put
 };
 
-static struct snd_kcontrol_new snd_aica_pcmvolume_control = {
+static struct snd_kcontrol_new snd_aica_pcmvolume_control __devinitdata = {
 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name = "PCM Playback Volume",
 	.index = 0,
@@ -574,7 +574,8 @@ static int load_aica_firmware(void)
 	return err;
 }
 
-static int add_aicamixer_controls(struct snd_card_aica *dreamcastcard)
+static int __devinit add_aicamixer_controls(struct snd_card_aica
+					    *dreamcastcard)
 {
 	int err;
 	err = snd_ctl_add
@@ -590,7 +591,7 @@ static int add_aicamixer_controls(struct snd_card_aica *dreamcastcard)
 	return 0;
 }
 
-static int snd_aica_remove(struct platform_device *devptr)
+static int __devexit snd_aica_remove(struct platform_device *devptr)
 {
 	struct snd_card_aica *dreamcastcard;
 	dreamcastcard = platform_get_drvdata(devptr);
@@ -602,7 +603,7 @@ static int snd_aica_remove(struct platform_device *devptr)
 	return 0;
 }
 
-static int snd_aica_probe(struct platform_device *devptr)
+static int __devinit snd_aica_probe(struct platform_device *devptr)
 {
 	int err;
 	struct snd_card_aica *dreamcastcard;
@@ -651,7 +652,7 @@ static int snd_aica_probe(struct platform_device *devptr)
 
 static struct platform_driver snd_aica_driver = {
 	.probe = snd_aica_probe,
-	.remove = snd_aica_remove,
+	.remove = __devexit_p(snd_aica_remove),
 	.driver = {
 		   .name = SND_AICA_DRIVER},
 };

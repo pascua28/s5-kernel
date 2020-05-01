@@ -188,9 +188,9 @@ static int wm2000_power_up(struct i2c_client *i2c, int analogue)
 
 	ret = wm2000_read(i2c, WM2000_REG_SPEECH_CLARITY);
 	if (wm2000->speech_clarity)
-		ret |= WM2000_SPEECH_CLARITY;
-	else
 		ret &= ~WM2000_SPEECH_CLARITY;
+	else
+		ret |= WM2000_SPEECH_CLARITY;
 	wm2000_write(i2c, WM2000_REG_SPEECH_CLARITY, ret);
 
 	wm2000_write(i2c, WM2000_REG_SYS_START0, 0x33);
@@ -622,7 +622,7 @@ static const struct snd_kcontrol_new wm2000_controls[] = {
 static int wm2000_anc_power_event(struct snd_soc_dapm_widget *w,
 				  struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm2000_priv *wm2000 = dev_get_drvdata(codec->dev);
 
 	if (SND_SOC_DAPM_EVENT_ON(event))
@@ -710,8 +710,8 @@ static struct snd_soc_codec_driver soc_codec_dev_wm2000 = {
 	.num_controls = ARRAY_SIZE(wm2000_controls),
 };
 
-static int wm2000_i2c_probe(struct i2c_client *i2c,
-			    const struct i2c_device_id *i2c_id)
+static int __devinit wm2000_i2c_probe(struct i2c_client *i2c,
+				      const struct i2c_device_id *i2c_id)
 {
 	struct wm2000_priv *wm2000;
 	struct wm2000_platform_data *pdata;
@@ -802,7 +802,7 @@ out:
 	return ret;
 }
 
-static int wm2000_i2c_remove(struct i2c_client *i2c)
+static __devexit int wm2000_i2c_remove(struct i2c_client *i2c)
 {
 	struct wm2000_priv *wm2000 = dev_get_drvdata(&i2c->dev);
 
@@ -824,7 +824,7 @@ static struct i2c_driver wm2000_i2c_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = wm2000_i2c_probe,
-	.remove = wm2000_i2c_remove,
+	.remove = __devexit_p(wm2000_i2c_remove),
 	.id_table = wm2000_i2c_id,
 };
 

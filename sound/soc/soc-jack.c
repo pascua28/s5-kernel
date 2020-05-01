@@ -85,6 +85,7 @@ void snd_soc_jack_report(struct snd_soc_jack *jack, int status, int mask)
 	struct snd_soc_dapm_context *dapm;
 	struct snd_soc_jack_pin *pin;
 	int enable;
+	int oldstatus;
 
 	trace_snd_soc_jack_report(jack, mask, status);
 
@@ -95,6 +96,8 @@ void snd_soc_jack_report(struct snd_soc_jack *jack, int status, int mask)
 	dapm =  &codec->dapm;
 
 	mutex_lock(&jack->mutex);
+
+	oldstatus = jack->status;
 
 	jack->status &= ~mask;
 	jack->status |= status & mask;
@@ -219,13 +222,12 @@ int snd_soc_jack_add_pins(struct snd_soc_jack *jack, int count,
 
 	for (i = 0; i < count; i++) {
 		if (!pins[i].pin) {
-			dev_err(jack->codec->dev, "ASoC: No name for pin %d\n",
-				i);
+			printk(KERN_ERR "No name for pin %d\n", i);
 			return -EINVAL;
 		}
 		if (!pins[i].mask) {
-			dev_err(jack->codec->dev, "ASoC: No mask for pin %d"
-				" (%s)\n", i, pins[i].pin);
+			printk(KERN_ERR "No mask for pin %d (%s)\n", i,
+			       pins[i].pin);
 			return -EINVAL;
 		}
 
@@ -345,13 +347,13 @@ int snd_soc_jack_add_gpios(struct snd_soc_jack *jack, int count,
 
 	for (i = 0; i < count; i++) {
 		if (!gpio_is_valid(gpios[i].gpio)) {
-			dev_err(jack->codec->dev, "ASoC: Invalid gpio %d\n",
+			printk(KERN_ERR "Invalid gpio %d\n",
 				gpios[i].gpio);
 			ret = -EINVAL;
 			goto undo;
 		}
 		if (!gpios[i].name) {
-			dev_err(jack->codec->dev, "ASoC: No name for gpio %d\n",
+			printk(KERN_ERR "No name for gpio %d\n",
 				gpios[i].gpio);
 			ret = -EINVAL;
 			goto undo;
@@ -380,7 +382,7 @@ int snd_soc_jack_add_gpios(struct snd_soc_jack *jack, int count,
 		if (gpios[i].wake) {
 			ret = irq_set_irq_wake(gpio_to_irq(gpios[i].gpio), 1);
 			if (ret != 0)
-				dev_err(jack->codec->dev, "ASoC: "
+				printk(KERN_ERR
 				  "Failed to mark GPIO %d as wake source: %d\n",
 					gpios[i].gpio, ret);
 		}

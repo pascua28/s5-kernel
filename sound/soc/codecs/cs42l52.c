@@ -739,7 +739,7 @@ static const struct cs42l52_clk_para clk_map_table[] = {
 
 static int cs42l52_get_clk(int mclk, int rate)
 {
-	int i, ret = -EINVAL;
+	int i, ret = 0;
 	u_int mclk1, mclk2 = 0;
 
 	for (i = 0; i < ARRAY_SIZE(clk_map_table); i++) {
@@ -751,6 +751,8 @@ static int cs42l52_get_clk(int mclk, int rate)
 			}
 		}
 	}
+	if (ret > ARRAY_SIZE(clk_map_table))
+		return -EINVAL;
 	return ret;
 }
 
@@ -1282,7 +1284,7 @@ static struct i2c_driver cs42l52_i2c_driver = {
 	},
 	.id_table = cs42l52_id,
 	.probe =    cs42l52_i2c_probe,
-	.remove =   cs42l52_i2c_remove,
+	.remove =   __devexit_p(cs42l52_i2c_remove),
 };
 
 module_i2c_driver(cs42l52_i2c_driver);

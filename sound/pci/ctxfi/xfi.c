@@ -56,7 +56,7 @@ static DEFINE_PCI_DEVICE_TABLE(ct_pci_dev_ids) = {
 };
 MODULE_DEVICE_TABLE(pci, ct_pci_dev_ids);
 
-static int
+static int __devinit
 ct_card_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 {
 	static int dev;
@@ -119,43 +119,39 @@ error:
 	return err;
 }
 
-static void ct_card_remove(struct pci_dev *pci)
+static void __devexit ct_card_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
 	pci_set_drvdata(pci, NULL);
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int ct_card_suspend(struct device *dev)
+#ifdef CONFIG_PM
+static int ct_card_suspend(struct pci_dev *pci, pm_message_t state)
 {
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct ct_atc *atc = card->private_data;
 
-	return atc->suspend(atc);
+	return atc->suspend(atc, state);
 }
 
-static int ct_card_resume(struct device *dev)
+static int ct_card_resume(struct pci_dev *pci)
 {
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct ct_atc *atc = card->private_data;
 
 	return atc->resume(atc);
 }
-
-static SIMPLE_DEV_PM_OPS(ct_card_pm, ct_card_suspend, ct_card_resume);
-#define CT_CARD_PM_OPS	&ct_card_pm
-#else
-#define CT_CARD_PM_OPS	NULL
 #endif
 
 static struct pci_driver ct_driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = ct_pci_dev_ids,
 	.probe = ct_card_probe,
-	.remove = ct_card_remove,
-	.driver = {
-		.pm = CT_CARD_PM_OPS,
-	},
+	.remove = __devexit_p(ct_card_remove),
+#ifdef CONFIG_PM
+	.suspend = ct_card_suspend,
+	.resume = ct_card_resume,
+#endif
 };
 
 module_pci_driver(ct_driver);

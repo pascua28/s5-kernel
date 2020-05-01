@@ -1590,7 +1590,7 @@ static struct snd_pcm_ops snd_cs46xx_capture_indirect_ops = {
 #define MAX_PLAYBACK_CHANNELS	1
 #endif
 
-int snd_cs46xx_pcm(struct snd_cs46xx *chip, int device, struct snd_pcm **rpcm)
+int __devinit snd_cs46xx_pcm(struct snd_cs46xx *chip, int device, struct snd_pcm ** rpcm)
 {
 	struct snd_pcm *pcm;
 	int err;
@@ -1621,8 +1621,7 @@ int snd_cs46xx_pcm(struct snd_cs46xx *chip, int device, struct snd_pcm **rpcm)
 
 
 #ifdef CONFIG_SND_CS46XX_NEW_DSP
-int snd_cs46xx_pcm_rear(struct snd_cs46xx *chip, int device,
-			struct snd_pcm **rpcm)
+int __devinit snd_cs46xx_pcm_rear(struct snd_cs46xx *chip, int device, struct snd_pcm ** rpcm)
 {
 	struct snd_pcm *pcm;
 	int err;
@@ -1651,8 +1650,7 @@ int snd_cs46xx_pcm_rear(struct snd_cs46xx *chip, int device,
 	return 0;
 }
 
-int snd_cs46xx_pcm_center_lfe(struct snd_cs46xx *chip, int device,
-			      struct snd_pcm **rpcm)
+int __devinit snd_cs46xx_pcm_center_lfe(struct snd_cs46xx *chip, int device, struct snd_pcm ** rpcm)
 {
 	struct snd_pcm *pcm;
 	int err;
@@ -1681,8 +1679,7 @@ int snd_cs46xx_pcm_center_lfe(struct snd_cs46xx *chip, int device,
 	return 0;
 }
 
-int snd_cs46xx_pcm_iec958(struct snd_cs46xx *chip, int device,
-			  struct snd_pcm **rpcm)
+int __devinit snd_cs46xx_pcm_iec958(struct snd_cs46xx *chip, int device, struct snd_pcm ** rpcm)
 {
 	struct snd_pcm *pcm;
 	int err;
@@ -2095,7 +2092,7 @@ static int snd_cs46xx_spdif_stream_put(struct snd_kcontrol *kcontrol,
 #endif /* CONFIG_SND_CS46XX_NEW_DSP */
 
 
-static struct snd_kcontrol_new snd_cs46xx_controls[] = {
+static struct snd_kcontrol_new snd_cs46xx_controls[] __devinitdata = {
 {
 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name = "DAC Volume",
@@ -2281,7 +2278,7 @@ static void snd_cs46xx_codec_reset (struct snd_ac97 * ac97)
 }
 #endif
 
-static int cs46xx_detect_codec(struct snd_cs46xx *chip, int codec)
+static int __devinit cs46xx_detect_codec(struct snd_cs46xx *chip, int codec)
 {
 	int idx, err;
 	struct snd_ac97_template ac97;
@@ -2314,7 +2311,7 @@ static int cs46xx_detect_codec(struct snd_cs46xx *chip, int codec)
 	return -ENXIO;
 }
 
-int snd_cs46xx_mixer(struct snd_cs46xx *chip, int spdif_device)
+int __devinit snd_cs46xx_mixer(struct snd_cs46xx *chip, int spdif_device)
 {
 	struct snd_card *card = chip->card;
 	struct snd_ctl_elem_id id;
@@ -2534,7 +2531,7 @@ static struct snd_rawmidi_ops snd_cs46xx_midi_input =
 	.trigger =	snd_cs46xx_midi_input_trigger,
 };
 
-int snd_cs46xx_midi(struct snd_cs46xx *chip, int device, struct snd_rawmidi **rrawmidi)
+int __devinit snd_cs46xx_midi(struct snd_cs46xx *chip, int device, struct snd_rawmidi **rrawmidi)
 {
 	struct snd_rawmidi *rmidi;
 	int err;
@@ -2616,7 +2613,7 @@ static int snd_cs46xx_gameport_open(struct gameport *gameport, int mode)
 	return 0;
 }
 
-int snd_cs46xx_gameport(struct snd_cs46xx *chip)
+int __devinit snd_cs46xx_gameport(struct snd_cs46xx *chip)
 {
 	struct gameport *gp;
 
@@ -2652,7 +2649,7 @@ static inline void snd_cs46xx_remove_gameport(struct snd_cs46xx *chip)
 	}
 }
 #else
-int snd_cs46xx_gameport(struct snd_cs46xx *chip) { return -ENOSYS; }
+int __devinit snd_cs46xx_gameport(struct snd_cs46xx *chip) { return -ENOSYS; }
 static inline void snd_cs46xx_remove_gameport(struct snd_cs46xx *chip) { }
 #endif /* CONFIG_GAMEPORT */
 
@@ -2677,7 +2674,7 @@ static struct snd_info_entry_ops snd_cs46xx_proc_io_ops = {
 	.read = snd_cs46xx_io_read,
 };
 
-static int snd_cs46xx_proc_init(struct snd_card *card, struct snd_cs46xx *chip)
+static int __devinit snd_cs46xx_proc_init(struct snd_card *card, struct snd_cs46xx *chip)
 {
 	struct snd_info_entry *entry;
 	int idx;
@@ -3064,7 +3061,7 @@ static void cs46xx_enable_stream_irqs(struct snd_cs46xx *chip)
 	snd_cs46xx_poke(chip, BA1_CIE, tmp);	/* capture interrupt enable */
 }
 
-int snd_cs46xx_start_dsp(struct snd_cs46xx *chip)
+int __devinit snd_cs46xx_start_dsp(struct snd_cs46xx *chip)
 {	
 	unsigned int tmp;
 	/*
@@ -3480,7 +3477,7 @@ struct cs_card_type
 	void (*mixer_init)(struct snd_cs46xx *);
 };
 
-static struct cs_card_type cards[] = {
+static struct cs_card_type __devinitdata cards[] = {
 	{
 		.vendor = 0x1489,
 		.id = 0x7001,
@@ -3716,10 +3713,10 @@ int snd_cs46xx_resume(struct pci_dev *pci)
 /*
  */
 
-int snd_cs46xx_create(struct snd_card *card,
-		      struct pci_dev *pci,
+int __devinit snd_cs46xx_create(struct snd_card *card,
+		      struct pci_dev * pci,
 		      int external_amp, int thinkpad,
-		      struct snd_cs46xx **rchip)
+		      struct snd_cs46xx ** rchip)
 {
 	struct snd_cs46xx *chip;
 	int err, idx;

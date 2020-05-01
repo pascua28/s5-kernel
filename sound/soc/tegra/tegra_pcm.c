@@ -370,13 +370,13 @@ static struct snd_soc_platform_driver tegra_pcm_platform = {
 	.pcm_free	= tegra_pcm_free,
 };
 
-int tegra_pcm_platform_register(struct device *dev)
+int __devinit tegra_pcm_platform_register(struct device *dev)
 {
 	return snd_soc_register_platform(dev, &tegra_pcm_platform);
 }
 EXPORT_SYMBOL_GPL(tegra_pcm_platform_register);
 
-void tegra_pcm_platform_unregister(struct device *dev)
+void __devexit tegra_pcm_platform_unregister(struct device *dev)
 {
 	snd_soc_unregister_platform(dev);
 }

@@ -71,7 +71,7 @@ static struct snd_soc_card openrd_client = {
 	.num_links = ARRAY_SIZE(openrd_client_dai),
 };
 
-static int openrd_probe(struct platform_device *pdev)
+static int __devinit openrd_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &openrd_client;
 	int ret;
@@ -85,7 +85,7 @@ static int openrd_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int openrd_remove(struct platform_device *pdev)
+static int __devexit openrd_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 
@@ -99,7 +99,7 @@ static struct platform_driver openrd_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= openrd_probe,
-	.remove		= openrd_remove,
+	.remove		= __devexit_p(openrd_remove),
 };
 
 module_platform_driver(openrd_driver);

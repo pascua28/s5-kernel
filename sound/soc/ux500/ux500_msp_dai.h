@@ -69,7 +69,6 @@ struct ux500_msp_i2s_drvdata {
 	/* Clocks */
 	unsigned int master_clk;
 	struct clk *clk;
-	struct clk *pclk;
 
 	/* Regulators */
 	int vape_opp_constraint;

@@ -286,5 +286,3 @@ int snd_dmaengine_pcm_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_dmaengine_pcm_close);
-
-MODULE_LICENSE("GPL");

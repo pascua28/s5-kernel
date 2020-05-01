@@ -103,7 +103,7 @@ struct voice {
  * we're not doing power management, we still need to allocate a page
  * for the silence buffer.
  */
-#ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_PM
 #define SIS_SUSPEND_PAGES	4
 #else
 #define SIS_SUSPEND_PAGES	1
@@ -894,7 +894,7 @@ static struct snd_pcm_ops sis_capture_ops = {
 	.pointer = sis_pcm_pointer,
 };
 
-static int sis_pcm_create(struct sis7019 *sis)
+static int __devinit sis_pcm_create(struct sis7019 *sis)
 {
 	struct snd_pcm *pcm;
 	int rc;
@@ -1013,7 +1013,7 @@ static unsigned short sis_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 					(reg << 8) | cmd[ac97->num]);
 }
 
-static int sis_mixer_create(struct sis7019 *sis)
+static int __devinit sis_mixer_create(struct sis7019 *sis)
 {
 	struct snd_ac97_bus *bus;
 	struct snd_ac97_template ac97;
@@ -1171,7 +1171,7 @@ static int sis_chip_init(struct sis7019 *sis)
 	outl(SIS_DMA_CSR_PCI_SETTINGS, io + SIS_DMA_CSR);
 
 	/* Reset the synchronization groups for all of the channels
-	 * to be asynchronous. If we start doing SPDIF or 5.1 sound, etc.
+	 * to be asyncronous. If we start doing SPDIF or 5.1 sound, etc.
 	 * we'll need to change how we handle these. Until then, we just
 	 * assign sub-mixer 0 to all playback channels, and avoid any
 	 * attenuation on the audio.
@@ -1208,11 +1208,10 @@ static int sis_chip_init(struct sis7019 *sis)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int sis_suspend(struct device *dev)
+#ifdef CONFIG_PM
+static int sis_suspend(struct pci_dev *pci, pm_message_t state)
 {
-	struct pci_dev *pci = to_pci_dev(dev);
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct sis7019 *sis = card->private_data;
 	void __iomem *ioaddr = sis->ioaddr;
 	int i;
@@ -1242,14 +1241,13 @@ static int sis_suspend(struct device *dev)
 
 	pci_disable_device(pci);
 	pci_save_state(pci);
-	pci_set_power_state(pci, PCI_D3hot);
+	pci_set_power_state(pci, pci_choose_state(pci, state));
 	return 0;
 }
 
-static int sis_resume(struct device *dev)
+static int sis_resume(struct pci_dev *pci)
 {
-	struct pci_dev *pci = to_pci_dev(dev);
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct sis7019 *sis = card->private_data;
 	void __iomem *ioaddr = sis->ioaddr;
 	int i;
@@ -1300,12 +1298,7 @@ error:
 	snd_card_disconnect(card);
 	return -EIO;
 }
-
-static SIMPLE_DEV_PM_OPS(sis_pm, sis_suspend, sis_resume);
-#define SIS_PM_OPS	&sis_pm
-#else
-#define SIS_PM_OPS	NULL
-#endif /* CONFIG_PM_SLEEP */
+#endif /* CONFIG_PM */
 
 static int sis_alloc_suspend(struct sis7019 *sis)
 {
@@ -1326,8 +1319,8 @@ static int sis_alloc_suspend(struct sis7019 *sis)
 	return 0;
 }
 
-static int sis_chip_create(struct snd_card *card,
-			   struct pci_dev *pci)
+static int __devinit sis_chip_create(struct snd_card *card,
+					struct pci_dev *pci)
 {
 	struct sis7019 *sis = card->private_data;
 	struct voice *voice;
@@ -1377,9 +1370,8 @@ static int sis_chip_create(struct snd_card *card,
 	if (rc)
 		goto error_out_cleanup;
 
-	rc = request_irq(pci->irq, sis_interrupt, IRQF_SHARED, KBUILD_MODNAME,
-			 sis);
-	if (rc) {
+	if (request_irq(pci->irq, sis_interrupt, IRQF_SHARED, KBUILD_MODNAME,
+			sis)) {
 		dev_err(&pci->dev, "unable to allocate irq %d\n", sis->irq);
 		goto error_out_cleanup;
 	}
@@ -1417,8 +1409,8 @@ error_out:
 	return rc;
 }
 
-static int snd_sis7019_probe(struct pci_dev *pci,
-			     const struct pci_device_id *pci_id)
+static int __devinit snd_sis7019_probe(struct pci_dev *pci,
+					const struct pci_device_id *pci_id)
 {
 	struct snd_card *card;
 	struct sis7019 *sis;
@@ -1478,7 +1470,7 @@ error_out:
 	return rc;
 }
 
-static void snd_sis7019_remove(struct pci_dev *pci)
+static void __devexit snd_sis7019_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
 	pci_set_drvdata(pci, NULL);
@@ -1488,10 +1480,12 @@ static struct pci_driver sis7019_driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_sis7019_ids,
 	.probe = snd_sis7019_probe,
-	.remove = snd_sis7019_remove,
-	.driver = {
-		.pm = SIS_PM_OPS,
-	},
+	.remove = __devexit_p(snd_sis7019_remove),
+
+#ifdef CONFIG_PM
+	.suspend = sis_suspend,
+	.resume = sis_resume,
+#endif
 };
 
 module_pci_driver(sis7019_driver);

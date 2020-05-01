@@ -641,8 +641,8 @@ static const struct of_device_id wm8737_of_match[] = {
 MODULE_DEVICE_TABLE(of, wm8737_of_match);
 
 #if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-static int wm8737_i2c_probe(struct i2c_client *i2c,
-			    const struct i2c_device_id *id)
+static __devinit int wm8737_i2c_probe(struct i2c_client *i2c,
+				      const struct i2c_device_id *id)
 {
 	struct wm8737_priv *wm8737;
 	int ret;
@@ -662,7 +662,7 @@ static int wm8737_i2c_probe(struct i2c_client *i2c,
 
 }
 
-static int wm8737_i2c_remove(struct i2c_client *client)
+static __devexit int wm8737_i2c_remove(struct i2c_client *client)
 {
 	snd_soc_unregister_codec(&client->dev);
 	kfree(i2c_get_clientdata(client));
@@ -682,13 +682,13 @@ static struct i2c_driver wm8737_i2c_driver = {
 		.of_match_table = wm8737_of_match,
 	},
 	.probe =    wm8737_i2c_probe,
-	.remove =   wm8737_i2c_remove,
+	.remove =   __devexit_p(wm8737_i2c_remove),
 	.id_table = wm8737_i2c_id,
 };
 #endif
 
 #if defined(CONFIG_SPI_MASTER)
-static int wm8737_spi_probe(struct spi_device *spi)
+static int __devinit wm8737_spi_probe(struct spi_device *spi)
 {
 	struct wm8737_priv *wm8737;
 	int ret;
@@ -707,7 +707,7 @@ static int wm8737_spi_probe(struct spi_device *spi)
 	return ret;
 }
 
-static int wm8737_spi_remove(struct spi_device *spi)
+static int __devexit wm8737_spi_remove(struct spi_device *spi)
 {
 	snd_soc_unregister_codec(&spi->dev);
 	kfree(spi_get_drvdata(spi));
@@ -721,7 +721,7 @@ static struct spi_driver wm8737_spi_driver = {
 		.of_match_table = wm8737_of_match,
 	},
 	.probe		= wm8737_spi_probe,
-	.remove		= wm8737_spi_remove,
+	.remove		= __devexit_p(wm8737_spi_remove),
 };
 #endif /* CONFIG_SPI_MASTER */
 

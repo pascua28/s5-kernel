@@ -22,7 +22,6 @@
  *
  */
 
-#include <linux/io.h>
 #include <sound/control.h>
 #include <sound/ac97_codec.h>
 #include <sound/rawmidi.h>
@@ -289,7 +288,6 @@ struct snd_ice1712_spdif {
 	} ops;
 };
 
-struct snd_ice1712_card_info;
 
 struct snd_ice1712 {
 	unsigned long conp_dma_size;
@@ -326,7 +324,6 @@ struct snd_ice1712 {
 	struct snd_info_entry *proc_entry;
 
 	struct snd_ice1712_eeprom eeprom;
-	struct snd_ice1712_card_info *card_info;
 
 	unsigned int pro_volumes[20];
 	unsigned int omni:1;		/* Delta Omni I/O */
@@ -384,7 +381,7 @@ struct snd_ice1712 {
 	unsigned char (*set_mclk)(struct snd_ice1712 *ice, unsigned int rate);
 	int (*set_spdif_clock)(struct snd_ice1712 *ice, int type);
 	int (*get_spdif_master_type)(struct snd_ice1712 *ice);
-	const char * const *ext_clock_names;
+	char **ext_clock_names;
 	int ext_clock_count;
 	void (*pro_open)(struct snd_ice1712 *, struct snd_pcm_substream *);
 #ifdef CONFIG_PM
@@ -516,11 +513,10 @@ static inline u8 snd_ice1712_read(struct snd_ice1712 *ice, u8 addr)
 
 struct snd_ice1712_card_info {
 	unsigned int subvendor;
-	const char *name;
-	const char *model;
-	const char *driver;
+	char *name;
+	char *model;
+	char *driver;
 	int (*chip_init)(struct snd_ice1712 *);
-	void (*chip_exit)(struct snd_ice1712 *);
 	int (*build_controls)(struct snd_ice1712 *);
 	unsigned int no_mpu401:1;
 	unsigned int mpu401_1_info_flags;

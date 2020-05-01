@@ -99,8 +99,8 @@ static DEFINE_PCI_DEVICE_TABLE(snd_emu10k1_ids) = {
 
 MODULE_DEVICE_TABLE(pci, snd_emu10k1_ids);
 
-static int snd_card_emu10k1_probe(struct pci_dev *pci,
-				  const struct pci_device_id *pci_id)
+static int __devinit snd_card_emu10k1_probe(struct pci_dev *pci,
+					    const struct pci_device_id *pci_id)
 {
 	static int dev;
 	struct snd_card *card;
@@ -199,23 +199,20 @@ static int snd_card_emu10k1_probe(struct pci_dev *pci,
 	return err;
 }
 
-static void snd_card_emu10k1_remove(struct pci_dev *pci)
+static void __devexit snd_card_emu10k1_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
 	pci_set_drvdata(pci, NULL);
 }
 
 
-#ifdef CONFIG_PM_SLEEP
-static int snd_emu10k1_suspend(struct device *dev)
+#ifdef CONFIG_PM
+static int snd_emu10k1_suspend(struct pci_dev *pci, pm_message_t state)
 {
-	struct pci_dev *pci = to_pci_dev(dev);
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct snd_emu10k1 *emu = card->private_data;
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
-
-	emu->suspend = 1;
 
 	snd_pcm_suspend_all(emu->pcm);
 	snd_pcm_suspend_all(emu->pcm_mic);
@@ -234,14 +231,13 @@ static int snd_emu10k1_suspend(struct device *dev)
 
 	pci_disable_device(pci);
 	pci_save_state(pci);
-	pci_set_power_state(pci, PCI_D3hot);
+	pci_set_power_state(pci, pci_choose_state(pci, state));
 	return 0;
 }
 
-static int snd_emu10k1_resume(struct device *dev)
+static int snd_emu10k1_resume(struct pci_dev *pci)
 {
-	struct pci_dev *pci = to_pci_dev(dev);
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct snd_emu10k1 *emu = card->private_data;
 
 	pci_set_power_state(pci, PCI_D0);
@@ -262,26 +258,20 @@ static int snd_emu10k1_resume(struct device *dev)
 	if (emu->card_capabilities->ca0151_chip)
 		snd_p16v_resume(emu);
 
-	emu->suspend = 0;
-
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
 	return 0;
 }
-
-static SIMPLE_DEV_PM_OPS(snd_emu10k1_pm, snd_emu10k1_suspend, snd_emu10k1_resume);
-#define SND_EMU10K1_PM_OPS	&snd_emu10k1_pm
-#else
-#define SND_EMU10K1_PM_OPS	NULL
-#endif /* CONFIG_PM_SLEEP */
+#endif
 
 static struct pci_driver emu10k1_driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_emu10k1_ids,
 	.probe = snd_card_emu10k1_probe,
-	.remove = snd_card_emu10k1_remove,
-	.driver = {
-		.pm = SND_EMU10K1_PM_OPS,
-	},
+	.remove = __devexit_p(snd_card_emu10k1_remove),
+#ifdef CONFIG_PM
+	.suspend = snd_emu10k1_suspend,
+	.resume = snd_emu10k1_resume,
+#endif
 };
 
 module_pci_driver(emu10k1_driver);

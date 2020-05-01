@@ -39,7 +39,7 @@ MODULE_PARM_DESC(nopcm, "Disable PC-Speaker PCM sound. Only beeps remain.");
 
 struct snd_pcsp pcsp_chip;
 
-static int snd_pcsp_create(struct snd_card *card)
+static int __devinit snd_pcsp_create(struct snd_card *card)
 {
 	static struct snd_device_ops ops = { };
 	struct timespec tp;
@@ -93,7 +93,7 @@ static int snd_pcsp_create(struct snd_card *card)
 	return 0;
 }
 
-static int snd_card_pcsp_probe(int devnum, struct device *dev)
+static int __devinit snd_card_pcsp_probe(int devnum, struct device *dev)
 {
 	struct snd_card *card;
 	int err;
@@ -142,7 +142,7 @@ static int snd_card_pcsp_probe(int devnum, struct device *dev)
 	return 0;
 }
 
-static int alsa_card_pcsp_init(struct device *dev)
+static int __devinit alsa_card_pcsp_init(struct device *dev)
 {
 	int err;
 
@@ -161,12 +161,12 @@ static int alsa_card_pcsp_init(struct device *dev)
 	return 0;
 }
 
-static void alsa_card_pcsp_exit(struct snd_pcsp *chip)
+static void __devexit alsa_card_pcsp_exit(struct snd_pcsp *chip)
 {
 	snd_card_free(chip->card);
 }
 
-static int pcsp_probe(struct platform_device *dev)
+static int __devinit pcsp_probe(struct platform_device *dev)
 {
 	int err;
 
@@ -184,7 +184,7 @@ static int pcsp_probe(struct platform_device *dev)
 	return 0;
 }
 
-static int pcsp_remove(struct platform_device *dev)
+static int __devexit pcsp_remove(struct platform_device *dev)
 {
 	struct snd_pcsp *chip = platform_get_drvdata(dev);
 	alsa_card_pcsp_exit(chip);
@@ -199,20 +199,17 @@ static void pcsp_stop_beep(struct snd_pcsp *chip)
 	pcspkr_stop_sound();
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int pcsp_suspend(struct device *dev)
+#ifdef CONFIG_PM
+static int pcsp_suspend(struct platform_device *dev, pm_message_t state)
 {
-	struct snd_pcsp *chip = dev_get_drvdata(dev);
+	struct snd_pcsp *chip = platform_get_drvdata(dev);
 	pcsp_stop_beep(chip);
 	snd_pcm_suspend_all(chip->pcm);
 	return 0;
 }
-
-static SIMPLE_DEV_PM_OPS(pcsp_pm, pcsp_suspend, NULL);
-#define PCSP_PM_OPS	&pcsp_pm
 #else
-#define PCSP_PM_OPS	NULL
-#endif	/* CONFIG_PM_SLEEP */
+#define pcsp_suspend NULL
+#endif	/* CONFIG_PM */
 
 static void pcsp_shutdown(struct platform_device *dev)
 {
@@ -224,10 +221,10 @@ static struct platform_driver pcsp_platform_driver = {
 	.driver		= {
 		.name	= "pcspkr",
 		.owner	= THIS_MODULE,
-		.pm	= PCSP_PM_OPS,
 	},
 	.probe		= pcsp_probe,
-	.remove		= pcsp_remove,
+	.remove		= __devexit_p(pcsp_remove),
+	.suspend	= pcsp_suspend,
 	.shutdown	= pcsp_shutdown,
 };
 

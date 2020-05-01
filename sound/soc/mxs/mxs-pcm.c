@@ -220,13 +220,13 @@ static struct snd_soc_platform_driver mxs_soc_platform = {
 	.pcm_free	= mxs_pcm_free,
 };
 
-int mxs_pcm_platform_register(struct device *dev)
+int __devinit mxs_pcm_platform_register(struct device *dev)
 {
 	return snd_soc_register_platform(dev, &mxs_soc_platform);
 }
 EXPORT_SYMBOL_GPL(mxs_pcm_platform_register);
 
-void mxs_pcm_platform_unregister(struct device *dev)
+void __devexit mxs_pcm_platform_unregister(struct device *dev)
 {
 	snd_soc_unregister_platform(dev);
 }

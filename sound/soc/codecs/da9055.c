@@ -173,7 +173,6 @@
 #define DA9055_AIF_FORMAT_I2S_MODE	(0 << 0)
 #define DA9055_AIF_FORMAT_LEFT_J	(1 << 0)
 #define DA9055_AIF_FORMAT_RIGHT_J	(2 << 0)
-#define DA9055_AIF_FORMAT_DSP		(3 << 0)
 #define DA9055_AIF_WORD_S16_LE		(0 << 2)
 #define DA9055_AIF_WORD_S20_3LE		(1 << 2)
 #define DA9055_AIF_WORD_S24_LE		(2 << 2)
@@ -753,17 +752,6 @@ static const struct snd_kcontrol_new da9055_dapm_mixoutr_controls[] = {
 			6, 1, 0),
 };
 
-/* Headphone Output Enable */
-static const struct snd_kcontrol_new da9055_dapm_hp_l_control =
-SOC_DAPM_SINGLE("Switch", DA9055_HP_L_CTRL, 3, 1, 0);
-
-static const struct snd_kcontrol_new da9055_dapm_hp_r_control =
-SOC_DAPM_SINGLE("Switch", DA9055_HP_R_CTRL, 3, 1, 0);
-
-/* Lineout Output Enable */
-static const struct snd_kcontrol_new da9055_dapm_lineout_control =
-SOC_DAPM_SINGLE("Switch", DA9055_LINE_CTRL, 3, 1, 0);
-
 /* DAPM widgets */
 static const struct snd_soc_dapm_widget da9055_dapm_widgets[] = {
 	/* Input Side */
@@ -827,14 +815,6 @@ static const struct snd_soc_dapm_widget da9055_dapm_widgets[] = {
 	SND_SOC_DAPM_MIXER("Out Mixer Right", SND_SOC_NOPM, 0, 0,
 			   &da9055_dapm_mixoutr_controls[0],
 			   ARRAY_SIZE(da9055_dapm_mixoutr_controls)),
-
-	/* Output Enable Switches */
-	SND_SOC_DAPM_SWITCH("Headphone Left Enable", SND_SOC_NOPM, 0, 0,
-			    &da9055_dapm_hp_l_control),
-	SND_SOC_DAPM_SWITCH("Headphone Right Enable", SND_SOC_NOPM, 0, 0,
-			    &da9055_dapm_hp_r_control),
-	SND_SOC_DAPM_SWITCH("Lineout Enable", SND_SOC_NOPM, 0, 0,
-			    &da9055_dapm_lineout_control),
 
 	/* Output PGAs */
 	SND_SOC_DAPM_PGA("MIXOUT Left", DA9055_MIXOUT_L_CTRL, 7, 0, NULL, 0),
@@ -921,20 +901,17 @@ static const struct snd_soc_dapm_route da9055_audio_map[] = {
 	{"Out Mixer Right", "DAC Right Switch", "DAC Right"},
 
 	{"MIXOUT Left", NULL, "Out Mixer Left"},
-	{"Headphone Left Enable", "Switch", "MIXOUT Left"},
-	{"Headphone Left", NULL, "Headphone Left Enable"},
+	{"Headphone Left", NULL, "MIXOUT Left"},
 	{"Headphone Left", NULL, "Charge Pump"},
 	{"HPL", NULL, "Headphone Left"},
 
 	{"MIXOUT Right", NULL, "Out Mixer Right"},
-	{"Headphone Right Enable", "Switch", "MIXOUT Right"},
-	{"Headphone Right", NULL, "Headphone Right Enable"},
+	{"Headphone Right", NULL, "MIXOUT Right"},
 	{"Headphone Right", NULL, "Charge Pump"},
 	{"HPR", NULL, "Headphone Right"},
 
 	{"MIXOUT Right", NULL, "Out Mixer Right"},
-	{"Lineout Enable", "Switch", "MIXOUT Right"},
-	{"Lineout", NULL, "Lineout Enable"},
+	{"Lineout", NULL, "MIXOUT Right"},
 	{"LINE", NULL, "Lineout"},
 };
 
@@ -1198,9 +1175,6 @@ static int da9055_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	case SND_SOC_DAIFMT_RIGHT_J:
 		aif_ctrl = DA9055_AIF_FORMAT_RIGHT_J;
 		break;
-	case SND_SOC_DAIFMT_DSP_A:
-		aif_ctrl = DA9055_AIF_FORMAT_DSP;
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -1416,7 +1390,8 @@ static int da9055_probe(struct snd_soc_codec *codec)
 			    DA9055_GAIN_RAMPING_EN, DA9055_GAIN_RAMPING_EN);
 
 	/*
-	 * There are two separate control bits for input and output mixers.
+	 * There are two separate control bits for input and output mixers as
+	 * well as headphone and line outs.
 	 * One to enable corresponding amplifier and other to enable its
 	 * output. As amplifier bits are related to power control, they are
 	 * being managed by DAPM while other (non power related) bits are
@@ -1431,6 +1406,14 @@ static int da9055_probe(struct snd_soc_codec *codec)
 			    DA9055_MIXOUT_L_MIX_EN, DA9055_MIXOUT_L_MIX_EN);
 	snd_soc_update_bits(codec, DA9055_MIXOUT_R_CTRL,
 			    DA9055_MIXOUT_R_MIX_EN, DA9055_MIXOUT_R_MIX_EN);
+
+	snd_soc_update_bits(codec, DA9055_HP_L_CTRL,
+			    DA9055_HP_L_AMP_OE, DA9055_HP_L_AMP_OE);
+	snd_soc_update_bits(codec, DA9055_HP_R_CTRL,
+			    DA9055_HP_R_AMP_OE, DA9055_HP_R_AMP_OE);
+
+	snd_soc_update_bits(codec, DA9055_LINE_CTRL,
+			    DA9055_LINE_AMP_OE, DA9055_LINE_AMP_OE);
 
 	/* Set this as per your system configuration */
 	snd_soc_write(codec, DA9055_PLL_CTRL, DA9055_PLL_INDIV_10_20_MHZ);
@@ -1484,8 +1467,8 @@ static const struct regmap_config da9055_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
-static int da9055_i2c_probe(struct i2c_client *i2c,
-			    const struct i2c_device_id *id)
+static int __devinit da9055_i2c_probe(struct i2c_client *i2c,
+				      const struct i2c_device_id *id)
 {
 	struct da9055_priv *da9055;
 	struct da9055_platform_data *pdata = dev_get_platdata(&i2c->dev);
@@ -1517,7 +1500,7 @@ static int da9055_i2c_probe(struct i2c_client *i2c,
 	return ret;
 }
 
-static int da9055_remove(struct i2c_client *client)
+static int __devexit da9055_remove(struct i2c_client *client)
 {
 	snd_soc_unregister_codec(&client->dev);
 	return 0;
@@ -1536,7 +1519,7 @@ static struct i2c_driver da9055_i2c_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe		= da9055_i2c_probe,
-	.remove		= da9055_remove,
+	.remove		= __devexit_p(da9055_remove),
 	.id_table	= da9055_i2c_id,
 };
 

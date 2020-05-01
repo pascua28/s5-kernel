@@ -378,7 +378,7 @@ static const struct regmap_config ad193x_spi_regmap_config = {
 	.volatile_reg = adau193x_reg_volatile,
 };
 
-static int ad193x_spi_probe(struct spi_device *spi)
+static int __devinit ad193x_spi_probe(struct spi_device *spi)
 {
 	struct ad193x_priv *ad193x;
 	int ret;
@@ -409,7 +409,7 @@ err_out:
 	return ret;
 }
 
-static int ad193x_spi_remove(struct spi_device *spi)
+static int __devexit ad193x_spi_remove(struct spi_device *spi)
 {
 	struct ad193x_priv *ad193x = spi_get_drvdata(spi);
 
@@ -424,7 +424,7 @@ static struct spi_driver ad193x_spi_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ad193x_spi_probe,
-	.remove		= ad193x_spi_remove,
+	.remove		= __devexit_p(ad193x_spi_remove),
 };
 #endif
 
@@ -445,8 +445,8 @@ static const struct i2c_device_id ad193x_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ad193x_id);
 
-static int ad193x_i2c_probe(struct i2c_client *client,
-			    const struct i2c_device_id *id)
+static int __devinit ad193x_i2c_probe(struct i2c_client *client,
+		const struct i2c_device_id *id)
 {
 	struct ad193x_priv *ad193x;
 	int ret;
@@ -477,7 +477,7 @@ err_out:
 	return ret;
 }
 
-static int ad193x_i2c_remove(struct i2c_client *client)
+static int __devexit ad193x_i2c_remove(struct i2c_client *client)
 {
 	struct ad193x_priv *ad193x = i2c_get_clientdata(client);
 
@@ -491,7 +491,7 @@ static struct i2c_driver ad193x_i2c_driver = {
 		.name = "ad193x",
 	},
 	.probe    = ad193x_i2c_probe,
-	.remove   = ad193x_i2c_remove,
+	.remove   = __devexit_p(ad193x_i2c_remove),
 	.id_table = ad193x_id,
 };
 #endif

@@ -22,6 +22,7 @@
  *
  */      
 
+#include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
@@ -431,7 +432,7 @@ static int snd_ice1712_delta1010lt_wordclock_status_get(struct snd_kcontrol *kco
 	return 0;
 }
 
-static struct snd_kcontrol_new snd_ice1712_delta1010lt_wordclock_status =
+static struct snd_kcontrol_new snd_ice1712_delta1010lt_wordclock_status __devinitdata =
 {
 	.access =	(SNDRV_CTL_ELEM_ACCESS_READ),
 	.iface =	SNDRV_CTL_ELEM_IFACE_MIXER,
@@ -444,7 +445,7 @@ static struct snd_kcontrol_new snd_ice1712_delta1010lt_wordclock_status =
  * initialize the chips on M-Audio cards
  */
 
-static struct snd_akm4xxx akm_audiophile = {
+static struct snd_akm4xxx akm_audiophile __devinitdata = {
 	.type = SND_AK4528,
 	.num_adcs = 2,
 	.num_dacs = 2,
@@ -453,7 +454,7 @@ static struct snd_akm4xxx akm_audiophile = {
 	}
 };
 
-static struct snd_ak4xxx_private akm_audiophile_priv = {
+static struct snd_ak4xxx_private akm_audiophile_priv __devinitdata = {
 	.caddr = 2,
 	.cif = 0,
 	.data_mask = ICE1712_DELTA_AP_DOUT,
@@ -465,7 +466,7 @@ static struct snd_ak4xxx_private akm_audiophile_priv = {
 	.mask_flags = 0,
 };
 
-static struct snd_akm4xxx akm_delta410 = {
+static struct snd_akm4xxx akm_delta410 __devinitdata = {
 	.type = SND_AK4529,
 	.num_adcs = 2,
 	.num_dacs = 8,
@@ -474,7 +475,7 @@ static struct snd_akm4xxx akm_delta410 = {
 	}
 };
 
-static struct snd_ak4xxx_private akm_delta410_priv = {
+static struct snd_ak4xxx_private akm_delta410_priv __devinitdata = {
 	.caddr = 0,
 	.cif = 0,
 	.data_mask = ICE1712_DELTA_AP_DOUT,
@@ -486,7 +487,7 @@ static struct snd_ak4xxx_private akm_delta410_priv = {
 	.mask_flags = 0,
 };
 
-static struct snd_akm4xxx akm_delta1010lt = {
+static struct snd_akm4xxx akm_delta1010lt __devinitdata = {
 	.type = SND_AK4524,
 	.num_adcs = 8,
 	.num_dacs = 8,
@@ -496,7 +497,7 @@ static struct snd_akm4xxx akm_delta1010lt = {
 	}
 };
 
-static struct snd_ak4xxx_private akm_delta1010lt_priv = {
+static struct snd_ak4xxx_private akm_delta1010lt_priv __devinitdata = {
 	.caddr = 2,
 	.cif = 0, /* the default level of the CIF pin from AK4524 */
 	.data_mask = ICE1712_DELTA_1010LT_DOUT,
@@ -508,7 +509,7 @@ static struct snd_ak4xxx_private akm_delta1010lt_priv = {
 	.mask_flags = 0,
 };
 
-static struct snd_akm4xxx akm_delta66e = {
+static struct snd_akm4xxx akm_delta66e __devinitdata = {
 	.type = SND_AK4524,
 	.num_adcs = 4,
 	.num_dacs = 4,
@@ -518,7 +519,7 @@ static struct snd_akm4xxx akm_delta66e = {
 	}
 };
 
-static struct snd_ak4xxx_private akm_delta66e_priv = {
+static struct snd_ak4xxx_private akm_delta66e_priv __devinitdata = {
 	.caddr = 2,
 	.cif = 0, /* the default level of the CIF pin from AK4524 */
 	.data_mask = ICE1712_DELTA_66E_DOUT,
@@ -531,7 +532,7 @@ static struct snd_ak4xxx_private akm_delta66e_priv = {
 };
 
 
-static struct snd_akm4xxx akm_delta44 = {
+static struct snd_akm4xxx akm_delta44 __devinitdata = {
 	.type = SND_AK4524,
 	.num_adcs = 4,
 	.num_dacs = 4,
@@ -541,7 +542,7 @@ static struct snd_akm4xxx akm_delta44 = {
 	}
 };
 
-static struct snd_ak4xxx_private akm_delta44_priv = {
+static struct snd_ak4xxx_private akm_delta44_priv __devinitdata = {
 	.caddr = 2,
 	.cif = 0, /* the default level of the CIF pin from AK4524 */
 	.data_mask = ICE1712_DELTA_CODEC_SERIAL_DATA,
@@ -553,7 +554,7 @@ static struct snd_ak4xxx_private akm_delta44_priv = {
 	.mask_flags = 0,
 };
 
-static struct snd_akm4xxx akm_vx442 = {
+static struct snd_akm4xxx akm_vx442 __devinitdata = {
 	.type = SND_AK4524,
 	.num_adcs = 4,
 	.num_dacs = 4,
@@ -563,7 +564,7 @@ static struct snd_akm4xxx akm_vx442 = {
 	}
 };
 
-static struct snd_ak4xxx_private akm_vx442_priv = {
+static struct snd_ak4xxx_private akm_vx442_priv __devinitdata = {
 	.caddr = 2,
 	.cif = 0,
 	.data_mask = ICE1712_VX442_DOUT,
@@ -575,7 +576,7 @@ static struct snd_ak4xxx_private akm_vx442_priv = {
 	.mask_flags = 0,
 };
 
-static int snd_ice1712_delta_init(struct snd_ice1712 *ice)
+static int __devinit snd_ice1712_delta_init(struct snd_ice1712 *ice)
 {
 	int err;
 	struct snd_akm4xxx *ak;
@@ -616,7 +617,7 @@ static int snd_ice1712_delta_init(struct snd_ice1712 *ice)
 		ice->num_total_dacs = 4;	/* two AK4324 codecs */
 		break;
 	case ICE1712_SUBDEVICE_VX442:
-	case ICE1712_SUBDEVICE_DELTA66E:	/* omni not supported yet */
+	case ICE1712_SUBDEVICE_DELTA66E:	/* omni not suported yet */
 		ice->num_total_dacs = 4;
 		ice->num_total_adcs = 4;
 		break;
@@ -713,19 +714,19 @@ static int snd_ice1712_delta_init(struct snd_ice1712 *ice)
  * additional controls for M-Audio cards
  */
 
-static struct snd_kcontrol_new snd_ice1712_delta1010_wordclock_select =
+static struct snd_kcontrol_new snd_ice1712_delta1010_wordclock_select __devinitdata =
 ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_MIXER, "Word Clock Sync", 0, ICE1712_DELTA_WORD_CLOCK_SELECT, 1, 0);
-static struct snd_kcontrol_new snd_ice1712_delta1010lt_wordclock_select =
+static struct snd_kcontrol_new snd_ice1712_delta1010lt_wordclock_select __devinitdata =
 ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_MIXER, "Word Clock Sync", 0, ICE1712_DELTA_1010LT_WORDCLOCK, 0, 0);
-static struct snd_kcontrol_new snd_ice1712_delta1010_wordclock_status =
+static struct snd_kcontrol_new snd_ice1712_delta1010_wordclock_status __devinitdata =
 ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_MIXER, "Word Clock Status", 0, ICE1712_DELTA_WORD_CLOCK_STATUS, 1, SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE);
-static struct snd_kcontrol_new snd_ice1712_deltadio2496_spdif_in_select =
+static struct snd_kcontrol_new snd_ice1712_deltadio2496_spdif_in_select __devinitdata =
 ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_MIXER, "IEC958 Input Optical", 0, ICE1712_DELTA_SPDIF_INPUT_SELECT, 0, 0);
-static struct snd_kcontrol_new snd_ice1712_delta_spdif_in_status =
+static struct snd_kcontrol_new snd_ice1712_delta_spdif_in_status __devinitdata =
 ICE1712_GPIO(SNDRV_CTL_ELEM_IFACE_MIXER, "Delta IEC958 Input Status", 0, ICE1712_DELTA_SPDIF_IN_STAT, 1, SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_VOLATILE);
 
 
-static int snd_ice1712_delta_add_controls(struct snd_ice1712 *ice)
+static int __devinit snd_ice1712_delta_add_controls(struct snd_ice1712 *ice)
 {
 	int err;
 
@@ -801,7 +802,7 @@ static int snd_ice1712_delta_add_controls(struct snd_ice1712 *ice)
 
 
 /* entry point */
-struct snd_ice1712_card_info snd_ice1712_delta_cards[] = {
+struct snd_ice1712_card_info snd_ice1712_delta_cards[] __devinitdata = {
 	{
 		.subvendor = ICE1712_SUBDEVICE_DELTA1010,
 		.name = "M Audio Delta 1010",

@@ -349,7 +349,7 @@ static irqreturn_t snd_mfld_jack_detection(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int snd_mfld_mc_probe(struct platform_device *pdev)
+static int __devinit snd_mfld_mc_probe(struct platform_device *pdev)
 {
 	int ret_val = 0, irq;
 	struct mfld_mc_private *mc_drv_ctx;
@@ -408,7 +408,7 @@ unalloc:
 	return ret_val;
 }
 
-static int snd_mfld_mc_remove(struct platform_device *pdev)
+static int __devexit snd_mfld_mc_remove(struct platform_device *pdev)
 {
 	struct mfld_mc_private *mc_drv_ctx = platform_get_drvdata(pdev);
 
@@ -426,7 +426,7 @@ static struct platform_driver snd_mfld_mc_driver = {
 		.name = "msic_audio",
 	},
 	.probe = snd_mfld_mc_probe,
-	.remove = snd_mfld_mc_remove,
+	.remove = __devexit_p(snd_mfld_mc_remove),
 };
 
 module_platform_driver(snd_mfld_mc_driver);

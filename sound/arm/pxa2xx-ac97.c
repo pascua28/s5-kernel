@@ -166,7 +166,7 @@ static const struct dev_pm_ops pxa2xx_ac97_pm_ops = {
 };
 #endif
 
-static int pxa2xx_ac97_probe(struct platform_device *dev)
+static int __devinit pxa2xx_ac97_probe(struct platform_device *dev)
 {
 	struct snd_card *card;
 	struct snd_ac97_bus *ac97_bus;
@@ -227,7 +227,7 @@ err_dev:
 	return ret;
 }
 
-static int pxa2xx_ac97_remove(struct platform_device *dev)
+static int __devexit pxa2xx_ac97_remove(struct platform_device *dev)
 {
 	struct snd_card *card = platform_get_drvdata(dev);
 
@@ -242,7 +242,7 @@ static int pxa2xx_ac97_remove(struct platform_device *dev)
 
 static struct platform_driver pxa2xx_ac97_driver = {
 	.probe		= pxa2xx_ac97_probe,
-	.remove		= pxa2xx_ac97_remove,
+	.remove		= __devexit_p(pxa2xx_ac97_remove),
 	.driver		= {
 		.name	= "pxa2xx-ac97",
 		.owner	= THIS_MODULE,

@@ -32,8 +32,8 @@
 
 #include <asm/mach-types.h>
 
-#include <mach/board-ams-delta.h>
-#include <linux/platform_data/asoc-ti-mcbsp.h>
+#include <plat/board-ams-delta.h>
+#include <plat/mcbsp.h>
 
 #include "omap-mcbsp.h"
 #include "omap-pcm.h"
@@ -575,53 +575,56 @@ static struct snd_soc_card ams_delta_audio_card = {
 };
 
 /* Module init/exit */
-static int ams_delta_probe(struct platform_device *pdev)
+static struct platform_device *ams_delta_audio_platform_device;
+static struct platform_device *cx20442_platform_device;
+
+static int __init ams_delta_module_init(void)
 {
-	struct snd_soc_card *card = &ams_delta_audio_card;
 	int ret;
 
-	card->dev = &pdev->dev;
+	if (!(machine_is_ams_delta()))
+		return -ENODEV;
 
-	ret = snd_soc_register_card(card);
-	if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
-		card->dev = NULL;
-		return ret;
-	}
+	ams_delta_audio_platform_device =
+			platform_device_alloc("soc-audio", -1);
+	if (!ams_delta_audio_platform_device)
+		return -ENOMEM;
+
+	platform_set_drvdata(ams_delta_audio_platform_device,
+				&ams_delta_audio_card);
+
+	ret = platform_device_add(ams_delta_audio_platform_device);
+	if (ret)
+		goto err;
+
+	/*
+	 * Codec platform device could be registered from elsewhere (board?),
+	 * but I do it here as it makes sense only if used with the card.
+	 */
+	cx20442_platform_device =
+		platform_device_register_simple("cx20442-codec", -1, NULL, 0);
 	return 0;
+err:
+	platform_device_put(ams_delta_audio_platform_device);
+	return ret;
 }
+late_initcall(ams_delta_module_init);
 
-static int ams_delta_remove(struct platform_device *pdev)
+static void __exit ams_delta_module_exit(void)
 {
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-
 	if (tty_unregister_ldisc(N_V253) != 0)
-		dev_warn(&pdev->dev,
+		dev_warn(&ams_delta_audio_platform_device->dev,
 			"failed to unregister V253 line discipline\n");
 
 	snd_soc_jack_free_gpios(&ams_delta_hook_switch,
 			ARRAY_SIZE(ams_delta_hook_switch_gpios),
 			ams_delta_hook_switch_gpios);
 
-	snd_soc_unregister_card(card);
-	card->dev = NULL;
-	return 0;
+	platform_device_unregister(cx20442_platform_device);
+	platform_device_unregister(ams_delta_audio_platform_device);
 }
-
-#define DRV_NAME "ams-delta-audio"
-
-static struct platform_driver ams_delta_driver = {
-	.driver = {
-		.name = DRV_NAME,
-		.owner = THIS_MODULE,
-	},
-	.probe = ams_delta_probe,
-	.remove = ams_delta_remove,
-};
-
-module_platform_driver(ams_delta_driver);
+module_exit(ams_delta_module_exit);
 
 MODULE_AUTHOR("Janusz Krzysztofik <jkrzyszt@tis.icnet.pl>");
 MODULE_DESCRIPTION("ALSA SoC driver for Amstrad E3 (Delta) videophone");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:" DRV_NAME);

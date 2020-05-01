@@ -511,7 +511,7 @@ static int snd_atiixp_aclink_reset(struct atiixp_modem *chip)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_PM
 static int snd_atiixp_aclink_down(struct atiixp_modem *chip)
 {
 	// if (atiixp_read(chip, MODEM_MIRROR) & 0x1) /* modem running, too? */
@@ -988,7 +988,7 @@ static struct atiixp_dma_ops snd_atiixp_capture_dma_ops = {
 	.flush_dma = atiixp_in_flush_dma,
 };
 
-static int snd_atiixp_pcm_new(struct atiixp_modem *chip)
+static int __devinit snd_atiixp_pcm_new(struct atiixp_modem *chip)
 {
 	struct snd_pcm *pcm;
 	int err;
@@ -1061,7 +1061,7 @@ static irqreturn_t snd_atiixp_interrupt(int irq, void *dev_id)
  * ac97 mixer section
  */
 
-static int snd_atiixp_mixer_new(struct atiixp_modem *chip, int clock)
+static int __devinit snd_atiixp_mixer_new(struct atiixp_modem *chip, int clock)
 {
 	struct snd_ac97_bus *pbus;
 	struct snd_ac97_template ac97;
@@ -1113,14 +1113,13 @@ static int snd_atiixp_mixer_new(struct atiixp_modem *chip, int clock)
 }
 
 
-#ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_PM
 /*
  * power management
  */
-static int snd_atiixp_suspend(struct device *dev)
+static int snd_atiixp_suspend(struct pci_dev *pci, pm_message_t state)
 {
-	struct pci_dev *pci = to_pci_dev(dev);
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct atiixp_modem *chip = card->private_data;
 	int i;
 
@@ -1134,14 +1133,13 @@ static int snd_atiixp_suspend(struct device *dev)
 
 	pci_disable_device(pci);
 	pci_save_state(pci);
-	pci_set_power_state(pci, PCI_D3hot);
+	pci_set_power_state(pci, pci_choose_state(pci, state));
 	return 0;
 }
 
-static int snd_atiixp_resume(struct device *dev)
+static int snd_atiixp_resume(struct pci_dev *pci)
 {
-	struct pci_dev *pci = to_pci_dev(dev);
-	struct snd_card *card = dev_get_drvdata(dev);
+	struct snd_card *card = pci_get_drvdata(pci);
 	struct atiixp_modem *chip = card->private_data;
 	int i;
 
@@ -1164,12 +1162,8 @@ static int snd_atiixp_resume(struct device *dev)
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
 	return 0;
 }
+#endif /* CONFIG_PM */
 
-static SIMPLE_DEV_PM_OPS(snd_atiixp_pm, snd_atiixp_suspend, snd_atiixp_resume);
-#define SND_ATIIXP_PM_OPS	&snd_atiixp_pm
-#else
-#define SND_ATIIXP_PM_OPS	NULL
-#endif /* CONFIG_PM_SLEEP */
 
 #ifdef CONFIG_PROC_FS
 /*
@@ -1186,7 +1180,7 @@ static void snd_atiixp_proc_read(struct snd_info_entry *entry,
 		snd_iprintf(buffer, "%02x: %08x\n", i, readl(chip->remap_addr + i));
 }
 
-static void snd_atiixp_proc_init(struct atiixp_modem *chip)
+static void __devinit snd_atiixp_proc_init(struct atiixp_modem *chip)
 {
 	struct snd_info_entry *entry;
 
@@ -1228,9 +1222,9 @@ static int snd_atiixp_dev_free(struct snd_device *device)
 /*
  * constructor for chip instance
  */
-static int snd_atiixp_create(struct snd_card *card,
-			     struct pci_dev *pci,
-			     struct atiixp_modem **r_chip)
+static int __devinit snd_atiixp_create(struct snd_card *card,
+				       struct pci_dev *pci,
+				       struct atiixp_modem **r_chip)
 {
 	static struct snd_device_ops ops = {
 		.dev_free =	snd_atiixp_dev_free,
@@ -1287,8 +1281,8 @@ static int snd_atiixp_create(struct snd_card *card,
 }
 
 
-static int snd_atiixp_probe(struct pci_dev *pci,
-			    const struct pci_device_id *pci_id)
+static int __devinit snd_atiixp_probe(struct pci_dev *pci,
+				      const struct pci_device_id *pci_id)
 {
 	struct snd_card *card;
 	struct atiixp_modem *chip;
@@ -1331,7 +1325,7 @@ static int snd_atiixp_probe(struct pci_dev *pci,
 	return err;
 }
 
-static void snd_atiixp_remove(struct pci_dev *pci)
+static void __devexit snd_atiixp_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
 	pci_set_drvdata(pci, NULL);
@@ -1341,10 +1335,11 @@ static struct pci_driver atiixp_modem_driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_atiixp_ids,
 	.probe = snd_atiixp_probe,
-	.remove = snd_atiixp_remove,
-	.driver = {
-		.pm = SND_ATIIXP_PM_OPS,
-	},
+	.remove = __devexit_p(snd_atiixp_remove),
+#ifdef CONFIG_PM
+	.suspend = snd_atiixp_suspend,
+	.resume = snd_atiixp_resume,
+#endif
 };
 
 module_pci_driver(atiixp_modem_driver);
