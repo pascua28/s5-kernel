@@ -5007,7 +5007,7 @@ devote_bus_bw:
 	return ret;
 }
 
-static int __devexit msm_otg_remove(struct platform_device *pdev)
+static int msm_otg_remove(struct platform_device *pdev)
 {
 	struct msm_otg *motg = platform_get_drvdata(pdev);
 	struct usb_phy *phy = &motg->phy;
@@ -5232,7 +5232,7 @@ static struct of_device_id msm_otg_dt_match[] = {
 };
 
 static struct platform_driver msm_otg_driver = {
-	.remove = __devexit_p(msm_otg_remove),
+	.remove = msm_otg_remove,
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,

@@ -98,7 +98,8 @@ static int tda10071_rd_reg(struct tda10071_priv *priv, u8 reg, u8 *val)
 }
 
 /* write single register with mask */
-int tda10071_wr_reg_mask(struct tda10071_priv *priv, u8 reg, u8 val, u8 mask)
+static int tda10071_wr_reg_mask(struct tda10071_priv *priv,
+				u8 reg, u8 val, u8 mask)
 {
 	int ret;
 	u8 tmp;
@@ -118,7 +119,8 @@ int tda10071_wr_reg_mask(struct tda10071_priv *priv, u8 reg, u8 val, u8 mask)
 }
 
 /* read single register with mask */
-int tda10071_rd_reg_mask(struct tda10071_priv *priv, u8 reg, u8 *val, u8 mask)
+static int tda10071_rd_reg_mask(struct tda10071_priv *priv,
+				u8 reg, u8 *val, u8 mask)
 {
 	int ret, i;
 	u8 tmp;

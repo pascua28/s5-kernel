@@ -57,7 +57,6 @@
 #define OTI6858_DESCRIPTION \
 	"Ours Technology Inc. OTi-6858 USB to serial adapter driver"
 #define OTI6858_AUTHOR "Tomasz Michal Lukaszewski <FIXME@FIXME>"
-#define OTI6858_VERSION "0.2"
 
 static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(OTI6858_VENDOR_ID, OTI6858_PRODUCT_ID) },
@@ -962,7 +961,6 @@ module_usb_serial_driver(oti6858_driver, serial_drivers);
 
 MODULE_DESCRIPTION(OTI6858_DESCRIPTION);
 MODULE_AUTHOR(OTI6858_AUTHOR);
-MODULE_VERSION(OTI6858_VERSION);
 MODULE_LICENSE("GPL");
 
 module_param(debug, bool, S_IRUGO | S_IWUSR);

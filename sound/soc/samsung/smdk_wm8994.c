@@ -127,7 +127,7 @@ static struct snd_soc_dai_link smdk_dai[] = {
 		.stream_name = "Pri_Dai",
 		.cpu_dai_name = "samsung-i2s.0",
 		.codec_dai_name = "wm8994-aif1",
-		.platform_name = "samsung-audio",
+		.platform_name = "samsung-i2s.0",
 		.codec_name = "wm8994-codec",
 		.init = smdk_wm8994_init_paiftx,
 		.ops = &smdk_ops,
@@ -136,7 +136,7 @@ static struct snd_soc_dai_link smdk_dai[] = {
 		.stream_name = "Sec_Dai",
 		.cpu_dai_name = "samsung-i2s.4",
 		.codec_dai_name = "wm8994-aif1",
-		.platform_name = "samsung-audio",
+		.platform_name = "samsung-i2s.4",
 		.codec_name = "wm8994-codec",
 		.ops = &smdk_ops,
 	},
@@ -149,31 +149,41 @@ static struct snd_soc_card smdk = {
 	.num_links = ARRAY_SIZE(smdk_dai),
 };
 
-static struct platform_device *smdk_snd_device;
 
-static int __init smdk_audio_init(void)
+static int smdk_audio_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct snd_soc_card *card = &smdk;
 
-	smdk_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!smdk_snd_device)
-		return -ENOMEM;
+	card->dev = &pdev->dev;
+	ret = snd_soc_register_card(card);
 
-	platform_set_drvdata(smdk_snd_device, &smdk);
-
-	ret = platform_device_add(smdk_snd_device);
 	if (ret)
-		platform_device_put(smdk_snd_device);
+		dev_err(&pdev->dev, "snd_soc_register_card() failed:%d\n", ret);
 
 	return ret;
 }
-module_init(smdk_audio_init);
 
-static void __exit smdk_audio_exit(void)
+static int smdk_audio_remove(struct platform_device *pdev)
 {
-	platform_device_unregister(smdk_snd_device);
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+
+	snd_soc_unregister_card(card);
+
+	return 0;
 }
-module_exit(smdk_audio_exit);
+
+static struct platform_driver smdk_audio_driver = {
+	.driver		= {
+		.name	= "smdk-audio",
+		.owner	= THIS_MODULE,
+	},
+	.probe		= smdk_audio_probe,
+	.remove		= smdk_audio_remove,
+};
+
+module_platform_driver(smdk_audio_driver);
 
 MODULE_DESCRIPTION("ALSA SoC SMDK WM8994");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:smdk-audio");

@@ -150,7 +150,6 @@ static inline void get_dma_buf(struct dma_buf *dmabuf)
 	get_file(dmabuf->file);
 }
 
-#ifdef CONFIG_DMA_SHARED_BUFFER
 struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf,
 							struct device *dev);
 void dma_buf_detach(struct dma_buf *dmabuf,
@@ -265,5 +264,8 @@ static inline int dma_buf_mmap(struct dma_buf *dmabuf,
 	return -ENODEV;
 }
 #endif /* CONFIG_DMA_SHARED_BUFFER */
+
+void *dma_buf_vmap(struct dma_buf *);
+void dma_buf_vunmap(struct dma_buf *, void *vaddr);
 
 #endif /* __DMA_BUF_H__ */

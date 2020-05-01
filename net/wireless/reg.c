@@ -1757,7 +1757,7 @@ EXPORT_SYMBOL(regulatory_hint);
  */
 void regulatory_hint_11d(struct wiphy *wiphy,
 			 enum ieee80211_band band,
-			 u8 *country_ie,
+			 const u8 *country_ie,
 			 u8 country_ie_len)
 {
 	char alpha2[2];
@@ -2366,7 +2366,6 @@ int set_regdom(const struct ieee80211_regdomain *rd)
 	return r;
 }
 
-#ifdef CONFIG_HOTPLUG
 int reg_device_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	if (last_request && !last_request->processed) {
@@ -2378,12 +2377,6 @@ int reg_device_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 	return 0;
 }
-#else
-int reg_device_uevent(struct device *dev, struct kobj_uevent_env *env)
-{
-	return -ENODEV;
-}
-#endif /* CONFIG_HOTPLUG */
 
 /* Caller must hold cfg80211_mutex */
 void reg_device_remove(struct wiphy *wiphy)

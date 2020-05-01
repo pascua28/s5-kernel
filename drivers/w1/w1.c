@@ -665,7 +665,6 @@ void w1_destroy_master_attributes(struct w1_master *master)
 	sysfs_remove_group(&master->dev.kobj, &w1_master_defattr_group);
 }
 
-#ifdef CONFIG_HOTPLUG
 static int w1_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct w1_master *md = NULL;
@@ -705,12 +704,6 @@ static int w1_uevent(struct device *dev, struct kobj_uevent_env *env)
 end:
 	return err;
 }
-#else
-static int w1_uevent(struct device *dev, struct kobj_uevent_env *env)
-{
-	return 0;
-}
-#endif
 
 #ifdef CONFIG_W1_SLAVE_DS28EL15
 static void w1_search_process(struct w1_master *dev, u8 search_type);

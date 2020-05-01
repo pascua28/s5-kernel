@@ -114,6 +114,9 @@
 #define L2X0_PREFETCH_CTRL_OFFSET_SHIFT		0
 #define L2X0_PREFETCH_CTRL_WRAP8_INC_SHIFT	23
 #define L2X0_PREFETCH_CTRL_WRAP8_SHIFT		30
+#define L2X0_CTRL_EN			1
+
+#define L2X0_WAY_SIZE_SHIFT		3
 
 #ifndef __ASSEMBLY__
 extern void __iomem *l2x0_base;
@@ -143,6 +146,7 @@ struct l2x0_regs {
 	unsigned long filter_end;
 	unsigned long prefetch_ctrl;
 	unsigned long pwr_ctrl;
+	unsigned long ctrl;
 };
 
 extern struct l2x0_regs l2x0_saved_regs;

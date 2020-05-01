@@ -157,7 +157,7 @@ static struct snd_soc_card snd_soc_tegra_alc5632 = {
 	.fully_routed = true,
 };
 
-static __devinit int tegra_alc5632_probe(struct platform_device *pdev)
+static int tegra_alc5632_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_tegra_alc5632;
 	struct tegra_alc5632 *alc5632;
@@ -229,7 +229,7 @@ err:
 	return ret;
 }
 
-static int __devexit tegra_alc5632_remove(struct platform_device *pdev)
+static int tegra_alc5632_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct tegra_alc5632 *machine = snd_soc_card_get_drvdata(card);
@@ -247,7 +247,7 @@ static int __devexit tegra_alc5632_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id tegra_alc5632_of_match[] __devinitconst = {
+static const struct of_device_id tegra_alc5632_of_match[] = {
 	{ .compatible = "nvidia,tegra-audio-alc5632", },
 	{},
 };
@@ -260,7 +260,7 @@ static struct platform_driver tegra_alc5632_driver = {
 		.of_match_table = tegra_alc5632_of_match,
 	},
 	.probe = tegra_alc5632_probe,
-	.remove = __devexit_p(tegra_alc5632_remove),
+	.remove = tegra_alc5632_remove,
 };
 module_platform_driver(tegra_alc5632_driver);
 

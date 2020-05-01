@@ -191,6 +191,12 @@ int of_regulator_match(struct device *dev, struct device_node *node,
 	if (!dev || !node)
 		return -EINVAL;
 
+	for (i = 0; i < num_matches; i++) {
+		struct of_regulator_match *match = &matches[i];
+		match->init_data = NULL;
+		match->of_node = NULL;
+	}
+
 	for_each_child_of_node(node, child) {
 		regulator_comp = of_get_property(child,
 					"regulator-compatible", NULL);

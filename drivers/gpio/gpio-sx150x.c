@@ -572,7 +572,7 @@ static void sx150x_remove_irq_chip(struct sx150x_chip *chip)
 	}
 }
 
-static int __devinit sx150x_probe(struct i2c_client *client,
+static int sx150x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	static const u32 i2c_funcs = I2C_FUNC_SMBUS_BYTE_DATA |
@@ -619,7 +619,7 @@ probe_fail_pre_gpiochip_add:
 	return rc;
 }
 
-static int __devexit sx150x_remove(struct i2c_client *client)
+static int sx150x_remove(struct i2c_client *client)
 {
 	struct sx150x_chip *chip;
 	int rc;
@@ -643,7 +643,7 @@ static struct i2c_driver sx150x_driver = {
 		.owner = THIS_MODULE
 	},
 	.probe    = sx150x_probe,
-	.remove   = __devexit_p(sx150x_remove),
+	.remove   = sx150x_remove,
 	.id_table = sx150x_id,
 };
 

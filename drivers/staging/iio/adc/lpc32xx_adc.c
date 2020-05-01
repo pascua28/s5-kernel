@@ -124,7 +124,7 @@ static irqreturn_t lpc32xx_adc_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int __devinit lpc32xx_adc_probe(struct platform_device *pdev)
+static int lpc32xx_adc_probe(struct platform_device *pdev)
 {
 	struct lpc32xx_adc_info *info = NULL;
 	struct resource *res;
@@ -148,7 +148,7 @@ static int __devinit lpc32xx_adc_probe(struct platform_device *pdev)
 
 	info = iio_priv(iodev);
 
-	info->adc_base = ioremap(res->start, res->end - res->start + 1);
+	info->adc_base = ioremap(res->start, resource_size(res));
 	if (!info->adc_base) {
 		dev_err(&pdev->dev, "failed mapping memory\n");
 		retval = -EBUSY;
@@ -205,7 +205,7 @@ errout1:
 	return retval;
 }
 
-static int __devexit lpc32xx_adc_remove(struct platform_device *pdev)
+static int lpc32xx_adc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *iodev = platform_get_drvdata(pdev);
 	struct lpc32xx_adc_info *info = iio_priv(iodev);
@@ -223,7 +223,7 @@ static int __devexit lpc32xx_adc_remove(struct platform_device *pdev)
 
 static struct platform_driver lpc32xx_adc_driver = {
 	.probe		= lpc32xx_adc_probe,
-	.remove		= __devexit_p(lpc32xx_adc_remove),
+	.remove		= lpc32xx_adc_remove,
 	.driver		= {
 		.name	= MOD_NAME,
 		.owner	= THIS_MODULE,

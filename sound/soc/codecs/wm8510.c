@@ -556,10 +556,7 @@ static int wm8510_probe(struct snd_soc_codec *codec)
 /* power down chip */
 static int wm8510_remove(struct snd_soc_codec *codec)
 {
-	struct wm8510_priv *wm8510 = snd_soc_codec_get_drvdata(codec);
-
 	wm8510_set_bias_level(codec, SND_SOC_BIAS_OFF);
-	kfree(wm8510);
 	return 0;
 }
 
@@ -587,7 +584,7 @@ static const struct of_device_id wm8510_of_match[] = {
 };
 
 #if defined(CONFIG_SPI_MASTER)
-static int __devinit wm8510_spi_probe(struct spi_device *spi)
+static int wm8510_spi_probe(struct spi_device *spi)
 {
 	struct wm8510_priv *wm8510;
 	int ret;
@@ -606,7 +603,7 @@ static int __devinit wm8510_spi_probe(struct spi_device *spi)
 	return ret;
 }
 
-static int __devexit wm8510_spi_remove(struct spi_device *spi)
+static int wm8510_spi_remove(struct spi_device *spi)
 {
 	snd_soc_unregister_codec(&spi->dev);
 	return 0;
@@ -619,13 +616,13 @@ static struct spi_driver wm8510_spi_driver = {
 		.of_match_table = wm8510_of_match,
 	},
 	.probe		= wm8510_spi_probe,
-	.remove		= __devexit_p(wm8510_spi_remove),
+	.remove		= wm8510_spi_remove,
 };
 #endif /* CONFIG_SPI_MASTER */
 
 #if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-static __devinit int wm8510_i2c_probe(struct i2c_client *i2c,
-				      const struct i2c_device_id *id)
+static int wm8510_i2c_probe(struct i2c_client *i2c,
+			    const struct i2c_device_id *id)
 {
 	struct wm8510_priv *wm8510;
 	int ret;
@@ -644,7 +641,7 @@ static __devinit int wm8510_i2c_probe(struct i2c_client *i2c,
 	return ret;
 }
 
-static __devexit int wm8510_i2c_remove(struct i2c_client *client)
+static int wm8510_i2c_remove(struct i2c_client *client)
 {
 	snd_soc_unregister_codec(&client->dev);
 	return 0;
@@ -663,7 +660,7 @@ static struct i2c_driver wm8510_i2c_driver = {
 		.of_match_table = wm8510_of_match,
 	},
 	.probe =    wm8510_i2c_probe,
-	.remove =   __devexit_p(wm8510_i2c_remove),
+	.remove =   wm8510_i2c_remove,
 	.id_table = wm8510_i2c_id,
 };
 #endif

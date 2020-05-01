@@ -91,6 +91,7 @@ static inline dma_addr_t virt_to_dma(struct device *dev, void *addr)
  */
 static inline int dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
 {
+	debug_dma_mapping_error(dev, dma_addr);
 	return dma_addr == DMA_ERROR_CODE;
 }
 
@@ -143,6 +144,8 @@ static inline void dma_coherent_post_ops(void)
 	barrier();
 #endif
 }
+
+extern int arm_dma_set_mask(struct device *dev, u64 dma_mask);
 
 /**
  * arm_dma_alloc - allocate consistent memory for DMA
@@ -292,13 +295,6 @@ static inline int dma_mmap_nonconsistent(struct device *dev,
  * before postcore_initcall.
  */
 extern void __init init_dma_coherent_pool_size(unsigned long size);
-
-/*
- * This can be called during boot to increase the size of the consistent
- * DMA region above it's default value of 2MB. It must be called before the
- * memory allocator is initialised, i.e. before any core_initcall.
- */
-static inline void init_consistent_dma_size(unsigned long size) { }
 
 /*
  * For SA-1111, IXP425, and ADI systems  the dma-mapping functions are "magic"

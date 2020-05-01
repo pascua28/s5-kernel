@@ -491,7 +491,7 @@ struct esschan {
 	/* linked list */
 	struct list_head list;
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 	u16 wc_map[4];
 #endif
 };
@@ -544,7 +544,7 @@ struct es1968 {
 	struct list_head substream_list;
 	spinlock_t substream_lock;
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 	u16 apu_map[NR_APUS][NR_APU_REGS];
 #endif
 
@@ -706,7 +706,7 @@ static void __apu_set_register(struct es1968 *chip, u16 channel, u8 reg, u16 dat
 {
 	if (snd_BUG_ON(channel >= NR_APUS))
 		return;
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 	chip->apu_map[channel][reg] = data;
 #endif
 	reg |= (channel << 4);
@@ -993,7 +993,7 @@ static void snd_es1968_program_wavecache(struct es1968 *chip, struct esschan *es
 	/* set the wavecache control reg */
 	wave_set_register(chip, es->apu[channel] << 3, tmpval);
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 	es->wc_map[channel] = tmpval;
 #endif
 }
@@ -1429,7 +1429,7 @@ static void snd_es1968_free_dmabuf(struct es1968 *chip)
 	}
 }
 
-static int __devinit
+static int
 snd_es1968_init_dmabuf(struct es1968 *chip)
 {
 	int err;
@@ -1704,7 +1704,7 @@ static struct snd_pcm_ops snd_es1968_capture_ops = {
  */
 #define CLOCK_MEASURE_BUFSIZE	16768	/* enough large for a single shot */
 
-static void __devinit es1968_measure_clock(struct es1968 *chip)
+static void es1968_measure_clock(struct es1968 *chip)
 {
 	int i, apu;
 	unsigned int pa, offset, t;
@@ -1806,7 +1806,7 @@ static void snd_es1968_pcm_free(struct snd_pcm *pcm)
 	esm->pcm = NULL;
 }
 
-static int __devinit
+static int
 snd_es1968_pcm(struct es1968 *chip, int device)
 {
 	struct snd_pcm *pcm;
@@ -2016,7 +2016,7 @@ static irqreturn_t snd_es1968_interrupt(int irq, void *dev_id)
  *  Mixer stuff
  */
 
-static int __devinit
+static int
 snd_es1968_mixer(struct es1968 *chip)
 {
 	struct snd_ac97_bus *pbus;
@@ -2291,7 +2291,7 @@ static void snd_es1968_chip_init(struct es1968 *chip)
 	outb(0x88, iobase+0x1f);
 
 	/* it appears some maestros (dell 7500) only work if these are set,
-	   regardless of wether we use the assp or not. */
+	   regardless of whether we use the assp or not. */
 
 	outb(0, iobase + ASSP_CONTROL_B);
 	outb(3, iobase + ASSP_CONTROL_A);	/* M: Reserved bits... */
@@ -2377,13 +2377,14 @@ static void snd_es1968_start_irq(struct es1968 *chip)
 	outw(w, chip->io_port + ESM_PORT_HOST_IRQ);
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 /*
  * PM support
  */
-static int es1968_suspend(struct pci_dev *pci, pm_message_t state)
+static int es1968_suspend(struct device *dev)
 {
-	struct snd_card *card = pci_get_drvdata(pci);
+	struct pci_dev *pci = to_pci_dev(dev);
+	struct snd_card *card = dev_get_drvdata(dev);
 	struct es1968 *chip = card->private_data;
 
 	if (! chip->do_pm)
@@ -2398,13 +2399,14 @@ static int es1968_suspend(struct pci_dev *pci, pm_message_t state)
 
 	pci_disable_device(pci);
 	pci_save_state(pci);
-	pci_set_power_state(pci, pci_choose_state(pci, state));
+	pci_set_power_state(pci, PCI_D3hot);
 	return 0;
 }
 
-static int es1968_resume(struct pci_dev *pci)
+static int es1968_resume(struct device *dev)
 {
-	struct snd_card *card = pci_get_drvdata(pci);
+	struct pci_dev *pci = to_pci_dev(dev);
+	struct snd_card *card = dev_get_drvdata(dev);
 	struct es1968 *chip = card->private_data;
 	struct esschan *es;
 
@@ -2454,11 +2456,16 @@ static int es1968_resume(struct pci_dev *pci)
 	chip->in_suspend = 0;
 	return 0;
 }
-#endif /* CONFIG_PM */
+
+static SIMPLE_DEV_PM_OPS(es1968_pm, es1968_suspend, es1968_resume);
+#define ES1968_PM_OPS	&es1968_pm
+#else
+#define ES1968_PM_OPS	NULL
+#endif /* CONFIG_PM_SLEEP */
 
 #ifdef SUPPORT_JOYSTICK
 #define JOYSTICK_ADDR	0x200
-static int __devinit snd_es1968_create_gameport(struct es1968 *chip, int dev)
+static int snd_es1968_create_gameport(struct es1968 *chip, int dev)
 {
 	struct gameport *gp;
 	struct resource *r;
@@ -2509,7 +2516,7 @@ static inline void snd_es1968_free_gameport(struct es1968 *chip) { }
 #endif
 
 #ifdef CONFIG_SND_ES1968_INPUT
-static int __devinit snd_es1968_input_register(struct es1968 *chip)
+static int snd_es1968_input_register(struct es1968 *chip)
 {
 	struct input_dev *input_dev;
 	int err;
@@ -2574,9 +2581,14 @@ static u8 snd_es1968_tea575x_get_pins(struct snd_tea575x *tea)
 	struct es1968 *chip = tea->private_data;
 	unsigned long io = chip->io_port + GPIO_DATA;
 	u16 val = inw(io);
+	u8 ret;
 
-	return  (val & STR_DATA) ? TEA575X_DATA : 0 |
-		(val & STR_MOST) ? TEA575X_MOST : 0;
+	ret = 0;
+	if (val & STR_DATA)
+		ret |= TEA575X_DATA;
+	if (val & STR_MOST)
+		ret |= TEA575X_MOST;
+	return ret;
 }
 
 static void snd_es1968_tea575x_set_direction(struct snd_tea575x *tea, bool output)
@@ -2641,28 +2653,30 @@ struct ess_device_list {
 	unsigned short vendor;	/* subsystem vendor id */
 };
 
-static struct ess_device_list pm_whitelist[] __devinitdata = {
+static struct ess_device_list pm_whitelist[] = {
 	{ TYPE_MAESTRO2E, 0x0e11 },	/* Compaq Armada */
 	{ TYPE_MAESTRO2E, 0x1028 },
 	{ TYPE_MAESTRO2E, 0x103c },
 	{ TYPE_MAESTRO2E, 0x1179 },
 	{ TYPE_MAESTRO2E, 0x14c0 },	/* HP omnibook 4150 */
 	{ TYPE_MAESTRO2E, 0x1558 },
+	{ TYPE_MAESTRO2E, 0x125d },	/* a PCI card, e.g. Terratec DMX */
+	{ TYPE_MAESTRO2, 0x125d },	/* a PCI card, e.g. SF64-PCE2 */
 };
 
-static struct ess_device_list mpu_blacklist[] __devinitdata = {
+static struct ess_device_list mpu_blacklist[] = {
 	{ TYPE_MAESTRO2, 0x125d },
 };
 
-static int __devinit snd_es1968_create(struct snd_card *card,
-				       struct pci_dev *pci,
-				       int total_bufsize,
-				       int play_streams,
-				       int capt_streams,
-				       int chip_type,
-				       int do_pm,
-				       int radio_nr,
-				       struct es1968 **chip_ret)
+static int snd_es1968_create(struct snd_card *card,
+			     struct pci_dev *pci,
+			     int total_bufsize,
+			     int play_streams,
+			     int capt_streams,
+			     int chip_type,
+			     int do_pm,
+			     int radio_nr,
+			     struct es1968 **chip_ret)
 {
 	static struct snd_device_ops ops = {
 		.dev_free =	snd_es1968_dev_free,
@@ -2781,8 +2795,8 @@ static int __devinit snd_es1968_create(struct snd_card *card,
 
 /*
  */
-static int __devinit snd_es1968_probe(struct pci_dev *pci,
-				      const struct pci_device_id *pci_id)
+static int snd_es1968_probe(struct pci_dev *pci,
+			    const struct pci_device_id *pci_id)
 {
 	static int dev;
 	struct snd_card *card;
@@ -2892,7 +2906,7 @@ static int __devinit snd_es1968_probe(struct pci_dev *pci,
 	return 0;
 }
 
-static void __devexit snd_es1968_remove(struct pci_dev *pci)
+static void snd_es1968_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
 	pci_set_drvdata(pci, NULL);
@@ -2902,11 +2916,10 @@ static struct pci_driver es1968_driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_es1968_ids,
 	.probe = snd_es1968_probe,
-	.remove = __devexit_p(snd_es1968_remove),
-#ifdef CONFIG_PM
-	.suspend = es1968_suspend,
-	.resume = es1968_resume,
-#endif
+	.remove = snd_es1968_remove,
+	.driver = {
+		.pm = ES1968_PM_OPS,
+	},
 };
 
 module_pci_driver(es1968_driver);

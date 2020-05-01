@@ -485,8 +485,8 @@ const struct file_operations sysfs_file_operations = {
 	.poll		= sysfs_poll,
 };
 
-int sysfs_attr_ns(struct kobject *kobj, const struct attribute *attr,
-		  const void **pns)
+static int sysfs_attr_ns(struct kobject *kobj, const struct attribute *attr,
+			 const void **pns)
 {
 	struct sysfs_dirent *dir_sd = kobj->sd;
 	const struct sysfs_ops *ops;
@@ -620,12 +620,12 @@ EXPORT_SYMBOL_GPL(sysfs_add_file_to_group);
  * sysfs_chown_file - modify the ownership of the object
  * @kobj: object we're acting for.
  * @attr: attribute descriptor.
- * @uid: new uid.
- * @gid: new gid.
  *
  */
-int sysfs_chown_file(struct kobject *kobj, const struct attribute *attr,
-		     uid_t uid, gid_t gid)
+
+#define KUID_STUPID	KUIDT_INIT(CONFIG_MMC_BKOPS_NODE_UID)
+#define KGID_STUPID	KGIDT_INIT(CONFIG_MMC_BKOPS_NODE_GID)
+int sysfs_chown_file(struct kobject *kobj, const struct attribute *attr)
 {
 	struct sysfs_dirent *sd;
 	struct iattr newattrs;
@@ -645,8 +645,8 @@ int sysfs_chown_file(struct kobject *kobj, const struct attribute *attr,
 
 	memset(&newattrs, 0, sizeof(newattrs));
 	newattrs.ia_valid = ATTR_UID | ATTR_GID;
-	newattrs.ia_uid = uid;
-	newattrs.ia_gid = gid;
+	newattrs.ia_uid = KUID_STUPID;
+	newattrs.ia_gid = KGID_STUPID;
 
 	rc = sysfs_sd_setattr(sd, &newattrs);
 out:

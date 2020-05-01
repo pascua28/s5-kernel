@@ -155,7 +155,7 @@ static const struct iio_info ad7780_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int __devinit ad7780_probe(struct spi_device *spi)
+static int ad7780_probe(struct spi_device *spi)
 {
 	struct ad7780_platform_data *pdata = spi->dev.platform_data;
 	struct ad7780_state *st;
@@ -280,7 +280,7 @@ static struct spi_driver ad7780_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ad7780_probe,
-	.remove		= __devexit_p(ad7780_remove),
+	.remove		= ad7780_remove,
 	.id_table	= ad7780_id,
 };
 module_spi_driver(ad7780_driver);

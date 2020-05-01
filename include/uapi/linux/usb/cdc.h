@@ -19,6 +19,7 @@
 #define USB_CDC_SUBCLASS_OBEX			0x0b
 #define USB_CDC_SUBCLASS_EEM			0x0c
 #define USB_CDC_SUBCLASS_NCM			0x0d
+#define USB_CDC_SUBCLASS_MBIM			0x0e
 
 #define USB_CDC_PROTO_NONE			0
 
@@ -33,6 +34,7 @@
 #define USB_CDC_PROTO_EEM			7
 
 #define USB_CDC_NCM_PROTO_NTB			1
+#define USB_CDC_MBIM_PROTO_NTB			2
 
 /*-------------------------------------------------------------------------*/
 
@@ -55,6 +57,7 @@
 #define USB_CDC_NCM_TYPE		0x1a
 #define USB_CDC_MBB_TYPE		0x1b	/* mbb_desc */
 #define USB_CDC_EXT_MBB_TYPE		0x1c
+#define USB_CDC_MBIM_TYPE		0x1b
 
 /* "Header Functional Descriptor" from CDC spec  5.2.3.1 */
 struct usb_cdc_header_desc {
@@ -190,8 +193,8 @@ struct usb_cdc_ncm_desc {
 	__u8	bmNetworkCapabilities;
 } __attribute__ ((packed));
 
-/* "MBIM Functional Descriptor" */
-struct usb_cdc_mbb_desc {
+/* "MBIM Control Model Functional Descriptor" */
+struct usb_cdc_mbim_desc {
 	__u8	bLength;
 	__u8	bDescriptorType;
 	__u8	bDescriptorSubType;
@@ -360,6 +363,11 @@ struct usb_cdc_ncm_nth32 {
 #define USB_CDC_NCM_NDP16_NOCRC_SIGN	0x304D434E /* NCM0 */
 #define USB_CDC_NCM_NDP32_CRC_SIGN	0x316D636E /* ncm1 */
 #define USB_CDC_NCM_NDP32_NOCRC_SIGN	0x306D636E /* ncm0 */
+
+#define USB_CDC_MBIM_NDP16_IPS_SIGN     0x00535049 /* IPS<sessionID> : IPS0 for now */
+#define USB_CDC_MBIM_NDP32_IPS_SIGN     0x00737069 /* ips<sessionID> : ips0 for now */
+#define USB_CDC_MBIM_NDP16_DSS_SIGN     0x00535344 /* DSS<sessionID> */
+#define USB_CDC_MBIM_NDP32_DSS_SIGN     0x00737364 /* dss<sessionID> */
 
 /* 16-bit NCM Datagram Pointer Entry */
 struct usb_cdc_ncm_dpe16 {

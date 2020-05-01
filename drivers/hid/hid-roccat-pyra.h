@@ -14,11 +14,13 @@
 
 #include <linux/types.h>
 
-struct pyra_b {
-	uint8_t command; /* PYRA_COMMAND_B */
-	uint8_t size; /* always 3 */
-	uint8_t unknown; /* 1 */
-} __attribute__ ((__packed__));
+enum {
+	PYRA_SIZE_CONTROL = 0x03,
+	PYRA_SIZE_INFO = 0x06,
+	PYRA_SIZE_PROFILE_SETTINGS = 0x0d,
+	PYRA_SIZE_PROFILE_BUTTONS = 0x13,
+	PYRA_SIZE_SETTINGS = 0x03,
+};
 
 struct pyra_control {
 	uint8_t command; /* PYRA_COMMAND_CONTROL */
@@ -54,14 +56,6 @@ struct pyra_profile_settings {
 	uint8_t lightswitch; /* 0 = off, 1 = on */
 	uint8_t light_effect;
 	uint8_t handedness;
-	uint16_t checksum; /* byte sum */
-} __attribute__ ((__packed__));
-
-struct pyra_profile_buttons {
-	uint8_t command; /* PYRA_COMMAND_PROFILE_BUTTONS */
-	uint8_t size; /* always 0x13 */
-	uint8_t number; /* Range 0-4 */
-	uint8_t buttons[14];
 	uint16_t checksum; /* byte sum */
 } __attribute__ ((__packed__));
 
@@ -160,13 +154,10 @@ struct pyra_roccat_report {
 struct pyra_device {
 	int actual_profile;
 	int actual_cpi;
-	int firmware_version;
 	int roccat_claimed;
 	int chrdev_minor;
 	struct mutex pyra_lock;
-	struct pyra_settings settings;
 	struct pyra_profile_settings profile_settings[5];
-	struct pyra_profile_buttons profile_buttons[5];
 };
 
 #endif
