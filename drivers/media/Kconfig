@@ -113,19 +113,18 @@ source "drivers/media/platform/Kconfig"
 
 source "drivers/media/tuners/Kconfig"
 
-#
-# Video/Radio/Hybrid adapters
-#
+source "drivers/media/i2c/Kconfig"
 
+#
+# V4L platform/mem2mem drivers
+#
 source "drivers/media/video/Kconfig"
 
 source "drivers/media/radio/Kconfig"
 
-#
-# DVB adapters
-#
-
-source "drivers/media/dvb/Kconfig"
+source "drivers/media/pci/Kconfig"
+source "drivers/media/usb/Kconfig"
+source "drivers/media/mmc/Kconfig"
 
 #
 # TDMB drivers
@@ -138,16 +137,30 @@ source "drivers/media/tdmb/Kconfig"
 #
 source "drivers/media/isdbtmm/Kconfig"
 
-# ISDBT Drivers
-#
-source "drivers/media/isdbt/Kconfig"
+config MEDIA_SUBDRV_AUTOSELECT
+	bool "Autoselect analog and hybrid tuner modules to build"
+	depends on MEDIA_TUNER
+	default y
+	help
+	  By default, a TV driver auto-selects all possible tuners
+	  thar could be used by the driver.
 
-# MTV Drivers
-#
-source "drivers/media/mtv/Kconfig"
+	  This is generally the right thing to do, except when there
+	  are strict constraints with regards to the kernel size.
 
-comment "Supported DVB Frontends"
-        depends on DVB_CORE
+	  Use this option with care, as deselecting tuner drivers which
+	  are in fact necessary will result in TV devices which cannot
+	  be tuned due to lack of the tuning driver.
+
+	  If unsure say Y.
+
+comment "Media ancillary drivers (tuners, sensors, i2c, frontends)"
+
+source "drivers/media/i2c/Kconfig"
+source "drivers/media/tuners/Kconfig"
 source "drivers/media/dvb-frontends/Kconfig"
+
+# Common drivers
+source "drivers/media/common/Kconfig"
 
 endif # MEDIA_SUPPORT

@@ -1153,7 +1153,7 @@ static int setup_event_queue(void *inst,
 	return rc;
 }
 
-int msm_vidc_subscribe_event(void *inst, struct v4l2_event_subscription *sub)
+int msm_vidc_subscribe_event(void *inst, const struct v4l2_event_subscription *sub)
 {
 	int rc = 0;
 	struct msm_vidc_inst *vidc_inst = (struct msm_vidc_inst *)inst;
@@ -1166,7 +1166,7 @@ int msm_vidc_subscribe_event(void *inst, struct v4l2_event_subscription *sub)
 }
 
 
-int msm_vidc_unsubscribe_event(void *inst, struct v4l2_event_subscription *sub)
+int msm_vidc_unsubscribe_event(void *inst, const struct v4l2_event_subscription *sub)
 {
 	int rc = 0;
 	struct msm_vidc_inst *vidc_inst = (struct msm_vidc_inst *)inst;

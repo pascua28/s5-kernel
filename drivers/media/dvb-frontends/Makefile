@@ -5,11 +5,10 @@
 ccflags-y += -I$(srctree)/drivers/media/dvb-core/
 ccflags-y += -I$(srctree)/drivers/media/tuners/
 
-stb0899-objs = stb0899_drv.o stb0899_algo.o
-stv0900-objs = stv0900_core.o stv0900_sw.o
-au8522-objs = au8522_dig.o au8522_decoder.o
-drxd-objs = drxd_firm.o drxd_hard.o
-cxd2820r-objs = cxd2820r_core.o cxd2820r_c.o cxd2820r_t.o cxd2820r_t2.o
+stb0899-objs := stb0899_drv.o stb0899_algo.o
+stv0900-objs := stv0900_core.o stv0900_sw.o
+drxd-objs := drxd_firm.o drxd_hard.o
+cxd2820r-objs := cxd2820r_core.o cxd2820r_c.o cxd2820r_t.o cxd2820r_t2.o
 drxk-objs := drxk_hard.o
 
 obj-$(CONFIG_DVB_PLL) += dvb-pll.o
@@ -64,7 +63,9 @@ obj-$(CONFIG_DVB_TUNER_DIB0090) += dib0090.o
 obj-$(CONFIG_DVB_TUA6100) += tua6100.o
 obj-$(CONFIG_DVB_S5H1409) += s5h1409.o
 obj-$(CONFIG_DVB_TUNER_ITD1000) += itd1000.o
-obj-$(CONFIG_DVB_AU8522) += au8522.o
+obj-$(CONFIG_DVB_AU8522) += au8522_common.o
+obj-$(CONFIG_DVB_AU8522_DTV) += au8522_dig.o
+obj-$(CONFIG_DVB_AU8522_V4L) += au8522_decoder.o
 obj-$(CONFIG_DVB_TDA10048) += tda10048.o
 obj-$(CONFIG_DVB_TUNER_CX24113) += cx24113.o
 obj-$(CONFIG_DVB_S5H1411) += s5h1411.o
@@ -98,5 +99,7 @@ obj-$(CONFIG_DVB_IT913X_FE) += it913x-fe.o
 obj-$(CONFIG_DVB_A8293) += a8293.o
 obj-$(CONFIG_DVB_TDA10071) += tda10071.o
 obj-$(CONFIG_DVB_RTL2830) += rtl2830.o
+obj-$(CONFIG_DVB_RTL2832) += rtl2832.o
 obj-$(CONFIG_DVB_M88RS2000) += m88rs2000.o
+obj-$(CONFIG_DVB_AF9033) += af9033.o
 

@@ -97,7 +97,7 @@ static int camera_v4l2_querycap(struct file *filep, void *fh,
 }
 
 static int camera_v4l2_s_crop(struct file *filep, void *fh,
-			      struct v4l2_crop *crop)
+	const struct v4l2_crop *crop)
 {
 	int rc = 0;
 	struct v4l2_event event;
@@ -440,7 +440,7 @@ static int camera_v4l2_s_parm(struct file *filep, void *fh,
 }
 
 static int camera_v4l2_subscribe_event(struct v4l2_fh *fh,
-				       struct v4l2_event_subscription *sub)
+				       const struct v4l2_event_subscription *sub)
 {
 	int rc = 0;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
@@ -451,7 +451,7 @@ static int camera_v4l2_subscribe_event(struct v4l2_fh *fh,
 }
 
 static int camera_v4l2_unsubscribe_event(struct v4l2_fh *fh,
-					 struct v4l2_event_subscription *sub)
+					 const struct v4l2_event_subscription *sub)
 {
 	int rc = 0;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
@@ -545,9 +545,7 @@ static int camera_v4l2_vb2_q_init(struct file *filep)
 	q->io_modes = VB2_USERPTR;
 	q->io_flags = 0;
 	q->buf_struct_size = sizeof(struct msm_vb2_buffer);
-	vb2_queue_init(q);
-
-	return 0;
+	return vb2_queue_init(q);
 }
 
 static void camera_v4l2_vb2_q_release(struct file *filep)

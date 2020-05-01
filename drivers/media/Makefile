@@ -9,10 +9,12 @@ ifeq ($(CONFIG_MEDIA_CONTROLLER),y)
 endif
 
 obj-y += v4l2-core/ tuners/ common/ platform/ rc/ video/
+obj-y += i2c/ pci/ usb/ mmc/ firewire/ parport/
 
 obj-$(CONFIG_VIDEO_DEV) += radio/
 obj-$(CONFIG_TDMB)  += tdmb/
 obj-$(CONFIG_ISDBTMM)   += isdbtmm/
 obj-$(CONFIG_ISDBT) += isdbt/
 obj-$(CONFIG_MTV) += mtv/
-obj-$(CONFIG_DVB_CORE)  += dvb-core/ dvb/ dvb-frontends/
+obj-$(CONFIG_DVB_CORE)  += dvb-core/ pci/ dvb-frontends/ usb/ mmc/
+obj-$(CONFIG_DVB_FIREDTV) += firewire/
