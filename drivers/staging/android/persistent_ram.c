@@ -434,7 +434,7 @@ err:
 	return ERR_PTR(ret);
 }
 
-struct persistent_ram_zone * persistent_ram_init_ringbuffer(struct device *dev, bool ecc)
+struct persistent_ram_zone *persistent_ram_init_ringbuffer(struct device *dev, bool ecc)
 {
 	return __persistent_ram_init(dev, ecc);
 }
