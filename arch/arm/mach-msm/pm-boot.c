@@ -146,7 +146,7 @@ void msm_pm_boot_config_after_pc(unsigned int cpu)
 }
 #define BOOT_REMAP_ENABLE  BIT(0)
 
-int msm_pm_boot_init(struct msm_pm_boot_platform_data *pdata)
+int __init msm_pm_boot_init(struct msm_pm_boot_platform_data *pdata)
 {
 	int ret = 0;
 	unsigned long entry;
@@ -259,7 +259,7 @@ int msm_pm_boot_init(struct msm_pm_boot_platform_data *pdata)
 	return ret;
 }
 
-static int msm_pm_boot_probe(struct platform_device *pdev)
+static int __init msm_pm_boot_probe(struct platform_device *pdev)
 {
 	struct msm_pm_boot_platform_data pdata;
 	char *key = NULL;
@@ -331,7 +331,6 @@ static struct of_device_id msm_pm_match_table[] = {
 };
 
 static struct platform_driver msm_pm_boot_driver = {
-	.probe = msm_pm_boot_probe,
 	.driver = {
 		.name = "pm-boot",
 		.owner = THIS_MODULE,
@@ -341,6 +340,6 @@ static struct platform_driver msm_pm_boot_driver = {
 
 static int __init msm_pm_boot_module_init(void)
 {
-	return platform_driver_register(&msm_pm_boot_driver);
+	return platform_driver_probe(&msm_pm_boot_driver, msm_pm_boot_probe);
 }
 postcore_initcall(msm_pm_boot_module_init);
