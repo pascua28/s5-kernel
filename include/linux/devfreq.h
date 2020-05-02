@@ -93,6 +93,11 @@ struct devfreq_governor_data {
  *			this is the time to unregister it.
  * @freq_table:	Optional list of frequencies to support statistics.
  * @max_state:	The size of freq_table.
+ * @governor_data:	Optional array of private data for governors.
+ *			This is used to set devfreq->data correctly
+ *			when a governor is enabled via sysfs or other
+ *			mechanisms after the devfreq_add_device() call.
+ * @num_governor_data:  Number of elements in governor_data.
  */
 struct devfreq_dev_profile {
 	unsigned long initial_freq;
@@ -131,7 +136,8 @@ struct devfreq_governor {
 	struct list_head node;
 
 	const char name[DEVFREQ_NAME_LEN];
-	int (*get_target_freq)(struct devfreq *this, unsigned long *freq);
+	int (*get_target_freq)(struct devfreq *this, unsigned long *freq,
+				u32 *flag);
 	int (*event_handler)(struct devfreq *devfreq,
 				unsigned int event, void *data);
 };
@@ -212,7 +218,7 @@ extern int devfreq_register_opp_notifier(struct device *dev,
 extern int devfreq_unregister_opp_notifier(struct device *dev,
 					   struct devfreq *devfreq);
 
-#if IS_ENABLED(CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND)
+#ifdef CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND
 /**
  * struct devfreq_simple_ondemand_data - void *data fed to struct devfreq
  *	and devfreq_add_device
