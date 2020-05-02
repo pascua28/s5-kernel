@@ -127,7 +127,7 @@ static int ncp6335b_parse_dt(struct device *dev,
 	return 0;
 }
 
-static int __devinit camera_dcdc_probe(struct i2c_client *client,
+static int camera_dcdc_probe(struct i2c_client *client,
 				       const struct i2c_device_id *id)
 {
 	struct ncp6335b_platform_data *pdata;
@@ -179,7 +179,7 @@ static int __devinit camera_dcdc_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int __devexit camera_dcdc_remove(struct i2c_client *client)
+static int camera_dcdc_remove(struct i2c_client *client)
 {
 	kfree(ncp_dev);
 	return 0;

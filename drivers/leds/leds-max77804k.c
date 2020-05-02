@@ -500,7 +500,7 @@ static int max77804k_led_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int __devexit max77804k_led_remove(struct platform_device *pdev)
+static int max77804k_led_remove(struct platform_device *pdev)
 {
 	struct max77804k_led_data **led_datas = platform_get_drvdata(pdev);
 	int i;
@@ -539,7 +539,7 @@ void max77804k_led_shutdown(struct device *dev)
 
 static struct platform_driver max77804k_led_driver = {
 	.probe		= max77804k_led_probe,
-	.remove		= __devexit_p(max77804k_led_remove),
+	.remove		= max77804k_led_remove,
 	.driver		= {
 		.name	= "max77804k-led",
 		.owner	= THIS_MODULE,

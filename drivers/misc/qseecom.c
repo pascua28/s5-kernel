@@ -4448,7 +4448,7 @@ static void __qseecom_deinit_clk(enum qseecom_ce_hw_instance ce)
 	}
 }
 
-static int __devinit qseecom_probe(struct platform_device *pdev)
+static int qseecom_probe(struct platform_device *pdev)
 {
 	int rc;
 	int ret = 0;
@@ -4715,7 +4715,7 @@ exit_unreg_chrdev_region:
 	return rc;
 }
 
-static int __devinit qseecom_remove(struct platform_device *pdev)
+static int qseecom_remove(struct platform_device *pdev)
 {
 	struct qseecom_registered_kclient_list *kclient = NULL;
 	unsigned long flags = 0;
@@ -4911,12 +4911,12 @@ static struct platform_driver qseecom_plat_driver = {
 	},
 };
 
-static int __devinit qseecom_init(void)
+static int qseecom_init(void)
 {
 	return platform_driver_register(&qseecom_plat_driver);
 }
 
-static void __devexit qseecom_exit(void)
+static void qseecom_exit(void)
 {
 	platform_driver_unregister(&qseecom_plat_driver);
 }

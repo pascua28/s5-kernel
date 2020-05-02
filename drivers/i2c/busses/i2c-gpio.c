@@ -85,7 +85,7 @@ static int i2c_gpio_getscl(void *data)
 	return gpio_get_value(pdata->scl_pin);
 }
 
-static int __devinit of_i2c_gpio_probe(struct platform_device *pdev,
+static int of_i2c_gpio_probe(struct platform_device *pdev,
 			     struct i2c_gpio_platform_data *pdata)
 {
 	u32 reg;

@@ -222,7 +222,7 @@ static int qpnp_coincell_probe(struct spmi_device *spmi)
 	return 0;
 }
 
-static int __devexit qpnp_coincell_remove(struct spmi_device *spmi)
+static int qpnp_coincell_remove(struct spmi_device *spmi)
 {
 	return 0;
 }
@@ -245,7 +245,7 @@ static struct spmi_driver qpnp_coincell_driver = {
 		.owner		= THIS_MODULE,
 	},
 	.probe		= qpnp_coincell_probe,
-	.remove		= __devexit_p(qpnp_coincell_remove),
+	.remove		= qpnp_coincell_remove,
 	.id_table	= qpnp_coincell_id,
 };
 

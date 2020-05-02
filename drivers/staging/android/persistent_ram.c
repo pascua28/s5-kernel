@@ -34,7 +34,7 @@ struct persistent_ram_buffer {
 
 #define PERSISTENT_RAM_SIG (0x43474244) /* DBGC */
 
-static __devinitdata LIST_HEAD(persistent_ram_list);
+static LIST_HEAD(persistent_ram_list);
 
 static inline size_t buffer_size(struct persistent_ram_zone *prz)
 {
@@ -250,7 +250,7 @@ static void notrace persistent_ram_update(struct persistent_ram_zone *prz,
 	persistent_ram_update_ecc(prz, start, count);
 }
 
-static void __devinit
+static void
 persistent_ram_save_old(struct persistent_ram_zone *prz)
 {
 	struct persistent_ram_buffer *buffer = prz->buffer;
@@ -357,7 +357,7 @@ static int persistent_ram_buffer_map(phys_addr_t start, phys_addr_t size,
 	return 0;
 }
 
-static int __devinit persistent_ram_buffer_init(const char *name,
+static int persistent_ram_buffer_init(const char *name,
 		struct persistent_ram_zone *prz, struct persistent_ram **ramp)
 {
 	int i;
@@ -381,7 +381,7 @@ static int __devinit persistent_ram_buffer_init(const char *name,
 	return -EINVAL;
 }
 
-static  __devinit
+static
 struct persistent_ram_zone *__persistent_ram_init(struct device *dev, bool ecc)
 {
 	struct persistent_ram *ram;
@@ -434,8 +434,7 @@ err:
 	return ERR_PTR(ret);
 }
 
-struct persistent_ram_zone * __devinit
-persistent_ram_init_ringbuffer(struct device *dev, bool ecc)
+struct persistent_ram_zone * persistent_ram_init_ringbuffer(struct device *dev, bool ecc)
 {
 	return __persistent_ram_init(dev, ecc);
 }

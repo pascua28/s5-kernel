@@ -4,9 +4,6 @@
  *  Added support for a Unix98-style ptmx device.
  *    -- C. Scott Ananian <cananian@alumni.princeton.edu>, 14-Jan-1998
  *
- *  When reading this code see also fs/devpts. In particular note that the
- *  driver_data field is used by the devpts side as a binding to the devpts
- *  inode.
  */
 
 #include <linux/module.h>
@@ -58,7 +55,7 @@ static void pty_close(struct tty_struct *tty, struct file *filp)
 #ifdef CONFIG_UNIX98_PTYS
 		if (tty->driver == ptm_driver) {
 		        mutex_lock(&devpts_mutex);
-			devpts_pty_kill(tty->link);
+			devpts_pty_kill(tty->link->driver_data);
 		        mutex_unlock(&devpts_mutex);
 		}
 #endif
@@ -489,7 +486,7 @@ static struct tty_struct *pts_unix98_lookup(struct tty_driver *driver,
 	struct tty_struct *tty;
 
 	mutex_lock(&devpts_mutex);
-	tty = devpts_get_tty(pts_inode, idx);
+	tty = devpts_get_priv(pts_inode);
 	mutex_unlock(&devpts_mutex);
 	/* Master must be open before slave */
 	if (!tty)
@@ -612,6 +609,7 @@ static const struct tty_operations pty_unix98_ops = {
 static int ptmx_open(struct inode *inode, struct file *filp)
 {
 	struct tty_struct *tty;
+	struct inode *slave_inode;
 	int retval;
 	int index;
 
@@ -646,15 +644,20 @@ static int ptmx_open(struct inode *inode, struct file *filp)
 
 	tty_add_file(tty, filp);
 
-	retval = devpts_pty_new(inode, tty->link);
-	if (retval)
+	slave_inode = devpts_pty_new(inode,
+			MKDEV(UNIX98_PTY_SLAVE_MAJOR, index), index,
+			tty->link);
+	if (IS_ERR(slave_inode)) {
+		retval = PTR_ERR(slave_inode);
 		goto err_release;
+	}
 
 	retval = ptm_driver->ops->open(tty, filp);
 	if (retval)
 		goto err_release;
 
 	tty_unlock();
+	tty->link->driver_data = slave_inode;
 	return 0;
 err_release:
 	tty_unlock();

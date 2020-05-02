@@ -1319,7 +1319,7 @@ static int ice40_power_onoff(struct i2c_client *client, int onoff)
 
 }
 
-static int __devinit irda_ice40_probe(struct i2c_client *client,
+static int irda_ice40_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
@@ -1446,7 +1446,7 @@ err_free_mem:
 	return error;
 }
 
-static int __devexit irda_ice40_remove(struct i2c_client *client)
+static int irda_ice40_remove(struct i2c_client *client)
 {
 	struct irda_ice40_data *data = i2c_get_clientdata(client);
 
@@ -1481,7 +1481,7 @@ static struct i2c_driver ice40_i2c_driver = {
 		.of_match_table = irda_ice40_match_table,
 	},
 	.probe = irda_ice40_probe,
-	.remove = __devexit_p(irda_ice40_remove),
+	.remove = irda_ice40_remove,
 	.id_table = irda_ice40_id,
 };
 

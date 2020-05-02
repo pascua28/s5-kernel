@@ -1046,7 +1046,7 @@ static void msm_sd_notify(struct v4l2_subdev *sd,
 	}
 }
 
-static int __devinit msm_probe(struct platform_device *pdev)
+static int msm_probe(struct platform_device *pdev)
 {
 	struct msm_video_device *pvdev;
 	int rc = 0;

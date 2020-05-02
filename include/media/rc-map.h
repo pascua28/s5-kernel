@@ -44,6 +44,7 @@ enum rc_type {
 #define RC_BIT_SONY15		(1 << RC_TYPE_SONY15)
 #define RC_BIT_SONY20		(1 << RC_TYPE_SONY20)
 #define RC_BIT_NEC		(1 << RC_TYPE_NEC)
+#define RC_TYPE_RC6	(1  << 2)	/* Philips RC6 protocol */
 #define RC_BIT_SANYO		(1 << RC_TYPE_SANYO)
 #define RC_BIT_MCE_KBD		(1 << RC_TYPE_MCE_KBD)
 #define RC_BIT_RC6_0		(1 << RC_TYPE_RC6_0)
@@ -56,7 +57,7 @@ enum rc_type {
 			 RC_BIT_RC5 | RC_BIT_RC5X | RC_BIT_RC5_SZ | \
 			 RC_BIT_JVC | \
 			 RC_BIT_SONY12 | RC_BIT_SONY15 | RC_BIT_SONY20 | \
-			 RC_BIT_NEC | RC_BIT_SANYO | RC_BIT_MCE_KBD | \
+			 RC_BIT_NEC | RC_TYPE_RC6 | RC_BIT_SANYO | RC_BIT_MCE_KBD | \
 			 RC_BIT_RC6_0 | RC_BIT_RC6_6A_20 | RC_BIT_RC6_6A_24 | \
 			 RC_BIT_RC6_6A_32 | RC_BIT_RC6_MCE)
 

@@ -4041,7 +4041,7 @@ error:
 	return rc;
 } /* hdmi_tx_get_dt_data */
 
-static int __devinit hdmi_tx_probe(struct platform_device *pdev)
+static int hdmi_tx_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	struct device_node *of_node = pdev->dev.of_node;
@@ -4127,7 +4127,7 @@ failed_no_mem:
 	return rc;
 } /* hdmi_tx_probe */
 
-static int __devexit hdmi_tx_remove(struct platform_device *pdev)
+static int hdmi_tx_remove(struct platform_device *pdev)
 {
 	struct hdmi_tx_ctrl *hdmi_ctrl = platform_get_drvdata(pdev);
 	if (!hdmi_ctrl) {

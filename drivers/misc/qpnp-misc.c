@@ -133,7 +133,7 @@ int qpnp_misc_irqs_available(struct device *consumer_dev)
 	return __misc_irqs_available(mdev_found);
 }
 
-static int __devinit qpnp_misc_probe(struct spmi_device *spmi)
+static int qpnp_misc_probe(struct spmi_device *spmi)
 {
 	struct resource *resource;
 	struct qpnp_misc_dev *mdev = ERR_PTR(-EINVAL);

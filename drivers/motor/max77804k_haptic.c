@@ -84,7 +84,7 @@ void max77804k_vibtonz_en(bool en)
 EXPORT_SYMBOL(max77804k_vibtonz_en);
 #endif
 
-static int __devinit max77804k_haptic_probe(struct platform_device *pdev)
+static int max77804k_haptic_probe(struct platform_device *pdev)
 {
 	int error = 0;
 	struct max77804k_dev *max77804k = dev_get_drvdata(pdev->dev.parent);
@@ -123,7 +123,7 @@ static int __devinit max77804k_haptic_probe(struct platform_device *pdev)
 	return error;
 }
 
-static int __devexit max77804k_haptic_remove(struct platform_device *pdev)
+static int max77804k_haptic_remove(struct platform_device *pdev)
 {
 	struct max77804k_haptic_data *data = platform_get_drvdata(pdev);
 	kfree(data);

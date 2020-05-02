@@ -1832,7 +1832,7 @@ struct qpnp_adc_tm_chip *qpnp_get_adc_tm(struct device *dev, const char *name)
 }
 EXPORT_SYMBOL(qpnp_get_adc_tm);
 
-static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
+static int qpnp_adc_tm_probe(struct spmi_device *spmi)
 {
 	struct device_node *node = spmi->dev.of_node, *child;
 	struct qpnp_adc_tm_chip *chip;
@@ -2029,7 +2029,7 @@ fail:
 	return rc;
 }
 
-static int __devexit qpnp_adc_tm_remove(struct spmi_device *spmi)
+static int qpnp_adc_tm_remove(struct spmi_device *spmi)
 {
 	struct qpnp_adc_tm_chip *chip = dev_get_drvdata(&spmi->dev);
 	struct device_node *node = spmi->dev.of_node, *child;

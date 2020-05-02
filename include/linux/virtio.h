@@ -31,6 +31,7 @@ struct virtqueue {
 	struct virtio_device *vdev;
 	unsigned int index;
 	unsigned int num_free;
+	struct virtqueue_ops *vq_ops;
 	void *priv;
 };
 

@@ -1050,7 +1050,7 @@ struct v4l2_subdev *msm_cci_get_subdev(void)
 	return g_cci_subdev;
 }
 
-static int __devinit msm_cci_probe(struct platform_device *pdev)
+static int msm_cci_probe(struct platform_device *pdev)
 {
 	struct cci_device *new_cci_dev;
 	int rc = 0;
