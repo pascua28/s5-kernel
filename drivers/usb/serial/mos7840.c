@@ -35,6 +35,10 @@
 #include <linux/usb/serial.h>
 #include <linux/uaccess.h>
 
+/*
+ * Version Information
+ */
+#define DRIVER_VERSION "1.3.2"
 #define DRIVER_DESC "Moschip 7840/7820 USB Serial Driver"
 
 /*

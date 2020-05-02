@@ -10,7 +10,6 @@ mac80211-y := \
 	ht.o agg-tx.o agg-rx.o \
 	vht.o \
 	ibss.o \
-	work.o \
 	iface.o \
 	rate.o \
 	michael.o \
@@ -26,7 +25,7 @@ mac80211-y := \
 	wme.o \
 	event.o \
 	chan.o \
-	driver-trace.o mlme.o
+	trace.o mlme.o
 
 mac80211-$(CONFIG_MAC80211_LEDS) += led.o
 mac80211-$(CONFIG_MAC80211_DEBUGFS) += \
@@ -44,7 +43,7 @@ mac80211-$(CONFIG_MAC80211_MESH) += \
 
 mac80211-$(CONFIG_PM) += pm.o
 
-CFLAGS_driver-trace.o := -I$(src)
+CFLAGS_trace.o := -I$(src)
 
 # objects for PID algorithm
 rc80211_pid-y := rc80211_pid_algo.o
@@ -60,4 +59,4 @@ mac80211-$(CONFIG_MAC80211_RC_PID) += $(rc80211_pid-y)
 mac80211-$(CONFIG_MAC80211_RC_MINSTREL) += $(rc80211_minstrel-y)
 mac80211-$(CONFIG_MAC80211_RC_MINSTREL_HT) += $(rc80211_minstrel_ht-y)
 
-ccflags-y += -D__CHECK_ENDIAN__
+ccflags-y += -D__CHECK_ENDIAN__ -DDEBUG

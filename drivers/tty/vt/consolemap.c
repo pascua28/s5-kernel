@@ -410,8 +410,10 @@ static void con_release_unimap(struct uni_pagedir *p)
 		kfree(p->inverse_translations[i]);
 		p->inverse_translations[i] = NULL;
 	}
-	kfree(p->inverse_trans_unicode);
-	p->inverse_trans_unicode = NULL;
+	if (p->inverse_trans_unicode) {
+		kfree(p->inverse_trans_unicode);
+		p->inverse_trans_unicode = NULL;
+	}
 }
 
 /* Caller must hold the console lock */

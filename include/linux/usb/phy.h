@@ -10,7 +10,6 @@
 #define __LINUX_USB_PHY_H
 
 #include <linux/notifier.h>
-#include <linux/usb.h>
 
 enum usb_phy_events {
 	USB_EVENT_NONE,         /* no events or cable disconnected */
@@ -100,10 +99,8 @@ struct usb_phy {
 				int suspend);
 
 	/* notify phy connect status change */
-	int	(*notify_connect)(struct usb_phy *x,
-			enum usb_device_speed speed);
-	int	(*notify_disconnect)(struct usb_phy *x,
-			enum usb_device_speed speed);
+	int	(*notify_connect)(struct usb_phy *x, int port);
+	int	(*notify_disconnect)(struct usb_phy *x, int port);
 };
 
 
@@ -192,19 +189,19 @@ usb_phy_set_suspend(struct usb_phy *x, int suspend)
 }
 
 static inline int
-usb_phy_notify_connect(struct usb_phy *x, enum usb_device_speed speed)
+usb_phy_notify_connect(struct usb_phy *x, int port)
 {
 	if (x->notify_connect)
-		return x->notify_connect(x, speed);
+		return x->notify_connect(x, port);
 	else
 		return 0;
 }
 
 static inline int
-usb_phy_notify_disconnect(struct usb_phy *x, enum usb_device_speed speed)
+usb_phy_notify_disconnect(struct usb_phy *x, int port)
 {
 	if (x->notify_disconnect)
-		return x->notify_disconnect(x, speed);
+		return x->notify_disconnect(x, port);
 	else
 		return 0;
 }

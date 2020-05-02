@@ -341,11 +341,15 @@ int paste_selection(struct tty_struct *tty)
 	struct  tty_ldisc *ld;
 	DECLARE_WAITQUEUE(wait, current);
 
+
 	console_lock();
 	poke_blanked_console();
 	console_unlock();
 
-	ld = tty_ldisc_ref_wait(tty);
+	/* FIXME: wtf is this supposed to achieve ? */
+	ld = tty_ldisc_ref(tty);
+	if (!ld)
+		ld = tty_ldisc_ref_wait(tty);
 
 	/* FIXME: this is completely unsafe */
 	add_wait_queue(&vc->paste_wait, &wait);
@@ -357,7 +361,8 @@ int paste_selection(struct tty_struct *tty)
 		}
 		count = sel_buffer_lth - pasted;
 		count = min(count, tty->receive_room);
-		ld->ops->receive_buf(tty, sel_buffer + pasted, NULL, count);
+		tty->ldisc->ops->receive_buf(tty, sel_buffer + pasted,
+								NULL, count);
 		pasted += count;
 	}
 	remove_wait_queue(&vc->paste_wait, &wait);

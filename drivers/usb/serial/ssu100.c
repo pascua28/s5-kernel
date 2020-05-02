@@ -46,6 +46,10 @@
 #define FULLPWRBIT          0x00000080
 #define NEXT_BOARD_POWER_BIT        0x00000004
 
+static bool debug;
+
+/* Version Information */
+#define DRIVER_VERSION "v0.1"
 #define DRIVER_DESC "Quatech SSU-100 USB to Serial Driver"
 
 #define	USB_VENDOR_ID_QUATECH	0x061d	/* Quatech VID */
@@ -55,7 +59,19 @@ static const struct usb_device_id id_table[] = {
 	{USB_DEVICE(USB_VENDOR_ID_QUATECH, QUATECH_SSU100)},
 	{}			/* Terminating entry */
 };
+
 MODULE_DEVICE_TABLE(usb, id_table);
+
+
+static struct usb_driver ssu100_driver = {
+	.name			       = "ssu100",
+	.probe			       = usb_serial_probe,
+	.disconnect		       = usb_serial_disconnect,
+	.id_table		       = id_table,
+	.suspend		       = usb_serial_suspend,
+	.resume			       = usb_serial_resume,
+	.supports_autosuspend	       = 1,
+};
 
 struct ssu100_port_private {
 	spinlock_t status_lock;
@@ -64,6 +80,14 @@ struct ssu100_port_private {
 	wait_queue_head_t delta_msr_wait; /* Used for TIOCMIWAIT */
 	struct async_icount icount;
 };
+
+static void ssu100_release(struct usb_serial *serial)
+{
+	struct ssu100_port_private *priv = usb_get_serial_port_data(*serial->port);
+
+	dbg("%s", __func__);
+	kfree(priv);
+}
 
 static inline int ssu100_control_msg(struct usb_device *dev,
 				     u8 request, u16 data, u16 index)
@@ -124,7 +148,7 @@ static inline int update_mctrl(struct usb_device *dev, unsigned int set,
 	int result;
 
 	if (((set | clear) & (TIOCM_DTR | TIOCM_RTS)) == 0) {
-		dev_dbg(&dev->dev, "%s - DTR|RTS not being set|cleared\n", __func__);
+		dbg("%s - DTR|RTS not being set|cleared", __func__);
 		return 0;	/* no change */
 	}
 
@@ -137,7 +161,7 @@ static inline int update_mctrl(struct usb_device *dev, unsigned int set,
 
 	result = ssu100_setregister(dev, 0, UART_MCR, urb_value);
 	if (result < 0)
-		dev_dbg(&dev->dev, "%s Error from MODEM_CTRL urb\n", __func__);
+		dbg("%s Error from MODEM_CTRL urb", __func__);
 
 	return result;
 }
@@ -147,13 +171,15 @@ static int ssu100_initdevice(struct usb_device *dev)
 	u8 *data;
 	int result = 0;
 
+	dbg("%s", __func__);
+
 	data = kzalloc(3, GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
 	result = ssu100_getdevice(dev, data);
 	if (result < 0) {
-		dev_dbg(&dev->dev, "%s - get_device failed %i\n", __func__, result);
+		dbg("%s - get_device failed %i", __func__, result);
 		goto out;
 	}
 
@@ -161,25 +187,25 @@ static int ssu100_initdevice(struct usb_device *dev)
 
 	result = ssu100_setdevice(dev, data);
 	if (result < 0) {
-		dev_dbg(&dev->dev, "%s - setdevice failed %i\n", __func__, result);
+		dbg("%s - setdevice failed %i", __func__, result);
 		goto out;
 	}
 
 	result = ssu100_control_msg(dev, QT_GET_SET_PREBUF_TRIG_LVL, 128, 0);
 	if (result < 0) {
-		dev_dbg(&dev->dev, "%s - set prebuffer level failed %i\n", __func__, result);
+		dbg("%s - set prebuffer level failed %i", __func__, result);
 		goto out;
 	}
 
 	result = ssu100_control_msg(dev, QT_SET_ATF, ATC_DISABLED, 0);
 	if (result < 0) {
-		dev_dbg(&dev->dev, "%s - set ATFprebuffer level failed %i\n", __func__, result);
+		dbg("%s - set ATFprebuffer level failed %i", __func__, result);
 		goto out;
 	}
 
 	result = ssu100_getdevice(dev, data);
 	if (result < 0) {
-		dev_dbg(&dev->dev, "%s - get_device failed %i\n", __func__, result);
+		dbg("%s - get_device failed %i", __func__, result);
 		goto out;
 	}
 
@@ -190,7 +216,7 @@ static int ssu100_initdevice(struct usb_device *dev)
 
 	result = ssu100_setdevice(dev, data);
 	if (result < 0) {
-		dev_dbg(&dev->dev, "%s - setdevice failed %i\n", __func__, result);
+		dbg("%s - setdevice failed %i", __func__, result);
 		goto out;
 	}
 
@@ -205,11 +231,13 @@ static void ssu100_set_termios(struct tty_struct *tty,
 			       struct ktermios *old_termios)
 {
 	struct usb_device *dev = port->serial->dev;
-	struct ktermios *termios = &tty->termios;
+	struct ktermios *termios = tty->termios;
 	u16 baud, divisor, remainder;
 	unsigned int cflag = termios->c_cflag;
 	u16 urb_value = 0; /* will hold the new flags */
 	int result;
+
+	dbg("%s", __func__);
 
 	if (cflag & PARENB) {
 		if (cflag & PARODD)
@@ -238,7 +266,7 @@ static void ssu100_set_termios(struct tty_struct *tty,
 	if (!baud)
 		baud = 9600;
 
-	dev_dbg(&port->dev, "%s - got baud = %d\n", __func__, baud);
+	dbg("%s - got baud = %d\n", __func__, baud);
 
 
 	divisor = MAX_BAUD_RATE / baud;
@@ -250,7 +278,7 @@ static void ssu100_set_termios(struct tty_struct *tty,
 
 	result = ssu100_control_msg(dev, QT_GET_SET_UART, divisor, urb_value);
 	if (result < 0)
-		dev_dbg(&port->dev, "%s - set uart failed\n", __func__);
+		dbg("%s - set uart failed", __func__);
 
 	if (cflag & CRTSCTS)
 		result = ssu100_control_msg(dev, QT_HW_FLOW_CONTROL_MASK,
@@ -259,7 +287,7 @@ static void ssu100_set_termios(struct tty_struct *tty,
 		result = ssu100_control_msg(dev, QT_HW_FLOW_CONTROL_MASK,
 					    0, 0);
 	if (result < 0)
-		dev_dbg(&port->dev, "%s - set HW flow control failed\n", __func__);
+		dbg("%s - set HW flow control failed", __func__);
 
 	if (I_IXOFF(tty) || I_IXON(tty)) {
 		u16 x = ((u16)(START_CHAR(tty) << 8) | (u16)(STOP_CHAR(tty)));
@@ -271,7 +299,7 @@ static void ssu100_set_termios(struct tty_struct *tty,
 					    0, 0);
 
 	if (result < 0)
-		dev_dbg(&port->dev, "%s - set SW flow control failed\n", __func__);
+		dbg("%s - set SW flow control failed", __func__);
 
 }
 
@@ -284,6 +312,8 @@ static int ssu100_open(struct tty_struct *tty, struct usb_serial_port *port)
 	int result;
 	unsigned long flags;
 
+	dbg("%s - port %d", __func__, port->number);
+
 	data = kzalloc(2, GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -293,7 +323,7 @@ static int ssu100_open(struct tty_struct *tty, struct usb_serial_port *port)
 				 QT_TRANSFER_IN, 0x01,
 				 0, data, 2, 300);
 	if (result < 0) {
-		dev_dbg(&port->dev, "%s - open failed %i\n", __func__, result);
+		dbg("%s - open failed %i", __func__, result);
 		kfree(data);
 		return result;
 	}
@@ -308,16 +338,17 @@ static int ssu100_open(struct tty_struct *tty, struct usb_serial_port *port)
 /* set to 9600 */
 	result = ssu100_control_msg(dev, QT_GET_SET_UART, 0x30, 0x0300);
 	if (result < 0)
-		dev_dbg(&port->dev, "%s - set uart failed\n", __func__);
+		dbg("%s - set uart failed", __func__);
 
 	if (tty)
-		ssu100_set_termios(tty, port, &tty->termios);
+		ssu100_set_termios(tty, port, tty->termios);
 
 	return usb_serial_generic_open(tty, port);
 }
 
 static void ssu100_close(struct usb_serial_port *port)
 {
+	dbg("%s", __func__);
 	usb_serial_generic_close(port);
 }
 
@@ -412,7 +443,7 @@ static int ssu100_ioctl(struct tty_struct *tty,
 {
 	struct usb_serial_port *port = tty->driver_data;
 
-	dev_dbg(&port->dev, "%s cmd 0x%04x\n", __func__, cmd);
+	dbg("%s cmd 0x%04x", __func__, cmd);
 
 	switch (cmd) {
 	case TIOCGSERIAL:
@@ -426,40 +457,30 @@ static int ssu100_ioctl(struct tty_struct *tty,
 		break;
 	}
 
-	dev_dbg(&port->dev, "%s arg not supported\n", __func__);
+	dbg("%s arg not supported", __func__);
 
 	return -ENOIOCTLCMD;
 }
 
 static int ssu100_attach(struct usb_serial *serial)
 {
-	return ssu100_initdevice(serial->dev);
-}
-
-static int ssu100_port_probe(struct usb_serial_port *port)
-{
 	struct ssu100_port_private *priv;
+	struct usb_serial_port *port = *serial->port;
+
+	dbg("%s", __func__);
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
-	if (!priv)
+	if (!priv) {
+		dev_err(&port->dev, "%s- kmalloc(%Zd) failed.\n", __func__,
+			sizeof(*priv));
 		return -ENOMEM;
+	}
 
 	spin_lock_init(&priv->status_lock);
 	init_waitqueue_head(&priv->delta_msr_wait);
-
 	usb_set_serial_port_data(port, priv);
 
-	return 0;
-}
-
-static int ssu100_port_remove(struct usb_serial_port *port)
-{
-	struct ssu100_port_private *priv;
-
-	priv = usb_get_serial_port_data(port);
-	kfree(priv);
-
-	return 0;
+	return ssu100_initdevice(serial->dev);
 }
 
 static int ssu100_tiocmget(struct tty_struct *tty)
@@ -468,6 +489,8 @@ static int ssu100_tiocmget(struct tty_struct *tty)
 	struct usb_device *dev = port->serial->dev;
 	u8 *d;
 	int r;
+
+	dbg("%s\n", __func__);
 
 	d = kzalloc(2, GFP_KERNEL);
 	if (!d)
@@ -499,12 +522,15 @@ static int ssu100_tiocmset(struct tty_struct *tty,
 	struct usb_serial_port *port = tty->driver_data;
 	struct usb_device *dev = port->serial->dev;
 
+	dbg("%s\n", __func__);
 	return update_mctrl(dev, set, clear);
 }
 
 static void ssu100_dtr_rts(struct usb_serial_port *port, int on)
 {
 	struct usb_device *dev = port->serial->dev;
+
+	dbg("%s\n", __func__);
 
 	mutex_lock(&port->serial->disc_mutex);
 	if (!port->serial->disconnected) {
@@ -592,6 +618,8 @@ static int ssu100_process_packet(struct urb *urb,
 	int i;
 	char *ch;
 
+	dbg("%s - port %d", __func__, port->number);
+
 	if ((len >= 4) &&
 	    (packet[0] == 0x1b) && (packet[1] == 0x1b) &&
 	    ((packet[2] == 0x00) || (packet[2] == 0x01))) {
@@ -628,6 +656,8 @@ static void ssu100_process_read_urb(struct urb *urb)
 	struct tty_struct *tty;
 	int count;
 
+	dbg("%s", __func__);
+
 	tty = tty_port_tty_get(&port->port);
 	if (!tty)
 		return;
@@ -650,8 +680,7 @@ static struct usb_serial_driver ssu100_device = {
 	.open		     = ssu100_open,
 	.close		     = ssu100_close,
 	.attach              = ssu100_attach,
-	.port_probe          = ssu100_port_probe,
-	.port_remove         = ssu100_port_remove,
+	.release             = ssu100_release,
 	.dtr_rts             = ssu100_dtr_rts,
 	.process_read_urb    = ssu100_process_read_urb,
 	.tiocmget            = ssu100_tiocmget,
@@ -666,7 +695,10 @@ static struct usb_serial_driver * const serial_drivers[] = {
 	&ssu100_device, NULL
 };
 
-module_usb_serial_driver(serial_drivers, id_table);
+module_usb_serial_driver(ssu100_driver, serial_drivers);
 
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
+
+module_param(debug, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(debug, "Debug enabled or not");

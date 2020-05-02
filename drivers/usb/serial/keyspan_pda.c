@@ -45,6 +45,10 @@ static bool debug;
 	#undef XIRCOM
 #endif
 
+/*
+ * Version Information
+ */
+#define DRIVER_VERSION "v1.1"
 #define DRIVER_AUTHOR "Brian Warner <warner@lothar.com>"
 #define DRIVER_DESC "USB Keyspan PDA Converter driver"
 

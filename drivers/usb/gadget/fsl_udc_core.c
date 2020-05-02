@@ -40,7 +40,6 @@
 #include <linux/fsl_devices.h>
 #include <linux/dmapool.h>
 #include <linux/delay.h>
-#include <linux/of_device.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -2107,7 +2106,7 @@ static int fsl_proc_read(char *page, char **start, off_t off, int count,
 
 	tmp_reg = fsl_readl(&dr_regs->usbintr);
 	t = scnprintf(next, size,
-			"USB Interrupt Enable Reg:\n"
+			"USB Intrrupt Enable Reg:\n"
 			"Sleep Enable: %d SOF Received Enable: %d "
 			"Reset Enable: %d\n"
 			"System Error Enable: %d "
@@ -2419,6 +2418,11 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	unsigned int i;
 	u32 dccparams;
 
+	if (strcmp(pdev->name, driver_name)) {
+		VDBG("Wrong device");
+		return -ENODEV;
+	}
+
 	udc_controller = kzalloc(sizeof(struct fsl_udc), GFP_KERNEL);
 	if (udc_controller == NULL) {
 		ERR("malloc udc failed\n");
@@ -2523,9 +2527,7 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 		dr_controller_setup(udc_controller);
 	}
 
-	ret = fsl_udc_clk_finalize(pdev);
-	if (ret)
-		goto err_free_irq;
+	fsl_udc_clk_finalize(pdev);
 
 	/* Setup gadget structure */
 	udc_controller->gadget.ops = &fsl_gadget_ops;
@@ -2733,32 +2735,22 @@ static int fsl_udc_otg_resume(struct device *dev)
 
 	return fsl_udc_resume(NULL);
 }
+
 /*-------------------------------------------------------------------------
 	Register entry point for the peripheral controller driver
 --------------------------------------------------------------------------*/
-static const struct platform_device_id fsl_udc_devtype[] = {
-	{
-		.name = "imx-udc-mx27",
-	}, {
-		.name = "imx-udc-mx51",
-	}, {
-		/* sentinel */
-	}
-};
-MODULE_DEVICE_TABLE(platform, fsl_udc_devtype);
+
 static struct platform_driver udc_driver = {
-	.remove		= __exit_p(fsl_udc_remove),
-	/* Just for FSL i.mx SoC currently */
-	.id_table	= fsl_udc_devtype,
+	.remove  = __exit_p(fsl_udc_remove),
 	/* these suspend and resume are not usb suspend and resume */
-	.suspend	= fsl_udc_suspend,
-	.resume		= fsl_udc_resume,
-	.driver		= {
-			.name = (char *)driver_name,
-			.owner = THIS_MODULE,
-			/* udc suspend/resume called from OTG driver */
-			.suspend = fsl_udc_otg_suspend,
-			.resume  = fsl_udc_otg_resume,
+	.suspend = fsl_udc_suspend,
+	.resume  = fsl_udc_resume,
+	.driver  = {
+		.name = (char *)driver_name,
+		.owner = THIS_MODULE,
+		/* udc suspend/resume called from OTG driver */
+		.suspend = fsl_udc_otg_suspend,
+		.resume  = fsl_udc_otg_resume,
 	},
 };
 

@@ -240,6 +240,8 @@ static int __init bfin_jc_init(void)
 {
 	int ret;
 
+	tty_port_init(&port);
+
 	bfin_jc_kthread = kthread_create(bfin_jc_emudat_manager, NULL, DRV_NAME);
 	if (IS_ERR(bfin_jc_kthread))
 		return PTR_ERR(bfin_jc_kthread);
@@ -254,8 +256,6 @@ static int __init bfin_jc_init(void)
 	bfin_jc_driver = alloc_tty_driver(1);
 	if (!bfin_jc_driver)
 		goto err_driver;
-
-	tty_port_init(&port);
 
 	bfin_jc_driver->driver_name  = DRV_NAME;
 	bfin_jc_driver->name         = DEV_NAME;
@@ -273,7 +273,6 @@ static int __init bfin_jc_init(void)
 	return 0;
 
  err:
-	tty_port_destroy(&port);
 	put_tty_driver(bfin_jc_driver);
  err_driver:
 	kfree(bfin_jc_write_buf.buf);
@@ -289,7 +288,6 @@ static void __exit bfin_jc_exit(void)
 	kfree(bfin_jc_write_buf.buf);
 	tty_unregister_driver(bfin_jc_driver);
 	put_tty_driver(bfin_jc_driver);
-	tty_port_destroy(&port);
 }
 module_exit(bfin_jc_exit);
 

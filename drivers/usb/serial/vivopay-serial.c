@@ -10,6 +10,8 @@
 #include <linux/usb.h>
 #include <linux/usb/serial.h>
 
+
+#define DRIVER_VERSION "v1.0"
 #define DRIVER_DESC "ViVOpay USB Serial Driver"
 
 #define VIVOPAY_VENDOR_ID 0x1d5f
@@ -47,4 +49,5 @@ module_usb_serial_driver(vivopay_serial_driver, serial_drivers);
 
 MODULE_AUTHOR("Forest Bond <forest.bond@outpostembedded.com>");
 MODULE_DESCRIPTION(DRIVER_DESC);
+MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPL");
