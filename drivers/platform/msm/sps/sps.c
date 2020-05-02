@@ -2831,7 +2831,7 @@ static struct platform_driver msm_sps_driver = {
 		.owner	= THIS_MODULE,
 		.of_match_table = msm_sps_match,
 	},
-	.remove		= __exit_p(msm_sps_remove),
+	.remove		= msm_sps_remove,
 };
 
 /**

@@ -3613,7 +3613,7 @@ static struct platform_driver msm_spi_driver = {
 		.pm		= &msm_spi_dev_pm_ops,
 		.of_match_table = msm_spi_dt_match,
 	},
-	.remove		= __exit_p(msm_spi_remove),
+	.remove		= msm_spi_remove,
 };
 
 static int __init msm_spi_init(void)

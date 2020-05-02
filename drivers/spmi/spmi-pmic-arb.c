@@ -888,7 +888,7 @@ static struct of_device_id spmi_pmic_arb_match_table[] = {
 
 static struct platform_driver spmi_pmic_arb_driver = {
 	.probe		= spmi_pmic_arb_probe,
-	.remove		= __exit_p(spmi_pmic_arb_remove),
+	.remove		= spmi_pmic_arb_remove,
 	.driver		= {
 		.name	= SPMI_PMIC_ARB_NAME,
 		.owner	= THIS_MODULE,
