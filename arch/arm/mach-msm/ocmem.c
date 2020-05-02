@@ -381,8 +381,7 @@ void ocmem_disable_iface_clock(void)
 	pr_debug("ocmem: Disabled iface clock\n");
 }
 
-static struct ocmem_plat_data * parse_dt_config
-						(struct platform_device *pdev)
+static struct ocmem_plat_data *parse_dt_config(struct platform_device *pdev)
 {
 	struct device   *dev = &pdev->dev;
 	struct device_node *node = pdev->dev.of_node;
