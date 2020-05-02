@@ -13,7 +13,7 @@ if [ -e output/.config ]
         make -j4 O=output oldconfig
 fi
 
-make -j4 CONFIG_NO_ERROR_ON_MISMATCH=y \
+make -j4 CONFIG_DEBUG_SECTION_MISMATCH=y \
 	O=output 2>&1 | tee ../compile.log
 
 cp output/arch/arm/boot/Image $(pwd)/arch/arm/boot/zImage
