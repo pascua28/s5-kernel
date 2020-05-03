@@ -494,13 +494,13 @@ static int max77826_setup_regulators(struct max77826_dev *max77826,
 	}
 
 	config.dev = max77826->dev;
+	config.driver_data = max77826;
 
 	/* Register the regulators */
 	for (i = 0; i < pdata->num_regulators; i++) {
 		struct max77826_regulator_subdev *reg = &pdata->regulators[i];
 
 		config.init_data = reg->initdata;
-		config.driver_data = max77826;
 
 		max77826->rdev[i] = regulator_register(&regulators[reg->id], &config);
 		if (IS_ERR(max77826->rdev[i])) {
