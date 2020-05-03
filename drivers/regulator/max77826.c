@@ -1,8 +1,9 @@
 /*
  * max77826.c - Regulator driver for the Maxim 77826
  *
- * Copyright (C) 2013 Samsung Electronics
+ * Copyright (C) 2020
  * Chiwoong Byun <woong.byun@samsung.com>
+ * Samuel Pascua <sgpascua@ngcp.ph>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +33,8 @@
 #include <linux/regulator/max77826.h>
 #include <linux/slab.h>
 #include <linux/of_gpio.h>
+
+#define MAX_RETRY 3
 
 struct voltage_map_desc {
 	int min;
@@ -79,10 +82,20 @@ static struct voltage_map_desc *reg_voltage_map[] = {
 int max77826_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest)
 {
 	struct max77826_dev *max77826 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, retry = 0;
 
 	mutex_lock(&max77826->io_lock);
-	ret = i2c_smbus_read_byte_data(i2c, reg);
+	do {
+		ret = i2c_smbus_read_byte_data(i2c, reg);
+		if (ret >= 0)
+			break;
+
+		/* i2c read fail, sleep 3~6 ms and retry */
+		pr_err("%s: i2c read error=%d retry count: %d\n",
+			__func__, ret, retry);
+		retry++;
+		usleep_range(3000, 6000);
+	} while (retry < MAX_RETRY);
 	mutex_unlock(&max77826->io_lock);
 
 	if (ret < 0)
@@ -110,10 +123,20 @@ int max77826_bulk_read(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 int max77826_write_reg(struct i2c_client *i2c, u8 reg, u8 value)
 {
 	struct max77826_dev *max77826 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, retry = 0;
 
 	mutex_lock(&max77826->io_lock);
-	ret = i2c_smbus_write_byte_data(i2c, reg, value);
+	do {
+		ret = i2c_smbus_write_byte_data(i2c, reg, value);
+		if (ret >= 0)
+			break;
+
+		/* i2c wrtie fail, sleep 3~6 ms and retry */
+		pr_err("%s: i2c write error=%d retry count: %d\n",
+			__func__, ret, retry);
+		retry++;
+		usleep_range(3000, 6000);
+	} while (retry < MAX_RETRY);
 	mutex_unlock(&max77826->io_lock);
 	return ret;
 }
@@ -135,15 +158,42 @@ int max77826_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 int max77826_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask)
 {
 	struct max77826_dev *max77826 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, retry = 0;
+	u8 old_val, new_val;
 
 	mutex_lock(&max77826->io_lock);
-	ret = i2c_smbus_read_byte_data(i2c, reg);
-	if (ret >= 0) {
-		u8 old_val = ret & 0xff;
-		u8 new_val = (val & mask) | (old_val & (~mask));
-		ret = i2c_smbus_write_byte_data(i2c, reg, new_val);
+	do {
+		ret = i2c_smbus_read_byte_data(i2c, reg);
+		if (ret >= 0)
+			break;
+
+		/* i2c read fail, sleep 3~6 ms and retry */
+		pr_err("%s: i2c read error=%d retry count: %d\n",
+			__func__, ret, retry);
+		retry++;
+		usleep_range(3000, 6000);
+	} while (retry < MAX_RETRY);
+
+	if (ret < 0) {
+		mutex_unlock(&max77826->io_lock);
+		return ret;
 	}
+
+	old_val = ret & 0xff;
+	new_val = (val & mask) | (old_val & (~mask));
+
+	retry = 0;
+	do {
+		ret = i2c_smbus_write_byte_data(i2c, reg, new_val);
+		if (ret >= 0)
+			break;
+		/* i2c wrtie fail, sleep 3~6 ms and retry */
+		pr_err("%s: i2c write error=%d retry count: %d\n",
+			__func__, ret, retry);
+		retry++;
+		usleep_range(3000, 6000);
+	} while (retry < MAX_RETRY);
+
 	mutex_unlock(&max77826->io_lock);
 	return ret;
 }
@@ -611,5 +661,5 @@ static void __exit max77826_module_exit(void)
 module_exit(max77826_module_exit);
 
 MODULE_DESCRIPTION("MAXIM 77826 Regulator Driver");
-MODULE_AUTHOR("Chiwoong Byun <woong.byun@samsung.com>");
+MODULE_AUTHOR("Samuel Pascua <sgpascua@ngcp.ph>");
 MODULE_LICENSE("GPL");
