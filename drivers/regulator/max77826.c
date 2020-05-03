@@ -439,6 +439,7 @@ static struct regulator_ops max77826_ldo_ops = {
 	.enable = max77826_ldo_enable,
 	.disable = max77826_ldo_disable,
 	.list_voltage = max77826_ldo_list_voltage,
+	.map_voltage = regulator_map_voltage_linear,
 	.get_voltage = max77826_ldo_get_voltage,
 	.set_voltage = max77826_ldo_set_voltage,
 };
