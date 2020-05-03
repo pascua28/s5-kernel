@@ -623,8 +623,7 @@ EXPORT_SYMBOL_GPL(sysfs_add_file_to_group);
  *
  */
 
-#define KUID_STUPID	KUIDT_INIT(CONFIG_MMC_BKOPS_NODE_UID)
-#define KGID_STUPID	KGIDT_INIT(CONFIG_MMC_BKOPS_NODE_GID)
+#if defined(CONFIG_MMC_BKOPS_NODE_UID) || defined(CONFIG_MMC_BKOPS_NODE_GID)
 int sysfs_chown_file(struct kobject *kobj, const struct attribute *attr)
 {
 	struct sysfs_dirent *sd;
@@ -645,8 +644,8 @@ int sysfs_chown_file(struct kobject *kobj, const struct attribute *attr)
 
 	memset(&newattrs, 0, sizeof(newattrs));
 	newattrs.ia_valid = ATTR_UID | ATTR_GID;
-	newattrs.ia_uid = KUID_STUPID;
-	newattrs.ia_gid = KGID_STUPID;
+	newattrs.ia_uid = CONFIG_MMC_BKOPS_NODE_UID;
+	newattrs.ia_gid = CONFIG_MMC_BKOPS_NODE_GID;
 
 	rc = sysfs_sd_setattr(sd, &newattrs);
 out:
@@ -654,6 +653,7 @@ out:
 	return rc;
 }
 EXPORT_SYMBOL_GPL(sysfs_chown_file);
+#endif
 
 /**
  * sysfs_chmod_file - update the modified mode value on an object attribute.
