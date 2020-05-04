@@ -1057,7 +1057,6 @@ struct snd_soc_pcm_runtime {
 	int fe_compr;
 
 	long pmdown_time;
-	unsigned char pop_wait:1;
 
 	/* runtime devices */
 	struct snd_pcm *pcm;
