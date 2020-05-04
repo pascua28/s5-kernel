@@ -51,6 +51,10 @@ static bool stats;
 static int interval;
 static bool unstable_bauds;
 
+/*
+ * Version Information
+ */
+#define DRIVER_VERSION "v1.10"
 #define DRIVER_AUTHOR "Lonnie Mendez <dignome@gmail.com>, Neil Whelchel <koyama@firstlight.net>"
 #define DRIVER_DESC "Cypress USB to Serial Driver"
 
@@ -1346,6 +1350,7 @@ module_usb_serial_driver(cypress_driver, serial_drivers);
 
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
+MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPL");
 
 module_param(debug, bool, S_IRUGO | S_IWUSR);

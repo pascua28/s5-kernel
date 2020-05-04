@@ -1256,8 +1256,7 @@ static int uhci_submit_isochronous(struct uhci_hcd *uhci, struct urb *urb,
 		struct uhci_qh *qh)
 {
 	struct uhci_td *td = NULL;	/* Since urb->number_of_packets > 0 */
-	int i;
-	unsigned frame, next;
+	int i, frame;
 	unsigned long destination, status;
 	struct urb_priv *urbp = (struct urb_priv *) urb->hcpriv;
 
@@ -1266,29 +1265,37 @@ static int uhci_submit_isochronous(struct uhci_hcd *uhci, struct urb *urb,
 			urb->number_of_packets >= UHCI_NUMFRAMES)
 		return -EFBIG;
 
-	uhci_get_current_frame_number(uhci);
-
 	/* Check the period and figure out the starting frame number */
 	if (!qh->bandwidth_reserved) {
 		qh->period = urb->interval;
-		qh->phase = -1;		/* Find the best phase */
-		i = uhci_check_bandwidth(uhci, qh);
-		if (i)
-			return i;
+		if (urb->transfer_flags & URB_ISO_ASAP) {
+			qh->phase = -1;		/* Find the best phase */
+			i = uhci_check_bandwidth(uhci, qh);
+			if (i)
+				return i;
 
-		/* Allow a little time to allocate the TDs */
-		next = uhci->frame_number + 10;
-		frame = qh->phase;
+			/* Allow a little time to allocate the TDs */
+			uhci_get_current_frame_number(uhci);
+			frame = uhci->frame_number + 10;
 
-		/* Round up to the first available slot */
-		frame += (next - frame + qh->period - 1) & -qh->period;
+			/* Move forward to the first frame having the
+			 * correct phase */
+			urb->start_frame = frame + ((qh->phase - frame) &
+					(qh->period - 1));
+		} else {
+			i = urb->start_frame - uhci->last_iso_frame;
+			if (i <= 0 || i >= UHCI_NUMFRAMES)
+				return -EINVAL;
+			qh->phase = urb->start_frame & (qh->period - 1);
+			i = uhci_check_bandwidth(uhci, qh);
+			if (i)
+				return i;
+		}
 
 	} else if (qh->period != urb->interval) {
 		return -EINVAL;		/* Can't change the period */
 
 	} else {
-		next = uhci->frame_number + 2;
-
 		/* Find the next unused frame */
 		if (list_empty(&qh->queue)) {
 			frame = qh->iso_frame;
@@ -1301,31 +1308,25 @@ static int uhci_submit_isochronous(struct uhci_hcd *uhci, struct urb *urb,
 					lurb->number_of_packets *
 					lurb->interval;
 		}
-
-		/* Fell behind? */
-		if (uhci_frame_before_eq(frame, next)) {
-
-			/* USB_ISO_ASAP: Round up to the first available slot */
-			if (urb->transfer_flags & URB_ISO_ASAP)
-				frame += (next - frame + qh->period - 1) &
-						-qh->period;
-
-			/*
-			 * Not ASAP: Use the next slot in the stream.  If
-			 * the entire URB falls before the threshold, fail.
+		if (urb->transfer_flags & URB_ISO_ASAP) {
+			/* Skip some frames if necessary to insure
+			 * the start frame is in the future.
 			 */
-			else if (!uhci_frame_before_eq(next,
-					frame + (urb->number_of_packets - 1) *
-						qh->period))
-				return -EXDEV;
-		}
+			uhci_get_current_frame_number(uhci);
+			if (uhci_frame_before_eq(frame, uhci->frame_number)) {
+				frame = uhci->frame_number + 1;
+				frame += ((qh->phase - frame) &
+					(qh->period - 1));
+			}
+		}	/* Otherwise pick up where the last URB leaves off */
+		urb->start_frame = frame;
 	}
 
 	/* Make sure we won't have to go too far into the future */
 	if (uhci_frame_before_eq(uhci->last_iso_frame + UHCI_NUMFRAMES,
-			frame + urb->number_of_packets * urb->interval))
+			urb->start_frame + urb->number_of_packets *
+				urb->interval))
 		return -EFBIG;
-	urb->start_frame = frame;
 
 	status = TD_CTRL_ACTIVE | TD_CTRL_IOS;
 	destination = (urb->pipe & PIPE_DEVEP_MASK) | usb_packetid(urb->pipe);

@@ -499,23 +499,15 @@ static int mxs_saif_trigger(struct snd_pcm_substream *substream, int cmd,
 
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			/*
-			 * write data to saif data register to trigger
-			 * the transfer.
-			 * For 24-bit format the 32-bit FIFO register stores
-			 * only one channel, so we need to write twice.
-			 * This is also safe for the other non 24-bit formats.
+			 * write a data to saif data register to trigger
+			 * the transfer
 			 */
-			__raw_writel(0, saif->base + SAIF_DATA);
 			__raw_writel(0, saif->base + SAIF_DATA);
 		} else {
 			/*
-			 * read data from saif data register to trigger
-			 * the receive.
-			 * For 24-bit format the 32-bit FIFO register stores
-			 * only one channel, so we need to read twice.
-			 * This is also safe for the other non 24-bit formats.
+			 * read a data from saif data register to trigger
+			 * the receive
 			 */
-			__raw_readl(saif->base + SAIF_DATA);
 			__raw_readl(saif->base + SAIF_DATA);
 		}
 
@@ -802,4 +794,3 @@ module_platform_driver(mxs_saif_driver);
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");
 MODULE_DESCRIPTION("MXS ASoC SAIF driver");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:mxs-saif");

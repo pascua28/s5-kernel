@@ -70,6 +70,10 @@ static bool debug;
 #define THROTTLED		0x01
 #define ACTUALLY_THROTTLED	0x02
 
+/*
+ * Version Information
+ */
+#define DRIVER_VERSION "v2.0"
 #define DRIVER_AUTHOR "Naranjo, Manuel Francisco <naranjo.manuel@gmail.com>, Johan Hovold <jhovold@gmail.com>"
 #define DRIVER_DESC "AIRcable USB Driver"
 
@@ -196,6 +200,7 @@ module_usb_serial_driver(aircable_driver, serial_drivers);
 
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
+MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPL");
 
 module_param(debug, bool, S_IRUGO | S_IWUSR);

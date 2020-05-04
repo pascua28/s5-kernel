@@ -304,7 +304,6 @@ int usb_serial_generic_chars_in_buffer(struct tty_struct *tty)
 	dbg("%s - returns %d", __func__, chars);
 	return chars;
 }
-EXPORT_SYMBOL_GPL(usb_serial_generic_chars_in_buffer);
 
 static int usb_serial_generic_submit_read_urb(struct usb_serial_port *port,
 						int index, gfp_t mem_flags)

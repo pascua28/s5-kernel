@@ -423,9 +423,6 @@ alloc_sglist(int nents, int max, int vary)
 	unsigned		i;
 	unsigned		size = max;
 
-	if (max == 0)
-		return NULL;
-
 	sg = kmalloc_array(nents, sizeof *sg, GFP_KERNEL);
 	if (!sg)
 		return NULL;
@@ -2382,7 +2379,6 @@ static struct usbtest_info gz_info = {
 	.name		= "Linux gadget zero",
 	.autoconf	= 1,
 	.ctrl_out	= 1,
-	.iso		= 1,
 	.alt		= 0,
 };
 

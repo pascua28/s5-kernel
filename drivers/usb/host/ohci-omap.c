@@ -529,7 +529,7 @@ static int ohci_omap_resume(struct platform_device *dev)
 	ohci->next_statechange = jiffies;
 
 	omap_ohci_clock_power(1);
-	ohci_resume(hcd, false);
+	ohci_finish_controller_resume(hcd);
 	return 0;
 }
 

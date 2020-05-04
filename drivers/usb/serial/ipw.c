@@ -49,6 +49,10 @@
 #include <linux/uaccess.h>
 #include "usb-wwan.h"
 
+/*
+ * Version Information
+ */
+#define DRIVER_VERSION	"v0.4"
 #define DRIVER_AUTHOR	"Roelf Diedericks"
 #define DRIVER_DESC	"IPWireless tty driver"
 

@@ -2418,7 +2418,7 @@ static int fsl_qe_stop(struct usb_gadget_driver *driver)
 }
 
 /* udc structure's alloc and setup, include ep-param alloc */
-static struct qe_udc *qe_udc_config(struct platform_device *ofdev)
+static struct qe_udc __devinit *qe_udc_config(struct platform_device *ofdev)
 {
 	struct qe_udc *udc;
 	struct device_node *np = ofdev->dev.of_node;
@@ -2473,7 +2473,7 @@ cleanup:
 }
 
 /* USB Controller register init */
-static int qe_udc_reg_init(struct qe_udc *udc)
+static int __devinit qe_udc_reg_init(struct qe_udc *udc)
 {
 	struct usb_ctlr __iomem *qe_usbregs;
 	qe_usbregs = udc->usb_regs;
@@ -2491,7 +2491,7 @@ static int qe_udc_reg_init(struct qe_udc *udc)
 	return 0;
 }
 
-static int qe_ep_config(struct qe_udc *udc, unsigned char pipe_num)
+static int __devinit qe_ep_config(struct qe_udc *udc, unsigned char pipe_num)
 {
 	struct qe_ep *ep = &udc->eps[pipe_num];
 
@@ -2544,7 +2544,7 @@ static void qe_udc_release(struct device *dev)
 
 /* Driver probe functions */
 static const struct of_device_id qe_udc_match[];
-static int qe_udc_probe(struct platform_device *ofdev)
+static int __devinit qe_udc_probe(struct platform_device *ofdev)
 {
 	const struct of_device_id *match;
 	struct device_node *np = ofdev->dev.of_node;
@@ -2721,7 +2721,7 @@ static int qe_udc_resume(struct platform_device *dev)
 }
 #endif
 
-static int qe_udc_remove(struct platform_device *ofdev)
+static int __devexit qe_udc_remove(struct platform_device *ofdev)
 {
 	struct qe_ep *ep;
 	unsigned int size;
@@ -2783,7 +2783,7 @@ static int qe_udc_remove(struct platform_device *ofdev)
 }
 
 /*-------------------------------------------------------------------------*/
-static const struct of_device_id qe_udc_match[] = {
+static const struct of_device_id qe_udc_match[] __devinitconst = {
 	{
 		.compatible = "fsl,mpc8323-qe-usb",
 		.data = (void *)PORT_QE,
@@ -2808,7 +2808,7 @@ static struct platform_driver udc_driver = {
 		.of_match_table = qe_udc_match,
 	},
 	.probe          = qe_udc_probe,
-	.remove         = qe_udc_remove,
+	.remove         = __devexit_p(qe_udc_remove),
 #ifdef CONFIG_PM
 	.suspend        = qe_udc_suspend,
 	.resume         = qe_udc_resume,

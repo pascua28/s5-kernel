@@ -2362,7 +2362,6 @@ error4:
 error1:
 	usb_free_urb(command_res_urb);
 error0:
-	usb_put_dev(udev);
 	return retval;
 }
 

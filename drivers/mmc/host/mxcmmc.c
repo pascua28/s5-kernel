@@ -237,7 +237,7 @@ static int mxcmci_setup_data(struct mxcmci_host *host, struct mmc_data *data)
 		return 0;
 
 	for_each_sg(data->sg, sg, data->sg_len, i) {
-		if (sg->offset & 3 || sg->length & 3 || sg->length < 512) {
+		if (sg->offset & 3 || sg->length & 3) {
 			host->do_dma = 0;
 			return 0;
 		}

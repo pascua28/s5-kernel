@@ -408,7 +408,7 @@ static void ulite_console_write(struct console *co, const char *s,
 		spin_unlock_irqrestore(&port->lock, flags);
 }
 
-static int ulite_console_setup(struct console *co, char *options)
+static int __devinit ulite_console_setup(struct console *co, char *options)
 {
 	struct uart_port *port;
 	int baud = 9600;
@@ -486,7 +486,7 @@ static struct uart_driver ulite_uart_driver = {
  *
  * Returns: 0 on success, <0 otherwise
  */
-static int ulite_assign(struct device *dev, int id, u32 base, int irq)
+static int __devinit ulite_assign(struct device *dev, int id, u32 base, int irq)
 {
 	struct uart_port *port;
 	int rc;
@@ -542,7 +542,7 @@ static int ulite_assign(struct device *dev, int id, u32 base, int irq)
  *
  * @dev: pointer to device structure
  */
-static int ulite_release(struct device *dev)
+static int __devexit ulite_release(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
 	int rc = 0;
@@ -562,7 +562,7 @@ static int ulite_release(struct device *dev)
 
 #if defined(CONFIG_OF)
 /* Match table for of_platform binding */
-static struct of_device_id ulite_of_match[] = {
+static struct of_device_id ulite_of_match[] __devinitdata = {
 	{ .compatible = "xlnx,opb-uartlite-1.00.b", },
 	{ .compatible = "xlnx,xps-uartlite-1.00.a", },
 	{}
@@ -570,7 +570,7 @@ static struct of_device_id ulite_of_match[] = {
 MODULE_DEVICE_TABLE(of, ulite_of_match);
 #endif /* CONFIG_OF */
 
-static int ulite_probe(struct platform_device *pdev)
+static int __devinit ulite_probe(struct platform_device *pdev)
 {
 	struct resource *res, *res2;
 	int id = pdev->id;
@@ -593,7 +593,7 @@ static int ulite_probe(struct platform_device *pdev)
 	return ulite_assign(&pdev->dev, id, res->start, res2->start);
 }
 
-static int ulite_remove(struct platform_device *pdev)
+static int __devexit ulite_remove(struct platform_device *pdev)
 {
 	return ulite_release(&pdev->dev);
 }
@@ -603,7 +603,7 @@ MODULE_ALIAS("platform:uartlite");
 
 static struct platform_driver ulite_platform_driver = {
 	.probe = ulite_probe,
-	.remove = ulite_remove,
+	.remove = __devexit_p(ulite_remove),
 	.driver = {
 		.owner = THIS_MODULE,
 		.name  = "uartlite",
