@@ -298,6 +298,8 @@ void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
 				struct sg_table *sg_table,
 				enum dma_data_direction direction)
 {
+	might_sleep();
+
 	if (WARN_ON(!attach || !attach->dmabuf || !sg_table))
 		return;
 
@@ -468,7 +470,6 @@ int dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma,
 }
 EXPORT_SYMBOL_GPL(dma_buf_mmap);
 
-#if 0
 /**
  * dma_buf_vmap - Create virtual mapping for the buffer object into kernel
  * address space. Same restrictions as for vmap and friends apply.
@@ -504,4 +505,3 @@ void dma_buf_vunmap(struct dma_buf *dmabuf, void *vaddr)
 		dmabuf->ops->vunmap(dmabuf, vaddr);
 }
 EXPORT_SYMBOL_GPL(dma_buf_vunmap);
-#endif
