@@ -581,7 +581,7 @@ failure:
 	return ret;
 }
 
-static void __devexit fintek_remove(struct pnp_dev *pdev)
+static void fintek_remove(struct pnp_dev *pdev)
 {
 	struct fintek_dev *fintek = pnp_get_drvdata(pdev);
 	unsigned long flags;
@@ -669,7 +669,7 @@ static struct pnp_driver fintek_driver = {
 	.id_table	= fintek_ids,
 	.flags		= PNP_DRIVER_RES_DO_NOT_CHANGE,
 	.probe		= fintek_probe,
-	.remove		= __devexit_p(fintek_remove),
+	.remove		= fintek_remove,
 	.suspend	= fintek_suspend,
 	.resume		= fintek_resume,
 	.shutdown	= fintek_shutdown,

@@ -3554,7 +3554,7 @@ static int usb_diag_update_pid_and_serial_num(u32 pid, const char *snum)
 	return 0;
 }
 
-static int __devinit android_probe(struct platform_device *pdev)
+static int android_probe(struct platform_device *pdev)
 {
 	struct android_usb_platform_data *pdata;
 	struct android_dev *android_dev;
@@ -3743,7 +3743,7 @@ static int android_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct platform_device_id android_id_table[] __devinitconst = {
+static const struct platform_device_id android_id_table[] = {
 	{
 		.name = "android_usb",
 	},

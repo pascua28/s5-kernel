@@ -1053,7 +1053,7 @@ const struct file_operations dwc3_gadget_dbg_data_fops = {
 	.release		= single_release,
 };
 
-int __devinit dwc3_debugfs_init(struct dwc3 *dwc)
+int dwc3_debugfs_init(struct dwc3 *dwc)
 {
 	struct dentry		*root;
 	struct dentry		*file;
@@ -1131,7 +1131,7 @@ err0:
 	return ret;
 }
 
-void __devexit dwc3_debugfs_exit(struct dwc3 *dwc)
+void dwc3_debugfs_exit(struct dwc3 *dwc)
 {
 	debugfs_remove_recursive(dwc->root);
 	dwc->root = NULL;
