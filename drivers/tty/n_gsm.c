@@ -134,6 +134,7 @@ struct gsm_dlci {
 #define DLCI_OPENING		1	/* Sending SABM not seen UA */
 #define DLCI_OPEN		2	/* SABM/UA complete */
 #define DLCI_CLOSING		3	/* Sending DISC not seen UA/DM */
+	struct kref ref;		/* freed from port or mux close */
 	struct mutex mutex;
 
 	/* Link layer */
@@ -1625,6 +1626,7 @@ static struct gsm_dlci *gsm_dlci_alloc(struct gsm_mux *gsm, int addr)
 	if (dlci == NULL)
 		return NULL;
 	spin_lock_init(&dlci->lock);
+	kref_init(&dlci->ref);
 	mutex_init(&dlci->mutex);
 	dlci->fifo = &dlci->_fifo;
 	if (kfifo_alloc(&dlci->_fifo, 4096, GFP_KERNEL) < 0) {
@@ -1658,9 +1660,9 @@ static struct gsm_dlci *gsm_dlci_alloc(struct gsm_mux *gsm, int addr)
  *
  *	Can sleep.
  */
-static void gsm_dlci_free(struct tty_port *port)
+static void gsm_dlci_free(struct kref *ref)
 {
-	struct gsm_dlci *dlci = container_of(port, struct gsm_dlci, port);
+	struct gsm_dlci *dlci = container_of(ref, struct gsm_dlci, ref);
 
 	del_timer_sync(&dlci->t1);
 	dlci->gsm->dlci[dlci->addr] = NULL;
@@ -1672,12 +1674,12 @@ static void gsm_dlci_free(struct tty_port *port)
 
 static inline void dlci_get(struct gsm_dlci *dlci)
 {
-	tty_port_get(&dlci->port);
+	kref_get(&dlci->ref);
 }
 
 static inline void dlci_put(struct gsm_dlci *dlci)
 {
-	tty_port_put(&dlci->port);
+	kref_put(&dlci->ref, gsm_dlci_free);
 }
 
 /**
@@ -2864,7 +2866,6 @@ static void gsm_dtr_rts(struct tty_port *port, int onoff)
 static const struct tty_port_operations gsm_port_ops = {
 	.carrier_raised = gsm_carrier_raised,
 	.dtr_rts = gsm_dtr_rts,
-	.destruct = gsm_dlci_free,
 };
 
 
