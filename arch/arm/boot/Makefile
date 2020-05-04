@@ -72,7 +72,6 @@ $(obj)/zImage-dtb:	$(obj)/zImage $(DTB_OBJS) FORCE
 
 endif
 
-<<<<<<< HEAD
 targets += $(DTB_LIST)
 
 # Rule to build device tree blobs
@@ -97,8 +96,6 @@ $(obj)/dtbs: $(DTB_OBJS)
 
 clean-files := *.dtb
 
-=======
->>>>>>> 76d8a23b127... Merge git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux
 ifneq ($(LOADADDR),)
   UIMAGE_LOADADDR=$(LOADADDR)
 else
