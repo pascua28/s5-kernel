@@ -37,7 +37,6 @@ struct inet_skb_parm {
 	struct ip_options	opt;		/* Compiled IP options		*/
 	unsigned char		flags;
 
-#define IPSKB_DOREDIRECT	BIT(5)
 #define IPSKB_FORWARDED		1
 #define IPSKB_XFRM_TUNNEL_SIZE	2
 #define IPSKB_XFRM_TRANSFORMED	4
@@ -152,7 +151,6 @@ struct ip_reply_arg {
 				/* -1 if not needed */ 
 	int	    bound_dev_if;
 	u8  	    tos;
-	uid_t	    uid;
 }; 
 
 #define IP_REPLY_ARG_NOSRCCHECK 1

@@ -300,6 +300,11 @@ void ieee80211_debugfs_key_update_default(struct ieee80211_sub_if_data *sdata)
 
 	lockdep_assert_held(&sdata->local->key_mtx);
 
+	if (sdata->debugfs.default_unicast_key) {
+		debugfs_remove(sdata->debugfs.default_unicast_key);
+		sdata->debugfs.default_unicast_key = NULL;
+	}
+
 	if (sdata->default_unicast_key) {
 		key = key_mtx_dereference(sdata->local,
 					  sdata->default_unicast_key);
@@ -307,9 +312,11 @@ void ieee80211_debugfs_key_update_default(struct ieee80211_sub_if_data *sdata)
 		sdata->debugfs.default_unicast_key =
 			debugfs_create_symlink("default_unicast_key",
 					       sdata->debugfs.dir, buf);
-	} else {
-		debugfs_remove(sdata->debugfs.default_unicast_key);
-		sdata->debugfs.default_unicast_key = NULL;
+	}
+
+	if (sdata->debugfs.default_multicast_key) {
+		debugfs_remove(sdata->debugfs.default_multicast_key);
+		sdata->debugfs.default_multicast_key = NULL;
 	}
 
 	if (sdata->default_multicast_key) {
@@ -319,9 +326,6 @@ void ieee80211_debugfs_key_update_default(struct ieee80211_sub_if_data *sdata)
 		sdata->debugfs.default_multicast_key =
 			debugfs_create_symlink("default_multicast_key",
 					       sdata->debugfs.dir, buf);
-	} else {
-		debugfs_remove(sdata->debugfs.default_multicast_key);
-		sdata->debugfs.default_multicast_key = NULL;
 	}
 }
 

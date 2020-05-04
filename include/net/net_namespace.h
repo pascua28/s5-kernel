@@ -9,7 +9,6 @@
 #include <linux/list.h>
 #include <linux/sysctl.h>
 
-#include <net/flow.h>
 #include <net/netns/core.h>
 #include <net/netns/mib.h>
 #include <net/netns/unix.h>
