@@ -280,7 +280,7 @@ static struct snd_soc_codec_driver msm_hdmi_audio_codec_rx_soc_driver = {
 	.num_controls = ARRAY_SIZE(msm_hdmi_codec_rx_controls),
 };
 
-static int msm_hdmi_audio_codec_rx_plat_probe(
+static int __devinit msm_hdmi_audio_codec_rx_plat_probe(
 		struct platform_device *pdev)
 {
 	dev_dbg(&pdev->dev, "%s(): orginal dev name  = %s, id = %d\n",
@@ -304,7 +304,7 @@ static int msm_hdmi_audio_codec_rx_plat_probe(
 		ARRAY_SIZE(msm_hdmi_audio_codec_rx_dais));
 }
 
-static int msm_hdmi_audio_codec_rx_plat_remove(
+static int __devexit msm_hdmi_audio_codec_rx_plat_remove(
 		struct platform_device *pdev)
 {
 	snd_soc_unregister_codec(&pdev->dev);
@@ -323,7 +323,7 @@ static struct platform_driver msm_hdmi_audio_codec_rx_driver = {
 		.of_match_table = msm_hdmi_audio_codec_rx_dt_match,
 	},
 	.probe = msm_hdmi_audio_codec_rx_plat_probe,
-	.remove = msm_hdmi_audio_codec_rx_plat_remove,
+	.remove = __devexit_p(msm_hdmi_audio_codec_rx_plat_remove),
 };
 
 static int __init msm_hdmi_audio_codec_rx_init(void)

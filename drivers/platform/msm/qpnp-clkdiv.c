@@ -178,7 +178,7 @@ cfg_err:
 }
 EXPORT_SYMBOL(qpnp_clkdiv_config);
 
-static int qpnp_clkdiv_probe(struct spmi_device *spmi)
+static int __devinit qpnp_clkdiv_probe(struct spmi_device *spmi)
 {
 	struct q_clkdiv *q_clkdiv;
 	struct device_node *node = spmi->dev.of_node;
@@ -249,7 +249,7 @@ static int qpnp_clkdiv_probe(struct spmi_device *spmi)
 	return 0;
 }
 
-static int qpnp_clkdiv_remove(struct spmi_device *spmi)
+static int __devexit qpnp_clkdiv_remove(struct spmi_device *spmi)
 {
 	struct q_clkdiv *q_clkdiv = dev_get_drvdata(&spmi->dev);
 	list_del(&q_clkdiv->list);
@@ -268,7 +268,7 @@ static struct spmi_driver qpnp_clkdiv_driver = {
 		.of_match_table = spmi_match_table,
 	},
 	.probe		= qpnp_clkdiv_probe,
-	.remove		= qpnp_clkdiv_remove,
+	.remove		= __devexit_p(qpnp_clkdiv_remove),
 };
 
 static int __init qpnp_clkdiv_init(void)

@@ -479,7 +479,7 @@ static struct regulator_desc regulators[] = {
 	regulator_desc_buck(2),
 };
 
-static int max77826_setup_regulators(struct max77826_dev *max77826,
+static int __devinit max77826_setup_regulators(struct max77826_dev *max77826,
 	struct max77826_platform_data *pdata)
 {
 	int i, err;
@@ -538,7 +538,7 @@ static int max77826_pmic_dt_parse_pdata(struct i2c_client *i2c,
 }
 #endif /* CONFIG_OF */
 
-static int max77826_i2c_probe(struct i2c_client *i2c,
+static int __devinit max77826_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
 	struct max77826_dev *max77826;
@@ -609,7 +609,7 @@ err_i2c_fail:
 	return ret;
 }
 
-static int max77826_i2c_remove(struct i2c_client *i2c)
+static int __devexit max77826_i2c_remove(struct i2c_client *i2c)
 {
 	struct max77826_dev *max77826 = i2c_get_clientdata(i2c);
 	int i;
@@ -643,7 +643,7 @@ static struct i2c_driver max77826_i2c_driver = {
 #endif
 	},
 	.probe    = max77826_i2c_probe,
-	.remove   = max77826_i2c_remove,
+	.remove   = __devexit_p(max77826_i2c_remove),
 	.id_table = max77826_i2c_id,
 };
 

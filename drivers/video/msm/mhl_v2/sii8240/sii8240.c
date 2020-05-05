@@ -4983,7 +4983,7 @@ static ssize_t sii8240_test_show(struct class *dev,
 static CLASS_ATTR(test_result, 0664, sii8240_test_show, NULL);
 #endif
 
-static int sii8240_tmds_i2c_probe(struct i2c_client *client,
+static int __devinit sii8240_tmds_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	int ret;
@@ -5181,7 +5181,7 @@ err_exit0:
 	return ret;
 }
 
-static int sii8240_hdmi_i2c_probe(struct i2c_client *client,
+static int __devinit sii8240_hdmi_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 
@@ -5192,7 +5192,7 @@ static int sii8240_hdmi_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int sii8240_disc_i2c_probe(struct i2c_client *client,
+static int __devinit sii8240_disc_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct sii8240_platform_data *pdata = client->dev.platform_data;
@@ -5202,7 +5202,7 @@ static int sii8240_disc_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int sii8240_tpi_i2c_probe(struct i2c_client *client,
+static int __devinit sii8240_tpi_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct sii8240_platform_data *pdata = client->dev.platform_data;
@@ -5211,7 +5211,7 @@ static int sii8240_tpi_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int sii8240_cbus_i2c_probe(struct i2c_client *client,
+static int __devinit sii8240_cbus_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct sii8240_platform_data *pdata = client->dev.platform_data;
@@ -5221,7 +5221,7 @@ static int sii8240_cbus_i2c_probe(struct i2c_client *client,
 }
 
 #ifdef CONFIG_OF
-static int of_sii8240_probe_dt(struct i2c_client *client,
+static int __devinit of_sii8240_probe_dt(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
@@ -5264,27 +5264,27 @@ static int of_sii8240_probe_dt(struct i2c_client *client,
 }
 #endif
 
-static int sii8240_tmds_remove(struct i2c_client *client)
+static int __devexit sii8240_tmds_remove(struct i2c_client *client)
 {
 	return 0;
 }
 
-static int sii8240_hdmi_remove(struct i2c_client *client)
+static int __devexit sii8240_hdmi_remove(struct i2c_client *client)
 {
 	return 0;
 }
 
-static int sii8240_disc_remove(struct i2c_client *client)
+static int __devexit sii8240_disc_remove(struct i2c_client *client)
 {
 	return 0;
 }
 
-static int sii8240_tpi_remove(struct i2c_client *client)
+static int __devexit sii8240_tpi_remove(struct i2c_client *client)
 {
 	return 0;
 }
 
-static int sii8240_cbus_remove(struct i2c_client *client)
+static int __devexit sii8240_cbus_remove(struct i2c_client *client)
 {
 	return 0;
 }
@@ -5354,7 +5354,7 @@ static struct i2c_driver sii8240_tmds_i2c_driver = {
 	},
 	.id_table = sii8240_tmds_id,
 	.probe = sii8240_tmds_i2c_probe,
-	.remove = sii8240_tmds_remove,
+	.remove = __devexit_p(sii8240_tmds_remove),
 };
 static struct i2c_driver sii8240_hdmi_i2c_driver = {
 	.driver = {
@@ -5363,7 +5363,7 @@ static struct i2c_driver sii8240_hdmi_i2c_driver = {
 	},
 	.id_table = sii8240_hdmi_id,
 	.probe = sii8240_hdmi_i2c_probe,
-	.remove = sii8240_hdmi_remove,
+	.remove = __devexit_p(sii8240_hdmi_remove),
 };
 static struct i2c_driver sii8240_disc_i2c_driver = {
 	.driver = {
@@ -5372,7 +5372,7 @@ static struct i2c_driver sii8240_disc_i2c_driver = {
 	},
 	.id_table = sii8240_disc_id,
 	.probe = sii8240_disc_i2c_probe,
-	.remove = sii8240_disc_remove,
+	.remove = __devexit_p(sii8240_disc_remove),
 };
 static struct i2c_driver sii8240_tpi_i2c_driver = {
 	.driver = {
@@ -5381,7 +5381,7 @@ static struct i2c_driver sii8240_tpi_i2c_driver = {
 	},
 	.id_table = sii8240_tpi_id,
 	.probe = sii8240_tpi_i2c_probe,
-	.remove = sii8240_tpi_remove,
+	.remove = __devexit_p(sii8240_tpi_remove),
 };
 static struct i2c_driver sii8240_cbus_i2c_driver = {
 	.driver = {
@@ -5390,7 +5390,7 @@ static struct i2c_driver sii8240_cbus_i2c_driver = {
 	},
 	.id_table = sii8240_cbus_id,
 	.probe = sii8240_cbus_i2c_probe,
-	.remove = sii8240_cbus_remove,
+	.remove = __devexit_p(sii8240_cbus_remove),
 };
 #endif
 

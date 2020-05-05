@@ -624,7 +624,7 @@ err_exit:
 	return IRQ_HANDLED;
 }
 
-static int
+static int __devinit
 qpnp_config_pull(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 {
 	int rc;
@@ -663,7 +663,7 @@ qpnp_config_pull(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 	return rc;
 }
 
-static int
+static int __devinit
 qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 {
 	int rc;
@@ -790,7 +790,7 @@ qpnp_control_s2_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg, int on)
 }
 #endif
 
-static int
+static int __devinit
 qpnp_pon_request_irqs(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 {
 	int rc = 0;
@@ -893,7 +893,7 @@ qpnp_pon_request_irqs(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 	return rc;
 }
 
-static int
+static int __devinit
 qpnp_pon_config_input(struct qpnp_pon *pon,  struct qpnp_pon_config *cfg)
 {
 	if (!pon->pon_input) {
@@ -914,7 +914,7 @@ qpnp_pon_config_input(struct qpnp_pon *pon,  struct qpnp_pon_config *cfg)
 	return 0;
 }
 
-static int qpnp_pon_config_init(struct qpnp_pon *pon)
+static int __devinit qpnp_pon_config_init(struct qpnp_pon *pon)
 {
 	int rc = 0, i = 0;
 	struct device_node *pp = NULL;
@@ -1416,7 +1416,7 @@ int qpnp_pon_set_wd_timer(u8 s1_timer, u8 s2_timer, u8 reset_type)
 EXPORT_SYMBOL(qpnp_pon_set_wd_timer);
 #endif
 
-static int qpnp_pon_probe(struct spmi_device *spmi)
+static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 {
 	struct qpnp_pon *pon;
 	struct resource *pon_resource;
@@ -1631,7 +1631,7 @@ static struct spmi_driver qpnp_pon_driver = {
 		.of_match_table = spmi_match_table,
 	},
 	.probe		= qpnp_pon_probe,
-	.remove		= qpnp_pon_remove,
+	.remove		= __devexit_p(qpnp_pon_remove),
 };
 
 static int __init qpnp_pon_init(void)

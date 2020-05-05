@@ -139,7 +139,7 @@ static void regulator_stub_cleanup(struct regulator_stub *vreg_priv)
 	kfree(vreg_priv);
 }
 
-static int regulator_stub_probe(struct platform_device *pdev)
+static int __devinit regulator_stub_probe(struct platform_device *pdev)
 {
 	struct regulator_init_data *init_data = NULL;
 	struct device *dev = &pdev->dev;
@@ -257,7 +257,7 @@ err_probe:
 	return rc;
 }
 
-static int regulator_stub_remove(struct platform_device *pdev)
+static int __devexit regulator_stub_remove(struct platform_device *pdev)
 {
 	struct regulator_stub *vreg_priv = dev_get_drvdata(&pdev->dev);
 
@@ -272,7 +272,7 @@ static struct of_device_id regulator_stub_match_table[] = {
 
 static struct platform_driver regulator_stub_driver = {
 	.probe	= regulator_stub_probe,
-	.remove	= regulator_stub_remove,
+	.remove	= __devexit_p(regulator_stub_remove),
 	.driver	= {
 		.name	= STUB_REGULATOR_DRIVER_NAME,
 		.owner	= THIS_MODULE,

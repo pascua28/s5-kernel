@@ -3570,7 +3570,7 @@ static int msm_spi_resume(struct device *device)
 #define msm_spi_pm_resume_runtime NULL
 #endif /* CONFIG_PM */
 
-static int msm_spi_remove(struct platform_device *pdev)
+static int __devexit msm_spi_remove(struct platform_device *pdev)
 {
 	struct spi_master *master = platform_get_drvdata(pdev);
 	struct msm_spi    *dd = spi_master_get_devdata(master);

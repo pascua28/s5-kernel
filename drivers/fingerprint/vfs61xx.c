@@ -1840,7 +1840,7 @@ struct spi_driver vfsspi_spi = {
 	},
 	.probe = vfsspi_probe,
 	.shutdown = vfsspi_shutdown,
-	.remove = vfsspi_remove,
+	.remove = __devexit_p(vfsspi_remove),
 };
 
 /* file operations associated with device */

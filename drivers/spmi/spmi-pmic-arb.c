@@ -688,7 +688,7 @@ static const struct file_operations pmic_arb_dfs_fops = {
 	.release	= seq_release,
 };
 
-static int
+static int __devinit
 spmi_pmic_arb_get_property(struct platform_device *pdev, char *pname, u32 *prop)
 {
 	int ret = of_property_read_u32(pdev->dev.of_node, pname, prop);
@@ -707,7 +707,7 @@ static struct qpnp_local_int spmi_pmic_arb_intr_cb = {
 	.register_priv_data = pmic_arb_intr_priv_data,
 };
 
-static int spmi_pmic_arb_probe(struct platform_device *pdev)
+static int __devinit spmi_pmic_arb_probe(struct platform_device *pdev)
 {
 	struct spmi_pmic_arb_dev *pmic_arb;
 	struct resource *mem_res;
@@ -863,7 +863,7 @@ err_add_controller:
 	return ret;
 }
 
-static int spmi_pmic_arb_remove(struct platform_device *pdev)
+static int __devexit spmi_pmic_arb_remove(struct platform_device *pdev)
 {
 	struct spmi_pmic_arb_dev *pmic_arb = platform_get_drvdata(pdev);
 	int ret;

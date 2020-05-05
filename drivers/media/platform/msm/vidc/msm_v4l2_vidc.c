@@ -380,7 +380,7 @@ static ssize_t show_pwr_collapse_delay(struct device *dev,
 static DEVICE_ATTR(pwr_collapse_delay, 0644, show_pwr_collapse_delay,
 		store_pwr_collapse_delay);
 
-static int msm_vidc_probe(struct platform_device *pdev)
+static int __devinit msm_vidc_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	struct msm_vidc_core *core;
@@ -510,7 +510,7 @@ err_no_mem:
 	return rc;
 }
 
-static int msm_vidc_remove(struct platform_device *pdev)
+static int __devexit msm_vidc_remove(struct platform_device *pdev)
 {
 	int rc = 0;
 	struct msm_vidc_core *core;
