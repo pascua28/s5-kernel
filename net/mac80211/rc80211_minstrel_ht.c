@@ -389,9 +389,9 @@ minstrel_ht_tx_status(void *priv, struct ieee80211_supported_band *sband,
 	struct ieee80211_tx_rate *ar = info->status.rates;
 	struct minstrel_rate_stats *rate, *rate2;
 	struct minstrel_priv *mp = priv;
-	bool last;
+	bool last = false;
 	int group;
-	int i;
+	int i = 0;
 
 	if (!msp->is_ht)
 		return mac80211_minstrel.tx_status(priv, sband, sta, &msp->legacy, skb);
@@ -419,10 +419,12 @@ minstrel_ht_tx_status(void *priv, struct ieee80211_supported_band *sband,
 	if (info->flags & IEEE80211_TX_CTL_RATE_CTRL_PROBE)
 		mi->sample_packets += info->status.ampdu_len;
 
-	last = !minstrel_ht_txstat_valid(&ar[0]);
 	for (i = 0; !last; i++) {
 		last = (i == IEEE80211_TX_MAX_RATES - 1) ||
 		       !minstrel_ht_txstat_valid(&ar[i + 1]);
+
+		if (!minstrel_ht_txstat_valid(&ar[i]))
+			break;
 
 		group = minstrel_ht_get_group_idx(&ar[i]);
 		rate = &mi->groups[group].rates[ar[i].idx % 8];
@@ -624,12 +626,8 @@ minstrel_ht_get_rate(void *priv, struct ieee80211_sta *sta, void *priv_sta,
 
 #ifdef CONFIG_MAC80211_DEBUGFS
 	/* use fixed index if set */
-	if (mp->fixed_rate_idx != -1) {
-		mi->max_tp_rate = mp->fixed_rate_idx;
-		mi->max_tp_rate2 = mp->fixed_rate_idx;
-		mi->max_prob_rate = mp->fixed_rate_idx;
-		sample_idx = -1;
-	}
+	if (mp->fixed_rate_idx != -1)
+		sample_idx = mp->fixed_rate_idx;
 #endif
 
 	if (sample_idx >= 0) {

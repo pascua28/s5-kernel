@@ -16,7 +16,6 @@
 #include <net/cfg80211.h>
 #include "sysfs.h"
 #include "core.h"
-#include "rdev-ops.h"
 
 static inline struct cfg80211_registered_device *dev_to_rdev(
 	struct device *dev)
@@ -95,7 +94,7 @@ static int wiphy_suspend(struct device *dev, pm_message_t state)
 	if (rdev->ops->suspend) {
 		rtnl_lock();
 		if (rdev->wiphy.registered)
-			ret = rdev_suspend(rdev);
+			ret = rdev->ops->suspend(&rdev->wiphy, rdev->wowlan);
 		rtnl_unlock();
 	}
 
@@ -115,7 +114,7 @@ static int wiphy_resume(struct device *dev)
 	if (rdev->ops->resume) {
 		rtnl_lock();
 		if (rdev->wiphy.registered)
-			ret = rdev_resume(rdev);
+			ret = rdev->ops->resume(&rdev->wiphy);
 		rtnl_unlock();
 	}
 
