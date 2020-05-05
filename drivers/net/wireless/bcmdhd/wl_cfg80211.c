@@ -5902,7 +5902,7 @@ wl_cfg80211_mgmt_tx(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 static s32
 wl_cfg80211_mgmt_tx(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 	struct ieee80211_channel *channel, bool offchan,
-#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 7, 0))
+#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 8, 0))
 	enum nl80211_channel_type channel_type,
 	bool channel_type_valid,
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0) */

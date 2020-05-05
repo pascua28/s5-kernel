@@ -19,7 +19,9 @@
 #include <net/netlink.h>
 #include <net/wext.h>
 #include <net/net_namespace.h>
-
+#ifdef KW_TAINT_ANALYSIS
+       extern void * get_tainted_stuff();
+#endif
 typedef int (*wext_ioctl_func)(struct net_device *, struct iwreq *,
 			       unsigned int, struct iw_request_info *,
 			       iw_handler);
@@ -256,7 +258,7 @@ static const struct iw_ioctl_description standard_ioctl[] = {
 		.max_tokens	= sizeof(struct iw_pmksa),
 	},
 };
-static const unsigned int standard_ioctl_num = ARRAY_SIZE(standard_ioctl);
+static const unsigned standard_ioctl_num = ARRAY_SIZE(standard_ioctl);
 
 /*
  * Meta-data about all the additional standard Wireless Extension events
@@ -306,7 +308,7 @@ static const struct iw_ioctl_description standard_event[] = {
 		.max_tokens	= sizeof(struct iw_pmkid_cand),
 	},
 };
-static const unsigned int standard_event_num = ARRAY_SIZE(standard_event);
+static const unsigned standard_event_num = ARRAY_SIZE(standard_event);
 
 /* Size (in bytes) of various events */
 static const int event_type_size[] = {
@@ -402,8 +404,7 @@ static struct nlmsghdr *rtnetlink_ifinfo_prep(struct net_device *dev,
 	r->ifi_flags = dev_get_flags(dev);
 	r->ifi_change = 0;	/* Wireless changes don't affect those flags */
 
-	if (nla_put_string(skb, IFLA_IFNAME, dev->name))
-		goto nla_put_failure;
+	NLA_PUT_STRING(skb, IFLA_IFNAME, dev->name);
 
 	return nlh;
  nla_put_failure:
@@ -429,7 +430,7 @@ void wireless_send_event(struct net_device *	dev,
 	int hdr_len;				/* Size of the event header */
 	int wrqu_off = 0;			/* Offset in wrqu */
 	/* Don't "optimise" the following variable, it will crash */
-	unsigned int	cmd_index;		/* *MUST* be unsigned */
+	unsigned	cmd_index;		/* *MUST* be unsigned */
 	struct sk_buff *skb;
 	struct nlmsghdr *nlh;
 	struct nlattr *nla;
@@ -478,13 +479,13 @@ void wireless_send_event(struct net_device *	dev,
 	if (descr->header_type == IW_HEADER_TYPE_POINT) {
 		/* Check if number of token fits within bounds */
 		if (wrqu->data.length > descr->max_tokens) {
-			netdev_err(dev, "(WE) : Wireless Event (cmd=0x%04X) too big (%d)\n",
-				   cmd, wrqu->data.length);
+			netdev_err(dev, "(WE) : Wireless Event too big (%d)\n",
+				   wrqu->data.length);
 			return;
 		}
 		if (wrqu->data.length < descr->min_tokens) {
-			netdev_err(dev, "(WE) : Wireless Event (cmd=0x%04X) too small (%d)\n",
-				   cmd, wrqu->data.length);
+			netdev_err(dev, "(WE) : Wireless Event too small (%d)\n",
+				   wrqu->data.length);
 			return;
 		}
 		/* Calculate extra_len - extra is NULL for restricted events */
@@ -1007,8 +1008,13 @@ static int ioctl_standard_call(struct net_device *	dev,
 
 
 int wext_handle_ioctl(struct net *net, struct ifreq *ifr, unsigned int cmd,
-		      void __user *arg)
+		      void __user *arg_actual)
 {
+	#ifdef KW_TAINT_ANALYSIS
+	void __user *arg = (void __user *)get_tainted_stuff();
+	#else	
+	void __user *arg = (void __user *)arg_actual;
+	#endif
 	struct iw_request_info info = { .cmd = cmd, .flags = 0 };
 	int ret;
 
@@ -1057,7 +1063,11 @@ static int compat_standard_call(struct net_device	*dev,
 int compat_wext_handle_ioctl(struct net *net, unsigned int cmd,
 			     unsigned long arg)
 {
+	#ifdef KW_TAINT_ANALYSIS
+	void __user *argp = (void __user *)get_tainted_stuff();
+	#else
 	void __user *argp = (void __user *)arg;
+	#endif	
 	struct iw_request_info info;
 	struct iwreq iwr;
 	char *colon;

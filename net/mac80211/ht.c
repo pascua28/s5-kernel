@@ -185,7 +185,7 @@ void ieee80211_sta_tear_down_BA_sessions(struct sta_info *sta, bool tx)
 
 	cancel_work_sync(&sta->ampdu_mlme.work);
 
-	for (i = 0; i <  IEEE80211_NUM_TIDS; i++) {
+	for (i = 0; i <  STA_TID_NUM; i++) {
 		__ieee80211_stop_tx_ba_session(sta, i, WLAN_BACK_INITIATOR, tx);
 		__ieee80211_stop_rx_ba_session(sta, i, WLAN_BACK_RECIPIENT,
 					       WLAN_REASON_QSTA_LEAVE_QBSS, tx);
@@ -209,7 +209,7 @@ void ieee80211_ba_session_work(struct work_struct *work)
 		return;
 
 	mutex_lock(&sta->ampdu_mlme.mtx);
-	for (tid = 0; tid < IEEE80211_NUM_TIDS; tid++) {
+	for (tid = 0; tid < STA_TID_NUM; tid++) {
 		if (test_and_clear_bit(tid, sta->ampdu_mlme.tid_rx_timer_expired))
 			___ieee80211_stop_rx_ba_session(
 				sta, tid, WLAN_BACK_RECIPIENT,
@@ -305,10 +305,12 @@ void ieee80211_process_delba(struct ieee80211_sub_if_data *sdata,
 	tid = (params & IEEE80211_DELBA_PARAM_TID_MASK) >> 12;
 	initiator = (params & IEEE80211_DELBA_PARAM_INITIATOR_MASK) >> 11;
 
-	ht_dbg_ratelimited(sdata, "delba from %pM (%s) tid %d reason code %d\n",
-			   mgmt->sa, initiator ? "initiator" : "recipient",
-			   tid,
-			   le16_to_cpu(mgmt->u.action.u.delba.reason_code));
+#ifdef CONFIG_MAC80211_HT_DEBUG
+	net_dbg_ratelimited("delba from %pM (%s) tid %d reason code %d\n",
+			    mgmt->sa, initiator ? "initiator" : "recipient",
+			    tid,
+			    le16_to_cpu(mgmt->u.action.u.delba.reason_code));
+#endif /* CONFIG_MAC80211_HT_DEBUG */
 
 	if (initiator == WLAN_BACK_INITIATOR)
 		__ieee80211_stop_rx_ba_session(sta, tid, WLAN_BACK_INITIATOR, 0,
