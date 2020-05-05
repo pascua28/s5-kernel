@@ -241,7 +241,6 @@ clear_retry:
 		goto clear_retry;
 	}
 
-#if 0
 	/* Apply masking */
 	for (i = 0; i < MAX77804K_IRQ_GROUP_NR; i++) {
 		if (i >= MUIC_INT1 && i <= MUIC_INT3)
@@ -249,7 +248,6 @@ clear_retry:
 		else
 			irq_reg[i] &= ~max77804k->irq_masks_cur[i];
 	}
-#endif
 
 	/* Report */
 	for (i = 0; i < MAX77804K_IRQ_NR; i++) {
