@@ -1349,7 +1349,7 @@ struct msm_i2c_dt_to_pdata_map {
 	int                          default_val;
 };
 
-int msm_i2c_rsrcs_dt_to_pdata_map(struct platform_device *pdev,
+int __devinit msm_i2c_rsrcs_dt_to_pdata_map(struct platform_device *pdev,
 				struct msm_i2c_platform_data *pdata, int *gpios)
 {
 	int  ret, err = 0;
@@ -1426,7 +1426,7 @@ static const struct i2c_algorithm qup_i2c_algo = {
 	.functionality	= qup_i2c_func,
 };
 
-static int
+static int __devinit
 qup_i2c_probe(struct platform_device *pdev)
 {
 	struct qup_i2c_dev	*dev;
@@ -1745,7 +1745,7 @@ static void qup_i2c_mem_release(struct platform_device *pdev, const char *name)
 			"platform_get_resource_byname(%s) failed\n", name);
 }
 
-static int
+static int __devexit
 qup_i2c_remove(struct platform_device *pdev)
 {
 	struct qup_i2c_dev *dev = platform_get_drvdata(pdev);
@@ -1868,7 +1868,7 @@ static struct of_device_id i2c_qup_dt_match[] = {
 
 static struct platform_driver qup_i2c_driver = {
 	.probe		= qup_i2c_probe,
-	.remove		= qup_i2c_remove,
+	.remove		= __devexit_p(qup_i2c_remove),
 	.driver		= {
 		.name	= "qup_i2c",
 		.owner	= THIS_MODULE,

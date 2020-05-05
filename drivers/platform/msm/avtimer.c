@@ -472,7 +472,7 @@ unmap:
 
 }
 
-static int dev_avtimer_remove(struct platform_device *pdev)
+static int __devexit dev_avtimer_remove(struct platform_device *pdev)
 {
 	pr_debug("%s: dev_avtimer_remove\n", __func__);
 

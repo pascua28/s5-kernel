@@ -279,7 +279,8 @@ int es705_uart_wait(struct es705_priv *es705)
 	/* wait on tty read queue until awoken or for 50ms */
 	return wait_event_interruptible_timeout(
 		es705->uart_dev.tty->read_wait,
-		1, msecs_to_jiffies(50));
+		es705->uart_dev.tty->read_cnt,
+		msecs_to_jiffies(50));
 }
 
 struct es_stream_device uart_streamdev = {

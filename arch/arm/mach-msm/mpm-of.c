@@ -628,7 +628,7 @@ static void msm_mpm_work_fn(struct work_struct *work)
 	}
 }
 
-static int msm_mpm_dev_probe(struct platform_device *pdev)
+static int __devinit msm_mpm_dev_probe(struct platform_device *pdev)
 {
 	struct resource *res = NULL;
 	int offset, ret;

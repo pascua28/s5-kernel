@@ -4809,7 +4809,7 @@ static struct snd_soc_platform_driver msm_soc_routing_platform = {
 	.write		= msm_routing_write,
 };
 
-static int msm_routing_pcm_probe(struct platform_device *pdev)
+static __devinit int msm_routing_pcm_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 		dev_set_name(&pdev->dev, "%s", "msm-pcm-routing");
@@ -4838,7 +4838,7 @@ static struct platform_driver msm_routing_pcm_driver = {
 		.of_match_table = msm_pcm_routing_dt_match,
 	},
 	.probe = msm_routing_pcm_probe,
-	.remove = msm_routing_pcm_remove,
+	.remove = __devexit_p(msm_routing_pcm_remove),
 };
 
 int msm_routing_check_backend_enabled(int fedai_id)

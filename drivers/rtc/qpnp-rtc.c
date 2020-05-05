@@ -1043,7 +1043,7 @@ static irqreturn_t qpnp_batt_pres_irq_handler(int irq, void *dev_id)
 }
 #endif
 
-static int qpnp_rtc_probe(struct spmi_device *spmi)
+static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 {
 	int rc;
 	u8 subtype;
@@ -1366,7 +1366,7 @@ static const struct dev_pm_ops qpnp_rtc_pm_ops = {
 };
 #endif
 
-static int qpnp_rtc_remove(struct spmi_device *spmi)
+static int __devexit qpnp_rtc_remove(struct spmi_device *spmi)
 {
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(&spmi->dev);
 
@@ -1470,7 +1470,7 @@ static struct of_device_id spmi_match_table[] = {
 
 static struct spmi_driver qpnp_rtc_driver = {
 	.probe          = qpnp_rtc_probe,
-	.remove         = qpnp_rtc_remove,
+	.remove         = __devexit_p(qpnp_rtc_remove),
 	.shutdown       = qpnp_rtc_shutdown,
 	.driver = {
 		.name   = "qcom,qpnp-rtc",

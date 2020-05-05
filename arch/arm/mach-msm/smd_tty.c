@@ -988,7 +988,7 @@ out:
 	return ret;
 }
 
-static int msm_smd_tty_probe(struct platform_device *pdev)
+static int __devinit msm_smd_tty_probe(struct platform_device *pdev)
 {
 	int ret;
 

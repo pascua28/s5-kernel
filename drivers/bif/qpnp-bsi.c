@@ -1428,7 +1428,7 @@ static struct bif_ctrl_ops qpnp_bsi_ops = {
 };
 
 /* Load all BSI properties from device tree. */
-static int qpnp_bsi_parse_dt(struct qpnp_bsi_chip *chip,
+static int __devinit qpnp_bsi_parse_dt(struct qpnp_bsi_chip *chip,
 			struct spmi_device *spmi)
 {
 	struct device *dev = &spmi->dev;
@@ -1554,7 +1554,7 @@ static int qpnp_bsi_parse_dt(struct qpnp_bsi_chip *chip,
 }
 
 /* Request all BSI and battery presence IRQs and set them as wakeable. */
-static int qpnp_bsi_init_irqs(struct qpnp_bsi_chip *chip,
+static int __devinit qpnp_bsi_init_irqs(struct qpnp_bsi_chip *chip,
 			struct device *dev)
 {
 	int rc;
@@ -1641,7 +1641,7 @@ static void qpnp_bsi_cleanup_irqs(struct qpnp_bsi_chip *chip)
 	irq_set_irq_wake(chip->batt_present_irq, 0);
 }
 
-static int qpnp_bsi_probe(struct spmi_device *spmi)
+static int __devinit qpnp_bsi_probe(struct spmi_device *spmi)
 {
 	struct device *dev = &spmi->dev;
 	struct qpnp_bsi_chip *chip;
@@ -1731,7 +1731,7 @@ cleanup_irqs:
 	return rc;
 }
 
-static int qpnp_bsi_remove(struct spmi_device *spmi)
+static int __devexit qpnp_bsi_remove(struct spmi_device *spmi)
 {
 	struct qpnp_bsi_chip *chip = dev_get_drvdata(&spmi->dev);
 	dev_set_drvdata(&spmi->dev, NULL);
@@ -1762,7 +1762,7 @@ static struct spmi_driver qpnp_bsi_driver = {
 		.owner		= THIS_MODULE,
 	},
 	.probe		= qpnp_bsi_probe,
-	.remove		= qpnp_bsi_remove,
+	.remove		= __devexit_p(qpnp_bsi_remove),
 	.id_table	= qpnp_bsi_id,
 };
 

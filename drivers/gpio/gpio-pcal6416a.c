@@ -316,7 +316,7 @@ int expander_gpio_config(unsigned config, unsigned disable)
 }
 EXPORT_SYMBOL(expander_gpio_config);
 
-static int pcal6416a_gpio_setup(struct pcal6416a_chip *dev)
+static int __devinit pcal6416a_gpio_setup(struct pcal6416a_chip *dev)
 {
 	int ret;
 	uint16_t read_val;
@@ -833,7 +833,7 @@ static const struct file_operations expander_operations = {
 	.release	= single_release,
 };
 
-static int pcal6416a_gpio_probe(struct i2c_client *client,
+static int __devinit pcal6416a_gpio_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
 	struct device_node *np = client->dev.of_node;
@@ -995,7 +995,7 @@ err:
 	return ret;
 }
 
-static int pcal6416a_gpio_remove(struct i2c_client *client)
+static int __devexit pcal6416a_gpio_remove(struct i2c_client *client)
 {
 	struct pcal6416a_chip *dev = i2c_get_clientdata(client);
 	int ret;
@@ -1033,7 +1033,7 @@ static struct i2c_driver pcal6416a_gpio_driver = {
 #endif
 		   },
 	.probe = pcal6416a_gpio_probe,
-	.remove = pcal6416a_gpio_remove,
+	.remove = __devexit_p(pcal6416a_gpio_remove),
 	.id_table = pcal6416a_gpio_id,
 };
 

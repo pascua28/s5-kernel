@@ -2657,7 +2657,7 @@ static struct of_device_id msm_sps_match[] = {
 	{}
 };
 
-static int msm_sps_probe(struct platform_device *pdev)
+static int __devinit msm_sps_probe(struct platform_device *pdev)
 {
 	int ret = -ENODEV;
 
@@ -2807,7 +2807,7 @@ alloc_chrdev_region_err:
 	return ret;
 }
 
-static int msm_sps_remove(struct platform_device *pdev)
+static int __devexit msm_sps_remove(struct platform_device *pdev)
 {
 	SPS_DBG("sps:%s.", __func__);
 

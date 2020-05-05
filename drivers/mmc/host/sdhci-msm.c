@@ -3141,7 +3141,7 @@ static ssize_t t_flash_detect_show(struct device *dev,
 
 static DEVICE_ATTR(status, 0444, t_flash_detect_show, NULL);
 
-static int sdhci_msm_probe(struct platform_device *pdev)
+static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 {
 	struct sdhci_host *host;
 	struct sdhci_pltfm_host *pltfm_host;
@@ -3604,7 +3604,7 @@ out:
 	return ret;
 }
 
-static int sdhci_msm_remove(struct platform_device *pdev)
+static int __devexit sdhci_msm_remove(struct platform_device *pdev)
 {
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -3848,7 +3848,7 @@ MODULE_DEVICE_TABLE(of, sdhci_msm_dt_match);
 
 static struct platform_driver sdhci_msm_driver = {
 	.probe		= sdhci_msm_probe,
-	.remove		= sdhci_msm_remove,
+	.remove		= __devexit_p(sdhci_msm_remove),
 	.driver		= {
 		.name	= "sdhci_msm",
 		.owner	= THIS_MODULE,

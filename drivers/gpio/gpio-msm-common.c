@@ -495,7 +495,7 @@ static inline void msm_gpio_set_irq_handler(struct device *dev)
 	}
 }
 
-static int msm_gpio_probe(struct platform_device *pdev)
+static int __devinit msm_gpio_probe(struct platform_device *pdev)
 {
 	int ret, ngpio = 0;
 	struct msm_gpio_pdata *pdata = pdev->dev.platform_data;
@@ -565,13 +565,13 @@ static int msm_gpio_probe(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_OF
-static struct of_device_id msm_gpio_of_match[] = {
+static struct of_device_id msm_gpio_of_match[] __devinitdata = {
 	{.compatible = "qcom,msm-gpio", },
 	{ },
 };
 #endif
 
-static int msm_gpio_remove(struct platform_device *pdev)
+static int __devexit msm_gpio_remove(struct platform_device *pdev)
 {
 	int ret;
 
@@ -586,7 +586,7 @@ static int msm_gpio_remove(struct platform_device *pdev)
 
 static struct platform_driver msm_gpio_driver = {
 	.probe = msm_gpio_probe,
-	.remove = msm_gpio_remove,
+	.remove = __devexit_p(msm_gpio_remove),
 	.driver = {
 		.name = "msmgpio",
 		.owner = THIS_MODULE,

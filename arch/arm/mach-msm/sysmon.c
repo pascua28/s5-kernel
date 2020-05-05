@@ -310,7 +310,7 @@ static int sysmon_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int sysmon_remove(struct platform_device *pdev)
+static int __devexit sysmon_remove(struct platform_device *pdev)
 {
 	struct sysmon_subsys *ss = &subsys[pdev->id];
 
@@ -332,7 +332,7 @@ static int sysmon_remove(struct platform_device *pdev)
 
 static struct platform_driver sysmon_driver = {
 	.probe		= sysmon_probe,
-	.remove		= sysmon_remove,
+	.remove		= __devexit_p(sysmon_remove),
 	.driver		= {
 		.name		= "sys_mon",
 		.owner		= THIS_MODULE,
