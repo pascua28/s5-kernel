@@ -1320,7 +1320,7 @@ static const struct v4l2_subdev_internal_ops msm_ispif_internal_ops = {
 	.close	= ispif_close_node,
 };
 
-static int __devinit ispif_probe(struct platform_device *pdev)
+static int ispif_probe(struct platform_device *pdev)
 {
 	int rc;
 	struct ispif_device *ispif;

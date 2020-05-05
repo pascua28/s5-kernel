@@ -2473,7 +2473,7 @@ static int apq8074_prepare_us_euro(struct snd_soc_card *card)
 	return 0;
 }
 
-static __devinit int apq8074_asoc_machine_probe(struct platform_device *pdev)
+static int apq8074_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_card_apq8074;
 	struct apq8074_asoc_mach_data *pdata;
@@ -2639,7 +2639,7 @@ err:
 	return ret;
 }
 
-static int __devexit apq8074_asoc_machine_remove(struct platform_device *pdev)
+static int apq8074_asoc_machine_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct apq8074_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
@@ -2686,7 +2686,7 @@ static struct platform_driver apq8074_asoc_machine_driver = {
 		.of_match_table = apq8074_asoc_machine_of_match,
 	},
 	.probe = apq8074_asoc_machine_probe,
-	.remove = __devexit_p(apq8074_asoc_machine_remove),
+	.remove = apq8074_asoc_machine_remove,
 };
 module_platform_driver(apq8074_asoc_machine_driver);
 

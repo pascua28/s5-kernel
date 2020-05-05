@@ -1719,7 +1719,7 @@ void msm_smp2p_interrupt_handler(int remote_pid)
  * @pdev: Pointer to device tree data.
  * @returns: 0 on success; -ENODEV otherwise
  */
-static int __devinit msm_smp2p_probe(struct platform_device *pdev)
+static int msm_smp2p_probe(struct platform_device *pdev)
 {
 	struct resource *r;
 	void *irq_out_ptr;

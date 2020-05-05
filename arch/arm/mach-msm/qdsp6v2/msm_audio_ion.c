@@ -541,7 +541,7 @@ static struct platform_driver msm_audio_ion_driver = {
 		.of_match_table = msm_audio_ion_dt_match,
 	},
 	.probe = msm_audio_ion_probe,
-	.remove = __devexit_p(msm_audio_ion_remove),
+	.remove = msm_audio_ion_remove,
 };
 
 static int __init msm_audio_ion_init(void)

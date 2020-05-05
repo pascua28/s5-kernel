@@ -1316,7 +1316,7 @@ void msm_rpm_exit_sleep(void)
 }
 EXPORT_SYMBOL(msm_rpm_exit_sleep);
 
-static int __devinit msm_rpm_smd_remote_probe(struct platform_device *pdev)
+static int msm_rpm_smd_remote_probe(struct platform_device *pdev)
 {
 	if (pdev && pdev->id == msm_rpm_data.ch_type)
 		complete(&msm_rpm_data.remote_open);
@@ -1330,7 +1330,7 @@ static struct platform_driver msm_rpm_smd_remote_driver = {
 	},
 };
 
-static int __devinit msm_rpm_dev_probe(struct platform_device *pdev)
+static int msm_rpm_dev_probe(struct platform_device *pdev)
 {
 	char *key = NULL;
 	int ret;

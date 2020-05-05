@@ -1670,7 +1670,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 
 struct mutex dual_clk_lock;
 
-static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
+static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	u32 index;
@@ -1805,7 +1805,7 @@ error_no_mem:
 	return rc;
 }
 
-static int __devexit mdss_dsi_ctrl_remove(struct platform_device *pdev)
+static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = platform_get_drvdata(pdev);
@@ -2609,7 +2609,7 @@ MODULE_DEVICE_TABLE(of, mdss_dsi_ctrl_dt_match);
 
 static struct platform_driver mdss_dsi_ctrl_driver = {
 	.probe = mdss_dsi_ctrl_probe,
-	.remove = __devexit_p(mdss_dsi_ctrl_remove),
+	.remove = mdss_dsi_ctrl_remove,
 	.shutdown = NULL,
 	.driver = {
 		.name = "mdss_dsi_ctrl",

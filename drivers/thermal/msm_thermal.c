@@ -3244,7 +3244,7 @@ PROBE_FREQ_EXIT:
 	return ret;
 }
 
-static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
+static int msm_thermal_dev_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	char *key = NULL;

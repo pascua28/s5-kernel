@@ -494,7 +494,7 @@ out:
 			msecs_to_jiffies(info->pdata->polling_interval));
 }
 
-static __devinit int sec_therm_probe(struct platform_device *pdev)
+static int sec_therm_probe(struct platform_device *pdev)
 {
 	struct sec_therm_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	struct sec_therm_info *info;
@@ -531,7 +531,7 @@ static __devinit int sec_therm_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int __devexit sec_therm_remove(struct platform_device *pdev)
+static int sec_therm_remove(struct platform_device *pdev)
 {
 	struct sec_therm_info *info = platform_get_drvdata(pdev);
 
@@ -584,7 +584,7 @@ static struct platform_driver sec_thermistor_driver = {
 		   .pm = &sec_thermistor_pm_ops,
 	},
 	.probe = sec_therm_probe,
-	.remove = __devexit_p(sec_therm_remove),
+	.remove = sec_therm_remove,
 };
 
 static int __init sec_therm_init(void)

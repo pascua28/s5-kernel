@@ -1902,7 +1902,7 @@ out:
 	return rc;
 }
 
-static int __devinit qpnp_pwm_probe(struct spmi_device *spmi)
+static int qpnp_pwm_probe(struct spmi_device *spmi)
 {
 	struct qpnp_lpg_chip	*chip;
 	int			rc, id;
@@ -1962,7 +1962,7 @@ failed_config:
 	return rc;
 }
 
-static int __devexit qpnp_pwm_remove(struct spmi_device *spmi)
+static int qpnp_pwm_remove(struct spmi_device *spmi)
 {
 	struct qpnp_lpg_chip *chip;
 	struct qpnp_lpg_config *lpg_config;
@@ -1998,7 +1998,7 @@ static struct spmi_driver qpnp_lpg_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe		= qpnp_pwm_probe,
-	.remove		= __devexit_p(qpnp_pwm_remove),
+	.remove		= qpnp_pwm_remove,
 	.id_table	= qpnp_lpg_id,
 };
 

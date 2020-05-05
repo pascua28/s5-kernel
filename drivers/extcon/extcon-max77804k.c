@@ -2236,7 +2236,7 @@ static int __init get_lpm_mode(char *str)
 }
 __setup("androidboot.baseband=", get_lpm_mode);
 
-static int __devinit max77804k_muic_probe(struct platform_device *pdev)
+static int max77804k_muic_probe(struct platform_device *pdev)
 {
 	struct max77804k_dev *max77804k = dev_get_drvdata(pdev->dev.parent);
 	struct max77804k_platform_data *pdata = dev_get_platdata(max77804k->dev);
@@ -2550,7 +2550,7 @@ static const struct dev_pm_ops max77804k_dev_pm_ops = {
 };
 #endif
 
-static int __devexit max77804k_muic_remove(struct platform_device *pdev)
+static int max77804k_muic_remove(struct platform_device *pdev)
 {
 	struct max77804k_muic_info *info = platform_get_drvdata(pdev);
 	sysfs_remove_group(&switch_dev->kobj, &max77804k_muic_group);
@@ -2600,7 +2600,7 @@ static struct platform_driver max77804k_muic_driver = {
 		.shutdown = max77804k_muic_shutdown,
 	},
 	.probe		= max77804k_muic_probe,
-	.remove		= __devexit_p(max77804k_muic_remove),
+	.remove		= max77804k_muic_remove,
 };
 
 static int __init max77804k_muic_init(void)

@@ -303,7 +303,7 @@ static int gang_configuration_check(struct krait_vreg_pmic_chip *chip)
 	return 0;
 }
 
-static int __devinit krait_vreg_pmic_probe(struct spmi_device *spmi)
+static int krait_vreg_pmic_probe(struct spmi_device *spmi)
 {
 	u8 type, subtype;
 	int rc;

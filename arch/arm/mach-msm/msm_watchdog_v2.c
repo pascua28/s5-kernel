@@ -532,7 +532,7 @@ static struct of_device_id msm_wdog_match_table[] = {
 };
 EXPORT_COMPAT("qcom,msm-watchdog");
 
-static void __devinit dump_pdata(struct msm_watchdog_data *pdata)
+static void dump_pdata(struct msm_watchdog_data *pdata)
 {
 	dev_dbg(pdata->dev, "wdog bark_time %d", pdata->bark_time);
 	dev_dbg(pdata->dev, "wdog pet_time %d", pdata->pet_time);
@@ -541,7 +541,7 @@ static void __devinit dump_pdata(struct msm_watchdog_data *pdata)
 								pdata->base);
 }
 
-static int __devinit msm_wdog_dt_to_pdata(struct platform_device *pdev,
+static int msm_wdog_dt_to_pdata(struct platform_device *pdev,
 					struct msm_watchdog_data *pdata)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -597,7 +597,7 @@ static int __devinit msm_wdog_dt_to_pdata(struct platform_device *pdev,
 	return 0;
 }
 
-static int __devinit msm_watchdog_probe(struct platform_device *pdev)
+static int msm_watchdog_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct msm_watchdog_data *wdog_dd;
@@ -648,7 +648,7 @@ static struct platform_driver msm_watchdog_driver = {
 	},
 };
 
-static int __devinit init_watchdog(void)
+static int init_watchdog(void)
 {
 	return platform_driver_register(&msm_watchdog_driver);
 }

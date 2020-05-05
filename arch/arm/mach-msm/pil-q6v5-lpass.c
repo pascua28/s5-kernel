@@ -395,7 +395,7 @@ static void lpass_stop(const struct subsys_desc *desc)
 	pil_shutdown(&drv->q6->desc);
 }
 
-static int __devinit pil_lpass_driver_probe(struct platform_device *pdev)
+static int pil_lpass_driver_probe(struct platform_device *pdev)
 {
 	struct lpass_data *drv;
 	struct q6v5_data *q6;
@@ -520,7 +520,7 @@ err_ramdump:
 	return ret;
 }
 
-static int __devexit pil_lpass_driver_exit(struct platform_device *pdev)
+static int pil_lpass_driver_exit(struct platform_device *pdev)
 {
 	struct lpass_data *drv = platform_get_drvdata(pdev);
 	subsys_notif_unregister_notifier(drv->wcnss_notif_hdle, &wnb);
@@ -540,7 +540,7 @@ static struct of_device_id lpass_match_table[] = {
 
 static struct platform_driver pil_lpass_driver = {
 	.probe = pil_lpass_driver_probe,
-	.remove = __devexit_p(pil_lpass_driver_exit),
+	.remove = pil_lpass_driver_exit,
 	.driver = {
 		.name = "pil-q6v5-lpass",
 		.of_match_table = lpass_match_table,

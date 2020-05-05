@@ -541,7 +541,7 @@ static void z180_ringbuffer_close(struct kgsl_device *device)
 	memset(&z180_dev->ringbuffer, 0, sizeof(struct z180_ringbuffer));
 }
 
-static int __devinit z180_probe(struct platform_device *pdev)
+static int z180_probe(struct platform_device *pdev)
 {
 	int status = -EINVAL;
 	struct kgsl_device *device = NULL;
@@ -571,7 +571,7 @@ error:
 	return status;
 }
 
-static int __devexit z180_remove(struct platform_device *pdev)
+static int z180_remove(struct platform_device *pdev)
 {
 	struct kgsl_device *device = NULL;
 
@@ -1033,7 +1033,7 @@ MODULE_DEVICE_TABLE(platform, z180_id_table);
 
 static struct platform_driver z180_platform_driver = {
 	.probe = z180_probe,
-	.remove = __devexit_p(z180_remove),
+	.remove = z180_remove,
 	.suspend = kgsl_suspend_driver,
 	.resume = kgsl_resume_driver,
 	.id_table = z180_id_table,

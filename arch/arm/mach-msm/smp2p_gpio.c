@@ -537,7 +537,7 @@ static int smp2p_gpio_in_notify(struct notifier_block *self,
  *
  * Called for each smp2pgpio entry in the device tree.
  */
-static int __devinit smp2p_gpio_probe(struct platform_device *pdev)
+static int smp2p_gpio_probe(struct platform_device *pdev)
 {
 	struct device_node *node;
 	char *key;
@@ -726,7 +726,7 @@ void smp2p_gpio_open_test_entry(const char *name, int remote_pid, bool do_open)
 	spin_unlock_irqrestore(&smp2p_entry_lock_lha1, flags);
 }
 
-static struct of_device_id msm_smp2p_match_table[] __devinitdata = {
+static struct of_device_id msm_smp2p_match_table[] = {
 	{.compatible = "qcom,smp2pgpio", },
 	{},
 };
@@ -740,7 +740,7 @@ static struct platform_driver smp2p_gpio_driver = {
 	},
 };
 
-static int __devinit smp2p_init(void)
+static int smp2p_init(void)
 {
 	INIT_LIST_HEAD(&smp2p_entry_list);
 	return platform_driver_register(&smp2p_gpio_driver);

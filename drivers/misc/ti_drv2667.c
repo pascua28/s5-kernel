@@ -446,7 +446,7 @@ static int drv2667_parse_dt(struct device *dev, struct drv2667_pdata *pdata)
 }
 #endif
 
-static int __devinit drv2667_probe(struct i2c_client *client,
+static int drv2667_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	struct drv2667_data *data;
@@ -636,7 +636,7 @@ destroy_mutex:
 	return rc;
 }
 
-static int __devexit drv2667_remove(struct i2c_client *client)
+static int drv2667_remove(struct i2c_client *client)
 {
 	struct drv2667_data *data = i2c_get_clientdata(client);
 
@@ -678,7 +678,7 @@ static struct i2c_driver drv2667_i2c_driver = {
 #endif
 	},
 	.probe = drv2667_probe,
-	.remove = __devexit_p(drv2667_remove),
+	.remove = drv2667_remove,
 	.id_table = drv2667_id_table,
 };
 

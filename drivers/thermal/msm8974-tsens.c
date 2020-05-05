@@ -1524,7 +1524,7 @@ fail_tmdev:
 	return rc;
 }
 
-static int __devinit tsens_tm_probe(struct platform_device *pdev)
+static int tsens_tm_probe(struct platform_device *pdev)
 {
 	int rc;
 
@@ -1580,7 +1580,7 @@ fail:
 	return rc;
 }
 
-static int __devinit _tsens_register_thermal(void)
+static int _tsens_register_thermal(void)
 {
 	struct platform_device *pdev;
 	int rc, i;
@@ -1637,7 +1637,7 @@ fail:
 	return rc;
 }
 
-static int __devexit tsens_tm_remove(struct platform_device *pdev)
+static int tsens_tm_remove(struct platform_device *pdev)
 {
 	struct tsens_tm_device *tmdev = platform_get_drvdata(pdev);
 	int i;
