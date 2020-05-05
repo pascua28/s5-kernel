@@ -209,7 +209,7 @@ static ssize_t isku_sysfs_write_ ## thingy(struct file *fp, struct kobject *kobj
 		loff_t off, size_t count) \
 { \
 	return isku_sysfs_write(fp, kobj, buf, off, count, \
-			ISKU_SIZE_ ## THINGY, ISKU_COMMAND_ ## THINGY); \
+			sizeof(struct isku_ ## thingy), ISKU_COMMAND_ ## THINGY); \
 }
 
 #define ISKU_SYSFS_R(thingy, THINGY) \
@@ -218,32 +218,32 @@ static ssize_t isku_sysfs_read_ ## thingy(struct file *fp, struct kobject *kobj,
 		loff_t off, size_t count) \
 { \
 	return isku_sysfs_read(fp, kobj, buf, off, count, \
-			ISKU_SIZE_ ## THINGY, ISKU_COMMAND_ ## THINGY); \
+			sizeof(struct isku_ ## thingy), ISKU_COMMAND_ ## THINGY); \
 }
 
 #define ISKU_SYSFS_RW(thingy, THINGY) \
 ISKU_SYSFS_R(thingy, THINGY) \
 ISKU_SYSFS_W(thingy, THINGY)
 
-#define ISKU_BIN_ATTR_RW(thingy, THINGY) \
+#define ISKU_BIN_ATTR_RW(thingy) \
 { \
 	.attr = { .name = #thingy, .mode = 0660 }, \
-	.size = ISKU_SIZE_ ## THINGY, \
+	.size = sizeof(struct isku_ ## thingy), \
 	.read = isku_sysfs_read_ ## thingy, \
 	.write = isku_sysfs_write_ ## thingy \
 }
 
-#define ISKU_BIN_ATTR_R(thingy, THINGY) \
+#define ISKU_BIN_ATTR_R(thingy) \
 { \
 	.attr = { .name = #thingy, .mode = 0440 }, \
-	.size = ISKU_SIZE_ ## THINGY, \
+	.size = sizeof(struct isku_ ## thingy), \
 	.read = isku_sysfs_read_ ## thingy, \
 }
 
-#define ISKU_BIN_ATTR_W(thingy, THINGY) \
+#define ISKU_BIN_ATTR_W(thingy) \
 { \
 	.attr = { .name = #thingy, .mode = 0220 }, \
-	.size = ISKU_SIZE_ ## THINGY, \
+	.size = sizeof(struct isku_ ## thingy), \
 	.write = isku_sysfs_write_ ## thingy \
 }
 
@@ -260,23 +260,21 @@ ISKU_SYSFS_RW(last_set, LAST_SET)
 ISKU_SYSFS_W(talk, TALK)
 ISKU_SYSFS_R(info, INFO)
 ISKU_SYSFS_W(control, CONTROL)
-ISKU_SYSFS_W(reset, RESET)
 
 static struct bin_attribute isku_bin_attributes[] = {
-	ISKU_BIN_ATTR_RW(macro, MACRO),
-	ISKU_BIN_ATTR_RW(keys_function, KEYS_FUNCTION),
-	ISKU_BIN_ATTR_RW(keys_easyzone, KEYS_EASYZONE),
-	ISKU_BIN_ATTR_RW(keys_media, KEYS_MEDIA),
-	ISKU_BIN_ATTR_RW(keys_thumbster, KEYS_THUMBSTER),
-	ISKU_BIN_ATTR_RW(keys_macro, KEYS_MACRO),
-	ISKU_BIN_ATTR_RW(keys_capslock, KEYS_CAPSLOCK),
-	ISKU_BIN_ATTR_RW(light, LIGHT),
-	ISKU_BIN_ATTR_RW(key_mask, KEY_MASK),
-	ISKU_BIN_ATTR_RW(last_set, LAST_SET),
-	ISKU_BIN_ATTR_W(talk, TALK),
-	ISKU_BIN_ATTR_R(info, INFO),
-	ISKU_BIN_ATTR_W(control, CONTROL),
-	ISKU_BIN_ATTR_W(reset, RESET),
+	ISKU_BIN_ATTR_RW(macro),
+	ISKU_BIN_ATTR_RW(keys_function),
+	ISKU_BIN_ATTR_RW(keys_easyzone),
+	ISKU_BIN_ATTR_RW(keys_media),
+	ISKU_BIN_ATTR_RW(keys_thumbster),
+	ISKU_BIN_ATTR_RW(keys_macro),
+	ISKU_BIN_ATTR_RW(keys_capslock),
+	ISKU_BIN_ATTR_RW(light),
+	ISKU_BIN_ATTR_RW(key_mask),
+	ISKU_BIN_ATTR_RW(last_set),
+	ISKU_BIN_ATTR_W(talk),
+	ISKU_BIN_ATTR_R(info),
+	ISKU_BIN_ATTR_W(control),
 	__ATTR_NULL
 };
 
