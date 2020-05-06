@@ -212,8 +212,8 @@ static const struct iio_info ad5446_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int ad5446_probe(struct device *dev, const char *name,
-			const struct ad5446_chip_info *chip_info)
+static int __devinit ad5446_probe(struct device *dev, const char *name,
+	const struct ad5446_chip_info *chip_info)
 {
 	struct ad5446_state *st;
 	struct iio_dev *indio_dev;
@@ -226,11 +226,7 @@ static int ad5446_probe(struct device *dev, const char *name,
 		if (ret)
 			goto error_put_reg;
 
-		ret = regulator_get_voltage(reg);
-		if (ret < 0)
-			goto error_disable_reg;
-
-		voltage_uv = ret;
+		voltage_uv = regulator_get_voltage(reg);
 	}
 
 	indio_dev = iio_device_alloc(sizeof(*st));
@@ -325,9 +321,6 @@ static int ad5660_write(struct ad5446_state *st, unsigned val)
  * parts are supported here.
  */
 enum ad5446_supported_spi_device_ids {
-	ID_AD5300,
-	ID_AD5310,
-	ID_AD5320,
 	ID_AD5444,
 	ID_AD5446,
 	ID_AD5450,
@@ -348,18 +341,6 @@ enum ad5446_supported_spi_device_ids {
 };
 
 static const struct ad5446_chip_info ad5446_spi_chip_info[] = {
-	[ID_AD5300] = {
-		.channel = AD5446_CHANNEL_POWERDOWN(8, 16, 4),
-		.write = ad5446_write,
-	},
-	[ID_AD5310] = {
-		.channel = AD5446_CHANNEL_POWERDOWN(10, 16, 2),
-		.write = ad5446_write,
-	},
-	[ID_AD5320] = {
-		.channel = AD5446_CHANNEL_POWERDOWN(12, 16, 0),
-		.write = ad5446_write,
-	},
 	[ID_AD5444] = {
 		.channel = AD5446_CHANNEL(12, 16, 2),
 		.write = ad5446_write,
@@ -437,9 +418,6 @@ static const struct ad5446_chip_info ad5446_spi_chip_info[] = {
 };
 
 static const struct spi_device_id ad5446_spi_ids[] = {
-	{"ad5300", ID_AD5300},
-	{"ad5310", ID_AD5310},
-	{"ad5320", ID_AD5320},
 	{"ad5444", ID_AD5444},
 	{"ad5446", ID_AD5446},
 	{"ad5450", ID_AD5450},
@@ -465,7 +443,7 @@ static const struct spi_device_id ad5446_spi_ids[] = {
 };
 MODULE_DEVICE_TABLE(spi, ad5446_spi_ids);
 
-static int ad5446_spi_probe(struct spi_device *spi)
+static int __devinit ad5446_spi_probe(struct spi_device *spi)
 {
 	const struct spi_device_id *id = spi_get_device_id(spi);
 
@@ -473,7 +451,7 @@ static int ad5446_spi_probe(struct spi_device *spi)
 		&ad5446_spi_chip_info[id->driver_data]);
 }
 
-static int ad5446_spi_remove(struct spi_device *spi)
+static int __devexit ad5446_spi_remove(struct spi_device *spi)
 {
 	return ad5446_remove(&spi->dev);
 }
@@ -484,7 +462,7 @@ static struct spi_driver ad5446_spi_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ad5446_spi_probe,
-	.remove		= ad5446_spi_remove,
+	.remove		= __devexit_p(ad5446_spi_remove),
 	.id_table	= ad5446_spi_ids,
 };
 
@@ -543,22 +521,19 @@ static const struct ad5446_chip_info ad5446_i2c_chip_info[] = {
 	},
 };
 
-static int ad5446_i2c_probe(struct i2c_client *i2c,
-			    const struct i2c_device_id *id)
+static int __devinit ad5446_i2c_probe(struct i2c_client *i2c,
+	const struct i2c_device_id *id)
 {
 	return ad5446_probe(&i2c->dev, id->name,
 		&ad5446_i2c_chip_info[id->driver_data]);
 }
 
-static int ad5446_i2c_remove(struct i2c_client *i2c)
+static int __devexit ad5446_i2c_remove(struct i2c_client *i2c)
 {
 	return ad5446_remove(&i2c->dev);
 }
 
 static const struct i2c_device_id ad5446_i2c_ids[] = {
-	{"ad5301", ID_AD5602},
-	{"ad5311", ID_AD5612},
-	{"ad5321", ID_AD5622},
 	{"ad5602", ID_AD5602},
 	{"ad5612", ID_AD5612},
 	{"ad5622", ID_AD5622},
@@ -572,7 +547,7 @@ static struct i2c_driver ad5446_i2c_driver = {
 		   .owner = THIS_MODULE,
 	},
 	.probe = ad5446_i2c_probe,
-	.remove = ad5446_i2c_remove,
+	.remove = __devexit_p(ad5446_i2c_remove),
 	.id_table = ad5446_i2c_ids,
 };
 

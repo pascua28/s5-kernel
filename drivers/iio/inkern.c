@@ -78,7 +78,7 @@ int iio_map_array_unregister(struct iio_dev *indio_dev,
 				found_it = true;
 				break;
 			}
-		if (!found_it) {
+		if (found_it == false) {
 			ret = -ENODEV;
 			goto error_ret;
 		}
@@ -111,7 +111,6 @@ struct iio_channel *iio_channel_get(const char *name, const char *channel_name)
 {
 	struct iio_map_internal *c_i = NULL, *c = NULL;
 	struct iio_channel *channel;
-	int err;
 
 	if (name == NULL && channel_name == NULL)
 		return ERR_PTR(-ENODEV);
@@ -124,7 +123,7 @@ struct iio_channel *iio_channel_get(const char *name, const char *channel_name)
 		     strcmp(channel_name, c_i->map->consumer_channel) != 0))
 			continue;
 		c = c_i;
-		iio_device_get(c->indio_dev);
+		get_device(&c->indio_dev->dev);
 		break;
 	}
 	mutex_unlock(&iio_map_list_lock);
@@ -132,10 +131,8 @@ struct iio_channel *iio_channel_get(const char *name, const char *channel_name)
 		return ERR_PTR(-ENODEV);
 
 	channel = kzalloc(sizeof(*channel), GFP_KERNEL);
-	if (channel == NULL) {
-		err = -ENOMEM;
-		goto error_no_mem;
-	}
+	if (channel == NULL)
+		return ERR_PTR(-ENOMEM);
 
 	channel->indio_dev = c->indio_dev;
 
@@ -144,25 +141,22 @@ struct iio_channel *iio_channel_get(const char *name, const char *channel_name)
 			iio_chan_spec_from_name(channel->indio_dev,
 						c->map->adc_channel_label);
 
-		if (channel->channel == NULL) {
-			err = -EINVAL;
+		if (channel->channel == NULL)
 			goto error_no_chan;
-		}
 	}
 
 	return channel;
 
 error_no_chan:
-	kfree(channel);
-error_no_mem:
 	iio_device_put(c->indio_dev);
-	return ERR_PTR(err);
+	kfree(channel);
+	return ERR_PTR(-EINVAL);
 }
 EXPORT_SYMBOL_GPL(iio_channel_get);
 
 void iio_channel_release(struct iio_channel *channel)
 {
-	iio_device_put(channel->indio_dev);
+	put_device(&channel->indio_dev->dev);
 	kfree(channel);
 }
 EXPORT_SYMBOL_GPL(iio_channel_release);
@@ -203,7 +197,6 @@ struct iio_channel *iio_channel_get_all(const char *name)
 		if (name && strcmp(name, c->map->consumer_dev_name) != 0)
 			continue;
 		chans[mapind].indio_dev = c->indio_dev;
-		chans[mapind].data = c->map->consumer_data;
 		chans[mapind].channel =
 			iio_chan_spec_from_name(chans[mapind].indio_dev,
 						c->map->adc_channel_label);
@@ -211,7 +204,7 @@ struct iio_channel *iio_channel_get_all(const char *name)
 			ret = -EINVAL;
 			goto error_free_chans;
 		}
-		iio_device_get(chans[mapind].indio_dev);
+		get_device(&chans[mapind].indio_dev->dev);
 		mapind++;
 	}
 	if (mapind == 0) {
@@ -224,7 +217,8 @@ struct iio_channel *iio_channel_get_all(const char *name)
 
 error_free_chans:
 	for (i = 0; i < nummaps; i++)
-		iio_device_put(chans[i].indio_dev);
+		if (chans[i].indio_dev)
+			put_device(&chans[i].indio_dev->dev);
 	kfree(chans);
 error_ret:
 	mutex_unlock(&iio_map_list_lock);
@@ -238,7 +232,7 @@ void iio_channel_release_all(struct iio_channel *channels)
 	struct iio_channel *chan = &channels[0];
 
 	while (chan->indio_dev) {
-		iio_device_put(chan->indio_dev);
+		put_device(&chan->indio_dev->dev);
 		chan++;
 	}
 	kfree(channels);
@@ -314,9 +308,6 @@ static int iio_convert_raw_to_processed_unlocked(struct iio_channel *chan,
 	case IIO_VAL_FRACTIONAL:
 		*processed = div_s64(raw64 * (s64)scale_val * scale,
 				     scale_val2);
-		break;
-	case IIO_VAL_FRACTIONAL_LOG2:
-		*processed = (raw64 * (s64)scale_val * scale) >> scale_val2;
 		break;
 	default:
 		return -EINVAL;

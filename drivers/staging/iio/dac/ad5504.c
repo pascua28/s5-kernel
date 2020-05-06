@@ -16,9 +16,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
 
-#include "../iio.h"
-#include "../sysfs.h"
-#include "../events.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
+#include <linux/iio/events.h>
 #include "dac.h"
 #include "ad5504.h"
 
@@ -124,7 +124,7 @@ static int ad5504_write_raw(struct iio_dev *indio_dev,
 static ssize_t ad5504_read_powerdown_mode(struct device *dev,
 				      struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5504_state *st = iio_priv(indio_dev);
 
 	const char mode[][14] = {"20kohm_to_gnd", "three_state"};
@@ -136,7 +136,7 @@ static ssize_t ad5504_write_powerdown_mode(struct device *dev,
 				       struct device_attribute *attr,
 				       const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5504_state *st = iio_priv(indio_dev);
 	int ret;
 
@@ -154,7 +154,7 @@ static ssize_t ad5504_read_dac_powerdown(struct device *dev,
 					   struct device_attribute *attr,
 					   char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5504_state *st = iio_priv(indio_dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 
@@ -168,7 +168,7 @@ static ssize_t ad5504_write_dac_powerdown(struct device *dev,
 {
 	long readin;
 	int ret;
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5504_state *st = iio_priv(indio_dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 
@@ -287,7 +287,7 @@ static int __devinit ad5504_probe(struct spi_device *spi)
 	struct regulator *reg;
 	int ret, voltage_uv = 0;
 
-	indio_dev = iio_allocate_device(sizeof(*st));
+	indio_dev = iio_device_alloc(sizeof(*st));
 	if (indio_dev == NULL) {
 		ret = -ENOMEM;
 		goto error_ret;
@@ -350,7 +350,7 @@ error_put_reg:
 	if (!IS_ERR(reg))
 		regulator_put(reg);
 
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 error_ret:
 	return ret;
 }
@@ -368,7 +368,7 @@ static int __devexit ad5504_remove(struct spi_device *spi)
 		regulator_disable(st->reg);
 		regulator_put(st->reg);
 	}
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return 0;
 }

@@ -15,11 +15,11 @@
 #include <linux/list.h>
 #include <linux/slab.h>
 
-#include "iio.h"
-#include "trigger.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/trigger.h>
 #include "iio_core.h"
 #include "iio_core_trigger.h"
-#include "trigger_consumer.h"
+#include <linux/iio/trigger_consumer.h>
 
 /* RFC - Question of approach
  * Make the common case (single sensor single trigger)
@@ -45,31 +45,25 @@ static ssize_t iio_trigger_read_name(struct device *dev,
 				     struct device_attribute *attr,
 				     char *buf)
 {
-	struct iio_trigger *trig = dev_get_drvdata(dev);
+	struct iio_trigger *trig = to_iio_trigger(dev);
 	return sprintf(buf, "%s\n", trig->name);
 }
 
 static DEVICE_ATTR(name, S_IRUGO, iio_trigger_read_name, NULL);
 
-/**
- * iio_trigger_register_sysfs() - create a device for this trigger
- * @trig_info:	the trigger
- *
- * Also adds any control attribute registered by the trigger driver
- **/
-static int iio_trigger_register_sysfs(struct iio_trigger *trig_info)
-{
-	return sysfs_add_file_to_group(&trig_info->dev.kobj,
-				       &dev_attr_name.attr,
-				       NULL);
-}
+static struct attribute *iio_trig_dev_attrs[] = {
+	&dev_attr_name.attr,
+	NULL,
+};
 
-static void iio_trigger_unregister_sysfs(struct iio_trigger *trig_info)
-{
-	sysfs_remove_file_from_group(&trig_info->dev.kobj,
-					   &dev_attr_name.attr,
-					   NULL);
-}
+static struct attribute_group iio_trig_attr_group = {
+	.attrs	= iio_trig_dev_attrs,
+};
+
+static const struct attribute_group *iio_trig_attr_groups[] = {
+	&iio_trig_attr_group,
+	NULL
+};
 
 int iio_trigger_register(struct iio_trigger *trig_info)
 {
@@ -88,10 +82,6 @@ int iio_trigger_register(struct iio_trigger *trig_info)
 	if (ret)
 		goto error_unregister_id;
 
-	ret = iio_trigger_register_sysfs(trig_info);
-	if (ret)
-		goto error_device_del;
-
 	/* Add to list of available triggers held by the IIO core */
 	mutex_lock(&iio_trigger_list_lock);
 	list_add_tail(&trig_info->list, &iio_trigger_list);
@@ -99,8 +89,6 @@ int iio_trigger_register(struct iio_trigger *trig_info)
 
 	return 0;
 
-error_device_del:
-	device_del(&trig_info->dev);
 error_unregister_id:
 	ida_simple_remove(&iio_trigger_ida, trig_info->id);
 error_ret:
@@ -114,7 +102,6 @@ void iio_trigger_unregister(struct iio_trigger *trig_info)
 	list_del(&trig_info->list);
 	mutex_unlock(&iio_trigger_list_lock);
 
-	iio_trigger_unregister_sysfs(trig_info);
 	ida_simple_remove(&iio_trigger_ida, trig_info->id);
 	/* Possible issue in here */
 	device_unregister(&trig_info->dev);
@@ -234,7 +221,7 @@ static int iio_trigger_attach_poll_func(struct iio_trigger *trig,
 	return ret;
 }
 
-static int iio_trigger_dettach_poll_func(struct iio_trigger *trig,
+static int iio_trigger_detach_poll_func(struct iio_trigger *trig,
 					 struct iio_poll_func *pf)
 {
 	int ret = 0;
@@ -310,7 +297,7 @@ static ssize_t iio_trigger_read_current(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 
 	if (indio_dev->trig)
 		return sprintf(buf, "%s\n", indio_dev->trig->name);
@@ -329,7 +316,7 @@ static ssize_t iio_trigger_write_current(struct device *dev,
 					 const char *buf,
 					 size_t len)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct iio_trigger *oldtrig = indio_dev->trig;
 	struct iio_trigger *trig;
 	int ret;
@@ -360,9 +347,9 @@ static ssize_t iio_trigger_write_current(struct device *dev,
 	indio_dev->trig = trig;
 
 	if (oldtrig && indio_dev->trig != oldtrig)
-		iio_put_trigger(oldtrig);
+		iio_trigger_put(oldtrig);
 	if (indio_dev->trig)
-		iio_get_trigger(indio_dev->trig);
+		iio_trigger_get(indio_dev->trig);
 
 	return len;
 }
@@ -406,6 +393,7 @@ static void iio_trig_release(struct device *device)
 
 static struct device_type iio_trig_type = {
 	.release = iio_trig_release,
+	.groups = iio_trig_attr_groups,
 };
 
 static void iio_trig_subirqmask(struct irq_data *d)
@@ -426,7 +414,7 @@ static void iio_trig_subirqunmask(struct irq_data *d)
 	trig->subirqs[d->irq - trig->subirq_base].enabled = true;
 }
 
-struct iio_trigger *iio_allocate_trigger(const char *fmt, ...)
+struct iio_trigger *iio_trigger_alloc(const char *fmt, ...)
 {
 	va_list vargs;
 	struct iio_trigger *trig;
@@ -436,7 +424,6 @@ struct iio_trigger *iio_allocate_trigger(const char *fmt, ...)
 		trig->dev.type = &iio_trig_type;
 		trig->dev.bus = &iio_bus_type;
 		device_initialize(&trig->dev);
-		dev_set_drvdata(&trig->dev, (void *)trig);
 
 		mutex_init(&trig->pool_lock);
 		trig->subirq_base
@@ -472,14 +459,14 @@ struct iio_trigger *iio_allocate_trigger(const char *fmt, ...)
 	}
 	return trig;
 }
-EXPORT_SYMBOL(iio_allocate_trigger);
+EXPORT_SYMBOL(iio_trigger_alloc);
 
-void iio_free_trigger(struct iio_trigger *trig)
+void iio_trigger_free(struct iio_trigger *trig)
 {
 	if (trig)
 		put_device(&trig->dev);
 }
-EXPORT_SYMBOL(iio_free_trigger);
+EXPORT_SYMBOL(iio_trigger_free);
 
 void iio_device_register_trigger_consumer(struct iio_dev *indio_dev)
 {
@@ -491,7 +478,7 @@ void iio_device_unregister_trigger_consumer(struct iio_dev *indio_dev)
 {
 	/* Clean up and associated but not attached triggers references */
 	if (indio_dev->trig)
-		iio_put_trigger(indio_dev->trig);
+		iio_trigger_put(indio_dev->trig);
 }
 
 int iio_triggered_buffer_postenable(struct iio_dev *indio_dev)
@@ -503,7 +490,7 @@ EXPORT_SYMBOL(iio_triggered_buffer_postenable);
 
 int iio_triggered_buffer_predisable(struct iio_dev *indio_dev)
 {
-	return iio_trigger_dettach_poll_func(indio_dev->trig,
+	return iio_trigger_detach_poll_func(indio_dev->trig,
 					     indio_dev->pollfunc);
 }
 EXPORT_SYMBOL(iio_triggered_buffer_predisable);

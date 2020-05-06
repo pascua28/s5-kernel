@@ -13,11 +13,11 @@
  *
  */
 #include "ssp.h"
-#include "../../staging/iio/iio.h"
-#include "../../staging/iio/events.h"
-#include "../../staging/iio/sysfs.h"
-#include "../../staging/iio/buffer.h"
-#include "../../staging/iio/types.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/events.h>
+#include <linux/iio/sysfs.h>
+#include <linux/iio/buffer.h>
+#include <linux/iio/types.h>
 
 /*************************************************************************/
 /* SSP Kernel -> HAL input evnet function                                */
@@ -42,7 +42,7 @@ static int ssp_push_17bytes_buffer(struct iio_dev *indio_dev, u64 t, int *q)
 	buf[16] = (u8)q[4];
 	memcpy(buf + 17, &t, sizeof(t));
 	mutex_lock(&indio_dev->mlock);
-	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+	iio_push_to_buffer(indio_dev->buffer, buf);
 	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
@@ -57,7 +57,7 @@ static int ssp_push_12bytes_buffer(struct iio_dev *indio_dev, u64 t, int *q)
 		memcpy(buf + 4 * i, &q[i], sizeof(q[i]));
 	memcpy(buf + 12, &t, sizeof(t));
 	mutex_lock(&indio_dev->mlock);
-	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+	iio_push_to_buffer(indio_dev->buffer, buf);
 	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
@@ -72,7 +72,7 @@ static int ssp_push_24bytes_buffer(struct iio_dev *indio_dev, u64 t, s16 *q)
 		memcpy(buf + 2 * i, &q[i], sizeof(q[i]));
 	memcpy(buf + 12, &t, sizeof(t));
 	mutex_lock(&indio_dev->mlock);
-	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+	iio_push_to_buffer(indio_dev->buffer, buf);
 	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
@@ -88,7 +88,7 @@ static int ssp_push_6bytes_buffer(struct iio_dev *indio_dev, u64 t, s16 *d)
 
 	memcpy(buf + 6, &t, sizeof(t));
 	mutex_lock(&indio_dev->mlock);
-	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+	iio_push_to_buffer(indio_dev->buffer, buf);
 	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
@@ -101,7 +101,7 @@ static int ssp_push_1bytes_buffer(struct iio_dev *indio_dev, u64 t, u8 *d)
 	memcpy(buf, d, sizeof(u8));
 	memcpy(buf + 1, &t, sizeof(t));
 	mutex_lock(&indio_dev->mlock);
-	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+	iio_push_to_buffer(indio_dev->buffer, buf);
 	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
@@ -118,7 +118,7 @@ static int ssp_push_7bytes_buffer(struct iio_dev *indio_dev, u64 t, s16 *d,
 	buf[6] = status;
 	memcpy(buf + 7, &t, sizeof(t));
 	mutex_lock(&indio_dev->mlock);
-	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+	iio_push_to_buffer(indio_dev->buffer, buf);
 	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
@@ -749,7 +749,7 @@ int initialize_input_dev(struct ssp_data *data)
 		*gesture_input_dev, *sig_motion_input_dev, *step_cnt_input_dev,
 		*meta_input_dev;
 	/* accel */
-	data->accel_indio_dev = iio_allocate_device(0);
+	data->accel_indio_dev = iio_device_alloc(0);
 	if (!data->accel_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio accel device\n", __func__);
 		return -ENOMEM;
@@ -778,7 +778,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_accel;
 	/* mag */
-	data->mag_indio_dev = iio_allocate_device(0);
+	data->mag_indio_dev = iio_device_alloc(0);
 	if (!data->mag_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio mag device\n", __func__);
 		goto out_alloc_fail_mag;
@@ -807,7 +807,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_mag;
 	/* uncal mag */
-	data->uncal_mag_indio_dev = iio_allocate_device(0);
+	data->uncal_mag_indio_dev = iio_device_alloc(0);
 	if (!data->uncal_mag_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio uncal mag device\n", __func__);
 		goto out_alloc_fail_uncal_mag;
@@ -836,7 +836,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_uncal_mag;
 	/* gyro */
-	data->gyro_indio_dev = iio_allocate_device(0);
+	data->gyro_indio_dev = iio_device_alloc(0);
 	if (!data->gyro_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio gyro device\n", __func__);
 		goto out_alloc_fail_gyro;
@@ -865,7 +865,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_gyro;
 
-	data->uncal_gyro_indio_dev = iio_allocate_device(0);
+	data->uncal_gyro_indio_dev = iio_device_alloc(0);
 	if (!data->uncal_gyro_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio gyro device\n", __func__);
 		goto out_alloc_fail_uncal_gyro;
@@ -894,7 +894,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_uncal_gyro;
 
-	data->game_rot_indio_dev = iio_allocate_device(0);
+	data->game_rot_indio_dev = iio_device_alloc(0);
 	if (!data->game_rot_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio gyro device\n", __func__);
 		goto out_alloc_fail_game_rot;
@@ -923,7 +923,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_game_rot;
 
-	data->rot_indio_dev = iio_allocate_device(0);
+	data->rot_indio_dev = iio_device_alloc(0);
 	if (!data->rot_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio gyro device\n", __func__);
 		goto out_alloc_fail_rot;
@@ -952,7 +952,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_rot;
 
-	data->step_det_indio_dev = iio_allocate_device(0);
+	data->step_det_indio_dev = iio_device_alloc(0);
 	if (!data->step_det_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio gyro device\n", __func__);
 		goto out_alloc_fail_step_det;
@@ -981,7 +981,7 @@ int initialize_input_dev(struct ssp_data *data)
 	if (iRet)
 		goto out_remove_trigger_step_det;
 
-	data->pressure_indio_dev = iio_allocate_device(0);
+	data->pressure_indio_dev = iio_device_alloc(0);
 	if (!data->pressure_indio_dev) {
 		pr_err("[SSP]: %s failed to allocate memory for iio gyro device\n", __func__);
 		goto out_alloc_fail_pressure;
@@ -1216,7 +1216,7 @@ out_remove_trigger_pressure:
 out_unreg_ring_pressure:
 	ssp_iio_unconfigure_ring(data->pressure_indio_dev);
 out_free_pressure:
-	iio_free_device(data->pressure_indio_dev);
+	iio_device_free(data->pressure_indio_dev);
 out_alloc_fail_pressure:
 	iio_device_unregister(data->step_det_indio_dev);
 out_remove_trigger_step_det:
@@ -1224,7 +1224,7 @@ out_remove_trigger_step_det:
 out_unreg_ring_step_det:
 	ssp_iio_unconfigure_ring(data->step_det_indio_dev);
 out_free_step_det:
-	iio_free_device(data->step_det_indio_dev);
+	iio_device_free(data->step_det_indio_dev);
 out_alloc_fail_step_det:
 	iio_device_unregister(data->rot_indio_dev);
 out_remove_trigger_rot:
@@ -1232,7 +1232,7 @@ out_remove_trigger_rot:
 out_unreg_ring_rot:
 	ssp_iio_unconfigure_ring(data->rot_indio_dev);
 out_free_rot:
-	iio_free_device(data->rot_indio_dev);
+	iio_device_free(data->rot_indio_dev);
 out_alloc_fail_rot:
 	iio_device_unregister(data->game_rot_indio_dev);
 out_remove_trigger_game_rot:
@@ -1240,7 +1240,7 @@ out_remove_trigger_game_rot:
 out_unreg_ring_game_rot:
 	ssp_iio_unconfigure_ring(data->game_rot_indio_dev);
 out_free_game_rot:
-	iio_free_device(data->game_rot_indio_dev);
+	iio_device_free(data->game_rot_indio_dev);
 out_alloc_fail_game_rot:
 	iio_device_unregister(data->uncal_gyro_indio_dev);
 out_remove_trigger_uncal_gyro:
@@ -1248,7 +1248,7 @@ out_remove_trigger_uncal_gyro:
 out_unreg_ring_uncal_gyro:
 	ssp_iio_unconfigure_ring(data->uncal_gyro_indio_dev);
 out_free_uncal_gyro:
-	iio_free_device(data->uncal_gyro_indio_dev);
+	iio_device_free(data->uncal_gyro_indio_dev);
 out_alloc_fail_uncal_gyro:
 	iio_device_unregister(data->gyro_indio_dev);
 out_remove_trigger_gyro:
@@ -1256,7 +1256,7 @@ out_remove_trigger_gyro:
 out_unreg_ring_gyro:
 	ssp_iio_unconfigure_ring(data->gyro_indio_dev);
 out_free_gyro:
-	iio_free_device(data->gyro_indio_dev);
+	iio_device_free(data->gyro_indio_dev);
 out_alloc_fail_gyro:
 	iio_device_unregister(data->uncal_mag_indio_dev);
 out_remove_trigger_uncal_mag:
@@ -1264,7 +1264,7 @@ out_remove_trigger_uncal_mag:
 out_unreg_ring_uncal_mag:
 	ssp_iio_unconfigure_ring(data->uncal_mag_indio_dev);
 out_free_uncal_mag:
-	iio_free_device(data->uncal_mag_indio_dev);
+	iio_device_free(data->uncal_mag_indio_dev);
 out_alloc_fail_uncal_mag:
 	iio_device_unregister(data->mag_indio_dev);
 out_remove_trigger_mag:
@@ -1272,7 +1272,7 @@ out_remove_trigger_mag:
 out_unreg_ring_mag:
 	ssp_iio_unconfigure_ring(data->mag_indio_dev);
 out_free_mag:
-	iio_free_device(data->mag_indio_dev);
+	iio_device_free(data->mag_indio_dev);
 out_alloc_fail_mag:
 	iio_device_unregister(data->accel_indio_dev);
 out_remove_trigger_accel:
@@ -1280,7 +1280,7 @@ out_remove_trigger_accel:
 out_unreg_ring_accel:
 	ssp_iio_unconfigure_ring(data->accel_indio_dev);
 out_free_accel:
-	iio_free_device(data->accel_indio_dev);
+	iio_device_free(data->accel_indio_dev);
 	pr_err("[SSP]: %s - could not allocate input device\n", __func__);
 	return ERROR;
 }

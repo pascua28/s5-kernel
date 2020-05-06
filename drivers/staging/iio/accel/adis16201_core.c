@@ -15,9 +15,9 @@
 #include <linux/sysfs.h>
 #include <linux/module.h>
 
-#include "../iio.h"
-#include "../sysfs.h"
-#include "../buffer.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
+#include <linux/iio/buffer.h>
 
 #include "adis16201.h"
 
@@ -171,7 +171,7 @@ static ssize_t adis16201_write_reset(struct device *dev,
 	ret = strtobool(buf, &res);
 	if (ret || !res)
 		return ret;
-	return adis16201_reset(dev_get_drvdata(dev));
+	return adis16201_reset(dev_to_iio_dev(dev));
 }
 
 int adis16201_set_irq(struct iio_dev *indio_dev, bool enable)
@@ -298,7 +298,7 @@ static int adis16201_read_raw(struct iio_dev *indio_dev,
 	s16 val16;
 
 	switch (mask) {
-	case 0:
+	case IIO_CHAN_INFO_RAW:
 		mutex_lock(&indio_dev->mlock);
 		addr = adis16201_addresses[chan->address][0];
 		ret = adis16201_spi_read_reg_16(indio_dev, addr, &val16);
@@ -325,30 +325,32 @@ static int adis16201_read_raw(struct iio_dev *indio_dev,
 	case IIO_CHAN_INFO_SCALE:
 		switch (chan->type) {
 		case IIO_VOLTAGE:
-			*val = 0;
-			if (chan->channel == 0)
-				*val2 = 1220;
-			else
-				*val2 = 610;
+			if (chan->channel == 0) {
+				*val = 1;
+				*val2 = 220000; /* 1.22 mV */
+			} else {
+				*val = 0;
+				*val2 = 610000; /* 0.610 mV */
+			}
 			return IIO_VAL_INT_PLUS_MICRO;
 		case IIO_TEMP:
-			*val = 0;
-			*val2 = -470000;
+			*val = -470; /* 0.47 C */
+			*val2 = 0;
 			return IIO_VAL_INT_PLUS_MICRO;
 		case IIO_ACCEL:
 			*val = 0;
-			*val2 = 462500;
-			return IIO_VAL_INT_PLUS_MICRO;
+			*val2 = IIO_G_TO_M_S_2(462400); /* 0.4624 mg */
+			return IIO_VAL_INT_PLUS_NANO;
 		case IIO_INCLI:
 			*val = 0;
-			*val2 = 100000;
+			*val2 = 100000; /* 0.1 degree */
 			return IIO_VAL_INT_PLUS_MICRO;
 		default:
 			return -EINVAL;
 		}
 		break;
 	case IIO_CHAN_INFO_OFFSET:
-		*val = 25;
+		*val = 25000 / -470 - 1278; /* 25 C = 1278 */
 		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_CALIBBIAS:
 		switch (chan->type) {
@@ -406,39 +408,104 @@ static int adis16201_write_raw(struct iio_dev *indio_dev,
 }
 
 static struct iio_chan_spec adis16201_channels[] = {
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, "supply", 0, 0,
+	{
+		.type = IIO_VOLTAGE,
+		.indexed = 1,
+		.channel = 0,
+		.extend_name = "supply",
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		 IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
-		 in_supply, ADIS16201_SCAN_SUPPLY,
-		 IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_TEMP, 0, 1, 0, NULL, 0, 0,
+		.address = in_supply,
+		.scan_index = ADIS16201_SCAN_SUPPLY,
+		.scan_type = {
+			.sign = 'u',
+			.realbits = 12,
+			.storagebits = 16,
+		},
+	}, {
+		.type = IIO_TEMP,
+		.indexed = 1,
+		.channel = 0,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		 IIO_CHAN_INFO_SCALE_SEPARATE_BIT |
 		 IIO_CHAN_INFO_OFFSET_SEPARATE_BIT,
-		 temp, ADIS16201_SCAN_TEMP,
-		 IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_ACCEL, 1, 0, 0, NULL, 0, IIO_MOD_X,
+		.address = temp,
+		.scan_index = ADIS16201_SCAN_TEMP,
+		.scan_type = {
+			.sign = 'u',
+			.realbits = 12,
+			.storagebits = 16,
+		},
+	}, {
+		.type = IIO_ACCEL,
+		.modified = 1,
+		.channel2 = IIO_MOD_X,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		 IIO_CHAN_INFO_SCALE_SHARED_BIT |
 		 IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
-		 accel_x, ADIS16201_SCAN_ACC_X,
-		 IIO_ST('s', 14, 16, 0), 0),
-	IIO_CHAN(IIO_ACCEL, 1, 0, 0, NULL, 0, IIO_MOD_Y,
+		.address = accel_x,
+		.scan_index = ADIS16201_SCAN_ACC_X,
+		.scan_type = {
+			.sign = 's',
+			.realbits = 14,
+			.storagebits = 16,
+		},
+	}, {
+		.type = IIO_ACCEL,
+		.modified = 1,
+		.channel2 = IIO_MOD_Y,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		 IIO_CHAN_INFO_SCALE_SHARED_BIT |
 		 IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
-		 accel_y, ADIS16201_SCAN_ACC_Y,
-		 IIO_ST('s', 14, 16, 0), 0),
-	IIO_CHAN(IIO_VOLTAGE, 0, 1, 0, NULL, 1, 0,
+		.address = accel_y,
+		.scan_index = ADIS16201_SCAN_ACC_Y,
+		.scan_type = {
+			.sign = 's',
+			.realbits = 14,
+			.storagebits = 16,
+		},
+	}, {
+		.type = IIO_VOLTAGE,
+		.indexed = 1,
+		.channel = 1,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		 IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
-		 in_aux, ADIS16201_SCAN_AUX_ADC,
-		 IIO_ST('u', 12, 16, 0), 0),
-	IIO_CHAN(IIO_INCLI, 1, 0, 0, NULL, 0, IIO_MOD_X,
+		.address = in_aux,
+		.scan_index = ADIS16201_SCAN_AUX_ADC,
+		.scan_type = {
+			.sign = 'u',
+			.realbits = 12,
+			.storagebits = 16,
+		},
+	}, {
+		.type = IIO_INCLI,
+		.modified = 1,
+		.channel2 = IIO_MOD_X,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		 IIO_CHAN_INFO_SCALE_SHARED_BIT |
 		 IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
-		 incli_x, ADIS16201_SCAN_INCLI_X,
-		 IIO_ST('s', 14, 16, 0), 0),
-	IIO_CHAN(IIO_INCLI, 1, 0, 0, NULL, 0, IIO_MOD_Y,
+		.address = incli_x,
+		.scan_index = ADIS16201_SCAN_INCLI_X,
+		.scan_type = {
+			.sign = 's',
+			.realbits = 14,
+			.storagebits = 16,
+		},
+	}, {
+		.type = IIO_INCLI,
+		.modified = 1,
+		.channel2 = IIO_MOD_Y,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		 IIO_CHAN_INFO_SCALE_SHARED_BIT |
 		 IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
-		 incli_y, ADIS16201_SCAN_INCLI_Y,
-		 IIO_ST('s', 14, 16, 0), 0),
+		.address = incli_y,
+		.scan_index = ADIS16201_SCAN_INCLI_Y,
+		.scan_type = {
+			.sign = 's',
+			.realbits = 14,
+			.storagebits = 16,
+		},
+	},
 	IIO_CHAN_SOFT_TIMESTAMP(7)
 };
 
@@ -467,7 +534,7 @@ static int __devinit adis16201_probe(struct spi_device *spi)
 	struct iio_dev *indio_dev;
 
 	/* setup the industrialio driver allocated elements */
-	indio_dev = iio_allocate_device(sizeof(*st));
+	indio_dev = iio_device_alloc(sizeof(*st));
 	if (indio_dev == NULL) {
 		ret = -ENOMEM;
 		goto error_ret;
@@ -522,7 +589,7 @@ error_uninitialize_ring:
 error_unreg_ring_funcs:
 	adis16201_unconfigure_ring(indio_dev);
 error_free_dev:
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 error_ret:
 	return ret;
 }
@@ -535,7 +602,7 @@ static int adis16201_remove(struct spi_device *spi)
 	adis16201_remove_trigger(indio_dev);
 	iio_buffer_unregister(indio_dev);
 	adis16201_unconfigure_ring(indio_dev);
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return 0;
 }

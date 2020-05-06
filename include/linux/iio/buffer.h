@@ -66,8 +66,7 @@ struct iio_buffer_access_funcs {
  * @stufftoread:	[INTERN] flag to indicate new data.
  * @demux_list:		[INTERN] list of operations required to demux the scan.
  * @demux_bounce:	[INTERN] buffer for doing gather from incoming scan.
- * @buffer_list:	[INTERN] entry in the devices list of current buffers.
- */
+ **/
 struct iio_buffer {
 	int					length;
 	int					bytes_per_datum;
@@ -82,20 +81,7 @@ struct iio_buffer {
 	const struct attribute_group *attrs;
 	struct list_head			demux_list;
 	unsigned char				*demux_bounce;
-	struct list_head			buffer_list;
 };
-
-/**
- * iio_update_buffers() - add or remove buffer from active list
- * @indio_dev:		device to add buffer to
- * @insert_buffer:	buffer to insert
- * @remove_buffer:	buffer_to_remove
- *
- * Note this will tear down the all buffering and build it up again
- */
-int iio_update_buffers(struct iio_dev *indio_dev,
-		       struct iio_buffer *insert_buffer,
-		       struct iio_buffer *remove_buffer);
 
 /**
  * iio_buffer_init() - Initialize the buffer structure
@@ -129,11 +115,11 @@ int iio_scan_mask_set(struct iio_dev *indio_dev,
 		      struct iio_buffer *buffer, int bit);
 
 /**
- * iio_push_to_buffers() - push to a registered buffer.
- * @indio_dev:		iio_dev structure for device.
- * @data:		Full scan.
+ * iio_push_to_buffer() - push to a registered buffer.
+ * @buffer:		IIO buffer structure for device
+ * @data:		the data to push to the buffer
  */
-int iio_push_to_buffers(struct iio_dev *indio_dev, unsigned char *data);
+int iio_push_to_buffer(struct iio_buffer *buffer, unsigned char *data);
 
 int iio_update_demux(struct iio_dev *indio_dev);
 
@@ -195,7 +181,7 @@ bool iio_validate_scan_mask_onehot(struct iio_dev *indio_dev,
 #else /* CONFIG_IIO_BUFFER */
 
 static inline int iio_buffer_register(struct iio_dev *indio_dev,
-					   const struct iio_chan_spec *channels,
+					   struct iio_chan_spec *channels,
 					   int num_channels)
 {
 	return 0;

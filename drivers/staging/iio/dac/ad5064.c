@@ -16,8 +16,8 @@
 #include <linux/sysfs.h>
 #include <linux/regulator/consumer.h>
 
-#include "../iio.h"
-#include "../sysfs.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
 #include "dac.h"
 
 #define AD5064_MAX_DAC_CHANNELS			8
@@ -144,14 +144,14 @@ static const char ad5064_powerdown_modes[][15] = {
 };
 
 static ssize_t ad5064_read_powerdown_mode_available(struct iio_dev *indio_dev,
-	const struct iio_chan_spec *chan, char *buf)
+	uintptr_t private, const struct iio_chan_spec *chan, char *buf)
 {
 	return sprintf(buf, "%s %s %s\n", ad5064_powerdown_modes[1],
 		ad5064_powerdown_modes[2], ad5064_powerdown_modes[3]);
 }
 
 static ssize_t ad5064_read_powerdown_mode(struct iio_dev *indio_dev,
-	const struct iio_chan_spec *chan, char *buf)
+	uintptr_t private, const struct iio_chan_spec *chan, char *buf)
 {
 	struct ad5064_state *st = iio_priv(indio_dev);
 
@@ -160,7 +160,8 @@ static ssize_t ad5064_read_powerdown_mode(struct iio_dev *indio_dev,
 }
 
 static ssize_t ad5064_write_powerdown_mode(struct iio_dev *indio_dev,
-	const struct iio_chan_spec *chan, const char *buf, size_t len)
+	uintptr_t private, const struct iio_chan_spec *chan, const char *buf,
+	size_t len)
 {
 	struct ad5064_state *st = iio_priv(indio_dev);
 	unsigned int mode, i;
@@ -187,7 +188,7 @@ static ssize_t ad5064_write_powerdown_mode(struct iio_dev *indio_dev,
 }
 
 static ssize_t ad5064_read_dac_powerdown(struct iio_dev *indio_dev,
-	const struct iio_chan_spec *chan, char *buf)
+	uintptr_t private, const struct iio_chan_spec *chan, char *buf)
 {
 	struct ad5064_state *st = iio_priv(indio_dev);
 
@@ -195,7 +196,8 @@ static ssize_t ad5064_read_dac_powerdown(struct iio_dev *indio_dev,
 }
 
 static ssize_t ad5064_write_dac_powerdown(struct iio_dev *indio_dev,
-	const struct iio_chan_spec *chan, const char *buf, size_t len)
+	 uintptr_t private, const struct iio_chan_spec *chan, const char *buf,
+	 size_t len)
 {
 	struct ad5064_state *st = iio_priv(indio_dev);
 	bool pwr_down;
@@ -442,7 +444,7 @@ static int __devinit ad5064_probe(struct spi_device *spi)
 	unsigned int i;
 	int ret;
 
-	indio_dev = iio_allocate_device(sizeof(*st));
+	indio_dev = iio_device_alloc(sizeof(*st));
 	if (indio_dev == NULL)
 		return  -ENOMEM;
 
@@ -499,7 +501,7 @@ error_free_reg:
 	if (!st->use_internal_vref)
 		regulator_bulk_free(ad5064_num_vref(st), st->vref_reg);
 error_free:
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return ret;
 }
@@ -517,7 +519,7 @@ static int __devexit ad5064_remove(struct spi_device *spi)
 		regulator_bulk_free(ad5064_num_vref(st), st->vref_reg);
 	}
 
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return 0;
 }

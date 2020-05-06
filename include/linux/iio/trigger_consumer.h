@@ -7,15 +7,6 @@
  * the Free Software Foundation.
  */
 
-#ifndef __LINUX_IIO_TRIGGER_CONSUMER_H__
-#define __LINUX_IIO_TRIGGER_CONSUMER_H__
-
-#include <linux/interrupt.h>
-#include <linux/types.h>
-
-struct iio_dev;
-struct iio_trigger;
-
 /**
  * struct iio_poll_func - poll function pair
  *
@@ -59,5 +50,3 @@ void iio_trigger_notify_done(struct iio_trigger *trig);
  */
 int iio_triggered_buffer_postenable(struct iio_dev *indio_dev);
 int iio_triggered_buffer_predisable(struct iio_dev *indio_dev);
-
-#endif

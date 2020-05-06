@@ -17,8 +17,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
 
-#include "../iio.h"
-#include "../sysfs.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
 #include "dac.h"
 #include "ad5791.h"
 
@@ -93,7 +93,7 @@ static const struct iio_chan_spec ad5791_channels[] = {
 static ssize_t ad5791_read_powerdown_mode(struct device *dev,
 				      struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5791_state *st = iio_priv(indio_dev);
 
 	const char mode[][14] = {"6kohm_to_gnd", "three_state"};
@@ -105,7 +105,7 @@ static ssize_t ad5791_write_powerdown_mode(struct device *dev,
 				       struct device_attribute *attr,
 				       const char *buf, size_t len)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5791_state *st = iio_priv(indio_dev);
 	int ret;
 
@@ -123,7 +123,7 @@ static ssize_t ad5791_read_dac_powerdown(struct device *dev,
 					   struct device_attribute *attr,
 					   char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5791_state *st = iio_priv(indio_dev);
 
 	return sprintf(buf, "%d\n", st->pwr_down);
@@ -135,7 +135,7 @@ static ssize_t ad5791_write_dac_powerdown(struct device *dev,
 {
 	long readin;
 	int ret;
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad5791_state *st = iio_priv(indio_dev);
 
 	ret = strict_strtol(buf, 10, &readin);
@@ -288,7 +288,7 @@ static int __devinit ad5791_probe(struct spi_device *spi)
 	struct ad5791_state *st;
 	int ret, pos_voltage_uv = 0, neg_voltage_uv = 0;
 
-	indio_dev = iio_allocate_device(sizeof(*st));
+	indio_dev = iio_device_alloc(sizeof(*st));
 	if (indio_dev == NULL) {
 		ret = -ENOMEM;
 		goto error_ret;
@@ -368,7 +368,7 @@ error_put_reg_neg:
 error_put_reg_pos:
 	if (!IS_ERR(st->reg_vdd))
 		regulator_put(st->reg_vdd);
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 error_ret:
 
 	return ret;
@@ -389,7 +389,7 @@ static int __devexit ad5791_remove(struct spi_device *spi)
 		regulator_disable(st->reg_vss);
 		regulator_put(st->reg_vss);
 	}
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	return 0;
 }

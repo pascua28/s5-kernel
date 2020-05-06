@@ -15,8 +15,8 @@
 #include "ssp.h"
 #include <linux/math64.h>
 
-#include "../../staging/iio/events.h"
-#include "../../staging/iio/iio.h"
+#include <linux/iio/events.h>
+#include <linux/iio/iio.h>
 #define BATCH_IOCTL_MAGIC		0xFC
 
 struct batch_config {
