@@ -14,9 +14,9 @@
  */
 
 #include "ssp.h"
-#include "../../staging/iio/iio.h"
-#include "../../staging/iio/sysfs.h"
-#include "../../staging/iio/trigger.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
+#include <linux/iio/trigger.h>
 /*
  * ssp_iio_data_rdy_trigger_set_state() set data ready interrupt state
  */
@@ -28,7 +28,7 @@ int ssp_iio_probe_trigger(struct ssp_data *data, struct iio_dev *indio_dev, stru
 {
 	int ret;
 
-	trig = iio_allocate_trigger("%s-dev%d",
+	trig = iio_trigger_alloc("%s-dev%d",
 					indio_dev->name,
 					indio_dev->id);
 	if (trig == NULL)
@@ -39,7 +39,7 @@ int ssp_iio_probe_trigger(struct ssp_data *data, struct iio_dev *indio_dev, stru
 	ret = iio_trigger_register(trig);
 
 	if (ret) {
-		iio_free_trigger(trig);
+		iio_trigger_free(trig);
 		return -EPERM;
 	}
 	indio_dev->trig = trig;
@@ -50,6 +50,6 @@ int ssp_iio_probe_trigger(struct ssp_data *data, struct iio_dev *indio_dev, stru
 void ssp_iio_remove_trigger(struct iio_trigger *trig)
 {
 	iio_trigger_unregister(trig);
-	iio_free_trigger(trig);
+	iio_trigger_free(trig);
 }
 
