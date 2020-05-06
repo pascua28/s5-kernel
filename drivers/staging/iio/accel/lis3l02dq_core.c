@@ -674,7 +674,7 @@ static const struct iio_info lis3l02dq_info = {
 	.attrs = &lis3l02dq_attribute_group,
 };
 
-static int __devinit lis3l02dq_probe(struct spi_device *spi)
+static int lis3l02dq_probe(struct spi_device *spi)
 {
 	int ret;
 	struct lis3l02dq_state *st;
@@ -808,7 +808,7 @@ static struct spi_driver lis3l02dq_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = lis3l02dq_probe,
-	.remove = __devexit_p(lis3l02dq_remove),
+	.remove = lis3l02dq_remove,
 };
 module_spi_driver(lis3l02dq_driver);
 
