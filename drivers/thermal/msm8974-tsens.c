@@ -1598,7 +1598,7 @@ static int __devinit _tsens_register_thermal(void)
 					tmdev->sensor[i].sensor_hw_num);
 		tmdev->sensor[i].mode = THERMAL_DEVICE_ENABLED;
 		tmdev->sensor[i].tz_dev = thermal_zone_device_register(name,
-				TSENS_TRIP_NUM, &tmdev->sensor[i],
+				TSENS_TRIP_NUM, 0, &tmdev->sensor[i],
 				&tsens_thermal_zone_ops, 0, 0, 0, 0);
 		if (IS_ERR(tmdev->sensor[i].tz_dev)) {
 			pr_err("%s: thermal_zone_device_register() failed.\n",

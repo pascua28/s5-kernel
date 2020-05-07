@@ -1957,7 +1957,7 @@ static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
 						QPNP_ADC_TM_M0_HIGH_THR;
 			chip->sensor[sen_idx].tz_dev =
 				thermal_zone_device_register(name,
-				ADC_TM_TRIP_NUM,
+				ADC_TM_TRIP_NUM, 0,
 				&chip->sensor[sen_idx],
 				&qpnp_adc_tm_thermal_ops, 0, 0, 0, 0);
 			if (IS_ERR(chip->sensor[sen_idx].tz_dev))

@@ -21,8 +21,6 @@
 #include <linux/completion.h>
 #include <linux/workqueue.h>
 #include <linux/kobject.h>
-#include <linux/of.h>
-#include <linux/mfd/core.h>
 #include <linux/mfd/abx500.h>
 #include <linux/mfd/abx500/ux500_chargalg.h>
 #include <linux/mfd/abx500/ab8500-bm.h>
@@ -207,6 +205,7 @@ enum maxim_ret {
  * @chg_info:		information about connected charger types
  * @batt_data:		data of the battery
  * @susp_status:	current charger suspension status
+ * @pdata:		pointer to the abx500_chargalg platform data
  * @bat:		pointer to the abx500_bm platform data
  * @chargalg_psy:	structure that holds the battery properties exposed by
  *			the charging algorithm
@@ -232,6 +231,7 @@ struct abx500_chargalg {
 	struct abx500_chargalg_charger_info chg_info;
 	struct abx500_chargalg_battery_data batt_data;
 	struct abx500_chargalg_suspension_status susp_status;
+	struct abx500_chargalg_platform_data *pdata;
 	struct abx500_bm_data *bat;
 	struct power_supply chargalg_psy;
 	struct ux500_charger *ac_chg;
@@ -1706,7 +1706,7 @@ static struct attribute *abx500_chargalg_chg[] = {
 	NULL
 };
 
-static const struct sysfs_ops abx500_chargalg_sysfs_ops = {
+const struct sysfs_ops abx500_chargalg_sysfs_ops = {
 	.store = abx500_chargalg_sysfs_charger,
 };
 
@@ -1782,7 +1782,7 @@ static int abx500_chargalg_suspend(struct platform_device *pdev,
 #define abx500_chargalg_resume       NULL
 #endif
 
-static int abx500_chargalg_remove(struct platform_device *pdev)
+static int __devexit abx500_chargalg_remove(struct platform_device *pdev)
 {
 	struct abx500_chargalg *di = platform_get_drvdata(pdev);
 
@@ -1795,44 +1795,27 @@ static int abx500_chargalg_remove(struct platform_device *pdev)
 	flush_scheduled_work();
 	power_supply_unregister(&di->chargalg_psy);
 	platform_set_drvdata(pdev, NULL);
+	kfree(di);
 
 	return 0;
 }
 
-static char *supply_interface[] = {
-	"ab8500_fg",
-};
-
-static int abx500_chargalg_probe(struct platform_device *pdev)
+static int __devinit abx500_chargalg_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
-	struct abx500_chargalg *di;
+	struct abx500_bm_plat_data *plat_data;
 	int ret = 0;
 
-	di = devm_kzalloc(&pdev->dev, sizeof(*di), GFP_KERNEL);
-	if (!di) {
-		dev_err(&pdev->dev, "%s no mem for ab8500_chargalg\n", __func__);
+	struct abx500_chargalg *di =
+		kzalloc(sizeof(struct abx500_chargalg), GFP_KERNEL);
+	if (!di)
 		return -ENOMEM;
-	}
-	di->bat = pdev->mfd_cell->platform_data;
-	if (!di->bat) {
-		if (np) {
-			ret = bmdevs_of_probe(&pdev->dev, np, &di->bat);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"failed to get battery information\n");
-				return ret;
-			}
-		} else {
-			dev_err(&pdev->dev, "missing dt node for ab8500_chargalg\n");
-			return -EINVAL;
-		}
-	} else {
-		dev_info(&pdev->dev, "falling back to legacy platform data\n");
-	}
 
 	/* get device struct */
 	di->dev = &pdev->dev;
+
+	plat_data = pdev->dev.platform_data;
+	di->pdata = plat_data->chargalg;
+	di->bat = plat_data->battery;
 
 	/* chargalg supply */
 	di->chargalg_psy.name = "abx500_chargalg";
@@ -1840,8 +1823,8 @@ static int abx500_chargalg_probe(struct platform_device *pdev)
 	di->chargalg_psy.properties = abx500_chargalg_props;
 	di->chargalg_psy.num_properties = ARRAY_SIZE(abx500_chargalg_props);
 	di->chargalg_psy.get_property = abx500_chargalg_get_property;
-	di->chargalg_psy.supplied_to = supply_interface;
-	di->chargalg_psy.num_supplicants = ARRAY_SIZE(supply_interface),
+	di->chargalg_psy.supplied_to = di->pdata->supplied_to;
+	di->chargalg_psy.num_supplicants = di->pdata->num_supplicants;
 	di->chargalg_psy.external_power_changed =
 		abx500_chargalg_external_power_changed;
 
@@ -1861,13 +1844,13 @@ static int abx500_chargalg_probe(struct platform_device *pdev)
 		create_singlethread_workqueue("abx500_chargalg_wq");
 	if (di->chargalg_wq == NULL) {
 		dev_err(di->dev, "failed to create work queue\n");
-		return -ENOMEM;
+		goto free_device_info;
 	}
 
 	/* Init work for chargalg */
-	INIT_DEFERRABLE_WORK(&di->chargalg_periodic_work,
+	INIT_DELAYED_WORK_DEFERRABLE(&di->chargalg_periodic_work,
 		abx500_chargalg_periodic_work);
-	INIT_DEFERRABLE_WORK(&di->chargalg_wd_work,
+	INIT_DELAYED_WORK_DEFERRABLE(&di->chargalg_wd_work,
 		abx500_chargalg_wd_work);
 
 	/* Init work for chargalg */
@@ -1902,23 +1885,20 @@ free_psy:
 	power_supply_unregister(&di->chargalg_psy);
 free_chargalg_wq:
 	destroy_workqueue(di->chargalg_wq);
+free_device_info:
+	kfree(di);
+
 	return ret;
 }
 
-static const struct of_device_id ab8500_chargalg_match[] = {
-	{ .compatible = "stericsson,ab8500-chargalg", },
-	{ },
-};
-
 static struct platform_driver abx500_chargalg_driver = {
 	.probe = abx500_chargalg_probe,
-	.remove = abx500_chargalg_remove,
+	.remove = __devexit_p(abx500_chargalg_remove),
 	.suspend = abx500_chargalg_suspend,
 	.resume = abx500_chargalg_resume,
 	.driver = {
-		.name = "ab8500-chargalg",
+		.name = "abx500-chargalg",
 		.owner = THIS_MODULE,
-		.of_match_table = ab8500_chargalg_match,
 	},
 };
 

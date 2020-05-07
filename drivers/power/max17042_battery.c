@@ -110,9 +110,9 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_AVG,
-	POWER_SUPPLY_PROP_VOLTAGE_OCV,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
@@ -180,13 +180,6 @@ static int max17042_get_property(struct power_supply *psy,
 
 		val->intval = ret * 625 / 8;
 		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
-		ret = max17042_read_reg(chip->client, MAX17042_OCVInternal);
-		if (ret < 0)
-			return ret;
-
-		val->intval = ret * 625 / 8;
-		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		ret = max17042_read_reg(chip->client, MAX17042_RepSOC);
 		if (ret < 0)
@@ -196,6 +189,13 @@ static int max17042_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+		if (ret < 0)
+			return ret;
+
+		val->intval = ret * 1000 / 2;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
+		ret = max17042_read_reg(chip->client, MAX17042_QH);
 		if (ret < 0)
 			return ret;
 
@@ -564,8 +564,7 @@ static int max17042_init_chip(struct max17042_chip *chip)
 			__func__);
 		return -EIO;
 	}
-
-	ret = max17042_verify_model_lock(chip);
+	max17042_verify_model_lock(chip);
 	if (ret) {
 		dev_err(&chip->client->dev, "%s lock verify failed\n",
 			__func__);
@@ -674,7 +673,7 @@ max17042_get_pdata(struct device *dev)
 }
 #endif
 
-static int max17042_probe(struct i2c_client *client,
+static int __devinit max17042_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
@@ -768,7 +767,7 @@ static int max17042_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int max17042_remove(struct i2c_client *client)
+static int __devexit max17042_remove(struct i2c_client *client)
 {
 	struct max17042_chip *chip = i2c_get_clientdata(client);
 
@@ -844,7 +843,7 @@ static struct i2c_driver max17042_i2c_driver = {
 		.pm	= MAX17042_PM_OPS,
 	},
 	.probe		= max17042_probe,
-	.remove		= max17042_remove,
+	.remove		= __devexit_p(max17042_remove),
 	.id_table	= max17042_id,
 };
 module_i2c_driver(max17042_i2c_driver);
