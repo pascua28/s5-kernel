@@ -169,6 +169,8 @@
 #define QPNP_MIN_TIME			2000
 #define QPNP_MAX_TIME			2100
 
+#define ADC_TM_WRITABLE_TRIPS_MASK ((1 << ADC_TM_TRIP_NUM) - 1)
+
 struct qpnp_adc_thr_client_info {
 	struct list_head		list;
 	struct qpnp_adc_tm_btm_param	*btm_param;
@@ -1957,9 +1959,9 @@ static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
 						QPNP_ADC_TM_M0_HIGH_THR;
 			chip->sensor[sen_idx].tz_dev =
 				thermal_zone_device_register(name,
-				ADC_TM_TRIP_NUM, 0,
+				ADC_TM_TRIP_NUM, ADC_TM_WRITABLE_TRIPS_MASK,
 				&chip->sensor[sen_idx],
-				&qpnp_adc_tm_thermal_ops, 0, 0, 0, 0);
+				&qpnp_adc_tm_thermal_ops, NULL, 0, 0);
 			if (IS_ERR(chip->sensor[sen_idx].tz_dev))
 				pr_err("thermal device register failed.\n");
 		}

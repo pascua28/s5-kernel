@@ -464,7 +464,7 @@ error:
 	return ret;
 }
 
-static int __devexit lp8727_remove(struct i2c_client *cl)
+static int lp8727_remove(struct i2c_client *cl)
 {
 	struct lp8727_chg *pchg = i2c_get_clientdata(cl);
 
@@ -487,7 +487,7 @@ static struct i2c_driver lp8727_driver = {
 		   .name = "lp8727",
 		   },
 	.probe = lp8727_probe,
-	.remove = __devexit_p(lp8727_remove),
+	.remove = lp8727_remove,
 	.id_table = lp8727_ids,
 };
 module_i2c_driver(lp8727_driver);

@@ -12,3 +12,18 @@ obj-$(CONFIG_SPEAR_THERMAL)		+= spear_thermal.o
 obj-$(CONFIG_THERMAL_TSENS8974)	+= msm8974-tsens.o
 obj-$(CONFIG_THERMAL_QPNP)	+= qpnp-temp-alarm.o
 obj-$(CONFIG_THERMAL_QPNP_ADC_TM)	+= qpnp-adc-tm.o
+
+# governors
+obj-$(CONFIG_FAIR_SHARE)	+= fair_share.o
+obj-$(CONFIG_STEP_WISE)		+= step_wise.o
+obj-$(CONFIG_USER_SPACE)	+= user_space.o
+
+# cpufreq cooling
+obj-$(CONFIG_CPU_THERMAL)	+= cpu_cooling.o
+
+# platform thermal drivers
+obj-$(CONFIG_SPEAR_THERMAL)	+= spear_thermal.o
+obj-$(CONFIG_RCAR_THERMAL)	+= rcar_thermal.o
+obj-$(CONFIG_EXYNOS_THERMAL)	+= exynos_thermal.o
+obj-$(CONFIG_DB8500_THERMAL)	+= db8500_thermal.o
+obj-$(CONFIG_DB8500_CPUFREQ_COOLING)	+= db8500_cpufreq_cooling.o
