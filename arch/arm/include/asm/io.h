@@ -79,38 +79,6 @@ static inline u16 __raw_readw(const volatile void __iomem *addr)
 }
 #endif
 
-static inline void __raw_writeb(u8 val, volatile void __iomem *addr)
-{
-	asm volatile("strb %1, %0"
-		     : "+Qo" (*(volatile u8 __force *)addr)
-		     : "r" (val));
-}
-
-static inline void __raw_writel(u32 val, volatile void __iomem *addr)
-{
-	asm volatile("str %1, %0"
-		     : "+Qo" (*(volatile u32 __force *)addr)
-		     : "r" (val));
-}
-
-static inline u8 __raw_readb(const volatile void __iomem *addr)
-{
-	u8 val;
-	asm volatile("ldrb %1, %0"
-		     : "+Qo" (*(volatile u8 __force *)addr),
-		       "=r" (val));
-	return val;
-}
-
-static inline u32 __raw_readl(const volatile void __iomem *addr)
-{
-	u32 val;
-	asm volatile("ldr %1, %0"
-		     : "+Qo" (*(volatile u32 __force *)addr),
-		       "=r" (val));
-	return val;
-}
-
 #define __raw_write_logged(v, a, _t)	({ \
 	int _ret; \
 	void *_addr = (void *)(a); \
@@ -121,6 +89,12 @@ static inline u32 __raw_readl(const volatile void __iomem *addr)
 		LOG_BARRIER; \
 	})
 
+
+#define __raw_writeb(v, a) __raw_write_logged((v), (a), b)
+#define __raw_writel(v, a) __raw_write_logged((v), (a), l)
+
+#define __raw_readb(a) __raw_read_logged((a), b, char)
+#define __raw_readl(a) __raw_read_logged((a), l, int)
 
 #define __raw_writeb_no_log(v, a)	(__chk_io_ptr(a), *(volatile unsigned char __force  *)(a) = (v))
 #define __raw_writew_no_log(v, a)	(__chk_io_ptr(a), *(volatile unsigned short __force *)(a) = (v))
