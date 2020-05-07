@@ -610,7 +610,7 @@ static int __devinit qpnp_tm_probe(struct spmi_device *spmi)
 	}
 
 	chip->tz_dev = thermal_zone_device_register(tm_name, TRIP_NUM, 0, chip,
-			tz_ops, 0, 0);
+			tz_ops, NULL, 0, 0);
 	if (chip->tz_dev == NULL) {
 		dev_err(&spmi->dev, "%s: thermal_zone_device_register() failed.\n",
 			__func__);

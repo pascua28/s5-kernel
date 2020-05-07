@@ -203,6 +203,7 @@ enum events {
 	THERMAL_AUX1,
 	THERMAL_CRITICAL,
 	THERMAL_DEV_FAULT,
+};
 
 /* Structure that holds thermal governor information */
 struct thermal_governor {

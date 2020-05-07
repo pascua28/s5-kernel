@@ -1603,7 +1603,7 @@ static int __devinit _tsens_register_thermal(void)
 								       TSENS_WRITABLE_TRIPS_MASK,
 								       &tmdev->sensor[i],
 								       &tsens_thermal_zone_ops,
-								       0, 0);
+								       NULL, 0, 0);
 		if (IS_ERR(tmdev->sensor[i].tz_dev)) {
 			pr_err("%s: thermal_zone_device_register() failed.\n",
 			__func__);
