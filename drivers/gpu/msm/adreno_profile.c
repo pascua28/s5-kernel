@@ -495,6 +495,11 @@ static int profile_enable_set(void *data, u64 val)
 
 	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
+	if (adreno_is_a2xx(adreno_dev)) {
+		kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+		return 0;
+	}
+
 	profile->enabled = val;
 
 	check_close_profile(profile);
@@ -514,6 +519,9 @@ static ssize_t profile_assignments_read(struct file *filep,
 	int len = 0, max_size = PAGE_SIZE;
 	char *buf, *pos;
 	ssize_t size = 0;
+
+	if (adreno_is_a2xx(adreno_dev))
+		return -EINVAL;
 
 	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
@@ -668,6 +676,9 @@ static ssize_t profile_assignments_write(struct file *filep,
 
 	if (len >= PAGE_SIZE || len == 0)
 		return -EINVAL;
+
+	if (adreno_is_a2xx(adreno_dev))
+		return -ENOSPC;
 
 	buf = kmalloc(len + 1, GFP_KERNEL);
 	if (buf == NULL)
@@ -862,6 +873,9 @@ static int profile_pipe_print(struct file *filep, char __user *ubuf,
 	char *usr_buf = ubuf;
 	int status = 0;
 
+	if (adreno_is_a2xx(adreno_dev))
+		return 0;
+
 	/*
 	 * this file not seekable since it only supports streaming, ignore
 	 * ppos <> 0
@@ -917,6 +931,10 @@ static int profile_groups_print(struct seq_file *s, void *unused)
 	struct adreno_perfcounters *counters = adreno_dev->gpudev->perfcounters;
 	struct adreno_perfcount_group *group;
 	int i, j, used;
+
+	/* perfcounter list not allowed on a2xx */
+	if (adreno_is_a2xx(adreno_dev))
+		return -EINVAL;
 
 	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
@@ -982,7 +1000,7 @@ void adreno_profile_init(struct kgsl_device *device)
 
 	/* allocate shared_buffer, which includes pre_ib and post_ib */
 	profile->shared_size = ADRENO_PROFILE_SHARED_BUF_SIZE_DWORDS;
-	ret = kgsl_allocate_contiguous(device, &profile->shared_buffer,
+	ret = kgsl_allocate_contiguous(&profile->shared_buffer,
 			profile->shared_size * sizeof(unsigned int));
 	if (ret) {
 		profile->shared_buffer.hostptr = NULL;
