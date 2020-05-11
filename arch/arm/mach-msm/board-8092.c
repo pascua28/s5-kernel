@@ -35,14 +35,36 @@
 #include "clock.h"
 #include "platsmp.h"
 
+static struct memtype_reserve mpq8092_reserve_table[] __initdata = {
+	[MEMTYPE_SMI] = {
+	},
+	[MEMTYPE_EBI0] = {
+		.flags  =       MEMTYPE_FLAGS_1M_ALIGN,
+		},
+	[MEMTYPE_EBI1] = {
+		.flags  =       MEMTYPE_FLAGS_1M_ALIGN,
+		},
+};
+
+static int mpq8092_paddr_to_memtype(unsigned int paddr)
+{
+	return MEMTYPE_EBI1;
+}
+
+static struct reserve_info mpq8092_reserve_info __initdata = {
+	.memtype_reserve_table = mpq8092_reserve_table,
+	.paddr_to_memtype = mpq8092_paddr_to_memtype,
+};
+
 static void __init mpq8092_early_memory(void)
 {
-	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
+	reserve_info = &mpq8092_reserve_info;
+	of_scan_flat_dt(dt_scan_for_memory_reserve, mpq8092_reserve_table);
 }
 
 static void __init mpq8092_dt_reserve(void)
 {
-	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
+	msm_reserve();
 }
 
 static void __init mpq8092_map_io(void)

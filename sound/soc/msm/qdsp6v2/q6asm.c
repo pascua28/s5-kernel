@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/msm_audio.h>
 
+#include <linux/memory_alloc.h>
 #include <linux/debugfs.h>
 #include <linux/time.h>
 #include <linux/atomic.h>

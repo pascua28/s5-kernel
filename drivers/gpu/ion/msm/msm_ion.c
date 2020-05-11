@@ -16,6 +16,7 @@
 #include <linux/msm_ion.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/memory_alloc.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/of_address.h>
@@ -29,7 +30,6 @@
 #include <linux/dma-contiguous.h>
 #include <mach/ion.h>
 #include <mach/msm_memtypes.h>
-#include <mach/iommu_domains.h>
 #include <asm/cacheflush.h>
 #include "../ion_priv.h"
 #include "ion_cp_common.h"

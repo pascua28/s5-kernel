@@ -41,9 +41,13 @@ int kgsl_sharedmem_page_alloc_user(struct kgsl_memdesc *memdesc,
 
 int kgsl_sharedmem_alloc_coherent(struct kgsl_memdesc *memdesc, size_t size);
 
-int kgsl_cma_alloc_coherent(struct kgsl_device *device,
-			struct kgsl_memdesc *memdesc,
-			struct kgsl_pagetable *pagetable, size_t size);
+int kgsl_sharedmem_ebimem_user(struct kgsl_memdesc *memdesc,
+			     struct kgsl_pagetable *pagetable,
+			     size_t size);
+
+int kgsl_sharedmem_ebimem(struct kgsl_memdesc *memdesc,
+			struct kgsl_pagetable *pagetable,
+			size_t size);
 
 void kgsl_sharedmem_free(struct kgsl_memdesc *memdesc);
 
@@ -249,16 +253,14 @@ kgsl_memdesc_mmapsize(const struct kgsl_memdesc *memdesc)
 }
 
 static inline int
-kgsl_allocate(struct kgsl_device *device, struct kgsl_memdesc *memdesc,
+kgsl_allocate(struct kgsl_memdesc *memdesc,
 		struct kgsl_pagetable *pagetable, size_t size)
 {
 	int ret;
 	memdesc->priv |= (KGSL_MEMTYPE_KERNEL << KGSL_MEMTYPE_SHIFT);
-	if (kgsl_mmu_get_mmutype() == KGSL_MMU_TYPE_NONE) {
-		size = ALIGN(size, PAGE_SIZE * 2);
-		return kgsl_cma_alloc_coherent(device, memdesc, pagetable,
-						size);
-	}
+	if (kgsl_mmu_get_mmutype() == KGSL_MMU_TYPE_NONE)
+		return kgsl_sharedmem_ebimem(memdesc, pagetable, size);
+
 	ret = kgsl_sharedmem_page_alloc(memdesc, pagetable, size);
 	if (ret)
 		return ret;
@@ -274,8 +276,7 @@ kgsl_allocate(struct kgsl_device *device, struct kgsl_memdesc *memdesc,
 }
 
 static inline int
-kgsl_allocate_user(struct kgsl_device *device,
-		struct kgsl_memdesc *memdesc,
+kgsl_allocate_user(struct kgsl_memdesc *memdesc,
 		struct kgsl_pagetable *pagetable,
 		size_t size, unsigned int flags)
 {
@@ -286,10 +287,8 @@ kgsl_allocate_user(struct kgsl_device *device,
 
 	memdesc->flags = flags;
 
-	if (kgsl_mmu_get_mmutype() == KGSL_MMU_TYPE_NONE) {
-		size = ALIGN(size, PAGE_SIZE);
-		ret = kgsl_cma_alloc_coherent(device, memdesc, pagetable, size);
-	}
+	if (kgsl_mmu_get_mmutype() == KGSL_MMU_TYPE_NONE)
+		ret = kgsl_sharedmem_ebimem_user(memdesc, pagetable, size);
 	else
 		ret = kgsl_sharedmem_page_alloc_user(memdesc, pagetable, size);
 
