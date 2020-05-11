@@ -288,13 +288,12 @@ __dma_alloc_remap(struct page *page, size_t size, gfp_t gfp, pgprot_t prot,
 	return (void *)addr;
 }
 
-static void __dma_free_remap(void *cpu_addr, size_t size, bool no_warn)
+static void __dma_free_remap(void *cpu_addr, size_t size)
 {
 	unsigned int flags = VM_ARM_DMA_CONSISTENT | VM_USERMAP;
 	struct vm_struct *area = find_vm_area(cpu_addr);
 	if (!area || (area->flags & flags) != flags) {
-		if (!no_warn)
-			WARN(1, "trying to free invalid coherent area: %p\n", cpu_addr);
+		WARN(1, "trying to free invalid coherent area: %p\n", cpu_addr);
 		return;
 	}
 	unmap_kernel_range((unsigned long)cpu_addr, size);
@@ -572,7 +571,6 @@ static int __free_from_pool(void *start, size_t size)
 	return 1;
 }
 
-#define NO_KERNEL_MAPPING_DUMMY		0x2222
 static void *__alloc_from_contiguous(struct device *dev, size_t size,
 				     pgprot_t prot, struct page **ret_page,
 				     bool no_kernel_mapping, const void *caller)
@@ -592,20 +590,10 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
 		__dma_remap(page, size, prot, no_kernel_mapping);
 		ptr = page_address(page);
 	} else {
-		if (no_kernel_mapping) {
-			/*
-			 * Something non-NULL needs to be returned here. Give
-			 * back a dummy address that is unmapped to catch
-			 * clients trying to use the address incorrectly
-			 */
-			ptr = (void *)NO_KERNEL_MAPPING_DUMMY;
-		} else {
-			ptr = __dma_alloc_remap(page, size, GFP_KERNEL, prot,
-						caller);
-			if (!ptr) {
-				dma_release_from_contiguous(dev, page, count);
-				return NULL;
-			}
+		ptr = __dma_alloc_remap(page, size, GFP_KERNEL, prot, caller);
+		if (!ptr) {
+			dma_release_from_contiguous(dev, page, count);
+			return NULL;
 		}
 	}
 	*ret_page = page;
@@ -618,7 +606,7 @@ static void __free_from_contiguous(struct device *dev, struct page *page,
 	if (!PageHighMem(page))
 		__dma_remap(page, size, pgprot_kernel, false);
 	else
-		__dma_free_remap(cpu_addr, size, true);
+		__dma_free_remap(cpu_addr, size);
 	dma_release_from_contiguous(dev, page, size >> PAGE_SHIFT);
 }
 
@@ -647,7 +635,7 @@ static inline pgprot_t __get_dma_pgprot(struct dma_attrs *attrs, pgprot_t prot)
 #define __alloc_from_contiguous(dev, size, prot, ret, W)	NULL
 #define __free_from_pool(cpu_addr, size)			0
 #define __free_from_contiguous(dev, page, size)			do { } while (0)
-#define __dma_free_remap(cpu_addr, size, no_warn)		do { } while (0)
+#define __dma_free_remap(cpu_addr, size)			do { } while (0)
 
 #endif	/* CONFIG_MMU */
 
@@ -799,7 +787,7 @@ static void __arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
 	} else if (__free_from_pool(cpu_addr, size)) {
 		return;
 	} else if (!IS_ENABLED(CONFIG_CMA)) {
-		__dma_free_remap(cpu_addr, size, false);
+		__dma_free_remap(cpu_addr, size);
 		__dma_free_buffer(page, size);
 	} else {
 		/*
