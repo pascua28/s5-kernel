@@ -142,6 +142,8 @@ source "drivers/clocksource/Kconfig"
 
 source "drivers/motor/Kconfig"
 
+source "drivers/mailbox/Kconfig"
+
 source "drivers/iommu/Kconfig"
 
 source "drivers/remoteproc/Kconfig"
@@ -179,6 +181,8 @@ source "drivers/irda/Kconfig"
 source "drivers/qsc/Kconfig"
 
 source "drivers/memory/Kconfig"
+
+source "drivers/ntb/Kconfig"
 
 source "drivers/vme/Kconfig"
 

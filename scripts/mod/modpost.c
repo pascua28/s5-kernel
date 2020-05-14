@@ -832,6 +832,8 @@ static const char *section_white_list[] =
 	".toc*",
 	".xt.prop",				 /* xtensa */
 	".xt.lit",         /* xtensa */
+	".arcextmap*",			/* arc */
+	".gnu.linkonce.arcext*",	/* arc : modules */
 	NULL
 };
 
@@ -2128,7 +2130,7 @@ int main(int argc, char **argv)
 	struct ext_sym_list *extsym_iter;
 	struct ext_sym_list *extsym_start = NULL;
 
-	while ((opt = getopt(argc, argv, "i:I:e:cmsSo:awM:K:E")) != -1) {
+	while ((opt = getopt(argc, argv, "i:I:e:msSo:awM:K:")) != -1) {
 		switch (opt) {
 		case 'i':
 			kernel_read = optarg;
@@ -2136,9 +2138,6 @@ int main(int argc, char **argv)
 		case 'I':
 			module_read = optarg;
 			external_module = 1;
-			break;
-		case 'c':
-			cross_build = 1;
 			break;
 		case 'e':
 			external_module = 1;

@@ -5657,6 +5657,9 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
 	if (len < sizeof(sctp_assoc_t))
 		return -EINVAL;
 
+	/* Allow the struct to grow and fill in as much as possible */
+	len = min_t(size_t, len, sizeof(sas));
+
 	if (copy_from_user(&sas, optval, len))
 		return -EFAULT;
 
@@ -5689,9 +5692,6 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
 
 	/* Mark beginning of a new observation period */
 	asoc->stats.max_obs_rto = asoc->rto_min;
-
-	/* Allow the struct to grow and fill in as much as possible */
-	len = min_t(size_t, len, sizeof(sas));
 
 	if (put_user(len, optlen))
 		return -EFAULT;
@@ -5886,8 +5886,7 @@ static struct sctp_bind_bucket *sctp_bucket_create(
 static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
 {
 	struct sctp_bind_hashbucket *head; /* hash list */
-	struct sctp_bind_bucket *pp; /* hash list port iterator */
-	struct hlist_node *node;
+	struct sctp_bind_bucket *pp;
 	unsigned short snum;
 	int ret;
 
@@ -5914,7 +5913,7 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
 			index = sctp_phashfn(sock_net(sk), rover);
 			head = &sctp_port_hashtable[index];
 			sctp_spin_lock(&head->lock);
-			sctp_for_each_hentry(pp, node, &head->chain)
+			sctp_for_each_hentry(pp, &head->chain)
 				if ((pp->port == rover) &&
 				    net_eq(sock_net(sk), pp->net))
 					goto next;
@@ -5942,7 +5941,7 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
 		 */
 		head = &sctp_port_hashtable[sctp_phashfn(sock_net(sk), snum)];
 		sctp_spin_lock(&head->lock);
-		sctp_for_each_hentry(pp, node, &head->chain) {
+		sctp_for_each_hentry(pp, &head->chain) {
 			if ((pp->port == snum) && net_eq(pp->net, sock_net(sk)))
 				goto pp_found;
 		}
@@ -5974,7 +5973,7 @@ pp_found:
 		 * that this port/socket (sk) combination are already
 		 * in an endpoint.
 		 */
-		sk_for_each_bound(sk2, node, &pp->owner) {
+		sk_for_each_bound(sk2, &pp->owner) {
 			struct sctp_endpoint *ep2;
 			ep2 = sctp_sk(sk2)->ep;
 

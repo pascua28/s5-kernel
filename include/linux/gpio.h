@@ -95,12 +95,6 @@ static inline int gpio_request_one(unsigned gpio,
 	return -ENOSYS;
 }
 
-static inline int devm_gpio_request_one(struct device *dev, unsigned gpio,
-					unsigned long flags, const char *label)
-{
-	return -ENOSYS;
-}
-
 static inline int gpio_request_array(const struct gpio *array, size_t num)
 {
 	return -ENOSYS;
@@ -228,5 +222,13 @@ gpiochip_remove_pin_ranges(struct gpio_chip *chip)
 }
 
 #endif /* ! CONFIG_GENERIC_GPIO */
+
+struct device;
+
+/* bindings for managed devices that want to request gpios */
+int devm_gpio_request(struct device *dev, unsigned gpio, const char *label);
+int devm_gpio_request_one(struct device *dev, unsigned gpio,
+			  unsigned long flags, const char *label);
+void devm_gpio_free(struct device *dev, unsigned int gpio);
 
 #endif /* __LINUX_GPIO_H */

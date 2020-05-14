@@ -85,20 +85,14 @@ enum carl9170_device_state {
 	CARL9170_STARTED,
 };
 
-#define CARL9170_NUM_TID		16
 #define WME_BA_BMP_SIZE			64
 #define CARL9170_TX_USER_RATE_TRIES	3
 
-#define WME_AC_BE   2
-#define WME_AC_BK   3
-#define WME_AC_VI   1
-#define WME_AC_VO   0
-
 #define TID_TO_WME_AC(_tid)				\
-	((((_tid) == 0) || ((_tid) == 3)) ? WME_AC_BE :	\
-	 (((_tid) == 1) || ((_tid) == 2)) ? WME_AC_BK :	\
-	 (((_tid) == 4) || ((_tid) == 5)) ? WME_AC_VI :	\
-	 WME_AC_VO)
+	((((_tid) == 0) || ((_tid) == 3)) ? IEEE80211_AC_BE :	\
+	 (((_tid) == 1) || ((_tid) == 2)) ? IEEE80211_AC_BK :	\
+	 (((_tid) == 4) || ((_tid) == 5)) ? IEEE80211_AC_VI :	\
+	 IEEE80211_AC_VO)
 
 #define SEQ_DIFF(_start, _seq) \
 	(((_start) - (_seq)) & 0x0fff)
@@ -289,6 +283,8 @@ struct ar9170 {
 		unsigned int mem_block_size;
 		unsigned int rx_size;
 		unsigned int tx_seq_table;
+		bool ba_filter;
+		bool disable_offload_fw;
 	} fw;
 
 	/* interface configuration combinations */
@@ -427,6 +423,10 @@ struct ar9170 {
 	int rx_failover_missing;
 	u32 ampdu_ref;
 
+	/* FIFO for collecting outstanding BlockAckRequest */
+	struct list_head bar_list[__AR9170_NUM_TXQ];
+	spinlock_t bar_list_lock[__AR9170_NUM_TXQ];
+
 #ifdef CONFIG_CARL9170_WPC
 	struct {
 		bool pbc_state;
@@ -470,6 +470,12 @@ enum carl9170_ps_off_override_reasons {
 	PS_OFF_BCN	= BIT(1),
 };
 
+struct carl9170_bar_list_entry {
+	struct list_head list;
+	struct rcu_head head;
+	struct sk_buff *skb;
+};
+
 struct carl9170_ba_stats {
 	u8 ampdu_len;
 	u8 ampdu_ack_len;
@@ -482,8 +488,8 @@ struct carl9170_sta_info {
 	bool sleeping;
 	atomic_t pending_frames;
 	unsigned int ampdu_max_len;
-	struct carl9170_sta_tid __rcu *agg[CARL9170_NUM_TID];
-	struct carl9170_ba_stats stats[CARL9170_NUM_TID];
+	struct carl9170_sta_tid __rcu *agg[IEEE80211_NUM_TIDS];
+	struct carl9170_ba_stats stats[IEEE80211_NUM_TIDS];
 };
 
 struct carl9170_tx_info {

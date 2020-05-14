@@ -1389,6 +1389,8 @@ static int irda_recvmsg_dgram(struct kiocb *iocb, struct socket *sock,
 
 	IRDA_DEBUG(4, "%s()\n", __func__);
 
+	msg->msg_namelen = 0;
+
 	skb = skb_recv_datagram(sk, flags & ~MSG_DONTWAIT,
 				flags & MSG_DONTWAIT, &err);
 	if (!skb)
@@ -2570,8 +2572,7 @@ bed:
 						   err);
 
 			/* If watchdog is still activated, kill it! */
-			if(timer_pending(&(self->watchdog)))
-				del_timer(&(self->watchdog));
+			del_timer(&(self->watchdog));
 
 			IRDA_DEBUG(1, "%s(), ...waking up !\n", __func__);
 
@@ -2587,8 +2588,10 @@ bed:
 				    NULL, NULL, NULL);
 
 		/* Check if the we got some results */
-		if (!self->cachedaddr)
-			return -EAGAIN;		/* Didn't find any devices */
+		if (!self->cachedaddr) {
+			err = -EAGAIN;		/* Didn't find any devices */
+			goto out;
+		}
 		daddr = self->cachedaddr;
 		/* Cleanup */
 		self->cachedaddr = 0;
