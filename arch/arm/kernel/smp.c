@@ -43,11 +43,8 @@
 #include <asm/ptrace.h>
 #include <asm/localtimer.h>
 #include <asm/smp_plat.h>
-#include <asm/mach/arch.h>
 #include <asm/virt.h>
-#ifdef CONFIG_SEC_DEBUG
-#include <mach/sec_debug.h>
-#endif
+#include <asm/mach/arch.h>
 
 /*
  * as from 2.5, kernels no longer have an init_tasks structure
@@ -60,19 +57,15 @@ struct secondary_data secondary_data;
  * control for which core is the next to come out of the secondary
  * boot "holding pen"
  */
-#if 0
 volatile int __cpuinitdata pen_release = -1;
-#endif
 
 enum ipi_msg_type {
-	IPI_CPU_START = 1,
 	IPI_WAKEUP,
 	IPI_TIMER,
 	IPI_RESCHEDULE,
 	IPI_CALL_FUNC,
 	IPI_CALL_FUNC_SINGLE,
 	IPI_CPU_STOP,
-	IPI_CPU_BACKTRACE,
 };
 
 static DECLARE_COMPLETION(cpu_running);
@@ -126,25 +119,25 @@ int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 }
 
 /* platform specific SMP operations */
-void __attribute__((weak))__init smp_init_cpus(void)
+void __init smp_init_cpus(void)
 {
 	if (smp_ops.smp_init_cpus)
 		smp_ops.smp_init_cpus();
 }
 
-void __attribute__((weak))__init platform_smp_prepare_cpus(unsigned int max_cpus)
+static void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 {
 	if (smp_ops.smp_prepare_cpus)
 		smp_ops.smp_prepare_cpus(max_cpus);
 }
 
-void __attribute__((weak))__cpuinit platform_secondary_init(unsigned int cpu)
+static void __cpuinit platform_secondary_init(unsigned int cpu)
 {
 	if (smp_ops.smp_secondary_init)
 		smp_ops.smp_secondary_init(cpu);
 }
 
-int __attribute__((weak))__cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
+int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	if (smp_ops.smp_boot_secondary)
 		return smp_ops.smp_boot_secondary(cpu, idle);
@@ -154,36 +147,35 @@ int __attribute__((weak))__cpuinit boot_secondary(unsigned int cpu, struct task_
 #ifdef CONFIG_HOTPLUG_CPU
 static void percpu_timer_stop(void);
 
-int __attribute__((weak)) platform_cpu_kill(unsigned int cpu)
+static int platform_cpu_kill(unsigned int cpu)
 {
 	if (smp_ops.cpu_kill)
 		return smp_ops.cpu_kill(cpu);
 	return 1;
 }
 
-void __attribute__((weak)) platform_cpu_die(unsigned int cpu)
+static void platform_cpu_die(unsigned int cpu)
 {
 	if (smp_ops.cpu_die)
 		smp_ops.cpu_die(cpu);
 }
 
-int __attribute__((weak)) platform_cpu_disable(unsigned int cpu)
+static int platform_cpu_disable(unsigned int cpu)
 {
 	if (smp_ops.cpu_disable)
 		return smp_ops.cpu_disable(cpu);
 
 	/*
-	* By default, allow disabling all CPUs except the first one,
-	* since this is special on a lot of platforms, e.g. because
-	* of clock tick interrupts.
-	*/
+	 * By default, allow disabling all CPUs except the first one,
+	 * since this is special on a lot of platforms, e.g. because
+	 * of clock tick interrupts.
+	 */
 	return cpu == 0 ? -EPERM : 0;
 }
-
 /*
  * __cpu_disable runs on the processor to be shutdown.
  */
-int __cpu_disable(void)
+int __cpuinit __cpu_disable(void)
 {
 	unsigned int cpu = smp_processor_id();
 	int ret;
@@ -211,6 +203,7 @@ int __cpu_disable(void)
 	/*
 	 * Flush user cache and TLB mappings, and then remove this CPU
 	 * from the vm mask set of all processes.
+	 *
 	 * Caches are flushed to the Level of Unification Inner Shareable
 	 * to write-back dirty lines to unified caches shared by all CPUs.
 	 */
@@ -228,13 +221,13 @@ static DECLARE_COMPLETION(cpu_died);
  * called on the thread which is asking for a CPU to be shutdown -
  * waits until shutdown has completed, or it is timed out.
  */
-void __cpu_die(unsigned int cpu)
+void __cpuinit __cpu_die(unsigned int cpu)
 {
 	if (!wait_for_completion_timeout(&cpu_died, msecs_to_jiffies(5000))) {
 		pr_err("CPU%u: cpu didn't die\n", cpu);
 		return;
 	}
-	pr_debug("CPU%u: shutdown\n", cpu);
+	printk(KERN_NOTICE "CPU%u: shutdown\n", cpu);
 
 	if (!platform_cpu_kill(cpu))
 		printk("CPU%u: unable to kill\n", cpu);
@@ -292,6 +285,8 @@ static void __cpuinit smp_store_cpu_info(unsigned int cpuid)
 
 	store_cpu_topology(cpuid);
 }
+
+static void percpu_timer_setup(void);
 
 /*
  * This is the secondary CPU boot entry.  We're using this CPUs
@@ -441,14 +436,12 @@ void arch_send_call_function_single_ipi(int cpu)
 
 static const char *ipi_types[NR_IPI] = {
 #define S(x,s)	[x] = s
-	S(IPI_CPU_START, "CPU start interrupts"),
 	S(IPI_WAKEUP, "CPU wakeup interrupts"),
 	S(IPI_TIMER, "Timer broadcast interrupts"),
 	S(IPI_RESCHEDULE, "Rescheduling interrupts"),
 	S(IPI_CALL_FUNC, "Function call interrupts"),
 	S(IPI_CALL_FUNC_SINGLE, "Single function call interrupts"),
 	S(IPI_CPU_STOP, "CPU stop interrupts"),
-	S(IPI_CPU_BACKTRACE, "CPU backtrace"),
 };
 
 void show_ipi_list(struct seq_file *p, int prec)
@@ -531,7 +524,7 @@ int local_timer_register(struct local_timer_ops *ops)
 }
 #endif
 
-void __cpuinit percpu_timer_setup(void)
+static void __cpuinit percpu_timer_setup(void)
 {
 	unsigned int cpu = smp_processor_id();
 	struct clock_event_device *evt = &per_cpu(percpu_clockevent, cpu);
@@ -561,21 +554,16 @@ static void percpu_timer_stop(void)
 
 static DEFINE_RAW_SPINLOCK(stop_lock);
 
-static struct pt_regs __percpu regs_before_stop;
 /*
  * ipi_cpu_stop - handle IPI from smp_send_stop()
  */
-static void ipi_cpu_stop(unsigned int cpu, struct pt_regs *regs)
+static void ipi_cpu_stop(unsigned int cpu)
 {
 	if (system_state == SYSTEM_BOOTING ||
 	    system_state == SYSTEM_RUNNING) {
-		per_cpu(regs_before_stop, cpu) = *regs;
 		raw_spin_lock(&stop_lock);
 		printk(KERN_CRIT "CPU%u: stopping\n", cpu);
 		dump_stack();
-#ifdef CONFIG_SEC_DEBUG
-		sec_debug_dump_stack();
-#endif
 		raw_spin_unlock(&stop_lock);
 	}
 
@@ -584,62 +572,8 @@ static void ipi_cpu_stop(unsigned int cpu, struct pt_regs *regs)
 	local_fiq_disable();
 	local_irq_disable();
 
-	flush_cache_all();
-
 	while (1)
 		cpu_relax();
-}
-
-static cpumask_t backtrace_mask;
-static DEFINE_RAW_SPINLOCK(backtrace_lock);
-
-/* "in progress" flag of arch_trigger_all_cpu_backtrace */
-static unsigned long backtrace_flag;
-
-void smp_send_all_cpu_backtrace(void)
-{
-	unsigned int this_cpu = smp_processor_id();
-	int i;
-
-	if (test_and_set_bit(0, &backtrace_flag))
-		/*
-		 * If there is already a trigger_all_cpu_backtrace() in progress
-		 * (backtrace_flag == 1), don't output double cpu dump infos.
-		 */
-		return;
-
-	cpumask_copy(&backtrace_mask, cpu_online_mask);
-	cpu_clear(this_cpu, backtrace_mask);
-
-	pr_info("Backtrace for cpu %d (current):\n", this_cpu);
-	dump_stack();
-
-	pr_info("\nsending IPI to all other CPUs:\n");
-	smp_cross_call(&backtrace_mask, IPI_CPU_BACKTRACE);
-
-	/* Wait for up to 10 seconds for all other CPUs to do the backtrace */
-	for (i = 0; i < 10 * 1000; i++) {
-		if (cpumask_empty(&backtrace_mask))
-			break;
-		mdelay(1);
-	}
-
-	clear_bit(0, &backtrace_flag);
-	smp_mb__after_clear_bit();
-}
-
-/*
- * ipi_cpu_backtrace - handle IPI from smp_send_all_cpu_backtrace()
- */
-static void ipi_cpu_backtrace(unsigned int cpu, struct pt_regs *regs)
-{
-	if (cpu_isset(cpu, backtrace_mask)) {
-		raw_spin_lock(&backtrace_lock);
-		pr_warning("IPI backtrace for cpu %d\n", cpu);
-		show_regs(regs);
-		raw_spin_unlock(&backtrace_lock);
-		cpu_clear(cpu, backtrace_mask);
-	}
 }
 
 /*
@@ -659,10 +593,6 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 		__inc_irq_stat(cpu, ipi_irqs[ipinr]);
 
 	switch (ipinr) {
-	case IPI_CPU_START:
-		/* Wake up from WFI/WFE using SGI */
-		break;
-
 	case IPI_WAKEUP:
 		break;
 
@@ -690,12 +620,8 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 
 	case IPI_CPU_STOP:
 		irq_enter();
-		ipi_cpu_stop(cpu, regs);
+		ipi_cpu_stop(cpu);
 		irq_exit();
-		break;
-
-	case IPI_CPU_BACKTRACE:
-		ipi_cpu_backtrace(cpu, regs);
 		break;
 
 	default:
