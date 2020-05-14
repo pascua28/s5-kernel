@@ -4337,8 +4337,7 @@ CONFIG_DEBUG_LL_INCLUDE="mach/debug-macro.S"
 #
 # PowerManagement Feature
 #
-CONFIG_SEC_PM=y
-# CONFIG_SEC_PM_DEBUG is not set
+# CONFIG_SEC_PM is not set
 CONFIG_PID_IN_CONTEXTIDR=y
 
 #
