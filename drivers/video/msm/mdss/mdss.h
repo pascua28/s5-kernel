@@ -20,6 +20,7 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
+#include <linux/irqreturn.h>
 
 #include <mach/iommu_domains.h>
 

@@ -21,8 +21,6 @@ source "drivers/gpu/vga/Kconfig"
 
 source "drivers/gpu/drm/Kconfig"
 
-source "drivers/gpu/stub/Kconfig"
-
 source "drivers/gpu/ion/Kconfig"
 
 source "drivers/gpu/msm/Kconfig"

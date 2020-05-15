@@ -10,9 +10,10 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/irqchip/qpnp-int.h>
-#include <linux/irqchip/msm-gpio-irq.h>
-#include <linux/irqchip/msm-mpm-irq.h>
+#include <mach/qpnp-int.h>
+#include <mach/gpio.h>
+#include <mach/mpm.h>
+//#include <linux/irqchip/msm-mpm-irq.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include "irqchip.h"
 
@@ -36,7 +37,7 @@ static int __init irq_msm_gpio_init(struct device_node *node,
 	 * gpio irq controller is the child of gic irq controller, hence gic's
 	 * init function will be called prior to gpio.
 	 */
-	of_mpm_init();
+	of_mpm_init(node);
 
 	return 0;
 }

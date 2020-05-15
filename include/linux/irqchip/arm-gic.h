@@ -89,5 +89,3 @@ void gic_set_irq_secure(unsigned int irq);
 #endif
 
 #endif /* __ASSEMBLY */
-
-#endif

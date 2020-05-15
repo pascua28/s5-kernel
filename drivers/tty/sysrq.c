@@ -41,6 +41,7 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/uaccess.h>
+#include <linux/sched/rt.h>
 
 #include <asm/ptrace.h>
 #include <asm/irq_regs.h>

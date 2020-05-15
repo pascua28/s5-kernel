@@ -30,6 +30,7 @@
 #include <linux/kthread.h>
 #include <linux/slab.h>
 #include <linux/kernel_stat.h>
+#include <linux/sched/rt.h>
 #include <asm/cputime.h>
 
 #define CREATE_TRACE_POINTS
