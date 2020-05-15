@@ -334,8 +334,6 @@ static void __init arm_smp_init_cpus(void)
 
 	for (i = 0; i < ncores; i++)
 		set_cpu_possible(i, true);
-
-	set_smp_cross_call(gic_raise_softirq);
 }
 
 static int cold_boot_flags[] __initdata = {
