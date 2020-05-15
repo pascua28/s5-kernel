@@ -16,6 +16,7 @@
 #include <net/rtnetlink.h>
 #include "nl80211.h"
 #include "reg.h"
+#include "rdev-ops.h"
 
 struct cfg80211_conn {
 	struct cfg80211_connect_params params;
@@ -51,7 +52,7 @@ static bool cfg80211_is_all_idle(void)
 	 */
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
 		cfg80211_lock_rdev(rdev);
-		list_for_each_entry(wdev, &rdev->netdev_list, list) {
+		list_for_each_entry(wdev, &rdev->wdev_list, list) {
 			wdev_lock(wdev);
 			if (wdev->sme_state != CFG80211_SME_IDLE)
 				is_all_idle = false;
@@ -84,6 +85,7 @@ static int cfg80211_conn_scan(struct wireless_dev *wdev)
 	ASSERT_RTNL();
 	ASSERT_RDEV_LOCK(rdev);
 	ASSERT_WDEV_LOCK(wdev);
+	lockdep_assert_held(&rdev->sched_scan_mtx);
 
 	if (rdev->scan_req)
 		return -EBUSY;
@@ -136,15 +138,16 @@ static int cfg80211_conn_scan(struct wireless_dev *wdev)
 		wdev->conn->params.ssid_len);
 	request->ssids[0].ssid_len = wdev->conn->params.ssid_len;
 
-	request->dev = wdev->netdev;
+	request->wdev = wdev;
 	request->wiphy = &rdev->wiphy;
+	request->scan_start = jiffies;
 
 	rdev->scan_req = request;
 
-	err = rdev->ops->scan(wdev->wiphy, wdev->netdev, request);
+	err = rdev_scan(rdev, request);
 	if (!err) {
 		wdev->conn->state = CFG80211_CONN_SCANNING;
-		nl80211_send_scan_start(rdev, wdev->netdev);
+		nl80211_send_scan_start(rdev, wdev);
 		dev_hold(wdev->netdev);
 	} else {
 		rdev->scan_req = NULL;
@@ -179,7 +182,7 @@ static int cfg80211_conn_do_work(struct wireless_dev *wdev)
 					    params->ssid, params->ssid_len,
 					    NULL, 0,
 					    params->key, params->key_len,
-					    params->key_idx);
+					    params->key_idx, NULL, 0);
 	case CFG80211_CONN_ASSOCIATE_NEXT:
 		BUG_ON(!rdev->ops->assoc);
 		wdev->conn->state = CFG80211_CONN_ASSOCIATING;
@@ -221,8 +224,9 @@ void cfg80211_conn_work(struct work_struct *work)
 	rtnl_lock();
 	cfg80211_lock_rdev(rdev);
 	mutex_lock(&rdev->devlist_mtx);
+	mutex_lock(&rdev->sched_scan_mtx);
 
-	list_for_each_entry(wdev, &rdev->netdev_list, list) {
+	list_for_each_entry(wdev, &rdev->wdev_list, list) {
 		wdev_lock(wdev);
 		if (!netif_running(wdev->netdev)) {
 			wdev_unlock(wdev);
@@ -245,6 +249,7 @@ void cfg80211_conn_work(struct work_struct *work)
 		wdev_unlock(wdev);
 	}
 
+	mutex_unlock(&rdev->sched_scan_mtx);
 	mutex_unlock(&rdev->devlist_mtx);
 	cfg80211_unlock_rdev(rdev);
 	rtnl_unlock();
@@ -299,7 +304,7 @@ static void __cfg80211_sme_scan_done(struct net_device *dev)
 
 	bss = cfg80211_get_conn_bss(wdev);
 	if (bss) {
-		cfg80211_put_bss(bss);
+		cfg80211_put_bss(&rdev->wiphy, bss);
 	} else {
 		/* not found */
 		if (wdev->conn->state == CFG80211_CONN_SCAN_AGAIN)
@@ -318,11 +323,9 @@ void cfg80211_sme_scan_done(struct net_device *dev)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 
-	mutex_lock(&wiphy_to_dev(wdev->wiphy)->devlist_mtx);
 	wdev_lock(wdev);
 	__cfg80211_sme_scan_done(dev);
 	wdev_unlock(wdev);
-	mutex_unlock(&wiphy_to_dev(wdev->wiphy)->devlist_mtx);
 }
 
 void cfg80211_sme_rx_auth(struct net_device *dev,
@@ -416,7 +419,7 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 			       struct cfg80211_bss *bss)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
-	u8 *country_ie;
+	const u8 *country_ie;
 #ifdef CONFIG_CFG80211_WEXT
 	union iwreq_data wrqu;
 #endif
@@ -462,7 +465,7 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 
 	if (wdev->current_bss) {
 		cfg80211_unhold_bss(wdev->current_bss);
-		cfg80211_put_bss(&wdev->current_bss->pub);
+		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
 		wdev->current_bss = NULL;
 	}
 
@@ -478,7 +481,7 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 		kfree(wdev->connect_keys);
 		wdev->connect_keys = NULL;
 		wdev->ssid_len = 0;
-		cfg80211_put_bss(bss);
+		cfg80211_put_bss(wdev->wiphy, bss);
 		return;
 	}
 
@@ -500,7 +503,15 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 	wdev->sme_state = CFG80211_SME_CONNECTED;
 	cfg80211_upload_connect_keys(wdev);
 
-	country_ie = (u8 *) ieee80211_bss_get_ie(bss, WLAN_EID_COUNTRY);
+	rcu_read_lock();
+	country_ie = ieee80211_bss_get_ie(bss, WLAN_EID_COUNTRY);
+	if (!country_ie) {
+		rcu_read_unlock();
+		return;
+	}
+
+	country_ie = kmemdup(country_ie, 2 + country_ie[1], GFP_ATOMIC);
+	rcu_read_unlock();
 
 	if (!country_ie)
 		return;
@@ -510,10 +521,9 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 	 * - country_ie + 2, the start of the country ie data, and
 	 * - and country_ie[1] which is the IE length
 	 */
-	regulatory_hint_11d(wdev->wiphy,
-			    bss->channel->band,
-			    country_ie + 2,
-			    country_ie[1]);
+	regulatory_hint_11d(wdev->wiphy, bss->channel->band,
+			    country_ie + 2, country_ie[1]);
+	kfree(country_ie);
 }
 
 void cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
@@ -577,7 +587,7 @@ void __cfg80211_roamed(struct wireless_dev *wdev,
 	}
 
 	cfg80211_unhold_bss(wdev->current_bss);
-	cfg80211_put_bss(&wdev->current_bss->pub);
+	cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
 	wdev->current_bss = NULL;
 
 	cfg80211_hold_bss(bss_from_pub(bss));
@@ -612,7 +622,7 @@ void __cfg80211_roamed(struct wireless_dev *wdev,
 
 	return;
 out:
-	cfg80211_put_bss(bss);
+	cfg80211_put_bss(wdev->wiphy, bss);
 }
 
 void cfg80211_roamed(struct net_device *dev,
@@ -654,7 +664,7 @@ void cfg80211_roamed_bss(struct net_device *dev,
 
 	ev = kzalloc(sizeof(*ev) + req_ie_len + resp_ie_len, gfp);
 	if (!ev) {
-		cfg80211_put_bss(bss);
+		cfg80211_put_bss(wdev->wiphy, bss);
 		return;
 	}
 
@@ -690,14 +700,12 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
-#ifndef CONFIG_CFG80211_ALLOW_RECONNECT
 	if (wdev->sme_state != CFG80211_SME_CONNECTED)
 		return;
-#endif
 
 	if (wdev->current_bss) {
 		cfg80211_unhold_bss(wdev->current_bss);
-		cfg80211_put_bss(&wdev->current_bss->pub);
+		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
 	}
 
 	wdev->current_bss = NULL;
@@ -719,7 +727,7 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 	 */
 	if (rdev->ops->del_key)
 		for (i = 0; i < 6; i++)
-			rdev->ops->del_key(wdev->wiphy, dev, i, false, NULL);
+			rdev_del_key(rdev, dev, i, false, NULL);
 
 #ifdef CONFIG_CFG80211_WEXT
 	memset(&wrqu, 0, sizeof(wrqu));
@@ -770,14 +778,10 @@ int __cfg80211_connect(struct cfg80211_registered_device *rdev,
 
 	ASSERT_WDEV_LOCK(wdev);
 
-#ifndef CONFIG_CFG80211_ALLOW_RECONNECT
 	if (wdev->sme_state != CFG80211_SME_IDLE)
 		return -EALREADY;
 
 	if (WARN_ON(wdev->connect_keys)) {
-#else
-	if (wdev->connect_keys) {
-#endif
 		kfree(wdev->connect_keys);
 		wdev->connect_keys = NULL;
 	}
@@ -872,7 +876,7 @@ int __cfg80211_connect(struct cfg80211_registered_device *rdev,
 		if (bss) {
 			wdev->conn->state = CFG80211_CONN_AUTHENTICATE_NEXT;
 			err = cfg80211_conn_do_work(wdev);
-			cfg80211_put_bss(bss);
+			cfg80211_put_bss(wdev->wiphy, bss);
 		} else {
 			/* otherwise we'll need to scan for the AP first */
 			err = cfg80211_conn_scan(wdev);
@@ -899,7 +903,7 @@ int __cfg80211_connect(struct cfg80211_registered_device *rdev,
 	} else {
 		wdev->sme_state = CFG80211_SME_CONNECTING;
 		wdev->connect_keys = connkeys;
-		err = rdev->ops->connect(&rdev->wiphy, dev, connect);
+		err = rdev_connect(rdev, dev, connect);
 		if (err) {
 			wdev->connect_keys = NULL;
 			wdev->sme_state = CFG80211_SME_IDLE;
@@ -921,9 +925,12 @@ int cfg80211_connect(struct cfg80211_registered_device *rdev,
 	int err;
 
 	mutex_lock(&rdev->devlist_mtx);
+	/* might request scan - scan_mtx -> wdev_mtx dependency */
+	mutex_lock(&rdev->sched_scan_mtx);
 	wdev_lock(dev->ieee80211_ptr);
 	err = __cfg80211_connect(rdev, dev, connect, connkeys, NULL);
 	wdev_unlock(dev->ieee80211_ptr);
+	mutex_unlock(&rdev->sched_scan_mtx);
 	mutex_unlock(&rdev->devlist_mtx);
 
 	return err;
@@ -971,7 +978,7 @@ int __cfg80211_disconnect(struct cfg80211_registered_device *rdev,
 		if (err)
 			return err;
 	} else {
-		err = rdev->ops->disconnect(&rdev->wiphy, dev, reason);
+		err = rdev_disconnect(rdev, dev, reason);
 		if (err)
 			return err;
 	}
