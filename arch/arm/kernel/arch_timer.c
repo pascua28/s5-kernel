@@ -46,9 +46,6 @@ int __init arch_timer_arch_init(void)
 
 	arch_timer_delay_timer_register();
 
-	/* Cache the sched_clock multiplier to save a divide in the hot path. */
-	sched_clock_mult = NSEC_PER_SEC / arch_timer_rate;
-	sched_clock_func = arch_timer_sched_clock;
 	setup_sched_clock(arch_timer_read_counter_u32,
 			  32, arch_timer_get_rate());
 	return 0;
