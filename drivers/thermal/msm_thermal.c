@@ -35,6 +35,7 @@
 #include <linux/io.h>
 #include <linux/hrtimer.h>
 #include <linux/thermal.h>
+#include <linux/sched/rt.h>
 #include <mach/rpm-regulator.h>
 #include <mach/rpm-regulator-smd.h>
 #include <linux/regulator/consumer.h>

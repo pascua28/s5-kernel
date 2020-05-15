@@ -30,6 +30,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
+#include <linux/sched/rt.h>
 #include <trace/events/power.h>
 #include <mach/socinfo.h>
 #include <mach/cpufreq.h>

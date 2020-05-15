@@ -45,6 +45,7 @@
 #include <linux/ip.h>
 #include <net/addrconf.h>
 #include <linux/cpufreq.h>
+#include <linux/sched/rt.h>
 
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
