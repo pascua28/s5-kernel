@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2013, Intel Corp.
+ * Copyright (C) 2000 - 2012, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -107,6 +107,7 @@
 /* Linux uses GCC */
 
 #include <acpi/platform/acgcc.h>
+
 
 #ifdef __KERNEL__
 #include <acpi/actypes.h>

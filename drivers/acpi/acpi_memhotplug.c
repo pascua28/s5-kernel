@@ -54,7 +54,7 @@ MODULE_LICENSE("GPL");
 #define MEMORY_POWER_OFF_STATE	2
 
 static int acpi_memory_device_add(struct acpi_device *device);
-static int acpi_memory_device_remove(struct acpi_device *device);
+static int acpi_memory_device_remove(struct acpi_device *device, int type);
 
 static const struct acpi_device_id memory_device_ids[] = {
 	{ACPI_MEMORY_DEVICE_HID, 0},
@@ -153,46 +153,51 @@ acpi_memory_get_device_resources(struct acpi_memory_device *mem_device)
 	return 0;
 }
 
-static int acpi_memory_get_device(acpi_handle handle,
-				  struct acpi_memory_device **mem_device)
+static int
+acpi_memory_get_device(acpi_handle handle,
+		       struct acpi_memory_device **mem_device)
 {
+	acpi_status status;
+	acpi_handle phandle;
 	struct acpi_device *device = NULL;
-	int result = 0;
+	struct acpi_device *pdevice = NULL;
+	int result;
 
-	acpi_scan_lock_acquire();
 
-	acpi_bus_get_device(handle, &device);
-	if (device)
+	if (!acpi_bus_get_device(handle, &device) && device)
 		goto end;
+
+	status = acpi_get_parent(handle, &phandle);
+	if (ACPI_FAILURE(status)) {
+		ACPI_EXCEPTION((AE_INFO, status, "Cannot find acpi parent"));
+		return -EINVAL;
+	}
+
+	/* Get the parent device */
+	result = acpi_bus_get_device(phandle, &pdevice);
+	if (result) {
+		acpi_handle_warn(phandle, "Cannot get acpi bus device\n");
+		return -EINVAL;
+	}
 
 	/*
 	 * Now add the notified device.  This creates the acpi_device
 	 * and invokes .add function
 	 */
-	result = acpi_bus_scan(handle);
+	result = acpi_bus_add(&device, pdevice, handle, ACPI_BUS_TYPE_DEVICE);
 	if (result) {
-		acpi_handle_warn(handle, "ACPI namespace scan failed\n");
-		result = -EINVAL;
-		goto out;
-	}
-	result = acpi_bus_get_device(handle, &device);
-	if (result) {
-		acpi_handle_warn(handle, "Missing device object\n");
-		result = -EINVAL;
-		goto out;
+		acpi_handle_warn(handle, "Cannot add acpi bus\n");
+		return -EINVAL;
 	}
 
- end:
+      end:
 	*mem_device = acpi_driver_data(device);
 	if (!(*mem_device)) {
 		dev_err(&device->dev, "driver data not found\n");
-		result = -ENODEV;
-		goto out;
+		return -ENODEV;
 	}
 
- out:
-	acpi_scan_lock_release();
-	return result;
+	return 0;
 }
 
 static int acpi_memory_check_device(struct acpi_memory_device *mem_device)
@@ -316,7 +321,6 @@ static void acpi_memory_device_notify(acpi_handle handle, u32 event, void *data)
 	struct acpi_device *device;
 	struct acpi_eject_event *ej_event = NULL;
 	u32 ost_code = ACPI_OST_SC_NON_SPECIFIC_FAILURE; /* default */
-	acpi_status status;
 
 	switch (event) {
 	case ACPI_NOTIFY_BUS_CHECK:
@@ -339,40 +343,29 @@ static void acpi_memory_device_notify(acpi_handle handle, u32 event, void *data)
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 				  "\nReceived EJECT REQUEST notification for device\n"));
 
-		status = AE_ERROR;
-		acpi_scan_lock_acquire();
-
 		if (acpi_bus_get_device(handle, &device)) {
 			acpi_handle_err(handle, "Device doesn't exist\n");
-			goto unlock;
+			break;
 		}
 		mem_device = acpi_driver_data(device);
 		if (!mem_device) {
 			acpi_handle_err(handle, "Driver Data is NULL\n");
-			goto unlock;
+			break;
 		}
 
 		ej_event = kmalloc(sizeof(*ej_event), GFP_KERNEL);
 		if (!ej_event) {
 			pr_err(PREFIX "No memory, dropping EJECT\n");
-			goto unlock;
+			break;
 		}
 
-		get_device(&device->dev);
-		ej_event->device = device;
+		ej_event->handle = handle;
 		ej_event->event = ACPI_NOTIFY_EJECT_REQUEST;
-		/* The eject is carried out asynchronously. */
-		status = acpi_os_hotplug_execute(acpi_bus_hot_remove_device,
-						 ej_event);
-		if (ACPI_FAILURE(status)) {
-			put_device(&device->dev);
-			kfree(ej_event);
-		}
+		acpi_os_hotplug_execute(acpi_bus_hot_remove_device,
+					(void *)ej_event);
 
- unlock:
-		acpi_scan_lock_release();
-		if (ACPI_SUCCESS(status))
-			return;
+		/* eject is performed asynchronously */
+		return;
 	default:
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 				  "Unsupported event [0x%x]\n", event));
@@ -383,6 +376,7 @@ static void acpi_memory_device_notify(acpi_handle handle, u32 event, void *data)
 
 	/* Inform firmware that the hotplug operation has completed */
 	(void) acpi_evaluate_hotplug_ost(handle, event, ost_code, NULL);
+	return;
 }
 
 static void acpi_memory_device_free(struct acpi_memory_device *mem_device)
@@ -437,7 +431,7 @@ static int acpi_memory_device_add(struct acpi_device *device)
 	return result;
 }
 
-static int acpi_memory_device_remove(struct acpi_device *device)
+static int acpi_memory_device_remove(struct acpi_device *device, int type)
 {
 	struct acpi_memory_device *mem_device = NULL;
 	int result;

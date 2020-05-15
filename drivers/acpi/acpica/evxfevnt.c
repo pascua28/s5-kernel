@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2013, Intel Corp.
+ * Copyright (C) 2000 - 2012, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -61,6 +61,7 @@ ACPI_MODULE_NAME("evxfevnt")
  * DESCRIPTION: Transfers the system into ACPI mode.
  *
  ******************************************************************************/
+
 acpi_status acpi_enable(void)
 {
 	acpi_status status;
@@ -209,8 +210,8 @@ ACPI_EXPORT_SYMBOL(acpi_enable_event)
  *
  * FUNCTION:    acpi_disable_event
  *
- * PARAMETERS:  event           - The fixed event to be disabled
- *              flags           - Reserved
+ * PARAMETERS:  Event           - The fixed eventto be enabled
+ *              Flags           - Reserved
  *
  * RETURN:      Status
  *

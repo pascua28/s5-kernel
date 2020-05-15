@@ -89,15 +89,11 @@ struct cpufreq_real_policy {
 };
 
 struct cpufreq_policy {
-	/* CPUs sharing clock, require sw coordination */
-	cpumask_var_t		cpus;	/* Online CPUs only */
-	cpumask_var_t		related_cpus; /* Online + Offline CPUs */
-
-	unsigned int		shared_type; /* ACPI: ANY or ALL affected CPUs
+	cpumask_var_t		cpus;	/* CPUs requiring sw coordination */
+	cpumask_var_t		related_cpus; /* CPUs with any coordination */
+	unsigned int		shared_type; /* ANY or ALL affected CPUs
 						should set cpufreq */
-	unsigned int		cpu;    /* cpu nr of CPU managing this policy */
-	unsigned int		last_cpu; /* cpu nr of previous CPU that managed
-					   * this policy */
+	unsigned int		cpu;    /* cpu nr of registered CPU */
 	struct cpufreq_cpuinfo	cpuinfo;/* see above */
 
 	unsigned int		min;    /* in kHz */
@@ -116,22 +112,15 @@ struct cpufreq_policy {
 	struct completion	kobj_unregister;
 };
 
-#define CPUFREQ_ADJUST			(0)
-#define CPUFREQ_INCOMPATIBLE		(1)
-#define CPUFREQ_NOTIFY			(2)
-#define CPUFREQ_START			(3)
-#define CPUFREQ_UPDATE_POLICY_CPU	(4)
+#define CPUFREQ_ADJUST		(0)
+#define CPUFREQ_INCOMPATIBLE	(1)
+#define CPUFREQ_NOTIFY		(2)
+#define CPUFREQ_START		(3)
 
-/* Only for ACPI */
 #define CPUFREQ_SHARED_TYPE_NONE (0) /* None */
 #define CPUFREQ_SHARED_TYPE_HW	 (1) /* HW does needed coordination */
 #define CPUFREQ_SHARED_TYPE_ALL	 (2) /* All dependent CPUs should set freq */
 #define CPUFREQ_SHARED_TYPE_ANY	 (3) /* Freq can be set from any dependent CPU*/
-
-static inline bool policy_is_shared(struct cpufreq_policy *policy)
-{
-	return cpumask_weight(policy->cpus) > 1;
-}
 
 /******************** cpufreq transition notifiers *******************/
 
@@ -184,7 +173,6 @@ static inline unsigned long cpufreq_scale(unsigned long old, u_int div, u_int mu
 
 struct cpufreq_governor {
 	char	name[CPUFREQ_NAME_LEN];
-	int	initialized;
 	int	(*governor)	(struct cpufreq_policy *policy,
 				 unsigned int event);
 	ssize_t	(*show_setspeed)	(struct cpufreq_policy *policy,
@@ -320,9 +308,6 @@ __ATTR(_name, 0444, show_##_name, NULL)
 static struct global_attr _name =		\
 __ATTR(_name, 0644, show_##_name, store_##_name)
 
-struct cpufreq_policy *cpufreq_cpu_get(unsigned int cpu);
-void cpufreq_cpu_put(struct cpufreq_policy *data);
-const char *cpufreq_get_current_driver(void);
 
 /*********************************************************************
  *                        CPUFREQ 2.6. INTERFACE                     *
@@ -415,13 +400,14 @@ int cpufreq_frequency_table_target(struct cpufreq_policy *policy,
 
 /* the following 3 funtions are for cpufreq core use only */
 struct cpufreq_frequency_table *cpufreq_frequency_get_table(unsigned int cpu);
+struct cpufreq_policy *cpufreq_cpu_get(unsigned int cpu);
+void   cpufreq_cpu_put(struct cpufreq_policy *data);
 
 /* the following are really really optional */
 extern struct freq_attr cpufreq_freq_attr_scaling_available_freqs;
 
 void cpufreq_frequency_table_get_attr(struct cpufreq_frequency_table *table,
 				      unsigned int cpu);
-void cpufreq_frequency_table_update_policy_cpu(struct cpufreq_policy *policy);
 
 void cpufreq_frequency_table_put_attr(unsigned int cpu);
 #endif /* _LINUX_CPUFREQ_H */

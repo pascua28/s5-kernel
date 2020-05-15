@@ -116,16 +116,14 @@ acpi_table_print_srat_entry(struct acpi_subtable_header *header)
 			struct acpi_srat_mem_affinity *p =
 			    (struct acpi_srat_mem_affinity *)header;
 			ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-					  "SRAT Memory (0x%lx length 0x%lx) in proximity domain %d %s%s%s\n",
+					  "SRAT Memory (0x%lx length 0x%lx) in proximity domain %d %s%s\n",
 					  (unsigned long)p->base_address,
 					  (unsigned long)p->length,
 					  p->proximity_domain,
 					  (p->flags & ACPI_SRAT_MEM_ENABLED)?
 					  "enabled" : "disabled",
 					  (p->flags & ACPI_SRAT_MEM_HOT_PLUGGABLE)?
-					  " hot-pluggable" : "",
-					  (p->flags & ACPI_SRAT_MEM_NON_VOLATILE)?
-					  " non-volatile" : ""));
+					  " hot-pluggable" : ""));
 		}
 #endif				/* ACPI_DEBUG_OUTPUT */
 		break;
@@ -275,7 +273,7 @@ static int __init acpi_parse_srat(struct acpi_table_header *table)
 
 static int __init
 acpi_table_parse_srat(enum acpi_srat_type id,
-		      acpi_tbl_entry_handler handler, unsigned int max_entries)
+		      acpi_table_entry_handler handler, unsigned int max_entries)
 {
 	return acpi_table_parse_entries(ACPI_SIG_SRAT,
 					    sizeof(struct acpi_table_srat), id,

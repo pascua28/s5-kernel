@@ -118,7 +118,6 @@ extern unsigned long get_wchan(struct task_struct *);
 extern struct task_struct *last_task_used_math;
 
 #define cpu_relax()	barrier()
-extern void (*sparc_idle)(void);
 
 #endif
 
