@@ -49,7 +49,6 @@ struct gpio;
 struct seq_file;
 struct module;
 struct device_node;
-struct gpio_desc;
 
 /**
  * struct gpio_chip - abstract a GPIO controller
@@ -79,7 +78,6 @@ struct gpio_desc;
  *	negative during registration, requests dynamic ID allocation.
  * @ngpio: the number of GPIOs handled by this controller; the last GPIO
  *	handled is (base + ngpio - 1).
- * @desc: array of ngpio descriptors. Private.
  * @can_sleep: flag must be set iff get()/set() methods sleep, as they
  *	must while accessing GPIO expander chips over I2C or SPI
  * @names: if set, must be an array of strings to use as alternative
@@ -130,7 +128,6 @@ struct gpio_chip {
 						struct gpio_chip *chip);
 	int			base;
 	u16			ngpio;
-	struct gpio_desc	*desc;
 	const char		*const *names;
 	unsigned		can_sleep:1;
 	unsigned		exported:1;
