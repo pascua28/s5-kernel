@@ -24,6 +24,12 @@
 
 static spinlock_t cpufreq_stats_lock;
 
+#define CPUFREQ_STATDEVICE_ATTR(_name, _mode, _show) \
+static struct freq_attr _attr_##_name = {\
+	.attr = {.name = __stringify(_name), .mode = _mode, }, \
+	.show = _show,\
+};
+
 struct cpufreq_stats {
 	unsigned int cpu;
 	unsigned int total_trans;
@@ -130,17 +136,17 @@ static ssize_t show_trans_table(struct cpufreq_policy *policy, char *buf)
 		return PAGE_SIZE;
 	return len;
 }
-cpufreq_freq_attr_ro(trans_table);
+CPUFREQ_STATDEVICE_ATTR(trans_table, 0444, show_trans_table);
 #endif
 
-cpufreq_freq_attr_ro(total_trans);
-cpufreq_freq_attr_ro(time_in_state);
+CPUFREQ_STATDEVICE_ATTR(total_trans, 0444, show_total_trans);
+CPUFREQ_STATDEVICE_ATTR(time_in_state, 0444, show_time_in_state);
 
 static struct attribute *default_attrs[] = {
-	&total_trans.attr,
-	&time_in_state.attr,
+	&_attr_total_trans.attr,
+	&_attr_time_in_state.attr,
 #ifdef CONFIG_CPU_FREQ_STAT_DETAILS
-	&trans_table.attr,
+	&_attr_trans_table.attr,
 #endif
 	NULL
 };
@@ -164,13 +170,11 @@ static int freq_table_get_index(struct cpufreq_stats *stat, unsigned int freq)
 static void cpufreq_stats_free_table(unsigned int cpu)
 {
 	struct cpufreq_stats *stat = per_cpu(cpufreq_stats_table, cpu);
-
 	if (stat) {
-		pr_debug("%s: Free stat table\n", __func__);
 		kfree(stat->time_in_state);
 		kfree(stat);
-		per_cpu(cpufreq_stats_table, cpu) = NULL;
 	}
+	per_cpu(cpufreq_stats_table, cpu) = NULL;
 }
 
 /* must be called early in the CPU removal sequence (before
@@ -179,14 +183,8 @@ static void cpufreq_stats_free_table(unsigned int cpu)
 static void cpufreq_stats_free_sysfs(unsigned int cpu)
 {
 	struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
-
-	if (!cpufreq_frequency_get_table(cpu))
-		return;
-
-	if (policy && !policy_is_shared(policy)) {
-		pr_debug("%s: Free sysfs stat\n", __func__);
+	if (policy && policy->cpu == cpu)
 		sysfs_remove_group(&policy->kobj, &stats_attr_group);
-	}
 	if (policy)
 		cpufreq_cpu_put(policy);
 }
@@ -264,19 +262,6 @@ error_get_fail:
 	return ret;
 }
 
-static void cpufreq_stats_update_policy_cpu(struct cpufreq_policy *policy)
-{
-	struct cpufreq_stats *stat = per_cpu(cpufreq_stats_table,
-			policy->last_cpu);
-
-	pr_debug("Updating stats_table for new_cpu %u from last_cpu %u\n",
-			policy->cpu, policy->last_cpu);
-	per_cpu(cpufreq_stats_table, policy->cpu) = per_cpu(cpufreq_stats_table,
-			policy->last_cpu);
-	per_cpu(cpufreq_stats_table, policy->last_cpu) = NULL;
-	stat->cpu = policy->cpu;
-}
-
 static int cpufreq_stat_notifier_policy(struct notifier_block *nb,
 		unsigned long val, void *data)
 {
@@ -284,12 +269,6 @@ static int cpufreq_stat_notifier_policy(struct notifier_block *nb,
 	struct cpufreq_policy *policy = data;
 	struct cpufreq_frequency_table *table;
 	unsigned int cpu = policy->cpu;
-
-	if (val == CPUFREQ_UPDATE_POLICY_CPU) {
-		cpufreq_stats_update_policy_cpu(policy);
-		return 0;
-	}
-
 	if (val != CPUFREQ_NOTIFY)
 		return 0;
 	table = cpufreq_frequency_get_table(cpu);

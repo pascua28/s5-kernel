@@ -58,7 +58,6 @@ unsigned int extra_msr_offset32;
 unsigned int extra_msr_offset64;
 unsigned int extra_delta_offset32;
 unsigned int extra_delta_offset64;
-int do_smi;
 double bclk;
 unsigned int show_pkg;
 unsigned int show_core;
@@ -100,7 +99,6 @@ struct thread_data {
 	unsigned long long extra_delta64;
 	unsigned long long extra_msr32;
 	unsigned long long extra_delta32;
-	unsigned int smi_count;
 	unsigned int cpu_id;
 	unsigned int flags;
 #define CPU_IS_FIRST_THREAD_IN_CORE	0x2
@@ -250,8 +248,6 @@ void print_header(void)
 	if (has_aperf)
 		outp += sprintf(outp, "  GHz");
 	outp += sprintf(outp, "  TSC");
-	if (do_smi)
-		outp += sprintf(outp, " SMI");
 	if (extra_delta_offset32)
 		outp += sprintf(outp, "  count 0x%03X", extra_delta_offset32);
 	if (extra_delta_offset64)
@@ -318,8 +314,6 @@ int dump_counters(struct thread_data *t, struct core_data *c,
 			extra_msr_offset32, t->extra_msr32);
 		fprintf(stderr, "msr0x%x: %016llX\n",
 			extra_msr_offset64, t->extra_msr64);
-		if (do_smi)
-			fprintf(stderr, "SMI: %08X\n", t->smi_count);
 	}
 
 	if (c) {
@@ -358,7 +352,6 @@ int dump_counters(struct thread_data *t, struct core_data *c,
  * RAM_W: %5.2
  * GHz: "GHz" 3 columns %3.2
  * TSC: "TSC" 3 columns %3.2
- * SMI: "SMI" 4 columns %4d
  * percentage " %pc3" %6.2
  * Perf Status percentage: %5.2
  * "CTMP" 4 columns %4d
@@ -437,10 +430,6 @@ int format_counters(struct thread_data *t, struct core_data *c,
 
 	/* TSC */
 	outp += sprintf(outp, "%5.2f", 1.0 * t->tsc/units/interval_float);
-
-	/* SMI */
-	if (do_smi)
-		outp += sprintf(outp, "%4d", t->smi_count);
 
 	/* delta */
 	if (extra_delta_offset32)
@@ -656,9 +645,6 @@ delta_thread(struct thread_data *new, struct thread_data *old,
 	 */
 	old->extra_msr32 = new->extra_msr32;
 	old->extra_msr64 = new->extra_msr64;
-
-	if (do_smi)
-		old->smi_count = new->smi_count - old->smi_count;
 }
 
 int delta_cpu(struct thread_data *t, struct core_data *c,
@@ -686,7 +672,6 @@ void clear_counters(struct thread_data *t, struct core_data *c, struct pkg_data 
 	t->mperf = 0;
 	t->c1 = 0;
 
-	t->smi_count = 0;
 	t->extra_delta32 = 0;
 	t->extra_delta64 = 0;
 
@@ -817,11 +802,6 @@ int get_counters(struct thread_data *t, struct core_data *c, struct pkg_data *p)
 			return -4;
 	}
 
-	if (do_smi) {
-		if (get_msr(cpu, MSR_SMI_COUNT, &msr))
-			return -5;
-		t->smi_count = msr & 0xFFFFFFFF;
-	}
 	if (extra_delta_offset32) {
 		if (get_msr(cpu, extra_delta_offset32, &msr))
 			return -5;
@@ -928,7 +908,8 @@ void print_verbose_header(void)
 
 	get_msr(0, MSR_NHM_PLATFORM_INFO, &msr);
 
-	fprintf(stderr, "cpu0: MSR_NHM_PLATFORM_INFO: 0x%08llx\n", msr);
+	if (verbose)
+		fprintf(stderr, "cpu0: MSR_NHM_PLATFORM_INFO: 0x%08llx\n", msr);
 
 	ratio = (msr >> 40) & 0xFF;
 	fprintf(stderr, "%d * %.0f = %.0f MHz max efficiency\n",
@@ -938,16 +919,13 @@ void print_verbose_header(void)
 	fprintf(stderr, "%d * %.0f = %.0f MHz TSC frequency\n",
 		ratio, bclk, ratio * bclk);
 
-	get_msr(0, MSR_IA32_POWER_CTL, &msr);
-	fprintf(stderr, "cpu0: MSR_IA32_POWER_CTL: 0x%08llx (C1E: %sabled)\n",
-		msr, msr & 0x2 ? "EN" : "DIS");
-
 	if (!do_ivt_turbo_ratio_limit)
 		goto print_nhm_turbo_ratio_limits;
 
 	get_msr(0, MSR_IVT_TURBO_RATIO_LIMIT, &msr);
 
-	fprintf(stderr, "cpu0: MSR_IVT_TURBO_RATIO_LIMIT: 0x%08llx\n", msr);
+	if (verbose)
+		fprintf(stderr, "cpu0: MSR_IVT_TURBO_RATIO_LIMIT: 0x%08llx\n", msr);
 
 	ratio = (msr >> 56) & 0xFF;
 	if (ratio)
@@ -1038,7 +1016,8 @@ print_nhm_turbo_ratio_limits:
 
 	get_msr(0, MSR_NHM_TURBO_RATIO_LIMIT, &msr);
 
-	fprintf(stderr, "cpu0: MSR_NHM_TURBO_RATIO_LIMIT: 0x%08llx\n", msr);
+	if (verbose)
+		fprintf(stderr, "cpu0: MSR_NHM_TURBO_RATIO_LIMIT: 0x%08llx\n", msr);
 
 	ratio = (msr >> 56) & 0xFF;
 	if (ratio)
@@ -1418,9 +1397,6 @@ int has_nehalem_turbo_ratio_limit(unsigned int family, unsigned int model)
 	case 0x2D:	/* SNB Xeon */
 	case 0x3A:	/* IVB */
 	case 0x3E:	/* IVB Xeon */
-	case 0x3C:	/* HSW */
-	case 0x3F:	/* HSW */
-	case 0x45:	/* HSW */
 		return 1;
 	case 0x2E:	/* Nehalem-EX Xeon - Beckton */
 	case 0x2F:	/* Westmere-EX Xeon - Eagleton */
@@ -1512,9 +1488,6 @@ void rapl_probe(unsigned int family, unsigned int model)
 	switch (model) {
 	case 0x2A:
 	case 0x3A:
-	case 0x3C:	/* HSW */
-	case 0x3F:	/* HSW */
-	case 0x45:	/* HSW */
 		do_rapl = RAPL_PKG | RAPL_CORES | RAPL_GFX;
 		break;
 	case 0x2D:
@@ -1751,9 +1724,6 @@ int is_snb(unsigned int family, unsigned int model)
 	case 0x2D:
 	case 0x3A:	/* IVB */
 	case 0x3E:	/* IVB Xeon */
-	case 0x3C:	/* HSW */
-	case 0x3F:	/* HSW */
-	case 0x45:	/* HSW */
 		return 1;
 	}
 	return 0;
@@ -1913,7 +1883,6 @@ void check_cpuid()
 
 	do_nehalem_platform_info = genuine_intel && has_invariant_tsc;
 	do_nhm_cstates = genuine_intel;	/* all Intel w/ non-stop TSC have NHM counters */
-	do_smi = do_nhm_cstates;
 	do_snb_cstates = is_snb(family, model);
 	bclk = discover_bclk(family, model);
 
@@ -2250,6 +2219,9 @@ void cmdline(int argc, char **argv)
 		case 'c':
 			sscanf(optarg, "%x", &extra_delta_offset32);
 			break;
+		case 's':
+			extra_delta_offset32 = 0x34;	/* SMI counter */
+			break;
 		case 'C':
 			sscanf(optarg, "%x", &extra_delta_offset64);
 			break;
@@ -2276,7 +2248,7 @@ int main(int argc, char **argv)
 	cmdline(argc, argv);
 
 	if (verbose)
-		fprintf(stderr, "turbostat v3.2 February 11, 2013"
+		fprintf(stderr, "turbostat v3.0 November 23, 2012"
 			" - Len Brown <lenb@kernel.org>\n");
 
 	turbostat_init();

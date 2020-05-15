@@ -37,6 +37,12 @@
 #include "internal.h"
 
 /*
+ * power management idle function, if any..
+ */
+void (*pm_idle)(void);
+EXPORT_SYMBOL(pm_idle);
+
+/*
  * return saved PC of a blocked thread.
  */
 unsigned long thread_saved_pc(struct task_struct *tsk)
@@ -107,6 +113,7 @@ void cpu_idle(void)
 			void (*idle)(void);
 
 			smp_rmb();
+			idle = pm_idle;
 			if (!idle) {
 #if defined(CONFIG_SMP) && !defined(CONFIG_HOTPLUG_CPU)
 				idle = poll_idle;

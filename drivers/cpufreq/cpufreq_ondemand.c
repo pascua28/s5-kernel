@@ -26,7 +26,7 @@
 
 #include "cpufreq_governor.h"
 
-/* On-demand governor macros */
+/* On-demand governor macors */
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
 #define DEF_FREQUENCY_UP_THRESHOLD		(80)
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
@@ -47,8 +47,7 @@ static struct cpufreq_governor cpufreq_gov_ondemand;
 static struct od_dbs_tuners od_tuners = {
 	.up_threshold = DEF_FREQUENCY_UP_THRESHOLD,
 	.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR,
-	.adj_up_threshold = DEF_FREQUENCY_UP_THRESHOLD -
-			    DEF_FREQUENCY_DOWN_DIFFERENTIAL,
+	.down_differential = DEF_FREQUENCY_DOWN_DIFFERENTIAL,
 	.ignore_nice = 0,
 	.powersave_bias = 0,
 };
@@ -66,7 +65,7 @@ static void ondemand_powersave_bias_init_cpu(int cpu)
  * efficient idling at a higher frequency/voltage is.
  * Pavel Machek says this is not so for various generations of AMD and old
  * Intel systems.
- * Mike Chan (android.com) claims this is also not true for ARM.
+ * Mike Chan (androidlcom) calis this is also not true for ARM.
  * Because of this, whitelist specific known (series) of CPUs by default, and
  * leave all others up to the user.
  */
@@ -74,7 +73,7 @@ static int should_io_be_busy(void)
 {
 #if defined(CONFIG_X86)
 	/*
-	 * For Intel, Core 2 (model 15) and later have an efficient idle.
+	 * For Intel, Core 2 (model 15) andl later have an efficient idle.
 	 */
 	if (boot_cpu_data.x86_vendor == X86_VENDOR_INTEL &&
 			boot_cpu_data.x86 == 6 &&
@@ -159,8 +158,8 @@ static void dbs_freq_increase(struct cpufreq_policy *p, unsigned int freq)
 
 /*
  * Every sampling_rate, we check, if current idle time is less than 20%
- * (default), then we try to increase frequency. Every sampling_rate, we look
- * for the lowest frequency which can sustain the load while keeping idle time
+ * (default), then we try to increase frequency Every sampling_rate, we look for
+ * a the lowest frequency which can sustain the load while keeping idle time
  * over 30%. If such a frequency exist, we try to decrease to this frequency.
  *
  * Any frequency increase takes it to the maximum frequency. Frequency reduction
@@ -193,9 +192,11 @@ static void od_check_cpu(int cpu, unsigned int load_freq)
 	 * support the current CPU usage without triggering the up policy. To be
 	 * safe, we focus 10 points under the threshold.
 	 */
-	if (load_freq < od_tuners.adj_up_threshold * policy->cur) {
+	if (load_freq < (od_tuners.up_threshold - od_tuners.down_differential) *
+			policy->cur) {
 		unsigned int freq_next;
-		freq_next = load_freq / od_tuners.adj_up_threshold;
+		freq_next = load_freq / (od_tuners.up_threshold -
+				od_tuners.down_differential);
 
 		/* No longer fully busy, reset rate_mult */
 		dbs_info->rate_mult = 1;
@@ -217,42 +218,33 @@ static void od_check_cpu(int cpu, unsigned int load_freq)
 
 static void od_dbs_timer(struct work_struct *work)
 {
-	struct delayed_work *dw = to_delayed_work(work);
 	struct od_cpu_dbs_info_s *dbs_info =
 		container_of(work, struct od_cpu_dbs_info_s, cdbs.work.work);
-	unsigned int cpu = dbs_info->cdbs.cur_policy->cpu;
-	struct od_cpu_dbs_info_s *core_dbs_info = &per_cpu(od_cpu_dbs_info,
-			cpu);
-	int delay, sample_type = core_dbs_info->sample_type;
-	bool eval_load;
+	unsigned int cpu = dbs_info->cdbs.cpu;
+	int delay, sample_type = dbs_info->sample_type;
 
-	mutex_lock(&core_dbs_info->cdbs.timer_mutex);
-	eval_load = need_load_eval(&core_dbs_info->cdbs,
-			od_tuners.sampling_rate);
+	mutex_lock(&dbs_info->cdbs.timer_mutex);
 
 	/* Common NORMAL_SAMPLE setup */
-	core_dbs_info->sample_type = OD_NORMAL_SAMPLE;
+	dbs_info->sample_type = OD_NORMAL_SAMPLE;
 	if (sample_type == OD_SUB_SAMPLE) {
-		delay = core_dbs_info->freq_lo_jiffies;
-		if (eval_load)
-			__cpufreq_driver_target(core_dbs_info->cdbs.cur_policy,
-						core_dbs_info->freq_lo,
-						CPUFREQ_RELATION_H);
+		delay = dbs_info->freq_lo_jiffies;
+		__cpufreq_driver_target(dbs_info->cdbs.cur_policy,
+			dbs_info->freq_lo, CPUFREQ_RELATION_H);
 	} else {
-		if (eval_load)
-			dbs_check_cpu(&od_dbs_data, cpu);
-		if (core_dbs_info->freq_lo) {
+		dbs_check_cpu(&od_dbs_data, cpu);
+		if (dbs_info->freq_lo) {
 			/* Setup timer for SUB_SAMPLE */
-			core_dbs_info->sample_type = OD_SUB_SAMPLE;
-			delay = core_dbs_info->freq_hi_jiffies;
+			dbs_info->sample_type = OD_SUB_SAMPLE;
+			delay = dbs_info->freq_hi_jiffies;
 		} else {
 			delay = delay_for_sampling_rate(od_tuners.sampling_rate
-						* core_dbs_info->rate_mult);
+						* dbs_info->rate_mult);
 		}
 	}
 
-	schedule_delayed_work_on(smp_processor_id(), dw, delay);
-	mutex_unlock(&core_dbs_info->cdbs.timer_mutex);
+	schedule_delayed_work_on(cpu, &dbs_info->cdbs.work, delay);
+	mutex_unlock(&dbs_info->cdbs.timer_mutex);
 }
 
 /************************** sysfs interface ************************/
@@ -267,7 +259,7 @@ static ssize_t show_sampling_rate_min(struct kobject *kobj,
  * update_sampling_rate - update sampling rate effective immediately if needed.
  * @new_rate: new sampling rate
  *
- * If new rate is smaller than the old, simply updating
+ * If new rate is smaller than the old, simply updaing
  * dbs_tuners_int.sampling_rate might not be appropriate. For example, if the
  * original sampling_rate was 1 second and the requested new sampling rate is 10
  * ms because the user needs immediate reaction from ondemand governor, but not
@@ -295,7 +287,7 @@ static void update_sampling_rate(unsigned int new_rate)
 			cpufreq_cpu_put(policy);
 			continue;
 		}
-		dbs_info = &per_cpu(od_cpu_dbs_info, cpu);
+		dbs_info = &per_cpu(od_cpu_dbs_info, policy->cpu);
 		cpufreq_cpu_put(policy);
 
 		mutex_lock(&dbs_info->cdbs.timer_mutex);
@@ -314,7 +306,8 @@ static void update_sampling_rate(unsigned int new_rate)
 			cancel_delayed_work_sync(&dbs_info->cdbs.work);
 			mutex_lock(&dbs_info->cdbs.timer_mutex);
 
-			schedule_delayed_work_on(cpu, &dbs_info->cdbs.work,
+			schedule_delayed_work_on(dbs_info->cdbs.cpu,
+					&dbs_info->cdbs.work,
 					usecs_to_jiffies(new_rate));
 
 		}
@@ -358,10 +351,6 @@ static ssize_t store_up_threshold(struct kobject *a, struct attribute *b,
 			input < MIN_FREQUENCY_UP_THRESHOLD) {
 		return -EINVAL;
 	}
-	/* Calculate the new adj_up_threshold */
-	od_tuners.adj_up_threshold += input;
-	od_tuners.adj_up_threshold -= od_tuners.up_threshold;
-
 	od_tuners.up_threshold = input;
 	return count;
 }
@@ -518,8 +507,7 @@ static int __init cpufreq_gov_dbs_init(void)
 	if (idle_time != -1ULL) {
 		/* Idle micro accounting is supported. Use finer thresholds */
 		od_tuners.up_threshold = MICRO_FREQUENCY_UP_THRESHOLD;
-		od_tuners.adj_up_threshold = MICRO_FREQUENCY_UP_THRESHOLD -
-					     MICRO_FREQUENCY_DOWN_DIFFERENTIAL;
+		od_tuners.down_differential = MICRO_FREQUENCY_DOWN_DIFFERENTIAL;
 		/*
 		 * In nohz/micro accounting case we set the minimum frequency
 		 * not depending on HZ, but fixed (very low). The deferred

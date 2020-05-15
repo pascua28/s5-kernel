@@ -1910,7 +1910,7 @@ fail_platform:
 	return result;
 }
 
-static int asus_acpi_remove(struct acpi_device *device)
+static int asus_acpi_remove(struct acpi_device *device, int type)
 {
 	struct asus_laptop *asus = acpi_driver_data(device);
 

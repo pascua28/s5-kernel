@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2013, Intel Corp.
+ * Copyright (C) 2000 - 2012, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -297,9 +297,9 @@ ACPI_EXPORT_SYMBOL(acpi_bios_warning)
  *
  * PARAMETERS:  module_name     - Caller's module name (for error output)
  *              line_number     - Caller's line number (for error output)
- *              pathname        - Full pathname to the node
+ *              Pathname        - Full pathname to the node
  *              node_flags      - From Namespace node for the method/object
- *              format          - Printf format string + additional args
+ *              Format          - Printf format string + additional args
  *
  * RETURN:      None
  *

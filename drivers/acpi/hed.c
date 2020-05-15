@@ -70,7 +70,7 @@ static int acpi_hed_add(struct acpi_device *device)
 	return 0;
 }
 
-static int acpi_hed_remove(struct acpi_device *device)
+static int acpi_hed_remove(struct acpi_device *device, int type)
 {
 	hed_handle = NULL;
 	return 0;

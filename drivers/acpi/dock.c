@@ -310,6 +310,8 @@ static int dock_present(struct dock_station *ds)
 static struct acpi_device * dock_create_acpi_device(acpi_handle handle)
 {
 	struct acpi_device *device;
+	struct acpi_device *parent_device;
+	acpi_handle parent;
 	int ret;
 
 	if (acpi_bus_get_device(handle, &device)) {
@@ -317,11 +319,16 @@ static struct acpi_device * dock_create_acpi_device(acpi_handle handle)
 		 * no device created for this object,
 		 * so we should create one.
 		 */
-		ret = acpi_bus_scan(handle);
-		if (ret)
-			pr_debug("error adding bus, %x\n", -ret);
+		acpi_get_parent(handle, &parent);
+		if (acpi_bus_get_device(parent, &parent_device))
+			parent_device = NULL;
 
-		acpi_bus_get_device(handle, &device);
+		ret = acpi_bus_add(&device, parent_device, handle,
+			ACPI_BUS_TYPE_DEVICE);
+		if (ret) {
+			pr_debug("error adding bus, %x\n", -ret);
+			return NULL;
+		}
 	}
 	return device;
 }
@@ -336,9 +343,13 @@ static struct acpi_device * dock_create_acpi_device(acpi_handle handle)
 static void dock_remove_acpi_device(acpi_handle handle)
 {
 	struct acpi_device *device;
+	int ret;
 
-	if (!acpi_bus_get_device(handle, &device))
-		acpi_bus_trim(device);
+	if (!acpi_bus_get_device(handle, &device)) {
+		ret = acpi_bus_trim(device, 1);
+		if (ret)
+			pr_debug("error removing bus, %x\n", -ret);
+	}
 }
 
 /**
@@ -744,9 +755,7 @@ static void acpi_dock_deferred_cb(void *context)
 {
 	struct dock_data *data = context;
 
-	acpi_scan_lock_acquire();
 	dock_notify(data->handle, data->event, data->ds);
-	acpi_scan_lock_release();
 	kfree(data);
 }
 
@@ -759,31 +768,20 @@ static int acpi_dock_notifier_call(struct notifier_block *this,
 	if (event != ACPI_NOTIFY_BUS_CHECK && event != ACPI_NOTIFY_DEVICE_CHECK
 	   && event != ACPI_NOTIFY_EJECT_REQUEST)
 		return 0;
-
-	acpi_scan_lock_acquire();
-
 	list_for_each_entry(dock_station, &dock_stations, sibling) {
 		if (dock_station->handle == handle) {
 			struct dock_data *dd;
-			acpi_status status;
 
 			dd = kmalloc(sizeof(*dd), GFP_KERNEL);
 			if (!dd)
-				break;
-
+				return 0;
 			dd->handle = handle;
 			dd->event = event;
 			dd->ds = dock_station;
-			status = acpi_os_hotplug_execute(acpi_dock_deferred_cb,
-							 dd);
-			if (ACPI_FAILURE(status))
-				kfree(dd);
-
-			break;
+			acpi_os_hotplug_execute(acpi_dock_deferred_cb, dd);
+			return 0 ;
 		}
 	}
-
-	acpi_scan_lock_release();
 	return 0;
 }
 
@@ -838,7 +836,7 @@ static ssize_t show_docked(struct device *dev,
 
 	struct dock_station *dock_station = dev->platform_data;
 
-	if (!acpi_bus_get_device(dock_station->handle, &tmp))
+	if (ACPI_SUCCESS(acpi_bus_get_device(dock_station->handle, &tmp)))
 		return snprintf(buf, PAGE_SIZE, "1\n");
 	return snprintf(buf, PAGE_SIZE, "0\n");
 }
