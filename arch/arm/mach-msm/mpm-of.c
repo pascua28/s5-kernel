@@ -33,7 +33,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
-#include <asm/hardware/gic.h>
+#include <linux/irqchip/arm-gic.h>
 #include <asm/arch_timer.h>
 #include <mach/gpio.h>
 #include <mach/mpm.h>
