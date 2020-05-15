@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2013, Intel Corp.
+ * Copyright (C) 2000 - 2012, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,7 +48,6 @@
 #include "actables.h"
 #include "acdispat.h"
 #include "acevents.h"
-#include "amlcode.h"
 
 #define _COMPONENT          ACPI_EXECUTER
 ACPI_MODULE_NAME("exconfig")
@@ -121,11 +120,8 @@ acpi_ex_add_table(u32 table_index,
 	acpi_ns_exec_module_code_list();
 	acpi_ex_enter_interpreter();
 
-	/*
-	 * Update GPEs for any new _Lxx/_Exx methods. Ignore errors. The host is
-	 * responsible for discovering any new wake GPEs by running _PRW methods
-	 * that may have been loaded by this table.
-	 */
+	/* Update GPEs for any new _Lxx/_Exx methods. Ignore errors */
+
 	status = acpi_tb_get_owner_id(table_index, &owner_id);
 	if (ACPI_SUCCESS(status)) {
 		acpi_ev_update_gpes(owner_id);
@@ -162,12 +158,12 @@ acpi_ex_load_table_op(struct acpi_walk_state *walk_state,
 
 	ACPI_FUNCTION_TRACE(ex_load_table_op);
 
-	/* Validate lengths for the Signature, oem_id, and oem_table_id strings */
+	/* Validate lengths for the signature_string, OEMIDString, OEMtable_iD */
 
 	if ((operand[0]->string.length > ACPI_NAME_SIZE) ||
 	    (operand[1]->string.length > ACPI_OEM_ID_SIZE) ||
 	    (operand[2]->string.length > ACPI_OEM_TABLE_ID_SIZE)) {
-		return_ACPI_STATUS(AE_AML_STRING_LIMIT);
+		return_ACPI_STATUS(AE_BAD_PARAMETER);
 	}
 
 	/* Find the ACPI table in the RSDT/XSDT */
@@ -214,8 +210,8 @@ acpi_ex_load_table_op(struct acpi_walk_state *walk_state,
 	/* parameter_path (optional parameter) */
 
 	if (operand[4]->string.length > 0) {
-		if ((operand[4]->string.pointer[0] != AML_ROOT_PREFIX) &&
-		    (operand[4]->string.pointer[0] != AML_PARENT_PREFIX)) {
+		if ((operand[4]->string.pointer[0] != '\\') &&
+		    (operand[4]->string.pointer[0] != '^')) {
 			/*
 			 * Path is not absolute, so it will be relative to the node
 			 * referenced by the root_path_string (or the NS root if omitted)
@@ -305,7 +301,7 @@ acpi_ex_region_read(union acpi_operand_object *obj_desc, u32 length, u8 *buffer)
 		    acpi_ev_address_space_dispatch(obj_desc, NULL, ACPI_READ,
 						   region_offset, 8, &value);
 		if (ACPI_FAILURE(status)) {
-			return (status);
+			return status;
 		}
 
 		*buffer = (u8)value;
@@ -313,7 +309,7 @@ acpi_ex_region_read(union acpi_operand_object *obj_desc, u32 length, u8 *buffer)
 		region_offset++;
 	}
 
-	return (AE_OK);
+	return AE_OK;
 }
 
 /*******************************************************************************

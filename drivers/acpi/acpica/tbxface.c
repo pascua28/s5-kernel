@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2013, Intel Corp.
+ * Copyright (C) 2000 - 2012, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,7 @@
 #include <linux/export.h>
 #include <acpi/acpi.h>
 #include "accommon.h"
+#include "acnamesp.h"
 #include "actables.h"
 
 #define _COMPONENT          ACPI_TABLES
@@ -436,7 +437,7 @@ ACPI_EXPORT_SYMBOL(acpi_get_table_by_index)
  *
  ******************************************************************************/
 acpi_status
-acpi_install_table_handler(acpi_table_handler handler, void *context)
+acpi_install_table_handler(acpi_tbl_handler handler, void *context)
 {
 	acpi_status status;
 
@@ -482,7 +483,7 @@ ACPI_EXPORT_SYMBOL(acpi_install_table_handler)
  * DESCRIPTION: Remove table event handler
  *
  ******************************************************************************/
-acpi_status acpi_remove_table_handler(acpi_table_handler handler)
+acpi_status acpi_remove_table_handler(acpi_tbl_handler handler)
 {
 	acpi_status status;
 

@@ -17,7 +17,6 @@
 #include <asm/oplib.h>
 #include <asm/uaccess.h>
 #include <asm/auxio.h>
-#include <asm/processor.h>
 
 /* Debug
  *
@@ -64,7 +63,7 @@ static int pmc_probe(struct platform_device *op)
 
 #ifndef PMC_NO_IDLE
 	/* Assign power management IDLE handler */
-	sparc_idle = pmc_swift_idle;
+	pm_idle = pmc_swift_idle;
 #endif
 
 	printk(KERN_INFO "%s: power management initialized\n", PMC_DEVNAME);

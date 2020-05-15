@@ -482,7 +482,8 @@ static int acpi_pad_add(struct acpi_device *device)
 	return 0;
 }
 
-static int acpi_pad_remove(struct acpi_device *device)
+static int acpi_pad_remove(struct acpi_device *device,
+	int type)
 {
 	mutex_lock(&isolated_cpus_lock);
 	acpi_pad_idle_cpus(0);

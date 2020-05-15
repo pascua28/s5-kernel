@@ -39,6 +39,11 @@
 
 void (*powersave) (void) = NULL;
 
+static inline void pm_idle(void)
+{
+	barrier();
+}
+
 void cpu_idle(void)
 {
 	set_thread_flag(TIF_POLLING_NRFLAG);

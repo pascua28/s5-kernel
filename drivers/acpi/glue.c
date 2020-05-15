@@ -68,9 +68,6 @@ static struct acpi_bus_type *acpi_get_bus_type(struct bus_type *type)
 {
 	struct acpi_bus_type *tmp, *ret = NULL;
 
-	if (!type)
-		return NULL;
-
 	down_read(&bus_type_sem);
 	list_for_each_entry(tmp, &bus_type_list, list) {
 		if (tmp->bus == type) {
@@ -98,31 +95,40 @@ static int acpi_find_bridge_device(struct device *dev, acpi_handle * handle)
 	return ret;
 }
 
-static acpi_status do_acpi_find_child(acpi_handle handle, u32 lvl_not_used,
-				      void *addr_p, void **ret_p)
-{
-	unsigned long long addr;
-	acpi_status status;
+/* Get device's handler per its address under its parent */
+struct acpi_find_child {
+	acpi_handle handle;
+	u64 address;
+};
 
-	status = acpi_evaluate_integer(handle, METHOD_NAME__ADR, NULL, &addr);
-	if (ACPI_SUCCESS(status) && addr == *((u64 *)addr_p)) {
-		*ret_p = handle;
-		return AE_CTRL_TERMINATE;
+static acpi_status
+do_acpi_find_child(acpi_handle handle, u32 lvl, void *context, void **rv)
+{
+	acpi_status status;
+	struct acpi_device_info *info;
+	struct acpi_find_child *find = context;
+
+	status = acpi_get_object_info(handle, &info);
+	if (ACPI_SUCCESS(status)) {
+		if ((info->address == find->address)
+			&& (info->valid & ACPI_VALID_ADR))
+			find->handle = handle;
+		kfree(info);
 	}
 	return AE_OK;
 }
 
 acpi_handle acpi_get_child(acpi_handle parent, u64 address)
 {
-	void *ret = NULL;
+	struct acpi_find_child find = { NULL, address };
 
 	if (!parent)
 		return NULL;
-
-	acpi_walk_namespace(ACPI_TYPE_DEVICE, parent, 1, NULL,
-			    do_acpi_find_child, &address, &ret);
-	return (acpi_handle)ret;
+	acpi_walk_namespace(ACPI_TYPE_DEVICE, parent,
+			    1, do_acpi_find_child, NULL, &find, NULL);
+	return find.handle;
 }
+
 EXPORT_SYMBOL(acpi_get_child);
 
 static int acpi_bind_one(struct device *dev, acpi_handle handle)
@@ -263,39 +269,28 @@ static int acpi_platform_notify(struct device *dev)
 {
 	struct acpi_bus_type *type;
 	acpi_handle handle;
-	int ret;
+	int ret = -EINVAL;
 
 	ret = acpi_bind_one(dev, NULL);
-	if (ret && (!dev->bus || !dev->parent)) {
+	if (!ret)
+		goto out;
+
+	if (!dev->bus || !dev->parent) {
 		/* bridge devices genernally haven't bus or parent */
 		ret = acpi_find_bridge_device(dev, &handle);
-		if (!ret) {
-			ret = acpi_bind_one(dev, handle);
-			if (ret)
-				goto out;
-		}
+		goto end;
 	}
-
 	type = acpi_get_bus_type(dev->bus);
-	if (ret) {
-		if (!type || !type->find_device) {
-			DBG("No ACPI bus support for %s\n", dev_name(dev));
-			ret = -EINVAL;
-			goto out;
-		}
-
-		ret = type->find_device(dev, &handle);
-		if (ret) {
-			DBG("Unable to get handle for %s\n", dev_name(dev));
-			goto out;
-		}
-		ret = acpi_bind_one(dev, handle);
-		if (ret)
-			goto out;
+	if (!type) {
+		DBG("No ACPI bus support for %s\n", dev_name(dev));
+		ret = -EINVAL;
+		goto end;
 	}
-
-	if (type && type->setup)
-		type->setup(dev);
+	if ((ret = type->find_device(dev, &handle)) != 0)
+		DBG("Can't get handler for %s\n", dev_name(dev));
+ end:
+	if (!ret)
+		acpi_bind_one(dev, handle);
 
  out:
 #if ACPI_GLUE_DEBUG
@@ -314,12 +309,6 @@ static int acpi_platform_notify(struct device *dev)
 
 static int acpi_platform_notify_remove(struct device *dev)
 {
-	struct acpi_bus_type *type;
-
-	type = acpi_get_bus_type(dev->bus);
-	if (type && type->cleanup)
-		type->cleanup(dev);
-
 	acpi_unbind_one(dev);
 	return 0;
 }
