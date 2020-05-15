@@ -12,7 +12,7 @@
 
 #include <linux/of_platform.h>
 
-extern struct sys_timer msm_dt_timer;
+void __init msm_dt_timer_init(void);
 void __init msm_dt_init_irq(void);
 void __init msm_dt_init_irq_nompm(void);
 void __init msm_dt_init_irq_l2x0(void);

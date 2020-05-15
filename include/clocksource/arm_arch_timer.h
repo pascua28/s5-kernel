@@ -39,6 +39,8 @@ extern struct timecounter *arch_timer_get_timecounter(void);
 extern u64 arch_counter_get_cntpct(void);
 extern u64 arch_counter_get_cntvct(void);
 
+int __init klte_register_timer(void);
+
 #else
 
 static inline u32 arch_timer_get_rate(void)

@@ -588,7 +588,6 @@ static int __init arch_timer_mem_register(void __iomem *base, unsigned int irq)
 
 static const struct of_device_id arch_timer_of_match[] __initconst = {
 	{ .compatible   = "arm,armv7-timer",    },
-	{ .compatible   = "arm,armv8-timer",    },
 	{},
 };
 
@@ -651,8 +650,6 @@ static void __init arch_timer_init(struct device_node *np)
 	arch_timer_register();
 	arch_timer_common_init();
 }
-CLOCKSOURCE_OF_DECLARE(armv7_arch_timer, "arm,armv7-timer", arch_timer_init);
-CLOCKSOURCE_OF_DECLARE(armv8_arch_timer, "arm,armv8-timer", arch_timer_init);
 
 static void __init arch_timer_mem_init(struct device_node *np)
 {
@@ -717,5 +714,17 @@ static void __init arch_timer_mem_init(struct device_node *np)
 	arch_timer_mem_register(base, irq);
 	arch_timer_common_init();
 }
-CLOCKSOURCE_OF_DECLARE(armv7_arch_timer_mem, "arm,armv7-timer-mem",
-		       arch_timer_mem_init);
+
+int __init klte_register_timer(void) {
+	struct device_node *np;
+
+	np = of_find_matching_node(NULL, arch_timer_of_match);
+	if (np)
+		arch_timer_init(np);
+
+	np = of_find_matching_node(NULL, arch_timer_mem_of_match);
+	if (np)
+		arch_timer_mem_init(np);
+
+	return 0;
+}
