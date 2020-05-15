@@ -17,6 +17,7 @@
 #include <linux/of_fdt.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/irqchip.h>
+#include <clocksource/arm_arch_timer.h>
 #include <asm/arch_timer.h>
 #include <asm/mach/time.h>
 #include <asm/mach/map.h>
@@ -36,7 +37,7 @@ extern int gic_of_init(struct device_node *node, struct device_node *parent);
 
 void __init msm_dt_timer_init(void)
 {
-	arch_timer_of_register();
+	klte_register_timer();
 }
 
 static struct of_device_id irq_match[] __initdata  = {
