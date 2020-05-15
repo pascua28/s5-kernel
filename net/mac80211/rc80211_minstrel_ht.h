@@ -107,11 +107,8 @@ struct minstrel_ht_sta {
 	/* current MCS group to be sampled */
 	u8 sample_group;
 
-	u8 cck_supported;
-	u8 cck_supported_short;
-
 	/* MCS rate group info and statistics */
-	struct minstrel_mcs_group_data groups[MINSTREL_MAX_STREAMS * MINSTREL_STREAM_GROUPS + 1];
+	struct minstrel_mcs_group_data groups[MINSTREL_MAX_STREAMS * MINSTREL_STREAM_GROUPS];
 };
 
 struct minstrel_ht_sta_priv {
