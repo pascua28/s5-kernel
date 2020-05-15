@@ -39,6 +39,7 @@
 #include <mach/rpm-regulator-smd.h>
 #include <linux/regulator/consumer.h>
 #include <linux/msm_thermal_ioctl.h>
+#include <linux/sched/rt.h>
 #include <mach/rpm-smd.h>
 #include <mach/scm.h>
 #include <linux/sched.h>

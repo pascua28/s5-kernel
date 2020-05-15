@@ -20,6 +20,7 @@
 #include <linux/msm_kgsl.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
+#include <linux/major.h>
 #include <media/msm_media_info.h>
 
 #include <mach/iommu_domains.h>

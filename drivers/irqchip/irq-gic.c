@@ -45,7 +45,6 @@
 #include <asm/exception.h>
 #include <asm/smp_plat.h>
 #include <asm/mach/irq.h>
-#include <asm/hardware/gic.h>
 #include <asm/system.h>
 #include "irqchip.h"
 

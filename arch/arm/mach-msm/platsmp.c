@@ -16,8 +16,8 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/regulator/krait-regulator.h>
+#include <linux/irqchip/arm-gic.h>
 
-#include <asm/hardware/gic.h>
 #include <asm/cacheflush.h>
 #include <asm/cputype.h>
 #include <asm/mach-types.h>

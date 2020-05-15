@@ -19,7 +19,7 @@ config USB_C67X00_HCD
 
 config USB_XHCI_HCD
 	tristate "xHCI HCD (USB 3.0) support (EXPERIMENTAL)"
-	depends on USB && USB_ARCH_HAS_XHCI && EXPERIMENTAL
+	depends on USB && USB_ARCH_HAS_XHCI
 	---help---
 	  The eXtensible Host Controller Interface (xHCI) is standard for USB 3.0
 	  "SuperSpeed" host controller hardware.
@@ -307,7 +307,7 @@ config USB_ISP116X_HCD
 
 config USB_ISP1760_HCD
 	tristate "ISP 1760 HCD support"
-	depends on USB && EXPERIMENTAL
+	depends on USB
 	---help---
 	  The ISP1760 chip is a USB 2.0 host controller.
 
@@ -420,7 +420,7 @@ config USB_OHCI_HCD_PCI
 
 config USB_OHCI_HCD_SSB
 	bool "OHCI support for Broadcom SSB OHCI core"
-	depends on USB_OHCI_HCD && (SSB = y || SSB = USB_OHCI_HCD) && EXPERIMENTAL
+	depends on USB_OHCI_HCD && (SSB = y || SSB = USB_OHCI_HCD)
 	default n
 	---help---
 	  Support for the Sonics Silicon Backplane (SSB) attached
@@ -453,7 +453,7 @@ config USB_CNS3XXX_OHCI
 
 config USB_OHCI_HCD_PLATFORM
 	bool "Generic OHCI driver for a platform device"
-	depends on USB_OHCI_HCD && EXPERIMENTAL
+	depends on USB_OHCI_HCD
 	default n
 	---help---
 	  Adds an OHCI host driver for a generic platform device, which
@@ -463,7 +463,7 @@ config USB_OHCI_HCD_PLATFORM
 
 config USB_EHCI_HCD_PLATFORM
 	bool "Generic EHCI driver for a platform device"
-	depends on USB_EHCI_HCD && EXPERIMENTAL
+	depends on USB_EHCI_HCD
 	default n
 	---help---
 	  Adds an EHCI host driver for a generic platform device, which
