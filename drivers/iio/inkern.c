@@ -54,25 +54,39 @@ error_ret:
 EXPORT_SYMBOL_GPL(iio_map_array_register);
 
 
-/*
- * Remove all map entries associated with the given iio device
+/* Assumes the exact same array (e.g. memory locations)
+ * used at unregistration as used at registration rather than
+ * more complex checking of contents.
  */
-int iio_map_array_unregister(struct iio_dev *indio_dev)
+int iio_map_array_unregister(struct iio_dev *indio_dev,
+			     struct iio_map *maps)
 {
-	int ret = -ENODEV;
+	int i = 0, ret = 0;
+	bool found_it;
 	struct iio_map_internal *mapi;
-	struct list_head *pos, *tmp;
+
+	if (maps == NULL)
+		return 0;
 
 	mutex_lock(&iio_map_list_lock);
-	list_for_each_safe(pos, tmp, &iio_map_list) {
-		mapi = list_entry(pos, struct iio_map_internal, l);
-		if (indio_dev == mapi->indio_dev) {
-			list_del(&mapi->l);
-			kfree(mapi);
-			ret = 0;
+	while (maps[i].consumer_dev_name != NULL) {
+		found_it = false;
+		list_for_each_entry(mapi, &iio_map_list, l)
+			if (&maps[i] == mapi->map) {
+				list_del(&mapi->l);
+				kfree(mapi);
+				found_it = true;
+				break;
+			}
+		if (found_it == false) {
+			ret = -ENODEV;
+			goto error_ret;
 		}
+		i++;
 	}
+error_ret:
 	mutex_unlock(&iio_map_list_lock);
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(iio_map_array_unregister);
@@ -93,8 +107,7 @@ static const struct iio_chan_spec
 }
 
 
-static struct iio_channel *iio_channel_get_sys(const char *name,
-					       const char *channel_name)
+struct iio_channel *iio_channel_get(const char *name, const char *channel_name)
 {
 	struct iio_map_internal *c_i = NULL, *c = NULL;
 	struct iio_channel *channel;
@@ -139,14 +152,6 @@ error_no_chan:
 	kfree(channel);
 	return ERR_PTR(-EINVAL);
 }
-
-struct iio_channel *iio_channel_get(struct device *dev,
-				    const char *channel_name)
-{
-	const char *name = dev ? dev_name(dev) : NULL;
-
-	return iio_channel_get_sys(name, channel_name);
-}
 EXPORT_SYMBOL_GPL(iio_channel_get);
 
 void iio_channel_release(struct iio_channel *channel)
@@ -156,18 +161,16 @@ void iio_channel_release(struct iio_channel *channel)
 }
 EXPORT_SYMBOL_GPL(iio_channel_release);
 
-struct iio_channel *iio_channel_get_all(struct device *dev)
+struct iio_channel *iio_channel_get_all(const char *name)
 {
-	const char *name;
 	struct iio_channel *chans;
 	struct iio_map_internal *c = NULL;
 	int nummaps = 0;
 	int mapind = 0;
 	int i, ret;
 
-	if (dev == NULL)
+	if (name == NULL)
 		return ERR_PTR(-EINVAL);
-	name = dev_name(dev);
 
 	mutex_lock(&iio_map_list_lock);
 	/* first count the matching maps */

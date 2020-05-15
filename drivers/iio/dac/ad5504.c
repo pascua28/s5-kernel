@@ -85,7 +85,11 @@ static int ad5504_spi_read(struct spi_device *spi, u8 addr)
 			.rx_buf		= &val,
 			.len		= 2,
 		};
-	ret = spi_sync_transfer(spi, &t, 1);
+	struct spi_message	m;
+
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
+	ret = spi_sync(spi, &m);
 
 	if (ret < 0)
 		return ret;

@@ -25,7 +25,7 @@ static struct iio_buffer_access_funcs iio_cb_access = {
 	.store_to = &iio_buffer_cb_store_to,
 };
 
-struct iio_cb_buffer *iio_channel_get_all_cb(struct device *dev,
+struct iio_cb_buffer *iio_channel_get_all_cb(const char *name,
 					     int (*cb)(u8 *data,
 						       void *private),
 					     void *private)
@@ -46,7 +46,7 @@ struct iio_cb_buffer *iio_channel_get_all_cb(struct device *dev,
 	cb_buff->buffer.access = &iio_cb_access;
 	INIT_LIST_HEAD(&cb_buff->buffer.demux_list);
 
-	cb_buff->channels = iio_channel_get_all(dev);
+	cb_buff->channels = iio_channel_get_all(name);
 	if (IS_ERR(cb_buff->channels)) {
 		ret = PTR_ERR(cb_buff->channels);
 		goto error_free_cb_buff;

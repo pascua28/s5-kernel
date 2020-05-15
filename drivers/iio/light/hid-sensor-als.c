@@ -28,6 +28,7 @@
 #include <linux/iio/buffer.h>
 #include <linux/iio/trigger_consumer.h>
 #include <linux/iio/triggered_buffer.h>
+#include "../common/hid-sensors/hid-sensor-attributes.h"
 #include "../common/hid-sensors/hid-sensor-trigger.h"
 
 /*Format: HID-SENSOR-usage_id_in_hex*/
@@ -38,7 +39,7 @@
 
 struct als_state {
 	struct hid_sensor_hub_callbacks callbacks;
-	struct hid_sensor_common common_attributes;
+	struct hid_sensor_iio_common common_attributes;
 	struct hid_sensor_hub_attribute_info als_illum;
 	u32 illum;
 };
