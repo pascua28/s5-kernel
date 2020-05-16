@@ -1591,7 +1591,7 @@ static int ata_eh_read_log_10h(struct ata_device *dev,
  *	RETURNS:
  *	0 on success, AC_ERR_* mask on failure.
  */
-unsigned int atapi_eh_tur(struct ata_device *dev, u8 *r_sense_key)
+static unsigned int atapi_eh_tur(struct ata_device *dev, u8 *r_sense_key)
 {
 	u8 cdb[ATAPI_CDB_LEN] = { TEST_UNIT_READY, 0, 0, 0, 0, 0 };
 	struct ata_taskfile tf;
@@ -1624,7 +1624,7 @@ unsigned int atapi_eh_tur(struct ata_device *dev, u8 *r_sense_key)
  *	RETURNS:
  *	0 on success, AC_ERR_* mask on failure
  */
-unsigned int atapi_eh_request_sense(struct ata_device *dev,
+static unsigned int atapi_eh_request_sense(struct ata_device *dev,
 					   u8 *sense_buf, u8 dfl_sense_key)
 {
 	u8 cdb[ATAPI_CDB_LEN] =
@@ -3857,8 +3857,6 @@ int ata_eh_recover(struct ata_port *ap, ata_prereset_fn_t prereset,
 				rc = atapi_eh_clear_ua(dev);
 				if (rc)
 					goto rest_fail;
-				if (zpodd_dev_enabled(dev))
-					zpodd_post_poweron(dev);
 			}
 		}
 
@@ -4024,30 +4022,17 @@ static void ata_eh_handle_port_suspend(struct ata_port *ap)
 {
 	unsigned long flags;
 	int rc = 0;
-	struct ata_device *dev;
 
 	/* are we suspending? */
 	spin_lock_irqsave(ap->lock, flags);
 	if (!(ap->pflags & ATA_PFLAG_PM_PENDING) ||
-	    ap->pm_mesg.event & PM_EVENT_RESUME) {
+	    ap->pm_mesg.event == PM_EVENT_ON) {
 		spin_unlock_irqrestore(ap->lock, flags);
 		return;
 	}
 	spin_unlock_irqrestore(ap->lock, flags);
 
 	WARN_ON(ap->pflags & ATA_PFLAG_SUSPENDED);
-
-	/*
-	 * If we have a ZPODD attached, check its zero
-	 * power ready status before the port is frozen.
-	 * Only needed for runtime suspend.
-	 */
-	if (PMSG_IS_AUTO(ap->pm_mesg)) {
-		ata_for_each_dev(dev, &ap->link, ENABLED) {
-			if (zpodd_dev_enabled(dev))
-				zpodd_on_suspend(dev);
-		}
-	}
 
 	/* tell ACPI we're suspending */
 	rc = ata_acpi_on_suspend(ap);
@@ -4060,7 +4045,7 @@ static void ata_eh_handle_port_suspend(struct ata_port *ap)
 	if (ap->ops->port_suspend)
 		rc = ap->ops->port_suspend(ap, ap->pm_mesg);
 
-	ata_acpi_set_state(ap, ap->pm_mesg);
+	ata_acpi_set_state(ap, PMSG_SUSPEND);
  out:
 	/* report result */
 	spin_lock_irqsave(ap->lock, flags);
@@ -4100,7 +4085,7 @@ static void ata_eh_handle_port_resume(struct ata_port *ap)
 	/* are we resuming? */
 	spin_lock_irqsave(ap->lock, flags);
 	if (!(ap->pflags & ATA_PFLAG_PM_PENDING) ||
-	    !(ap->pm_mesg.event & PM_EVENT_RESUME)) {
+	    ap->pm_mesg.event != PM_EVENT_ON) {
 		spin_unlock_irqrestore(ap->lock, flags);
 		return;
 	}
@@ -4119,7 +4104,7 @@ static void ata_eh_handle_port_resume(struct ata_port *ap)
 		ata_for_each_dev(dev, link, ALL)
 			ata_ering_clear(&dev->ering);
 
-	ata_acpi_set_state(ap, ap->pm_mesg);
+	ata_acpi_set_state(ap, PMSG_ON);
 
 	if (ap->ops->port_resume)
 		rc = ap->ops->port_resume(ap);
