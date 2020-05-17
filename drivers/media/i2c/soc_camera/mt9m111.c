@@ -24,8 +24,7 @@
 /*
  * MT9M111, MT9M112 and MT9M131:
  * i2c address is 0x48 or 0x5d (depending on SADDR pin)
- * The platform has to define struct i2c_board_info objects and link to them
- * from struct soc_camera_host_desc
+ * The platform has to define i2c_board_info and call i2c_register_board_info()
  */
 
 /*
@@ -800,17 +799,17 @@ static int mt9m111_init(struct mt9m111 *mt9m111)
 static int mt9m111_power_on(struct mt9m111 *mt9m111)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&mt9m111->subdev);
-	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
 	int ret;
 
-	ret = soc_camera_power_on(&client->dev, ssdd);
+	ret = soc_camera_power_on(&client->dev, icl);
 	if (ret < 0)
 		return ret;
 
 	ret = mt9m111_resume(mt9m111);
 	if (ret < 0) {
 		dev_err(&client->dev, "Failed to resume the sensor: %d\n", ret);
-		soc_camera_power_off(&client->dev, ssdd);
+		soc_camera_power_off(&client->dev, icl);
 	}
 
 	return ret;
@@ -819,10 +818,10 @@ static int mt9m111_power_on(struct mt9m111 *mt9m111)
 static void mt9m111_power_off(struct mt9m111 *mt9m111)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&mt9m111->subdev);
-	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
 
 	mt9m111_suspend(mt9m111);
-	soc_camera_power_off(&client->dev, ssdd);
+	soc_camera_power_off(&client->dev, icl);
 }
 
 static int mt9m111_s_power(struct v4l2_subdev *sd, int on)
@@ -880,13 +879,13 @@ static int mt9m111_g_mbus_config(struct v4l2_subdev *sd,
 				struct v4l2_mbus_config *cfg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
 
 	cfg->flags = V4L2_MBUS_MASTER | V4L2_MBUS_PCLK_SAMPLE_RISING |
 		V4L2_MBUS_HSYNC_ACTIVE_HIGH | V4L2_MBUS_VSYNC_ACTIVE_HIGH |
 		V4L2_MBUS_DATA_ACTIVE_HIGH;
 	cfg->type = V4L2_MBUS_PARALLEL;
-	cfg->flags = soc_camera_apply_board_flags(ssdd, cfg);
+	cfg->flags = soc_camera_apply_board_flags(icl, cfg);
 
 	return 0;
 }
@@ -957,10 +956,10 @@ static int mt9m111_probe(struct i2c_client *client,
 {
 	struct mt9m111 *mt9m111;
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
-	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
 	int ret;
 
-	if (!ssdd) {
+	if (!icl) {
 		dev_err(&client->dev, "mt9m111: driver needs platform data\n");
 		return -EINVAL;
 	}
@@ -971,7 +970,7 @@ static int mt9m111_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
-	mt9m111 = devm_kzalloc(&client->dev, sizeof(struct mt9m111), GFP_KERNEL);
+	mt9m111 = kzalloc(sizeof(struct mt9m111), GFP_KERNEL);
 	if (!mt9m111)
 		return -ENOMEM;
 
@@ -989,8 +988,12 @@ static int mt9m111_probe(struct i2c_client *client,
 			&mt9m111_ctrl_ops, V4L2_CID_EXPOSURE_AUTO, 1, 0,
 			V4L2_EXPOSURE_AUTO);
 	mt9m111->subdev.ctrl_handler = &mt9m111->hdl;
-	if (mt9m111->hdl.error)
-		return mt9m111->hdl.error;
+	if (mt9m111->hdl.error) {
+		int err = mt9m111->hdl.error;
+
+		kfree(mt9m111);
+		return err;
+	}
 
 	/* Second stage probe - when a capture adapter is there */
 	mt9m111->rect.left	= MT9M111_MIN_DARK_COLS;
@@ -1002,8 +1005,10 @@ static int mt9m111_probe(struct i2c_client *client,
 	mutex_init(&mt9m111->power_lock);
 
 	ret = mt9m111_video_probe(client);
-	if (ret)
+	if (ret) {
 		v4l2_ctrl_handler_free(&mt9m111->hdl);
+		kfree(mt9m111);
+	}
 
 	return ret;
 }
@@ -1014,6 +1019,7 @@ static int mt9m111_remove(struct i2c_client *client)
 
 	v4l2_device_unregister_subdev(&mt9m111->subdev);
 	v4l2_ctrl_handler_free(&mt9m111->hdl);
+	kfree(mt9m111);
 
 	return 0;
 }

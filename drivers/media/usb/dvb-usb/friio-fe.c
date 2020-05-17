@@ -421,10 +421,11 @@ struct dvb_frontend *jdvbt90502_attach(struct dvb_usb_device *d)
 
 	/* setup the state */
 	state->i2c = &d->i2c_adap;
-	state->config = friio_fe_config;
+	memcpy(&state->config, &friio_fe_config, sizeof(friio_fe_config));
 
 	/* create dvb_frontend */
-	state->frontend.ops = jdvbt90502_ops;
+	memcpy(&state->frontend.ops, &jdvbt90502_ops,
+	       sizeof(jdvbt90502_ops));
 	state->frontend.demodulator_priv = state;
 
 	if (jdvbt90502_init(&state->frontend) < 0)

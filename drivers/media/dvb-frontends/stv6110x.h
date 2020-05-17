@@ -53,7 +53,7 @@ struct stv6110x_devctl {
 };
 
 
-#if IS_ENABLED(CONFIG_DVB_STV6110x)
+#if defined(CONFIG_DVB_STV6110x) || (defined(CONFIG_DVB_STV6110x_MODULE) && defined(MODULE))
 
 extern struct stv6110x_devctl *stv6110x_attach(struct dvb_frontend *fe,
 					       const struct stv6110x_config *config,

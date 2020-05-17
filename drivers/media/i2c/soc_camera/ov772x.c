@@ -667,9 +667,9 @@ static int ov772x_s_register(struct v4l2_subdev *sd,
 static int ov772x_s_power(struct v4l2_subdev *sd, int on)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
 
-	return soc_camera_set_power(&client->dev, ssdd, on);
+	return soc_camera_set_power(&client->dev, icl, on);
 }
 
 static const struct ov772x_win_size *ov772x_select_win(u32 width, u32 height)
@@ -1019,13 +1019,13 @@ static int ov772x_g_mbus_config(struct v4l2_subdev *sd,
 				struct v4l2_mbus_config *cfg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
 
 	cfg->flags = V4L2_MBUS_PCLK_SAMPLE_RISING | V4L2_MBUS_MASTER |
 		V4L2_MBUS_VSYNC_ACTIVE_HIGH | V4L2_MBUS_HSYNC_ACTIVE_HIGH |
 		V4L2_MBUS_DATA_ACTIVE_HIGH;
 	cfg->type = V4L2_MBUS_PARALLEL;
-	cfg->flags = soc_camera_apply_board_flags(ssdd, cfg);
+	cfg->flags = soc_camera_apply_board_flags(icl, cfg);
 
 	return 0;
 }
@@ -1054,11 +1054,11 @@ static int ov772x_probe(struct i2c_client *client,
 			const struct i2c_device_id *did)
 {
 	struct ov772x_priv	*priv;
-	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct soc_camera_link	*icl = soc_camera_i2c_to_link(client);
 	struct i2c_adapter	*adapter = to_i2c_adapter(client->dev.parent);
 	int			ret;
 
-	if (!ssdd || !ssdd->drv_priv) {
+	if (!icl || !icl->priv) {
 		dev_err(&client->dev, "OV772X: missing platform data!\n");
 		return -EINVAL;
 	}
@@ -1070,11 +1070,11 @@ static int ov772x_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
-	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
-	priv->info = ssdd->drv_priv;
+	priv->info = icl->priv;
 
 	v4l2_i2c_subdev_init(&priv->subdev, client, &ov772x_subdev_ops);
 	v4l2_ctrl_handler_init(&priv->hdl, 3);
@@ -1085,15 +1085,22 @@ static int ov772x_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std(&priv->hdl, &ov772x_ctrl_ops,
 			V4L2_CID_BAND_STOP_FILTER, 0, 256, 1, 0);
 	priv->subdev.ctrl_handler = &priv->hdl;
-	if (priv->hdl.error)
-		return priv->hdl.error;
+	if (priv->hdl.error) {
+		ret = priv->hdl.error;
+		goto done;
+	}
 
 	ret = ov772x_video_probe(priv);
-	if (ret < 0) {
+	if (ret < 0)
+		goto done;
+
+	priv->cfmt = &ov772x_cfmts[0];
+	priv->win = &ov772x_win_sizes[0];
+
+done:
+	if (ret) {
 		v4l2_ctrl_handler_free(&priv->hdl);
-	} else {
-		priv->cfmt = &ov772x_cfmts[0];
-		priv->win = &ov772x_win_sizes[0];
+		kfree(priv);
 	}
 	return ret;
 }
@@ -1104,6 +1111,7 @@ static int ov772x_remove(struct i2c_client *client)
 
 	v4l2_device_unregister_subdev(&priv->subdev);
 	v4l2_ctrl_handler_free(&priv->hdl);
+	kfree(priv);
 	return 0;
 }
 

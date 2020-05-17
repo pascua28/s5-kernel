@@ -118,7 +118,8 @@ int vp3054_i2c_probe(struct cx8802_dev *dev)
 		return -ENOMEM;
 	dev->vp3054 = vp3054_i2c;
 
-	vp3054_i2c->algo = vp3054_i2c_algo_template;
+	memcpy(&vp3054_i2c->algo, &vp3054_i2c_algo_template,
+	       sizeof(vp3054_i2c->algo));
 
 	vp3054_i2c->adap.dev.parent = &dev->pci->dev;
 	strlcpy(vp3054_i2c->adap.name, core->name,

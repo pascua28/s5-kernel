@@ -20,8 +20,6 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -207,12 +205,12 @@ static void deregister_from_lirc(struct imon_context *context)
 
 	retval = lirc_unregister_driver(minor);
 	if (retval)
-		dev_err(&context->usbdev->dev,
-			": %s: unable to deregister from lirc(%d)",
-			__func__, retval);
+		printk(KERN_ERR KBUILD_MODNAME
+		       ": %s: unable to deregister from lirc(%d)",
+		       __func__, retval);
 	else
-		dev_info(&context->usbdev->dev,
-			 "Deregistered iMON driver (minor:%d)\n", minor);
+		printk(KERN_INFO MOD_NAME ": Deregistered iMON driver "
+		       "(minor:%d)\n", minor);
 
 }
 
@@ -233,7 +231,8 @@ static int display_open(struct inode *inode, struct file *file)
 	subminor = iminor(inode);
 	interface = usb_find_interface(&imon_driver, subminor);
 	if (!interface) {
-		pr_err("%s: could not find interface for minor %d\n",
+		printk(KERN_ERR KBUILD_MODNAME
+		       ": %s: could not find interface for minor %d\n",
 		       __func__, subminor);
 		retval = -ENODEV;
 		goto exit;
@@ -283,7 +282,8 @@ static int display_close(struct inode *inode, struct file *file)
 	context = file->private_data;
 
 	if (!context) {
-		pr_err("%s: no context for device\n", __func__);
+		printk(KERN_ERR KBUILD_MODNAME
+		       "%s: no context for device\n", __func__);
 		return -ENODEV;
 	}
 
@@ -391,7 +391,8 @@ static ssize_t vfd_write(struct file *file, const char __user *buf,
 
 	context = file->private_data;
 	if (!context) {
-		pr_err("%s: no context for device\n", __func__);
+		printk(KERN_ERR KBUILD_MODNAME
+		       "%s: no context for device\n", __func__);
 		return -ENODEV;
 	}
 
@@ -520,7 +521,8 @@ static void ir_close(void *data)
 
 	context = (struct imon_context *)data;
 	if (!context) {
-		pr_err("%s: no context for device\n", __func__);
+		printk(KERN_ERR KBUILD_MODNAME
+		       "%s: no context for device\n", __func__);
 		return;
 	}
 
@@ -744,6 +746,7 @@ static int imon_probe(struct usb_interface *interface,
 
 	context = kzalloc(sizeof(struct imon_context), GFP_KERNEL);
 	if (!context) {
+		dev_err(dev, "%s: kzalloc failed for context\n", __func__);
 		alloc_status = 1;
 		goto alloc_status_switch;
 	}
@@ -825,11 +828,13 @@ static int imon_probe(struct usb_interface *interface,
 
 	driver = kzalloc(sizeof(struct lirc_driver), GFP_KERNEL);
 	if (!driver) {
+		dev_err(dev, "%s: kzalloc failed for lirc_driver\n", __func__);
 		alloc_status = 2;
 		goto alloc_status_switch;
 	}
 	rbuf = kmalloc(sizeof(struct lirc_buffer), GFP_KERNEL);
 	if (!rbuf) {
+		dev_err(dev, "%s: kmalloc failed for lirc_buffer\n", __func__);
 		alloc_status = 3;
 		goto alloc_status_switch;
 	}
@@ -1004,8 +1009,8 @@ static void imon_disconnect(struct usb_interface *interface)
 
 	mutex_unlock(&driver_lock);
 
-	dev_info(&interface->dev, "%s: iMON device (intf%d) disconnected\n",
-		 __func__, ifnum);
+	printk(KERN_INFO "%s: iMON device (intf%d) disconnected\n",
+	       __func__, ifnum);
 }
 
 static int imon_suspend(struct usb_interface *intf, pm_message_t message)

@@ -36,17 +36,9 @@
 
 #define VIVI_MODULE_NAME "vivi"
 
-/* Maximum allowed frame rate
- *
- * Vivi will allow setting timeperframe in [1/FPS_MAX - FPS_MAX/1] range.
- *
- * Ideally FPS_MAX should be infinity, i.e. practically UINT_MAX, but that
- * might hit application errors when they manipulate these values.
- *
- * Besides, for tpf < 1ms image-generation logic should be changed, to avoid
- * producing frames with equal content.
- */
-#define FPS_MAX 1000
+/* Wake up at about 30 fps */
+#define WAKE_NUMERATOR 30
+#define WAKE_DENOMINATOR 1001
 
 #define MAX_WIDTH 1920
 #define MAX_HEIGHT 1200
@@ -77,12 +69,6 @@ MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 /* Global font descriptor */
 static const u8 *font8x16;
 
-/* timeperframe: min/max and default */
-static const struct v4l2_fract
-	tpf_min     = {.numerator = 1,		.denominator = FPS_MAX},
-	tpf_max     = {.numerator = FPS_MAX,	.denominator = 1},
-	tpf_default = {.numerator = 1001,	.denominator = 30000};	/* NTSC */
-
 #define dprintk(dev, level, fmt, arg...) \
 	v4l2_dbg(level, debug, &dev->v4l2_dev, fmt, ## arg)
 
@@ -91,13 +77,13 @@ static const struct v4l2_fract
    ------------------------------------------------------------------*/
 
 struct vivi_fmt {
-	const char *name;
+	char  *name;
 	u32   fourcc;          /* v4l2 format id */
 	u8    depth;
 	bool  is_yuv;
 };
 
-static const struct vivi_fmt formats[] = {
+static struct vivi_fmt formats[] = {
 	{
 		.name     = "4:2:2, packed, YUYV",
 		.fourcc   = V4L2_PIX_FMT_YUYV,
@@ -164,14 +150,14 @@ static const struct vivi_fmt formats[] = {
 	},
 };
 
-static const struct vivi_fmt *__get_format(u32 pixelformat)
+static struct vivi_fmt *get_format(struct v4l2_format *f)
 {
-	const struct vivi_fmt *fmt;
+	struct vivi_fmt *fmt;
 	unsigned int k;
 
 	for (k = 0; k < ARRAY_SIZE(formats); k++) {
 		fmt = &formats[k];
-		if (fmt->fourcc == pixelformat)
+		if (fmt->fourcc == f->fmt.pix.pixelformat)
 			break;
 	}
 
@@ -181,17 +167,12 @@ static const struct vivi_fmt *__get_format(u32 pixelformat)
 	return &formats[k];
 }
 
-static const struct vivi_fmt *get_format(struct v4l2_format *f)
-{
-	return __get_format(f->fmt.pix.pixelformat);
-}
-
 /* buffer for one video frame */
 struct vivi_buffer {
 	/* common v4l buffer stuff -- must be first */
 	struct vb2_buffer	vb;
 	struct list_head	list;
-	const struct vivi_fmt  *fmt;
+	struct vivi_fmt        *fmt;
 };
 
 struct vivi_dmaqueue {
@@ -250,17 +231,15 @@ struct vivi_dev {
 	int			   input;
 
 	/* video capture */
-	const struct vivi_fmt      *fmt;
-	struct v4l2_fract          timeperframe;
+	struct vivi_fmt            *fmt;
 	unsigned int               width, height;
 	struct vb2_queue	   vb_vidq;
 	unsigned int		   field_count;
 
 	u8			   bars[9][3];
-	u8			   line[MAX_WIDTH * 8] __attribute__((__aligned__(4)));
+	u8			   line[MAX_WIDTH * 8];
 	unsigned int		   pixelsize;
 	u8			   alpha_component;
-	u32			   textfg, textbg;
 };
 
 /* ------------------------------------------------------------------
@@ -297,7 +276,7 @@ struct bar_std {
 
 /* Maximum number of bars are 10 - otherwise, the input print code
    should be modified */
-static const struct bar_std bars[] = {
+static struct bar_std bars[] = {
 	{	/* Standard ITU-R color bar sequence */
 		{ COLOR_WHITE, COLOR_AMBER, COLOR_CYAN, COLOR_GREEN,
 		  COLOR_MAGENTA, COLOR_RED, COLOR_BLUE, COLOR_BLACK, COLOR_BLACK }
@@ -532,99 +511,65 @@ static void gen_twopix(struct vivi_dev *dev, u8 *buf, int colorpos, bool odd)
 
 static void precalculate_line(struct vivi_dev *dev)
 {
-	unsigned pixsize  = dev->pixelsize;
-	unsigned pixsize2 = 2*pixsize;
-	int colorpos;
-	u8 *pos;
+	int w;
 
-	for (colorpos = 0; colorpos < 16; ++colorpos) {
-		u8 pix[8];
-		int wstart =  colorpos    * dev->width / 8;
-		int wend   = (colorpos+1) * dev->width / 8;
-		int w;
+	for (w = 0; w < dev->width * 2; w++) {
+		int colorpos = w / (dev->width / 8) % 8;
 
-		gen_twopix(dev, &pix[0],        colorpos % 8, 0);
-		gen_twopix(dev, &pix[pixsize],  colorpos % 8, 1);
-
-		for (w = wstart/2*2, pos = dev->line + w*pixsize; w < wend; w += 2, pos += pixsize2)
-			memcpy(pos, pix, pixsize2);
+		gen_twopix(dev, dev->line + w * dev->pixelsize, colorpos, w & 1);
 	}
 }
-
-/* need this to do rgb24 rendering */
-typedef struct { u16 __; u8 _; } __attribute__((packed)) x24;
 
 static void gen_text(struct vivi_dev *dev, char *basep,
 					int y, int x, char *text)
 {
 	int line;
-	unsigned int width = dev->width;
 
 	/* Checks if it is possible to show string */
-	if (y + 16 >= dev->height || x + strlen(text) * 8 >= width)
+	if (y + 16 >= dev->height || x + strlen(text) * 8 >= dev->width)
 		return;
 
 	/* Print stream time */
-#define PRINTSTR(PIXTYPE) do {	\
-	PIXTYPE fg;	\
-	PIXTYPE bg;	\
-	memcpy(&fg, &dev->textfg, sizeof(PIXTYPE));	\
-	memcpy(&bg, &dev->textbg, sizeof(PIXTYPE));	\
-	\
-	for (line = 0; line < 16; line++) {	\
-		PIXTYPE *pos = (PIXTYPE *)( basep + ((y + line) * width + x) * sizeof(PIXTYPE) );	\
-		u8 *s;	\
-	\
-		for (s = text; *s; s++) {	\
-			u8 chr = font8x16[*s * 16 + line];	\
-	\
-			pos[0] = (chr & (0x01 << 7) ? fg : bg);	\
-			pos[1] = (chr & (0x01 << 6) ? fg : bg);	\
-			pos[2] = (chr & (0x01 << 5) ? fg : bg);	\
-			pos[3] = (chr & (0x01 << 4) ? fg : bg);	\
-			pos[4] = (chr & (0x01 << 3) ? fg : bg);	\
-			pos[5] = (chr & (0x01 << 2) ? fg : bg);	\
-			pos[6] = (chr & (0x01 << 1) ? fg : bg);	\
-			pos[7] = (chr & (0x01 << 0) ? fg : bg);	\
-	\
-			pos += 8;	\
-		}	\
-	}	\
-} while (0)
+	for (line = y; line < y + 16; line++) {
+		int j = 0;
+		char *pos = basep + line * dev->width * dev->pixelsize + x * dev->pixelsize;
+		char *s;
 
-	switch (dev->pixelsize) {
-	case 2:
-		PRINTSTR(u16); break;
-	case 4:
-		PRINTSTR(u32); break;
-	case 3:
-		PRINTSTR(x24); break;
+		for (s = text; *s; s++) {
+			u8 chr = font8x16[*s * 16 + line - y];
+			int i;
+
+			for (i = 0; i < 7; i++, j++) {
+				/* Draw white font on black background */
+				if (chr & (1 << (7 - i)))
+					gen_twopix(dev, pos + j * dev->pixelsize, WHITE, (x+y) & 1);
+				else
+					gen_twopix(dev, pos + j * dev->pixelsize, TEXT_BLACK, (x+y) & 1);
+			}
+		}
 	}
 }
 
 static void vivi_fillbuff(struct vivi_dev *dev, struct vivi_buffer *buf)
 {
-	int stride = dev->width * dev->pixelsize;
+	int wmax = dev->width;
 	int hmax = dev->height;
+	struct timeval ts;
 	void *vbuf = vb2_plane_vaddr(&buf->vb, 0);
 	unsigned ms;
 	char str[100];
 	int h, line = 1;
-	u8 *linestart;
 	s32 gain;
 
 	if (!vbuf)
 		return;
 
-	linestart = dev->line + (dev->mv_count % dev->width) * dev->pixelsize;
-
 	for (h = 0; h < hmax; h++)
-		memcpy(vbuf + h * stride, linestart, stride);
+		memcpy(vbuf + h * wmax * dev->pixelsize,
+		       dev->line + (dev->mv_count % wmax) * dev->pixelsize,
+		       wmax * dev->pixelsize);
 
 	/* Updates stream time */
-
-	gen_twopix(dev, (u8 *)&dev->textbg, TEXT_BLACK, /*odd=*/ 0);
-	gen_twopix(dev, (u8 *)&dev->textfg, WHITE, /*odd=*/ 0);
 
 	dev->ms += jiffies_to_msecs(jiffies - dev->jiffies);
 	dev->jiffies = jiffies;
@@ -677,7 +622,8 @@ static void vivi_fillbuff(struct vivi_dev *dev, struct vivi_buffer *buf)
 	buf->vb.v4l2_buf.field = V4L2_FIELD_INTERLACED;
 	dev->field_count++;
 	buf->vb.v4l2_buf.sequence = dev->field_count >> 1;
-	v4l2_get_timestamp(&buf->vb.v4l2_buf.timestamp);
+	do_gettimeofday(&ts);
+	buf->vb.v4l2_buf.timestamp = ts;
 }
 
 static void vivi_thread_tick(struct vivi_dev *dev)
@@ -699,7 +645,7 @@ static void vivi_thread_tick(struct vivi_dev *dev)
 	list_del(&buf->list);
 	spin_unlock_irqrestore(&dev->slock, flags);
 
-	v4l2_get_timestamp(&buf->vb.v4l2_buf.timestamp);
+	do_gettimeofday(&buf->vb.v4l2_buf.timestamp);
 
 	/* Fill buffer */
 	vivi_fillbuff(dev, buf);
@@ -709,8 +655,8 @@ static void vivi_thread_tick(struct vivi_dev *dev)
 	dprintk(dev, 2, "[%p/%d] done\n", buf, buf->vb.v4l2_buf.index);
 }
 
-#define frames_to_ms(dev, frames)				\
-	((frames * dev->timeperframe.numerator * 1000) / dev->timeperframe.denominator)
+#define frames_to_ms(frames)					\
+	((frames * WAKE_NUMERATOR * 1000) / WAKE_DENOMINATOR)
 
 static void vivi_sleep(struct vivi_dev *dev)
 {
@@ -726,7 +672,7 @@ static void vivi_sleep(struct vivi_dev *dev)
 		goto stop_task;
 
 	/* Calculate time to wake up */
-	timeout = msecs_to_jiffies(frames_to_ms(dev, 1));
+	timeout = msecs_to_jiffies(frames_to_ms(1));
 
 	vivi_thread_tick(dev);
 
@@ -926,7 +872,7 @@ static void vivi_unlock(struct vb2_queue *vq)
 }
 
 
-static const struct vb2_ops vivi_video_qops = {
+static struct vb2_ops vivi_video_qops = {
 	.queue_setup		= queue_setup,
 	.buf_prepare		= buffer_prepare,
 	.buf_queue		= buffer_queue,
@@ -957,7 +903,7 @@ static int vidioc_querycap(struct file *file, void  *priv,
 static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 					struct v4l2_fmtdesc *f)
 {
-	const struct vivi_fmt *fmt;
+	struct vivi_fmt *fmt;
 
 	if (f->index >= ARRAY_SIZE(formats))
 		return -EINVAL;
@@ -993,7 +939,7 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 			struct v4l2_format *f)
 {
 	struct vivi_dev *dev = video_drvdata(file);
-	const struct vivi_fmt *fmt;
+	struct vivi_fmt *fmt;
 
 	fmt = get_format(f);
 	if (!fmt) {
@@ -1095,70 +1041,6 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 	dev->input = i;
 	precalculate_bars(dev);
 	precalculate_line(dev);
-	return 0;
-}
-
-/* timeperframe is arbitrary and continous */
-static int vidioc_enum_frameintervals(struct file *file, void *priv,
-					     struct v4l2_frmivalenum *fival)
-{
-	const struct vivi_fmt *fmt;
-
-	if (fival->index)
-		return -EINVAL;
-
-	fmt = __get_format(fival->pixel_format);
-	if (!fmt)
-		return -EINVAL;
-
-	/* regarding width & height - we support any */
-
-	fival->type = V4L2_FRMIVAL_TYPE_CONTINUOUS;
-
-	/* fill in stepwise (step=1.0 is requred by V4L2 spec) */
-	fival->stepwise.min  = tpf_min;
-	fival->stepwise.max  = tpf_max;
-	fival->stepwise.step = (struct v4l2_fract) {1, 1};
-
-	return 0;
-}
-
-static int vidioc_g_parm(struct file *file, void *priv,
-			  struct v4l2_streamparm *parm)
-{
-	struct vivi_dev *dev = video_drvdata(file);
-
-	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
-		return -EINVAL;
-
-	parm->parm.capture.capability   = V4L2_CAP_TIMEPERFRAME;
-	parm->parm.capture.timeperframe = dev->timeperframe;
-	parm->parm.capture.readbuffers  = 1;
-	return 0;
-}
-
-#define FRACT_CMP(a, OP, b)	\
-	((u64)(a).numerator * (b).denominator  OP  (u64)(b).numerator * (a).denominator)
-
-static int vidioc_s_parm(struct file *file, void *priv,
-			  struct v4l2_streamparm *parm)
-{
-	struct vivi_dev *dev = video_drvdata(file);
-	struct v4l2_fract tpf;
-
-	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
-		return -EINVAL;
-
-	tpf = parm->parm.capture.timeperframe;
-
-	/* tpf: {*, 0} resets timing; clip to [min, max]*/
-	tpf = tpf.denominator ? tpf : tpf_default;
-	tpf = FRACT_CMP(tpf, <, tpf_min) ? tpf_min : tpf;
-	tpf = FRACT_CMP(tpf, >, tpf_max) ? tpf_max : tpf;
-
-	dev->timeperframe = tpf;
-	parm->parm.capture.timeperframe = tpf;
-	parm->parm.capture.readbuffers  = 1;
 	return 0;
 }
 
@@ -1320,9 +1202,6 @@ static const struct v4l2_ioctl_ops vivi_ioctl_ops = {
 	.vidioc_enum_input    = vidioc_enum_input,
 	.vidioc_g_input       = vidioc_g_input,
 	.vidioc_s_input       = vidioc_s_input,
-	.vidioc_enum_frameintervals = vidioc_enum_frameintervals,
-	.vidioc_g_parm        = vidioc_g_parm,
-	.vidioc_s_parm        = vidioc_s_parm,
 	.vidioc_streamon      = vb2_ioctl_streamon,
 	.vidioc_streamoff     = vb2_ioctl_streamoff,
 	.vidioc_log_status    = v4l2_ctrl_log_status,
@@ -1330,7 +1209,7 @@ static const struct v4l2_ioctl_ops vivi_ioctl_ops = {
 	.vidioc_unsubscribe_event = v4l2_event_unsubscribe,
 };
 
-static const struct video_device vivi_template = {
+static struct video_device vivi_template = {
 	.name		= "vivi",
 	.fops           = &vivi_fops,
 	.ioctl_ops 	= &vivi_ioctl_ops,
@@ -1381,7 +1260,6 @@ static int __init vivi_create_instance(int inst)
 		goto free_dev;
 
 	dev->fmt = &formats[0];
-	dev->timeperframe = tpf_default;
 	dev->width = 640;
 	dev->height = 480;
 	dev->pixelsize = dev->fmt->depth / 8;

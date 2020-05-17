@@ -33,8 +33,6 @@
  *   parts cut'n'pasted from sa1100_ir.c (C) 2000 Russell King
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/errno.h>
@@ -497,7 +495,7 @@ static int init_chrdev(void)
 	driver.dev = &lirc_sir_dev->dev;
 	driver.minor = lirc_register_driver(&driver);
 	if (driver.minor < 0) {
-		pr_err("init_chrdev() failed.\n");
+		printk(KERN_ERR LIRC_DRIVER_NAME ": init_chrdev() failed.\n");
 		return -EIO;
 	}
 	return 0;
@@ -606,7 +604,7 @@ static irqreturn_t sir_interrupt(int irq, void *dev_id)
 	}
 
 	if (status & UTSR0_TFS)
-		pr_err("transmit fifo not full, shouldn't happen\n");
+		printk(KERN_ERR "transmit fifo not full, shouldn't happen\n");
 
 	/* We must clear certain bits. */
 	status &= (UTSR0_RID | UTSR0_RBB | UTSR0_REB);
@@ -789,7 +787,7 @@ static int init_hardware(void)
 #ifdef LIRC_ON_SA1100
 #ifdef CONFIG_SA1100_BITSY
 	if (machine_is_bitsy()) {
-		pr_info("Power on IR module\n");
+		printk(KERN_INFO "Power on IR module\n");
 		set_bitsy_egpio(EGPIO_BITSY_IR_ON);
 	}
 #endif
@@ -887,7 +885,8 @@ static int init_hardware(void)
 	udelay(1500);
 
 	/* read previous control byte */
-	pr_info("0x%02x\n", sinp(UART_RX));
+	printk(KERN_INFO LIRC_DRIVER_NAME
+	       ": 0x%02x\n", sinp(UART_RX));
 
 	/* Set DLAB 1. */
 	soutp(UART_LCR, sinp(UART_LCR) | UART_LCR_DLAB);
@@ -965,7 +964,8 @@ static int init_port(void)
 	/* get I/O port access and IRQ line */
 #ifndef LIRC_ON_SA1100
 	if (request_region(io, 8, LIRC_DRIVER_NAME) == NULL) {
-		pr_err("i/o port 0x%.4x already in use.\n", io);
+		printk(KERN_ERR LIRC_DRIVER_NAME
+		       ": i/o port 0x%.4x already in use.\n", io);
 		return -EBUSY;
 	}
 #endif
@@ -975,11 +975,15 @@ static int init_port(void)
 #               ifndef LIRC_ON_SA1100
 		release_region(io, 8);
 #               endif
-		pr_err("IRQ %d already in use.\n", irq);
+		printk(KERN_ERR LIRC_DRIVER_NAME
+			": IRQ %d already in use.\n",
+			irq);
 		return retval;
 	}
 #ifndef LIRC_ON_SA1100
-	pr_info("I/O port 0x%.4x, IRQ %d.\n", io, irq);
+	printk(KERN_INFO LIRC_DRIVER_NAME
+		": I/O port 0x%.4x, IRQ %d.\n",
+		io, irq);
 #endif
 
 	init_timer(&timerlist);
@@ -1209,7 +1213,8 @@ static int init_lirc_sir(void)
 	if (retval < 0)
 		return retval;
 	init_hardware();
-	pr_info("Installed.\n");
+	printk(KERN_INFO LIRC_DRIVER_NAME
+		": Installed.\n");
 	return 0;
 }
 
@@ -1238,20 +1243,23 @@ static int __init lirc_sir_init(void)
 
 	retval = platform_driver_register(&lirc_sir_driver);
 	if (retval) {
-		pr_err("Platform driver register failed!\n");
+		printk(KERN_ERR LIRC_DRIVER_NAME ": Platform driver register "
+		       "failed!\n");
 		return -ENODEV;
 	}
 
 	lirc_sir_dev = platform_device_alloc("lirc_dev", 0);
 	if (!lirc_sir_dev) {
-		pr_err("Platform device alloc failed!\n");
+		printk(KERN_ERR LIRC_DRIVER_NAME ": Platform device alloc "
+		       "failed!\n");
 		retval = -ENOMEM;
 		goto pdev_alloc_fail;
 	}
 
 	retval = platform_device_add(lirc_sir_dev);
 	if (retval) {
-		pr_err("Platform device add failed!\n");
+		printk(KERN_ERR LIRC_DRIVER_NAME ": Platform device add "
+		       "failed!\n");
 		retval = -ENODEV;
 		goto pdev_add_fail;
 	}
@@ -1284,7 +1292,7 @@ static void __exit lirc_sir_exit(void)
 	drop_port();
 	platform_device_unregister(lirc_sir_dev);
 	platform_driver_unregister(&lirc_sir_driver);
-	pr_info("Uninstalled.\n");
+	printk(KERN_INFO LIRC_DRIVER_NAME ": Uninstalled.\n");
 }
 
 module_init(lirc_sir_init);

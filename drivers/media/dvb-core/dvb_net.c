@@ -1345,13 +1345,9 @@ static int dvb_net_do_ioctl(struct file *file,
 {
 	struct dvb_device *dvbdev = file->private_data;
 	struct dvb_net *dvbnet = dvbdev->priv;
-	int ret = 0;
 
 	if (((file->f_flags&O_ACCMODE)==O_RDONLY))
 		return -EPERM;
-
-	if (mutex_lock_interruptible(&dvbnet->ioctl_mutex))
-		return -ERESTARTSYS;
 
 	switch (cmd) {
 	case NET_ADD_IF:
@@ -1359,21 +1355,16 @@ static int dvb_net_do_ioctl(struct file *file,
 		struct dvb_net_if *dvbnetif = parg;
 		int result;
 
-		if (!capable(CAP_SYS_ADMIN)) {
-			ret = -EPERM;
-			goto ioctl_error;
-		}
+		if (!capable(CAP_SYS_ADMIN))
+			return -EPERM;
 
-		if (!try_module_get(dvbdev->adapter->module)) {
-			ret = -EPERM;
-			goto ioctl_error;
-		}
+		if (!try_module_get(dvbdev->adapter->module))
+			return -EPERM;
 
 		result=dvb_net_add_if(dvbnet, dvbnetif->pid, dvbnetif->feedtype);
 		if (result<0) {
 			module_put(dvbdev->adapter->module);
-			ret = result;
-			goto ioctl_error;
+			return result;
 		}
 		dvbnetif->if_num=result;
 		break;
@@ -1385,10 +1376,8 @@ static int dvb_net_do_ioctl(struct file *file,
 		struct dvb_net_if *dvbnetif = parg;
 
 		if (dvbnetif->if_num >= DVB_NET_DEVICES_MAX ||
-		    !dvbnet->state[dvbnetif->if_num]) {
-			ret = -EINVAL;
-			goto ioctl_error;
-		}
+		    !dvbnet->state[dvbnetif->if_num])
+			return -EINVAL;
 
 		netdev = dvbnet->device[dvbnetif->if_num];
 
@@ -1399,18 +1388,16 @@ static int dvb_net_do_ioctl(struct file *file,
 	}
 	case NET_REMOVE_IF:
 	{
-		if (!capable(CAP_SYS_ADMIN)) {
-			ret = -EPERM;
-			goto ioctl_error;
-		}
-		if ((unsigned long) parg >= DVB_NET_DEVICES_MAX) {
-			ret = -EINVAL;
-			goto ioctl_error;
-		}
+		int ret;
+
+		if (!capable(CAP_SYS_ADMIN))
+			return -EPERM;
+		if ((unsigned long) parg >= DVB_NET_DEVICES_MAX)
+			return -EINVAL;
 		ret = dvb_net_remove_if(dvbnet, (unsigned long) parg);
 		if (!ret)
 			module_put(dvbdev->adapter->module);
-		break;
+		return ret;
 	}
 
 	/* binary compatibility cruft */
@@ -1419,21 +1406,16 @@ static int dvb_net_do_ioctl(struct file *file,
 		struct __dvb_net_if_old *dvbnetif = parg;
 		int result;
 
-		if (!capable(CAP_SYS_ADMIN)) {
-			ret = -EPERM;
-			goto ioctl_error;
-		}
+		if (!capable(CAP_SYS_ADMIN))
+			return -EPERM;
 
-		if (!try_module_get(dvbdev->adapter->module)) {
-			ret = -EPERM;
-			goto ioctl_error;
-		}
+		if (!try_module_get(dvbdev->adapter->module))
+			return -EPERM;
 
 		result=dvb_net_add_if(dvbnet, dvbnetif->pid, DVB_NET_FEEDTYPE_MPE);
 		if (result<0) {
 			module_put(dvbdev->adapter->module);
-			ret = result;
-			goto ioctl_error;
+			return result;
 		}
 		dvbnetif->if_num=result;
 		break;
@@ -1445,10 +1427,8 @@ static int dvb_net_do_ioctl(struct file *file,
 		struct __dvb_net_if_old *dvbnetif = parg;
 
 		if (dvbnetif->if_num >= DVB_NET_DEVICES_MAX ||
-		    !dvbnet->state[dvbnetif->if_num]) {
-			ret = -EINVAL;
-			goto ioctl_error;
-		}
+		    !dvbnet->state[dvbnetif->if_num])
+			return -EINVAL;
 
 		netdev = dvbnet->device[dvbnetif->if_num];
 
@@ -1457,13 +1437,9 @@ static int dvb_net_do_ioctl(struct file *file,
 		break;
 	}
 	default:
-		ret = -ENOTTY;
-		break;
+		return -ENOTTY;
 	}
-
-ioctl_error:
-	mutex_unlock(&dvbnet->ioctl_mutex);
-	return ret;
+	return 0;
 }
 
 static long dvb_net_ioctl(struct file *file,
@@ -1529,7 +1505,6 @@ int dvb_net_init (struct dvb_adapter *adap, struct dvb_net *dvbnet,
 {
 	int i;
 
-	mutex_init(&dvbnet->ioctl_mutex);
 	dvbnet->demux = dmx;
 
 	for (i=0; i<DVB_NET_DEVICES_MAX; i++)
