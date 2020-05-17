@@ -2575,9 +2575,7 @@ CONFIG_VIDEOBUF2_MEMOPS=y
 CONFIG_VIDEOBUF2_DMA_CONTIG=y
 CONFIG_VIDEOBUF2_VMALLOC=y
 CONFIG_VIDEOBUF2_DMA_SG=y
-# CONFIG_VIDEO_V4L2_INT_DEVICE is not set
 # CONFIG_DVB_CORE is not set
-# CONFIG_TTPCI_EEPROM is not set
 CONFIG_VIDEO_MEDIA=y
 
 #
@@ -2686,6 +2684,11 @@ CONFIG_VIDEO_IR_I2C=y
 # CONFIG_VIDEO_CX25840 is not set
 
 #
+# MPEG video encoders
+#
+# CONFIG_VIDEO_CX2341X is not set
+
+#
 # Video encoders
 #
 # CONFIG_VIDEO_SAA7127 is not set
@@ -2699,8 +2702,6 @@ CONFIG_VIDEO_IR_I2C=y
 #
 # Camera sensor devices
 #
-# CONFIG_VIDEO_OV9650 is not set
-# CONFIG_VIDEO_S5C73M3 is not set
 
 #
 # Flash devices
@@ -2725,11 +2726,11 @@ CONFIG_VIDEOBUF2_MSM_MEM=y
 # CONFIG_RADIO_ADAPTERS is not set
 # CONFIG_MEDIA_USB_SUPPORT is not set
 # CONFIG_TDMB is not set
+# CONFIG_ISDBTMM is not set
 
 #
 # Media ancillary drivers (tuners, sensors, i2c, frontends)
 #
-# CONFIG_ISDBTMM is not set
 
 #
 # Encoders, decoders, sensors and other helper chips
@@ -2749,6 +2750,10 @@ CONFIG_VIDEOBUF2_MSM_MEM=y
 
 #
 # Video and audio decoders
+#
+
+#
+# MPEG video encoders
 #
 
 #
@@ -3167,9 +3172,13 @@ CONFIG_USB_DWC3=y
 # USB Host Controller Drivers
 #
 # CONFIG_USB_C67X00_HCD is not set
+CONFIG_USB_XHCI_HCD=y
+CONFIG_USB_XHCI_PLATFORM=y
+# CONFIG_USB_XHCI_HCD_DEBUGGING is not set
 # CONFIG_USB_EHCI_HCD is not set
 # CONFIG_USB_OXU210HP_HCD is not set
 # CONFIG_USB_ISP116X_HCD is not set
+# CONFIG_USB_ISP1760_HCD is not set
 # CONFIG_USB_ISP1362_HCD is not set
 # CONFIG_USB_SL811_HCD is not set
 # CONFIG_USB_R8A66597_HCD is not set
@@ -3365,6 +3374,9 @@ CONFIG_MMC=y
 # CONFIG_MMC_DEBUG is not set
 CONFIG_MMC_PERF_PROFILING=y
 CONFIG_MMC_UNSAFE_RESUME=y
+CONFIG_MMC_CLKGATE=y
+# CONFIG_MMC_EMBEDDED_SDIO is not set
+CONFIG_MMC_PARANOID_SD_INIT=y
 
 #
 # MMC/SD/SDIO Card Drivers
@@ -3970,7 +3982,6 @@ CONFIG_EXTCON_MAX77804K=y
 # CONFIG_PWM is not set
 CONFIG_IRQCHIP=y
 CONFIG_ARM_GIC=y
-CONFIG_MSM_IRQ=y
 # CONFIG_IPACK_BUS is not set
 CONFIG_IIO=y
 CONFIG_IIO_BUFFER=y
