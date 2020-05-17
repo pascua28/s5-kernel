@@ -265,7 +265,7 @@ EXPORT_SYMBOL(blk_start_queue);
  **/
 void blk_stop_queue(struct request_queue *q)
 {
-	__cancel_delayed_work(&q->delay_work);
+	cancel_delayed_work(&q->delay_work);
 	queue_flag_set(QUEUE_FLAG_STOPPED, q);
 }
 EXPORT_SYMBOL(blk_stop_queue);
@@ -1782,14 +1782,6 @@ generic_make_request_checks(struct bio *bio)
 	if ((bio->bi_rw & REQ_DISCARD) &&
 	    (!blk_queue_discard(q) ||
 	     ((bio->bi_rw & REQ_SECURE) && !blk_queue_secdiscard(q)))) {
-		err = -EOPNOTSUPP;
-		goto end_io;
-	}
-
-	if ((bio->bi_rw & REQ_SANITIZE) &&
-	    (!blk_queue_sanitize(q))) {
-		pr_info("%s - got a SANITIZE request but the queue "
-		       "doesn't support sanitize requests", __func__);
 		err = -EOPNOTSUPP;
 		goto end_io;
 	}
