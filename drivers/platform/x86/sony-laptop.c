@@ -2863,7 +2863,7 @@ outwalk:
 	return result;
 }
 
-static int sony_nc_remove(struct acpi_device *device, int type)
+static int sony_nc_remove(struct acpi_device *device)
 {
 	struct sony_nc_value *item;
 
@@ -4234,7 +4234,7 @@ found:
  *  ACPI driver
  *
  *****************/
-static int sony_pic_remove(struct acpi_device *device, int type)
+static int sony_pic_remove(struct acpi_device *device)
 {
 	struct sony_pic_ioport *io, *tmp_io;
 	struct sony_pic_irq *irq, *tmp_irq;
