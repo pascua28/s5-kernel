@@ -415,7 +415,10 @@ static int solo_start_thread(struct solo_filehandle *fh)
 {
 	fh->kthread = kthread_run(solo_thread, fh, SOLO6X10_NAME "_disp");
 
-	return PTR_RET(fh->kthread);
+	if (IS_ERR(fh->kthread))
+		return PTR_ERR(fh->kthread);
+
+	return 0;
 }
 
 static void solo_stop_thread(struct solo_filehandle *fh)

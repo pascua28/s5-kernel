@@ -420,7 +420,7 @@ static int stv0299_send_legacy_dish_cmd (struct dvb_frontend* fe, unsigned long 
 
 	do_gettimeofday (&nexttime);
 	if (debug_legacy_dish_switch)
-		tv[0] = nexttime;
+		memcpy (&tv[0], &nexttime, sizeof (struct timeval));
 	stv0299_writeregI (state, 0x0c, reg0x0c | 0x50); /* set LNB to 18V */
 
 	dvb_frontend_sleep_until(&nexttime, 32000);

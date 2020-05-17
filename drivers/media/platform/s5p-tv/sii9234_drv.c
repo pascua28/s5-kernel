@@ -338,7 +338,7 @@ static int sii9234_probe(struct i2c_client *client,
 	}
 
 	ctx->gpio_n_reset = pdata->gpio_n_reset;
-	ret = devm_gpio_request(dev, ctx->gpio_n_reset, "MHL_RST");
+	ret = gpio_request(ctx->gpio_n_reset, "MHL_RST");
 	if (ret) {
 		dev_err(dev, "failed to acquire MHL_RST gpio\n");
 		return ret;
@@ -370,6 +370,7 @@ fail_pm_get:
 
 fail_pm:
 	pm_runtime_disable(dev);
+	gpio_free(ctx->gpio_n_reset);
 
 fail:
 	dev_err(dev, "probe failed\n");
@@ -380,8 +381,11 @@ fail:
 static int sii9234_remove(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct sii9234_context *ctx = sd_to_context(sd);
 
 	pm_runtime_disable(dev);
+	gpio_free(ctx->gpio_n_reset);
 
 	dev_info(dev, "remove successful\n");
 

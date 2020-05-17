@@ -308,7 +308,7 @@ void saa7134_buffer_finish(struct saa7134_dev *dev,
 
 	/* finish current buffer */
 	q->curr->vb.state = state;
-	v4l2_get_timestamp(&q->curr->vb.ts);
+	do_gettimeofday(&q->curr->vb.ts);
 	wake_up(&q->curr->vb.done);
 	q->curr = NULL;
 }

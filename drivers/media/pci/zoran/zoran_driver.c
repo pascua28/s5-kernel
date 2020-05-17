@@ -1334,7 +1334,7 @@ static int zoran_v4l2_buffer_status(struct zoran_fh *fh,
 	struct zoran *zr = fh->zr;
 	unsigned long flags;
 
-	buf->flags = V4L2_BUF_FLAG_MAPPED | V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+	buf->flags = V4L2_BUF_FLAG_MAPPED;
 
 	switch (fh->map_mode) {
 	case ZORAN_MAP_MODE_RAW:

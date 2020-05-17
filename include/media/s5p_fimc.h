@@ -1,8 +1,8 @@
 /*
- * Samsung S5P/Exynos4 SoC series camera interface driver header
+ * Samsung S5P SoC camera interface driver header
  *
- * Copyright (C) 2010 - 2013 Samsung Electronics Co., Ltd.
- * Sylwester Nawrocki <s.nawrocki@samsung.com>
+ * Copyright (c) 2010 Samsung Electronics Co., Ltd
+ * Author: Sylwester Nawrocki, <s.nawrocki@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,58 +14,47 @@
 
 #include <media/media-entity.h>
 
-/*
- * Enumeration of the FIMC data bus types.
- */
-enum fimc_bus_type {
-	/* Camera parallel bus */
-	FIMC_BUS_TYPE_ITU_601 = 1,
-	/* Camera parallel bus with embedded synchronization */
-	FIMC_BUS_TYPE_ITU_656,
-	/* Camera MIPI-CSI2 serial bus */
-	FIMC_BUS_TYPE_MIPI_CSI2,
-	/* FIFO link from LCD controller (WriteBack A) */
-	FIMC_BUS_TYPE_LCD_WRITEBACK_A,
-	/* FIFO link from LCD controller (WriteBack B) */
-	FIMC_BUS_TYPE_LCD_WRITEBACK_B,
-	/* FIFO link from FIMC-IS */
-	FIMC_BUS_TYPE_ISP_WRITEBACK = FIMC_BUS_TYPE_LCD_WRITEBACK_B,
+enum cam_bus_type {
+	FIMC_ITU_601 = 1,
+	FIMC_ITU_656,
+	FIMC_MIPI_CSI2,
+	FIMC_LCD_WB, /* FIFO link from LCD mixer */
 };
 
 struct i2c_board_info;
 
 /**
- * struct fimc_source_info - video source description required for the host
- *			     interface configuration
+ * struct s5p_fimc_isp_info - image sensor information required for host
+ *			      interace configuration.
  *
  * @board_info: pointer to I2C subdevice's board info
  * @clk_frequency: frequency of the clock the host interface provides to sensor
- * @fimc_bus_type: FIMC camera input type
- * @sensor_bus_type: image sensor bus type, MIPI, ITU-R BT.601 etc.
- * @flags: the parallel sensor bus flags defining signals polarity (V4L2_MBUS_*)
+ * @bus_type: determines bus type, MIPI, ITU-R BT.601 etc.
+ * @csi_data_align: MIPI-CSI interface data alignment in bits
  * @i2c_bus_num: i2c control bus id the sensor is attached to
  * @mux_id: FIMC camera interface multiplexer index (separate for MIPI and ITU)
  * @clk_id: index of the SoC peripheral clock for sensors
+ * @flags: the parallel bus flags defining signals polarity (V4L2_MBUS_*)
  */
-struct fimc_source_info {
+struct s5p_fimc_isp_info {
 	struct i2c_board_info *board_info;
 	unsigned long clk_frequency;
-	enum fimc_bus_type fimc_bus_type;
-	enum fimc_bus_type sensor_bus_type;
-	u16 flags;
+	enum cam_bus_type bus_type;
+	u16 csi_data_align;
 	u16 i2c_bus_num;
 	u16 mux_id;
+	u16 flags;
 	u8 clk_id;
 };
 
 /**
  * struct s5p_platform_fimc - camera host interface platform data
  *
- * @source_info: properties of an image source for the host interface setup
- * @num_clients: the number of attached image sources
+ * @isp_info: properties of camera sensor required for host interface setup
+ * @num_clients: the number of attached image sensors
  */
 struct s5p_platform_fimc {
-	struct fimc_source_info *source_info;
+	struct s5p_fimc_isp_info *isp_info;
 	int num_clients;
 };
 

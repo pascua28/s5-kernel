@@ -13,9 +13,9 @@
 #define EM_GPO_3   (1 << 3)
 
 /* em28xx endpoints */
-/* 0x82:   (always ?) analog */
+#define EM28XX_EP_ANALOG	0x82
 #define EM28XX_EP_AUDIO		0x83
-/* 0x84:   digital or analog */
+#define EM28XX_EP_DIGITAL	0x84
 
 /* em2800 registers */
 #define EM2800_R08_AUDIOSRC 0x08
@@ -177,7 +177,6 @@
 
 /* em2874 IR config register (0x50) */
 #define EM2874_IR_NEC           0x00
-#define EM2874_IR_NEC_NO_PARITY 0x01
 #define EM2874_IR_RC5           0x04
 #define EM2874_IR_RC6_MODE_0    0x08
 #define EM2874_IR_RC6_MODE_6A   0x0b

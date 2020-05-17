@@ -381,8 +381,11 @@ static int gen_mjpeghdr_to_package(struct go7007 *go, __le16 *code, int space)
 	int size = 0, i, off = 0, chunk;
 
 	buf = kzalloc(4096, GFP_KERNEL);
-	if (buf == NULL)
+	if (buf == NULL) {
+		dev_err(go->dev,
+			"unable to allocate 4096 bytes for firmware construction\n");
 		return -1;
+	}
 
 	for (i = 1; i < 32; ++i) {
 		mjpeg_frame_header(go, buf + size, i);
@@ -648,9 +651,11 @@ static int gen_mpeg1hdr_to_package(struct go7007 *go,
 	int i, off = 0, chunk;
 
 	buf = kzalloc(5120, GFP_KERNEL);
-	if (buf == NULL)
+	if (buf == NULL) {
+		dev_err(go->dev,
+			"unable to allocate 5120 bytes for firmware construction\n");
 		return -1;
-
+	}
 	framelen[0] = mpeg1_frame_header(go, buf, 0, 1, PFRAME);
 	if (go->interlace_coding)
 		framelen[0] += mpeg1_frame_header(go, buf + framelen[0] / 8,
@@ -833,9 +838,11 @@ static int gen_mpeg4hdr_to_package(struct go7007 *go,
 	int i, off = 0, chunk;
 
 	buf = kzalloc(5120, GFP_KERNEL);
-	if (buf == NULL)
+	if (buf == NULL) {
+		dev_err(go->dev,
+			"unable to allocate 5120 bytes for firmware construction\n");
 		return -1;
-
+	}
 	framelen[0] = mpeg4_frame_header(go, buf, 0, PFRAME);
 	i = 368;
 	framelen[1] = mpeg4_frame_header(go, buf + i, 0, BFRAME_PRE);
@@ -1575,9 +1582,12 @@ int go7007_construct_fw_image(struct go7007 *go, u8 **fw, int *fwlen)
 		return -1;
 	}
 	code = kzalloc(codespace * 2, GFP_KERNEL);
-	if (code == NULL)
+	if (code == NULL) {
+		dev_err(go->dev,
+			"unable to allocate %d bytes for firmware construction\n",
+			codespace * 2);
 		goto fw_failed;
-
+	}
 	src = (__le16 *)fw_entry->data;
 	srclen = fw_entry->size / 2;
 	while (srclen >= 2) {

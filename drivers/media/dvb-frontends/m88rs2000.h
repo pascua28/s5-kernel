@@ -26,6 +26,8 @@
 struct m88rs2000_config {
 	/* Demodulator i2c address */
 	u8 demod_addr;
+	/* Tuner address */
+	u8 tuner_addr;
 
 	u8 *inittab;
 
@@ -53,8 +55,12 @@ static inline struct dvb_frontend *m88rs2000_attach(
 }
 #endif /* CONFIG_DVB_M88RS2000 */
 
+#define FE_CRYSTAL_KHZ 27000
+#define FREQ_OFFSET_LOW_SYM_RATE 3000
+
 enum {
 	DEMOD_WRITE = 0x1,
+	TUNER_WRITE,
 	WRITE_DELAY = 0x10,
 };
 #endif /* M88RS2000_H */

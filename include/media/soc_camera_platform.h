@@ -38,12 +38,10 @@ static inline int soc_camera_platform_add(struct soc_camera_device *icd,
 					  void (*release)(struct device *dev),
 					  int id)
 {
-	struct soc_camera_subdev_desc *ssdd =
-		(struct soc_camera_subdev_desc *)plink;
-	struct soc_camera_platform_info *info = ssdd->drv_priv;
+	struct soc_camera_platform_info *info = plink->priv;
 	int ret;
 
-	if (&icd->sdesc->subdev_desc != ssdd)
+	if (icd->link != plink)
 		return -ENODEV;
 
 	if (*pdev)
@@ -72,9 +70,7 @@ static inline void soc_camera_platform_del(const struct soc_camera_device *icd,
 					   struct platform_device *pdev,
 					   const struct soc_camera_link *plink)
 {
-	const struct soc_camera_subdev_desc *ssdd =
-		(const struct soc_camera_subdev_desc *)plink;
-	if (&icd->sdesc->subdev_desc != ssdd || !pdev)
+	if (icd->link != plink || !pdev)
 		return;
 
 	platform_device_unregister(pdev);

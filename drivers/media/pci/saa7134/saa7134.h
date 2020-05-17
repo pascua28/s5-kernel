@@ -29,7 +29,6 @@
 #include <linux/notifier.h>
 #include <linux/delay.h>
 #include <linux/mutex.h>
-#include <linux/pm_qos.h>
 
 #include <asm/io.h>
 
@@ -42,7 +41,7 @@
 #include <media/videobuf-dma-sg.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
-#if IS_ENABLED(CONFIG_VIDEO_SAA7134_DVB)
+#if defined(CONFIG_VIDEO_SAA7134_DVB) || defined(CONFIG_VIDEO_SAA7134_DVB_MODULE)
 #include <media/videobuf-dvb.h>
 #endif
 
@@ -333,7 +332,6 @@ struct saa7134_card_ir {
 #define SAA7134_BOARD_SENSORAY811_911       188
 #define SAA7134_BOARD_KWORLD_PC150U         189
 #define SAA7134_BOARD_ASUSTeK_PS3_100      190
-#define SAA7134_BOARD_HAWELL_HW_9004V1      191
 
 #define SAA7134_MAXBOARDS 32
 #define SAA7134_INPUT_MAX 8
@@ -471,7 +469,6 @@ struct saa7134_fh {
 	enum v4l2_buf_type         type;
 	unsigned int               resources;
 	enum v4l2_priority	   prio;
-	struct pm_qos_request	   qos_request;
 
 	/* video overlay */
 	struct v4l2_window         win;
@@ -645,7 +642,7 @@ struct saa7134_dev {
 	struct work_struct         empress_workqueue;
 	int                        empress_started;
 
-#if IS_ENABLED(CONFIG_VIDEO_SAA7134_DVB)
+#if defined(CONFIG_VIDEO_SAA7134_DVB) || defined(CONFIG_VIDEO_SAA7134_DVB_MODULE)
 	/* SAA7134_MPEG_DVB only */
 	struct videobuf_dvb_frontends frontends;
 	int (*original_demod_sleep)(struct dvb_frontend *fe);

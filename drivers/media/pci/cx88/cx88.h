@@ -363,7 +363,7 @@ struct cx88_core {
 	unsigned int               tuner_formats;
 
 	/* config info -- dvb */
-#if IS_ENABLED(CONFIG_VIDEO_CX88_DVB)
+#if defined(CONFIG_VIDEO_CX88_DVB) || defined(CONFIG_VIDEO_CX88_DVB_MODULE)
 	int 			   (*prev_set_voltage)(struct dvb_frontend *fe, fe_sec_voltage_t voltage);
 #endif
 	void			   (*gate_ctrl)(struct cx88_core  *core, int open);
@@ -562,7 +562,8 @@ struct cx8802_dev {
 
 	/* for blackbird only */
 	struct list_head           devlist;
-#if IS_ENABLED(CONFIG_VIDEO_CX88_BLACKBIRD)
+#if defined(CONFIG_VIDEO_CX88_BLACKBIRD) || \
+    defined(CONFIG_VIDEO_CX88_BLACKBIRD_MODULE)
 	struct video_device        *mpeg_dev;
 	u32                        mailbox;
 	int                        width;
@@ -573,12 +574,13 @@ struct cx8802_dev {
 	struct cx2341x_handler     cxhdl;
 #endif
 
-#if IS_ENABLED(CONFIG_VIDEO_CX88_DVB)
+#if defined(CONFIG_VIDEO_CX88_DVB) || defined(CONFIG_VIDEO_CX88_DVB_MODULE)
 	/* for dvb only */
 	struct videobuf_dvb_frontends frontends;
 #endif
 
-#if IS_ENABLED(CONFIG_VIDEO_CX88_VP3054)
+#if defined(CONFIG_VIDEO_CX88_VP3054) || \
+    defined(CONFIG_VIDEO_CX88_VP3054_MODULE)
 	/* For VP3045 secondary I2C bus support */
 	struct vp3054_i2c_state	   *vp3054;
 #endif

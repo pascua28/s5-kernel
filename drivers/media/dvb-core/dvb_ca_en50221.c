@@ -156,9 +156,6 @@ struct dvb_ca_private {
 
 	/* Slot to start looking for data to read from in the next user-space read operation */
 	int next_read_slot;
-
-	/* mutex serializing ioctls */
-	struct mutex ioctl_mutex;
 };
 
 static void dvb_ca_en50221_thread_wakeup(struct dvb_ca_private *ca);
@@ -1194,9 +1191,6 @@ static int dvb_ca_en50221_io_do_ioctl(struct file *file,
 
 	dprintk("%s\n", __func__);
 
-	if (mutex_lock_interruptible(&ca->ioctl_mutex))
-		return -ERESTARTSYS;
-
 	switch (cmd) {
 	case CA_RESET:
 		for (slot = 0; slot < ca->slot_count; slot++) {
@@ -1227,10 +1221,8 @@ static int dvb_ca_en50221_io_do_ioctl(struct file *file,
 	case CA_GET_SLOT_INFO: {
 		struct ca_slot_info *info = parg;
 
-		if ((info->num > ca->slot_count) || (info->num < 0)) {
-			err = -EINVAL;
-			goto out_unlock;
-		}
+		if ((info->num > ca->slot_count) || (info->num < 0))
+			return -EINVAL;
 
 		info->type = CA_CI_LINK;
 		info->flags = 0;
@@ -1249,8 +1241,6 @@ static int dvb_ca_en50221_io_do_ioctl(struct file *file,
 		break;
 	}
 
-out_unlock:
-	mutex_unlock(&ca->ioctl_mutex);
 	return err;
 }
 
@@ -1704,8 +1694,6 @@ int dvb_ca_en50221_init(struct dvb_adapter *dvb_adapter,
 		ca->slot_info[i].camchange_type = DVB_CA_EN50221_CAMCHANGE_REMOVED;
 		mutex_init(&ca->slot_info[i].slot_lock);
 	}
-
-	mutex_init(&ca->ioctl_mutex);
 
 	if (signal_pending(current)) {
 		ret = -EINTR;

@@ -756,7 +756,7 @@ static int vidioc_querybuf(struct file *file,
 	if (vb->index >= usbvision->num_frames)
 		return -EINVAL;
 	/* Updating the corresponding frame state */
-	vb->flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+	vb->flags = 0;
 	frame = &usbvision->frame[vb->index];
 	if (frame->grabstate >= frame_state_ready)
 		vb->flags |= V4L2_BUF_FLAG_QUEUED;
@@ -838,8 +838,7 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *vb)
 	vb->memory = V4L2_MEMORY_MMAP;
 	vb->flags = V4L2_BUF_FLAG_MAPPED |
 		V4L2_BUF_FLAG_QUEUED |
-		V4L2_BUF_FLAG_DONE |
-		V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+		V4L2_BUF_FLAG_DONE;
 	vb->index = f->index;
 	vb->sequence = f->sequence;
 	vb->timestamp = f->timestamp;

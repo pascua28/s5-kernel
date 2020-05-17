@@ -198,10 +198,8 @@ struct au0828_dev {
 	/* Digital */
 	struct au0828_dvb		dvb;
 
-#ifdef CONFIG_VIDEO_AU0828_V4L2
 	/* Analog */
 	struct v4l2_device v4l2_dev;
-#endif
 	int users;
 	unsigned int resources;	/* resources in use */
 	struct video_device *vdev;

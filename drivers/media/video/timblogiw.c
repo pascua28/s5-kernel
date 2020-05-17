@@ -130,7 +130,7 @@ static void timblogiw_dma_cb(void *data)
 
 	if (vb->state != VIDEOBUF_ERROR) {
 		list_del(&vb->queue);
-		v4l2_get_timestamp(&vb->ts);
+		do_gettimeofday(&vb->ts);
 		vb->field_count = fh->frame_count * 2;
 		vb->state = VIDEOBUF_DONE;
 
