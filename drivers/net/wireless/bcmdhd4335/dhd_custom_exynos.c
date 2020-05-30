@@ -57,10 +57,8 @@
 #define WLAN_STATIC_SCAN_BUF0		5
 #define WLAN_STATIC_SCAN_BUF1		6
 #define WLAN_STATIC_DHD_INFO_BUF	7
-#define WLAN_STATIC_DHD_WLFC_BUF	8
 #define WLAN_SCAN_BUF_SIZE		(64 * 1024)
 #define WLAN_DHD_INFO_BUF_SIZE	(16 * 1024)
-#define WLAN_DHD_WLFC_BUF_SIZE		(16 * 1024)
 #define PREALLOC_WLAN_SEC_NUM		4
 #define PREALLOC_WLAN_BUF_NUM		160
 #define PREALLOC_WLAN_SECTION_HEADER	24
@@ -77,11 +75,11 @@
 
 #define WLAN_SKB_BUF_NUM	17
 
-#if defined(CUSTOMER_HW4) && defined(ARGOS_CPU_SCHEDULER)
+#if defined(CONFIG_ARGOS)
 extern int argos_irq_affinity_setup(unsigned int irq, int dev_num,
                  struct cpumask *affinity_cpu_mask,
                  struct cpumask *default_cpu_mask);
-#endif /* CUSTOMER_HW4 && ARGOS_CPU_SCHEDULER */
+#endif /* CONFIG_ARGOS */
 static struct sk_buff *wlan_static_skb[WLAN_SKB_BUF_NUM];
 
 struct wlan_mem_prealloc {
@@ -99,7 +97,6 @@ static struct wlan_mem_prealloc wlan_mem_array[PREALLOC_WLAN_SEC_NUM] = {
 void *wlan_static_scan_buf0;
 void *wlan_static_scan_buf1;
 void *wlan_static_dhd_info_buf;
-void *wlan_static_dhd_wlfc_buf;
 
 static void *dhd_wlan_mem_prealloc(int section, unsigned long size)
 {
@@ -120,14 +117,6 @@ static void *dhd_wlan_mem_prealloc(int section, unsigned long size)
 			return NULL;
 		}
 		return wlan_static_dhd_info_buf;
-	}
-
-	if (section == WLAN_STATIC_DHD_WLFC_BUF)  {
-		if (size > WLAN_DHD_WLFC_BUF_SIZE) {
-			pr_err("request DHD_WLFC size(%lu) is bigger than static size(%d).\n", size, WLAN_DHD_WLFC_BUF_SIZE);
-			return NULL;
-		}
-		return wlan_static_dhd_wlfc_buf;
 	}
 
 	if ((section < 0) || (section > PREALLOC_WLAN_SEC_NUM))
@@ -178,10 +167,6 @@ static int dhd_init_wlan_mem(void)
 
 	wlan_static_dhd_info_buf = kmalloc(WLAN_DHD_INFO_BUF_SIZE, GFP_KERNEL);
 	if (!wlan_static_dhd_info_buf)
-		goto err_mem_alloc;
-
-	wlan_static_dhd_wlfc_buf = kmalloc(WLAN_DHD_WLFC_BUF_SIZE, GFP_KERNEL);
-	if (!wlan_static_dhd_wlfc_buf)
 		goto err_mem_alloc;
 
 	pr_err("%s: WIFI MEM Allocated\n", __FUNCTION__);
@@ -300,18 +285,15 @@ int __init dhd_wlan_init_gpio(void)
 	return 0;
 }
 
-#if defined(CUSTOMER_HW4) && defined(ARGOS_CPU_SCHEDULER)
+#if defined(CONFIG_ARGOS)
 void set_cpucore_for_interrupt(cpumask_var_t default_cpu_mask,
 	cpumask_var_t affinity_cpu_mask) {
-#if defined(CONFIG_MACH_UNIVERSAL5422)
-	argos_irq_affinity_setup(EXYNOS5_IRQ_HSMMC1, 2, affinity_cpu_mask, default_cpu_mask);
-	argos_irq_affinity_setup(EXYNOS_IRQ_EINT16_31, 2, affinity_cpu_mask, default_cpu_mask);
-#elif defined(CONFIG_MACH_UNIVERSAL5430)
+#if defined(CONFIG_MACH_UNIVERSAL5430)
 	argos_irq_affinity_setup(IRQ_SPI(226), 2, affinity_cpu_mask, default_cpu_mask);
 	argos_irq_affinity_setup(IRQ_SPI(2), 2, affinity_cpu_mask, default_cpu_mask);
 #endif
 }
-#endif /* CUSTOMER_HW4 && ARGOS_CPU_SCHEDULER */
+#endif /* CONFIG_ARGOS */
 
 void interrupt_set_cpucore(int set)
 {

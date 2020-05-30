@@ -62,7 +62,6 @@ DHDCFLAGS += -DDISABLE_11H_SOFTAP
 DHDCFLAGS += -DSUPPORT_PM2_ONLY
 DHDCFLAGS += -DSUPPORT_DEEP_SLEEP
 DHDCFLAGS += -DSUPPORT_AMPDU_MPDU_CMD
-DHDCFLAGS += -DBLOCK_IPV6_PACKET -DPASS_IPV4_SUSPEND
 DHDCFLAGS += -DSOFTAP_SEND_HANGEVT
 
 # For special PNO Event keep wake lock for 10sec
@@ -143,7 +142,11 @@ DHDCFLAGS += -DWL_NEWCFG_PRIVCMD_SUPPORT
 # m: module type driver
 # y: built-in type driver
 ##########################
+ifeq ($(CONFIG_MODULES),y)
 DRIVER_TYPE ?= m
+else
+DRIVER_TYPE ?= y
+endif
 
 #########################
 # Chip dependent feature
