@@ -17,7 +17,7 @@
 #include <linux/types.h>
 #include <linux/videodev2.h>
 #include <linux/io.h>
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #include <media/media-entity.h>
 #include <media/videobuf2-core.h>
@@ -40,6 +40,8 @@
 #define SCALER_MAX_VRATIO	64
 #define DMA_MIN_SIZE		8
 #define FIMC_CAMIF_MAX_HEIGHT	0x2000
+#define FIMC_MAX_JPEG_BUF_SIZE	(10 * SZ_1M)
+#define FIMC_MAX_PLANES		3
 
 /* indices to the clocks array */
 enum {
@@ -83,7 +85,7 @@ enum fimc_datapath {
 };
 
 enum fimc_color_fmt {
-	FIMC_FMT_RGB444 = 0x10,
+	FIMC_FMT_RGB444	= 0x10,
 	FIMC_FMT_RGB555,
 	FIMC_FMT_RGB565,
 	FIMC_FMT_RGB666,
@@ -95,23 +97,22 @@ enum fimc_color_fmt {
 	FIMC_FMT_CBYCRY422,
 	FIMC_FMT_CRYCBY422,
 	FIMC_FMT_YCBCR444_LOCAL,
-	FIMC_FMT_JPEG = 0x40,
-	FIMC_FMT_RAW8 = 0x80,
+	FIMC_FMT_RAW8 = 0x40,
 	FIMC_FMT_RAW10,
 	FIMC_FMT_RAW12,
+	FIMC_FMT_JPEG = 0x80,
+	FIMC_FMT_YUYV_JPEG = 0x100,
 };
 
+#define fimc_fmt_is_user_defined(x) (!!((x) & 0x180))
 #define fimc_fmt_is_rgb(x) (!!((x) & 0x10))
-#define fimc_fmt_is_jpeg(x) (!!((x) & 0x40))
 
 #define IS_M2M(__strt) ((__strt) == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE || \
 			__strt == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
 
 /* The hardware context state. */
 #define	FIMC_PARAMS		(1 << 0)
-#define	FIMC_SRC_FMT		(1 << 3)
-#define	FIMC_DST_FMT		(1 << 4)
-#define	FIMC_COMPOSE		(1 << 5)
+#define	FIMC_COMPOSE		(1 << 1)
 #define	FIMC_CTX_M2M		(1 << 16)
 #define	FIMC_CTX_CAP		(1 << 17)
 #define	FIMC_CTX_SHUT		(1 << 18)
@@ -139,6 +140,7 @@ enum fimc_color_fmt {
  * @memplanes: number of physically non-contiguous data planes
  * @colplanes: number of physically contiguous data planes
  * @depth: per plane driver's private 'number of bits per pixel'
+ * @mdataplanes: bitmask indicating meta data plane(s), (1 << plane_no)
  * @flags: flags indicating which operation mode format applies to
  */
 struct fimc_fmt {
@@ -149,12 +151,14 @@ struct fimc_fmt {
 	u16	memplanes;
 	u16	colplanes;
 	u8	depth[VIDEO_MAX_PLANES];
+	u16	mdataplanes;
 	u16	flags;
 #define FMT_FLAGS_CAM		(1 << 0)
 #define FMT_FLAGS_M2M_IN	(1 << 1)
 #define FMT_FLAGS_M2M_OUT	(1 << 2)
 #define FMT_FLAGS_M2M		(1 << 1 | 1 << 2)
 #define FMT_HAS_ALPHA		(1 << 3)
+#define FMT_FLAGS_COMPRESSED	(1 << 4)
 };
 
 /**
@@ -259,6 +263,7 @@ struct fimc_vid_buffer {
  * @width:	image pixel width
  * @height:	image pixel weight
  * @payload:	image size in bytes (w x h x bpp)
+ * @bytesperline: bytesperline value for each plane
  * @paddr:	image frame buffer physical addresses
  * @dma_offset:	DMA offset in bytes
  * @fmt:	fimc color format pointer
@@ -272,7 +277,8 @@ struct fimc_frame {
 	u32	offs_v;
 	u32	width;
 	u32	height;
-	unsigned long		payload[VIDEO_MAX_PLANES];
+	unsigned int		payload[VIDEO_MAX_PLANES];
+	unsigned int		bytesperline[VIDEO_MAX_PLANES];
 	struct fimc_addr	paddr;
 	struct fimc_dma_offset	dma_offset;
 	struct fimc_fmt		*fmt;
@@ -366,6 +372,7 @@ struct fimc_pix_limit {
  * @has_mainscaler_ext: 1 if extended mainscaler ratios in CIEXTEN register
  *			 are present in this IP revision
  * @has_cam_if: set if this instance has a camera input interface
+ * @has_isp_wb: set if this instance has ISP writeback input
  * @pix_limit: pixel size constraints for the scaler
  * @min_inp_pixsize: minimum input pixel size
  * @min_out_pixsize: minimum output pixel size
@@ -380,8 +387,9 @@ struct fimc_variant {
 	unsigned int	has_cistatus2:1;
 	unsigned int	has_mainscaler_ext:1;
 	unsigned int	has_cam_if:1;
+	unsigned int	has_isp_wb:1;
 	unsigned int	has_alpha:1;
-	struct fimc_pix_limit *pix_limit;
+	const struct fimc_pix_limit *pix_limit;
 	u16		min_inp_pixsize;
 	u16		min_out_pixsize;
 	u16		hor_offs_align;
@@ -396,7 +404,7 @@ struct fimc_variant {
  * @lclk_frequency: local bus clock frequency
  */
 struct fimc_drvdata {
-	struct fimc_variant *variant[FIMC_MAX_DEVS];
+	const struct fimc_variant *variant[FIMC_MAX_DEVS];
 	int num_entities;
 	unsigned long lclk_frequency;
 };
@@ -429,7 +437,7 @@ struct fimc_dev {
 	struct mutex			lock;
 	struct platform_device		*pdev;
 	struct s5p_platform_fimc	*pdata;
-	struct fimc_variant		*variant;
+	const struct fimc_variant	*variant;
 	u16				id;
 	struct clk			*clock[MAX_FIMC_CLOCKS];
 	void __iomem			*regs;
@@ -577,6 +585,18 @@ static inline int tiled_fmt(struct fimc_fmt *fmt)
 	return fmt->fourcc == V4L2_PIX_FMT_NV12MT;
 }
 
+static inline bool fimc_jpeg_fourcc(u32 pixelformat)
+{
+	return (pixelformat == V4L2_PIX_FMT_JPEG ||
+		pixelformat == V4L2_PIX_FMT_S5C_UYVY_JPG);
+}
+
+static inline bool fimc_user_defined_mbus_fmt(u32 code)
+{
+	return (code == V4L2_MBUS_FMT_JPEG_1X8 ||
+		code == V4L2_MBUS_FMT_S5C_UYVY_JPEG_1X8);
+}
+
 /* Return the alpha component bit mask */
 static inline int fimc_get_alpha_mask(struct fimc_fmt *fmt)
 {
@@ -617,7 +637,7 @@ int fimc_ctrls_create(struct fimc_ctx *ctx);
 void fimc_ctrls_delete(struct fimc_ctx *ctx);
 void fimc_ctrls_activate(struct fimc_ctx *ctx, bool active);
 void fimc_alpha_ctrl_update(struct fimc_ctx *ctx);
-int fimc_fill_format(struct fimc_frame *frame, struct v4l2_format *f);
+void __fimc_get_format(struct fimc_frame *frame, struct v4l2_format *f);
 void fimc_adjust_mplane_format(struct fimc_fmt *fmt, u32 width, u32 height,
 			       struct v4l2_pix_format_mplane *pix);
 struct fimc_fmt *fimc_find_format(const u32 *pixelformat, const u32 *mbus_code,
@@ -632,7 +652,6 @@ int fimc_prepare_addr(struct fimc_ctx *ctx, struct vb2_buffer *vb,
 		      struct fimc_frame *frame, struct fimc_addr *paddr);
 void fimc_prepare_dma_offset(struct fimc_ctx *ctx, struct fimc_frame *f);
 void fimc_set_yuv_order(struct fimc_ctx *ctx);
-void fimc_fill_frame(struct fimc_frame *frame, struct v4l2_format *f);
 void fimc_capture_irq_handler(struct fimc_dev *fimc, int deq_buf);
 
 int fimc_register_m2m_device(struct fimc_dev *fimc,
