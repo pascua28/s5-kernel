@@ -1439,14 +1439,12 @@ CONFIG_CFG80211=y
 CONFIG_NL80211_TESTMODE=y
 # CONFIG_CFG80211_DEVELOPER_WARNINGS is not set
 # CONFIG_CFG80211_REG_DEBUG is not set
+# CONFIG_CFG80211_CERTIFICATION_ONUS is not set
 CONFIG_CFG80211_DEFAULT_PS=y
 # CONFIG_CFG80211_DEBUGFS is not set
 # CONFIG_CFG80211_INTERNAL_REGDB is not set
 CONFIG_CFG80211_WEXT=y
-# CONFIG_WIRELESS_EXT_SYSFS is not set
 # CONFIG_LIB80211 is not set
-CONFIG_CFG80211_ALLOW_RECONNECT=y
-CONFIG_CFG80211_REG_NOT_UPDATED=y
 # CONFIG_MAC80211 is not set
 # CONFIG_WIMAX is not set
 CONFIG_RFKILL=y
@@ -2575,7 +2573,9 @@ CONFIG_VIDEOBUF2_MEMOPS=y
 CONFIG_VIDEOBUF2_DMA_CONTIG=y
 CONFIG_VIDEOBUF2_VMALLOC=y
 CONFIG_VIDEOBUF2_DMA_SG=y
+CONFIG_VIDEO_V4L2_INT_DEVICE=y
 # CONFIG_DVB_CORE is not set
+# CONFIG_TTPCI_EEPROM is not set
 CONFIG_VIDEO_MEDIA=y
 
 #
@@ -2684,11 +2684,6 @@ CONFIG_VIDEO_IR_I2C=y
 # CONFIG_VIDEO_CX25840 is not set
 
 #
-# MPEG video encoders
-#
-# CONFIG_VIDEO_CX2341X is not set
-
-#
 # Video encoders
 #
 # CONFIG_VIDEO_SAA7127 is not set
@@ -2702,6 +2697,8 @@ CONFIG_VIDEO_IR_I2C=y
 #
 # Camera sensor devices
 #
+# CONFIG_VIDEO_OV9650 is not set
+# CONFIG_VIDEO_S5C73M3 is not set
 
 #
 # Flash devices
@@ -2726,11 +2723,11 @@ CONFIG_VIDEOBUF2_MSM_MEM=y
 # CONFIG_RADIO_ADAPTERS is not set
 # CONFIG_MEDIA_USB_SUPPORT is not set
 # CONFIG_TDMB is not set
-# CONFIG_ISDBTMM is not set
 
 #
 # Media ancillary drivers (tuners, sensors, i2c, frontends)
 #
+# CONFIG_ISDBTMM is not set
 
 #
 # Encoders, decoders, sensors and other helper chips
@@ -2750,10 +2747,6 @@ CONFIG_VIDEOBUF2_MSM_MEM=y
 
 #
 # Video and audio decoders
-#
-
-#
-# MPEG video encoders
 #
 
 #
@@ -3588,7 +3581,6 @@ CONFIG_STAGING=y
 # IIO staging drivers
 #
 CONFIG_IIO_ST_HWMON=y
-# CONFIG_IIO_SW_RING is not set
 
 #
 # Accelerometers
@@ -3599,7 +3591,6 @@ CONFIG_IIO_ST_HWMON=y
 # CONFIG_ADIS16209 is not set
 # CONFIG_ADIS16220 is not set
 # CONFIG_ADIS16240 is not set
-# CONFIG_KXSD9 is not set
 # CONFIG_LIS3L02DQ is not set
 # CONFIG_SCA3000 is not set
 
@@ -3657,10 +3648,8 @@ CONFIG_IIO_ST_HWMON=y
 # Digital gyroscope sensors
 #
 # CONFIG_ADIS16060 is not set
-# CONFIG_ADIS16080 is not set
 # CONFIG_ADIS16130 is not set
 # CONFIG_ADIS16260 is not set
-# CONFIG_ADXRS450 is not set
 
 #
 # Network Analyzer, Impedance Converters
@@ -3668,27 +3657,11 @@ CONFIG_IIO_ST_HWMON=y
 # CONFIG_AD5933 is not set
 
 #
-# Inertial measurement units
-#
-# CONFIG_ADIS16400 is not set
-# CONFIG_INV_MPU_IIO is not set
-# CONFIG_INV_MPU_IIO_PRIMARY is not set
-# CONFIG_INV_MPU_IIO_MPL is not set
-# CONFIG_INPUT_MPU6500_SELFTEST is not set
-# CONFIG_INV_SENSORS_IIO is not set
-# CONFIG_INV_SENSORS_MPU65XX is not set
-# CONFIG_INV_SENSORS_DMP is not set
-# CONFIG_INV_SENSORS_DMP_K520S is not set
-# CONFIG_INV_SENSORS_DBG is not set
-# CONFIG_INV_SENSORS_DTS_SUPPORT is not set
-
-#
 # Light sensors
 #
 # CONFIG_SENSORS_GP2A_IIO is not set
 # CONFIG_SENSORS_ISL29018 is not set
 # CONFIG_SENSORS_ISL29028 is not set
-# CONFIG_SENSORS_TSL2563 is not set
 # CONFIG_TSL2583 is not set
 # CONFIG_TSL2x7x is not set
 
@@ -3718,6 +3691,8 @@ CONFIG_IIO_ST_HWMON=y
 #
 # CONFIG_IIO_PERIODIC_RTC_TRIGGER is not set
 # CONFIG_IIO_GPIO_TRIGGER is not set
+# CONFIG_INV_MPU_IIO_MPL is not set
+# CONFIG_INPUT_MPU6500_SELFTEST is not set
 
 #
 # Grip sensors
@@ -3993,6 +3968,8 @@ CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
 #
 # Accelerometers
 #
+# CONFIG_KXSD9 is not set
+# CONFIG_IIO_ST_ACCEL_3AXIS is not set
 
 #
 # Analog to digital converters
@@ -4038,22 +4015,30 @@ CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
 #
 # Digital gyroscope sensors
 #
+# CONFIG_ADIS16080 is not set
 # CONFIG_ADIS16136 is not set
+# CONFIG_ADXRS450 is not set
+# CONFIG_IIO_ST_GYRO_3AXIS is not set
+# CONFIG_ITG3200 is not set
 
 #
 # Inertial measurement units
 #
+# CONFIG_ADIS16400 is not set
 # CONFIG_ADIS16480 is not set
+# CONFIG_INV_MPU6050_IIO is not set
 
 #
 # Light sensors
 #
 # CONFIG_ADJD_S311 is not set
+# CONFIG_SENSORS_TSL2563 is not set
 # CONFIG_VCNL4000 is not set
 
 #
 # Magnetometer sensors
 #
+# CONFIG_IIO_ST_MAGN_3AXIS is not set
 
 #
 # File systems

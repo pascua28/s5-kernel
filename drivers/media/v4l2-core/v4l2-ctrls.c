@@ -590,8 +590,6 @@ const char *v4l2_ctrl_get_name(u32 id)
 	case V4L2_CID_GAIN:			return "Gain";
 	case V4L2_CID_HFLIP:			return "Horizontal Flip";
 	case V4L2_CID_VFLIP:			return "Vertical Flip";
-	case V4L2_CID_HCENTER:			return "Horizontal Center";
-	case V4L2_CID_VCENTER:			return "Vertical Center";
 	case V4L2_CID_POWER_LINE_FREQUENCY:	return "Power Line Frequency";
 	case V4L2_CID_HUE_AUTO:			return "Hue, Automatic";
 	case V4L2_CID_WHITE_BALANCE_TEMPERATURE: return "White Balance Temperature";
@@ -1254,6 +1252,8 @@ static void new_to_cur(struct v4l2_fh *fh, struct v4l2_ctrl *ctrl,
 		send_event(fh, ctrl,
 			(changed ? V4L2_EVENT_CTRL_CH_VALUE : 0) |
 			(update_inactive ? V4L2_EVENT_CTRL_CH_FLAGS : 0));
+		if (ctrl->call_notify && changed && ctrl->handler->notify)
+			ctrl->handler->notify(ctrl, ctrl->handler->notify_priv);
 	}
 }
 
@@ -2030,6 +2030,13 @@ void v4l2_ctrl_handler_log_status(struct v4l2_ctrl_handler *hdl,
 }
 EXPORT_SYMBOL(v4l2_ctrl_handler_log_status);
 
+int v4l2_ctrl_subdev_log_status(struct v4l2_subdev *sd)
+{
+	v4l2_ctrl_handler_log_status(sd->ctrl_handler, sd->name);
+	return 0;
+}
+EXPORT_SYMBOL(v4l2_ctrl_subdev_log_status);
+
 /* Call s_ctrl for all controls owned by the handler */
 int v4l2_ctrl_handler_setup(struct v4l2_ctrl_handler *hdl)
 {
@@ -2773,6 +2780,22 @@ int v4l2_ctrl_s_ctrl_int64(struct v4l2_ctrl *ctrl, s64 val)
 }
 EXPORT_SYMBOL(v4l2_ctrl_s_ctrl_int64);
 
+void v4l2_ctrl_notify(struct v4l2_ctrl *ctrl, v4l2_ctrl_notify_fnc notify, void *priv)
+{
+	if (ctrl == NULL)
+		return;
+	if (notify == NULL) {
+		ctrl->call_notify = 0;
+		return;
+	}
+	if (WARN_ON(ctrl->handler->notify && ctrl->handler->notify != notify))
+		return;
+	ctrl->handler->notify = notify;
+	ctrl->handler->notify_priv = priv;
+	ctrl->call_notify = 1;
+}
+EXPORT_SYMBOL(v4l2_ctrl_notify);
+
 static int v4l2_ctrl_add_event(struct v4l2_subscribed_event *sev, unsigned elems)
 {
 	struct v4l2_ctrl *ctrl = v4l2_ctrl_find(sev->fh->ctrl_handler, sev->id);
@@ -2851,6 +2874,15 @@ int v4l2_ctrl_subscribe_event(struct v4l2_fh *fh,
 	return -EINVAL;
 }
 EXPORT_SYMBOL(v4l2_ctrl_subscribe_event);
+
+int v4l2_ctrl_subdev_subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
+				     struct v4l2_event_subscription *sub)
+{
+	if (!sd->ctrl_handler)
+		return -EINVAL;
+	return v4l2_ctrl_subscribe_event(fh, sub);
+}
+EXPORT_SYMBOL(v4l2_ctrl_subdev_subscribe_event);
 
 unsigned int v4l2_ctrl_poll(struct file *file, struct poll_table_struct *wait)
 {
