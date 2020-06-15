@@ -22,7 +22,6 @@ static inline int __iio_allocate_kfifo(struct iio_kfifo *buf,
 	if ((length == 0) || (bytes_per_datum == 0))
 		return -EINVAL;
 
-	__iio_update_buffer(&buf->buffer, bytes_per_datum, length);
 	return kfifo_alloc(&buf->kf, bytes_per_datum*length, GFP_KERNEL);
 }
 

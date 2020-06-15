@@ -83,14 +83,8 @@ static int adis16080_read_raw(struct iio_dev *indio_dev,
 			     int *val2,
 			     long mask)
 {
-<<<<<<< HEAD:drivers/staging/iio/gyro/adis16080_core.c
-	int ret = -EINVAL;
-	u16 ut;
-	/* Take the iio_dev status lock */
-=======
 	struct adis16080_state *st = iio_priv(indio_dev);
 	int ret;
->>>>>>> v3.9:drivers/iio/gyro/adis16080.c
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:

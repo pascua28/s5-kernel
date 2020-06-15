@@ -227,27 +227,14 @@ struct st_sensor_data {
 };
 
 #ifdef CONFIG_IIO_BUFFER
-irqreturn_t st_sensors_trigger_handler(int irq, void *p);
-
-int st_sensors_get_buffer_element(struct iio_dev *indio_dev, u8 *buf);
-#endif
-
-#ifdef CONFIG_IIO_TRIGGER
 int st_sensors_allocate_trigger(struct iio_dev *indio_dev,
 				const struct iio_trigger_ops *trigger_ops);
 
 void st_sensors_deallocate_trigger(struct iio_dev *indio_dev);
 
-#else
-static inline int st_sensors_allocate_trigger(struct iio_dev *indio_dev,
-				const struct iio_trigger_ops *trigger_ops)
-{
-	return 0;
-}
-static inline void st_sensors_deallocate_trigger(struct iio_dev *indio_dev)
-{
-	return;
-}
+irqreturn_t st_sensors_trigger_handler(int irq, void *p);
+
+int st_sensors_get_buffer_element(struct iio_dev *indio_dev, u8 *buf);
 #endif
 
 int st_sensors_init_sensor(struct iio_dev *indio_dev);
@@ -255,6 +242,10 @@ int st_sensors_init_sensor(struct iio_dev *indio_dev);
 int st_sensors_set_enable(struct iio_dev *indio_dev, bool enable);
 
 int st_sensors_set_axis_enable(struct iio_dev *indio_dev, u8 axis_enable);
+
+int st_sensors_get_sampling_frequency_avl(struct iio_dev *indio_dev, char *buf);
+
+int st_sensors_get_scale_avl(struct iio_dev *indio_dev, char *buf);
 
 int st_sensors_set_odr(struct iio_dev *indio_dev, unsigned int odr);
 
