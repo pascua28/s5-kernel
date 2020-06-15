@@ -334,7 +334,7 @@ static int max1363_read_single_chan(struct iio_dev *indio_dev,
 {
 	int ret = 0;
 	s32 data;
-	char rxbuf[2];
+	u8 rxbuf[2];
 	struct max1363_state *st = iio_priv(indio_dev);
 	struct i2c_client *client = st->client;
 
@@ -366,7 +366,8 @@ static int max1363_read_single_chan(struct iio_dev *indio_dev,
 			ret = data;
 			goto error_ret;
 		}
-		data = (s32)(rxbuf[1]) | ((s32)(rxbuf[0] & 0x0F)) << 8;
+		data = (rxbuf[1] | rxbuf[0] << 8) &
+		  ((1 << st->chip_info->bits) - 1);
 	} else {
 		/* Get reading */
 		data = i2c_master_recv(client, rxbuf, 1);
@@ -1483,48 +1484,6 @@ static const struct iio_buffer_setup_ops max1363_buffered_setup_ops = {
 	.predisable = &iio_triggered_buffer_predisable,
 };
 
-static int max1363_register_buffered_funcs_and_init(struct iio_dev *indio_dev)
-{
-	struct max1363_state *st = iio_priv(indio_dev);
-	int ret = 0;
-
-	indio_dev->buffer = iio_kfifo_allocate(indio_dev);
-	if (!indio_dev->buffer) {
-		ret = -ENOMEM;
-		goto error_ret;
-	}
-	indio_dev->pollfunc = iio_alloc_pollfunc(NULL,
-						 &max1363_trigger_handler,
-						 IRQF_ONESHOT,
-						 indio_dev,
-						 "%s_consumer%d",
-						 st->client->name,
-						 indio_dev->id);
-	if (indio_dev->pollfunc == NULL) {
-		ret = -ENOMEM;
-		goto error_deallocate_sw_rb;
-	}
-	/* Buffer functions - here trigger setup related */
-	indio_dev->setup_ops = &max1363_buffered_setup_ops;
-
-	/* Flag that polled buffering is possible */
-	indio_dev->modes |= INDIO_BUFFER_TRIGGERED;
-
-	return 0;
-
-error_deallocate_sw_rb:
-	iio_kfifo_free(indio_dev->buffer);
-error_ret:
-	return ret;
-}
-
-static void max1363_buffer_cleanup(struct iio_dev *indio_dev)
-{
-	/* ensure that the trigger has been detached */
-	iio_dealloc_pollfunc(indio_dev->pollfunc);
-	iio_kfifo_free(indio_dev->buffer);
-}
-
 static int max1363_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -1571,8 +1530,6 @@ static int max1363_probe(struct i2c_client *client,
 	indio_dev->num_channels = st->chip_info->num_channels;
 	indio_dev->info = st->chip_info->info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
-	indio_dev->channels = st->chip_info->channels;
-	indio_dev->num_channels = st->chip_info->num_channels;
 	ret = max1363_initial_setup(st);
 	if (ret < 0)
 		goto error_free_available_scan_masks;
@@ -1618,7 +1575,7 @@ error_disable_reg:
 error_put_reg:
 	regulator_put(st->reg);
 error_unregister_map:
-	iio_map_array_unregister(indio_dev, client->dev.platform_data);
+	iio_map_array_unregister(indio_dev);
 error_free_device:
 	iio_device_free(indio_dev);
 error_out:
@@ -1638,7 +1595,7 @@ static int max1363_remove(struct i2c_client *client)
 	kfree(indio_dev->available_scan_masks);
 	regulator_disable(st->reg);
 	regulator_put(st->reg);
-	iio_map_array_unregister(indio_dev, client->dev.platform_data);
+	iio_map_array_unregister(indio_dev);
 	iio_device_free(indio_dev);
 
 	return 0;

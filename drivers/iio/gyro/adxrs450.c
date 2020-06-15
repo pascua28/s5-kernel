@@ -213,6 +213,7 @@ error_ret:
 static int adxrs450_spi_initial(struct adxrs450_state *st,
 		u32 *val, char chk)
 {
+	struct spi_message msg;
 	int ret;
 	u32 tx;
 	struct spi_transfer xfers = {
@@ -227,7 +228,9 @@ static int adxrs450_spi_initial(struct adxrs450_state *st,
 	if (chk)
 		tx |= (ADXRS450_CHK | ADXRS450_P);
 	st->tx = cpu_to_be32(tx);
-	ret = spi_sync_transfer(st->us, &xfers, 1);
+	spi_message_init(&msg);
+	spi_message_add_tail(&xfers, &msg);
+	ret = spi_sync(st->us, &msg);
 	if (ret) {
 		dev_err(&st->us->dev, "Problem while reading initializing data\n");
 		goto error_ret;
