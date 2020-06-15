@@ -317,6 +317,10 @@ static int af9033_init(struct dvb_frontend *fe)
 		len = ARRAY_SIZE(tuner_init_fc2580);
 		init = tuner_init_fc2580;
 		break;
+	case AF9033_TUNER_FC0012:
+		len = ARRAY_SIZE(tuner_init_fc0012);
+		init = tuner_init_fc0012;
+		break;
 	default:
 		pr_debug("%s: unsupported tuner ID=%d\n", __func__,
 				state->cfg.tuner);
@@ -326,6 +330,20 @@ static int af9033_init(struct dvb_frontend *fe)
 
 	for (i = 0; i < len; i++) {
 		ret = af9033_wr_reg(state, init[i].reg, init[i].val);
+		if (ret < 0)
+			goto err;
+	}
+
+	if (state->cfg.ts_mode == AF9033_TS_MODE_SERIAL) {
+		ret = af9033_wr_reg_mask(state, 0x00d91c, 0x01, 0x01);
+		if (ret < 0)
+			goto err;
+
+		ret = af9033_wr_reg_mask(state, 0x00d917, 0x00, 0x01);
+		if (ret < 0)
+			goto err;
+
+		ret = af9033_wr_reg_mask(state, 0x00d916, 0x00, 0x01);
 		if (ret < 0)
 			goto err;
 	}

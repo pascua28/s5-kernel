@@ -1331,7 +1331,7 @@ static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 		return;
 	}
 
-	memcpy(&dip->devbase,&vdev_template,sizeof(vdev_template));
+	dip->devbase = vdev_template;
 	dip->devbase.release = pvr2_video_device_release;
 	dip->devbase.ioctl_ops = &pvr2_ioctl_ops;
 	/* FIXME: tvnorms should be set to the set of supported standards
