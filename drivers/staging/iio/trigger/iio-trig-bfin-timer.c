@@ -65,7 +65,7 @@ struct bfin_tmr_state {
 
 static int iio_bfin_tmr_set_state(struct iio_trigger *trig, bool state)
 {
-	struct bfin_tmr_state *st = trig->private_data;
+	struct bfin_tmr_state *st = iio_trigger_get_drvdata(trig);
 
 	if (get_gptimer_period(st->t->id) == 0)
 		return -EINVAL;
@@ -81,8 +81,8 @@ static int iio_bfin_tmr_set_state(struct iio_trigger *trig, bool state)
 static ssize_t iio_bfin_tmr_frequency_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_trigger *trig = dev_get_drvdata(dev);
-	struct bfin_tmr_state *st = trig->private_data;
+	struct iio_trigger *trig = to_iio_trigger(dev);
+	struct bfin_tmr_state *st = iio_trigger_get_drvdata(trig);
 	unsigned long val;
 	bool enabled;
 	int ret;
@@ -124,8 +124,8 @@ static ssize_t iio_bfin_tmr_frequency_show(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
 {
-	struct iio_trigger *trig = dev_get_drvdata(dev);
-	struct bfin_tmr_state *st = trig->private_data;
+	struct iio_trigger *trig = to_iio_trigger(dev);
+	struct bfin_tmr_state *st = iio_trigger_get_drvdata(trig);
 	unsigned int period = get_gptimer_period(st->t->id);
 	unsigned long val;
 
@@ -213,9 +213,9 @@ static int iio_bfin_tmr_trigger_probe(struct platform_device *pdev)
 		goto out1;
 	}
 
-	st->trig->private_data = st;
 	st->trig->ops = &iio_bfin_tmr_trigger_ops;
 	st->trig->dev.groups = iio_bfin_tmr_trigger_attr_groups;
+	iio_trigger_set_drvdata(st->trig, st);
 	ret = iio_trigger_register(st->trig);
 	if (ret)
 		goto out2;

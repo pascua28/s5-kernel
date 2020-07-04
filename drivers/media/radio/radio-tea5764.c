@@ -332,7 +332,7 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 }
 
 static int vidioc_s_tuner(struct file *file, void *priv,
-				struct v4l2_tuner *v)
+				const struct v4l2_tuner *v)
 {
 	struct tea5764_device *radio = video_drvdata(file);
 
@@ -344,7 +344,7 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 }
 
 static int vidioc_s_frequency(struct file *file, void *priv,
-				struct v4l2_frequency *f)
+				const struct v4l2_frequency *f)
 {
 	struct tea5764_device *radio = video_drvdata(file);
 

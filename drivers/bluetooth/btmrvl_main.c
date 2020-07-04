@@ -501,6 +501,10 @@ static int btmrvl_service_main_thread(void *data)
 		add_wait_queue(&thread->wait_q, &wait);
 
 		set_current_state(TASK_INTERRUPTIBLE);
+		if (kthread_should_stop()) {
+			BT_DBG("main_thread: break from main thread");
+			break;
+		}
 
 		if (adapter->wakeup_tries ||
 				((!adapter->int_count) &&
@@ -515,11 +519,6 @@ static int btmrvl_service_main_thread(void *data)
 		remove_wait_queue(&thread->wait_q, &wait);
 
 		BT_DBG("main_thread woke up");
-
-		if (kthread_should_stop()) {
-			BT_DBG("main_thread: break from main thread");
-			break;
-		}
 
 		spin_lock_irqsave(&priv->driver_lock, flags);
 		if (adapter->int_count) {

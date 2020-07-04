@@ -851,7 +851,7 @@ static inline unsigned int blk_queue_get_max_sectors(struct request_queue *q,
 						     unsigned int cmd_flags)
 {
 	if (unlikely(cmd_flags & REQ_DISCARD))
-		return q->limits.max_discard_sectors;
+		return min(q->limits.max_discard_sectors, UINT_MAX >> 9);
 
 	if (unlikely(cmd_flags & REQ_WRITE_SAME))
 		return q->limits.max_write_same_sectors;
@@ -1542,7 +1542,7 @@ static inline bool blk_integrity_is_initialized(struct gendisk *g)
 
 struct block_device_operations {
 	int (*open) (struct block_device *, fmode_t);
-	int (*release) (struct gendisk *, fmode_t);
+	void (*release) (struct gendisk *, fmode_t);
 	int (*ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
 	int (*compat_ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
 	int (*direct_access) (struct block_device *, sector_t,

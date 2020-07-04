@@ -26,6 +26,7 @@
 #include <linux/i2c/pcf857x.h>
 
 #include <media/tvp514x.h>
+#include <media/adv7343.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -38,11 +39,11 @@
 
 #include <mach/common.h>
 #include <mach/serial.h>
-#include <mach/i2c.h>
-#include <mach/nand.h>
+#include <linux/platform_data/i2c-davinci.h>
+#include <linux/platform_data/mtd-davinci.h>
 #include <mach/clock.h>
 #include <mach/cdce949.h>
-#include <mach/aemif.h>
+#include <linux/platform_data/mtd-davinci-aemif.h>
 
 #include "davinci.h"
 #include "clock.h"
@@ -116,12 +117,7 @@ static struct platform_device davinci_nand_device = {
 	},
 };
 
-#if defined(CONFIG_BLK_DEV_PALMCHIP_BK3710) || \
-    defined(CONFIG_BLK_DEV_PALMCHIP_BK3710_MODULE)
-#define HAS_ATA 1
-#else
-#define HAS_ATA 0
-#endif
+#define HAS_ATA		IS_ENABLED(CONFIG_BLK_DEV_PALMCHIP_BK3710)
 
 /* CPLD Register 0 bits to control ATA */
 #define DM646X_EVM_ATA_RST		BIT(0)
@@ -496,18 +492,49 @@ static struct vpif_subdev_info dm646x_vpif_subdev[] = {
 	},
 };
 
-static const char *output[] = {
-	"Composite",
-	"Component",
-	"S-Video",
+static const struct vpif_output dm6467_ch0_outputs[] = {
+	{
+		.output = {
+			.index = 0,
+			.name = "Composite",
+			.type = V4L2_OUTPUT_TYPE_ANALOG,
+			.capabilities = V4L2_OUT_CAP_STD,
+			.std = V4L2_STD_ALL,
+		},
+		.subdev_name = "adv7343",
+		.output_route = ADV7343_COMPOSITE_ID,
+	},
+	{
+		.output = {
+			.index = 1,
+			.name = "Component",
+			.type = V4L2_OUTPUT_TYPE_ANALOG,
+			.capabilities = V4L2_OUT_CAP_DV_TIMINGS,
+		},
+		.subdev_name = "adv7343",
+		.output_route = ADV7343_COMPONENT_ID,
+	},
+	{
+		.output = {
+			.index = 2,
+			.name = "S-Video",
+			.type = V4L2_OUTPUT_TYPE_ANALOG,
+			.capabilities = V4L2_OUT_CAP_STD,
+			.std = V4L2_STD_ALL,
+		},
+		.subdev_name = "adv7343",
+		.output_route = ADV7343_SVIDEO_ID,
+	},
 };
 
 static struct vpif_display_config dm646x_vpif_display_config = {
 	.set_clock	= set_vpif_clock,
 	.subdevinfo	= dm646x_vpif_subdev,
 	.subdev_count	= ARRAY_SIZE(dm646x_vpif_subdev),
-	.output		= output,
-	.output_count	= ARRAY_SIZE(output),
+	.chan_config[0] = {
+		.outputs = dm6467_ch0_outputs,
+		.output_count = ARRAY_SIZE(dm6467_ch0_outputs),
+	},
 	.card_name	= "DM646x EVM",
 };
 

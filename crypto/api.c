@@ -36,12 +36,6 @@ EXPORT_SYMBOL_GPL(crypto_chain);
 
 static struct crypto_alg *crypto_larval_wait(struct crypto_alg *alg);
 
-static inline struct crypto_alg *crypto_alg_get(struct crypto_alg *alg)
-{
-	atomic_inc(&alg->cra_refcnt);
-	return alg;
-}
-
 struct crypto_alg *crypto_mod_get(struct crypto_alg *alg)
 {
 	return try_module_get(alg->cra_module) ? crypto_alg_get(alg) : NULL;

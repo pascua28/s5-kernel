@@ -11,6 +11,7 @@
 #include <linux/linkage.h>
 #include <asm/assembler.h>
 
+	.arch	armv7-a
 /*
  * Debugging stuff
  *
@@ -876,8 +877,8 @@ proc_types:
 
 #if !defined(CONFIG_CPU_V7)
 		/* This collides with some V7 IDs, preventing correct detection */
-		.word	0x00000000		@ old ARM ID
-		.word	0x0000f000
+		.word	0x41000000		@ old ARM ID
+		.word	0xff00f000
 		mov	pc, lr
  THUMB(		nop				)
 		mov	pc, lr

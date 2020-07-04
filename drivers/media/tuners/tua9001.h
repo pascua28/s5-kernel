@@ -21,6 +21,7 @@
 #ifndef TUA9001_H
 #define TUA9001_H
 
+#include <linux/kconfig.h>
 #include "dvb_frontend.h"
 
 struct tua9001_config {
@@ -30,8 +31,27 @@ struct tua9001_config {
 	u8 i2c_addr;
 };
 
-#if defined(CONFIG_MEDIA_TUNER_TUA9001) || \
-	(defined(CONFIG_MEDIA_TUNER_TUA9001_MODULE) && defined(MODULE))
+/*
+ * TUA9001 I/O PINs:
+ *
+ * CEN - chip enable
+ * 0 = chip disabled (chip off)
+ * 1 = chip enabled (chip on)
+ *
+ * RESETN - chip reset
+ * 0 = reset disabled (chip reset off)
+ * 1 = reset enabled (chip reset on)
+ *
+ * RXEN - RX enable
+ * 0 = RX disabled (chip idle)
+ * 1 = RX enabled (chip tuned)
+ */
+
+#define TUA9001_CMD_CEN     0
+#define TUA9001_CMD_RESETN  1
+#define TUA9001_CMD_RXEN    2
+
+#if IS_ENABLED(CONFIG_MEDIA_TUNER_TUA9001)
 extern struct dvb_frontend *tua9001_attach(struct dvb_frontend *fe,
 		struct i2c_adapter *i2c, struct tua9001_config *cfg);
 #else

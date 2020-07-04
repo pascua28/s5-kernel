@@ -18,31 +18,10 @@
 
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
-#include <linux/iio/kfifo_buf.h>
 #include <linux/iio/trigger_consumer.h>
+#include <linux/iio/triggered_buffer.h>
 
 #include "ad799x.h"
-
-/**
- * ad799x_ring_preenable() setup the parameters of the ring before enabling
- *
- * The complex nature of the setting of the number of bytes per datum is due
- * to this driver currently ensuring that the timestamp is stored at an 8
- * byte boundary.
- **/
-static int ad799x_ring_preenable(struct iio_dev *indio_dev)
-{
-	struct ad799x_state *st = iio_priv(indio_dev);
-	/*
-	 * Need to figure out the current mode based upon the requested
-	 * scan mask in iio_dev
-	 */
-
-	if (st->id == ad7997 || st->id == ad7998)
-		ad7997_8_set_scan_mode(st, *indio_dev->active_scan_mask);
-
-	return iio_sw_buffer_preenable(indio_dev);
-}
 
 /**
  * ad799x_trigger_handler() bh of trigger launched polling to ring buffer
@@ -57,13 +36,8 @@ static irqreturn_t ad799x_trigger_handler(int irq, void *p)
 	struct iio_dev *indio_dev = pf->indio_dev;
 	struct ad799x_state *st = iio_priv(indio_dev);
 	s64 time_ns;
-	__u8 *rxbuf;
 	int b_sent;
 	u8 cmd;
-
-	rxbuf = kmalloc(indio_dev->scan_bytes, GFP_KERNEL);
-	if (rxbuf == NULL)
-		goto out;
 
 	switch (st->id) {
 	case ad7991:
@@ -87,71 +61,30 @@ static irqreturn_t ad799x_trigger_handler(int irq, void *p)
 	}
 
 	b_sent = i2c_smbus_read_i2c_block_data(st->client,
-			cmd, bitmap_weight(indio_dev->active_scan_mask,
-					   indio_dev->masklength) * 2, rxbuf);
+			cmd, st->transfer_size, st->rx_buf);
 	if (b_sent < 0)
-		goto done;
+		goto out;
 
 	time_ns = iio_get_time_ns();
 
 	if (indio_dev->scan_timestamp)
-		memcpy(rxbuf + indio_dev->scan_bytes - sizeof(s64),
+		memcpy(st->rx_buf + indio_dev->scan_bytes - sizeof(s64),
 			&time_ns, sizeof(time_ns));
 
-	iio_push_to_buffers(indio_dev, rxbuf);
-done:
-	kfree(rxbuf);
-	if (b_sent < 0)
-		return b_sent;
+	iio_push_to_buffers(indio_dev, st->rx_buf);
 out:
 	iio_trigger_notify_done(indio_dev->trig);
 
 	return IRQ_HANDLED;
 }
 
-static const struct iio_buffer_setup_ops ad799x_buf_setup_ops = {
-	.preenable = &ad799x_ring_preenable,
-	.postenable = &iio_triggered_buffer_postenable,
-	.predisable = &iio_triggered_buffer_predisable,
-};
-
 int ad799x_register_ring_funcs_and_init(struct iio_dev *indio_dev)
 {
-	int ret = 0;
-
-	indio_dev->buffer = iio_kfifo_allocate(indio_dev);
-	if (!indio_dev->buffer) {
-		ret = -ENOMEM;
-		goto error_ret;
-	}
-	indio_dev->pollfunc = iio_alloc_pollfunc(NULL,
-						 &ad799x_trigger_handler,
-						 IRQF_ONESHOT,
-						 indio_dev,
-						 "%s_consumer%d",
-						 indio_dev->name,
-						 indio_dev->id);
-	if (indio_dev->pollfunc == NULL) {
-		ret = -ENOMEM;
-		goto error_deallocate_kfifo;
-	}
-
-	/* Ring buffer functions - here trigger setup related */
-	indio_dev->setup_ops = &ad799x_buf_setup_ops;
-	indio_dev->buffer->scan_timestamp = true;
-
-	/* Flag that polled ring buffering is possible */
-	indio_dev->modes |= INDIO_BUFFER_TRIGGERED;
-	return 0;
-
-error_deallocate_kfifo:
-	iio_kfifo_free(indio_dev->buffer);
-error_ret:
-	return ret;
+	return iio_triggered_buffer_setup(indio_dev, NULL,
+		&ad799x_trigger_handler, NULL);
 }
 
 void ad799x_ring_cleanup(struct iio_dev *indio_dev)
 {
-	iio_dealloc_pollfunc(indio_dev->pollfunc);
-	iio_kfifo_free(indio_dev->buffer);
+	iio_triggered_buffer_cleanup(indio_dev);
 }

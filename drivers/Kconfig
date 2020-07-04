@@ -56,6 +56,8 @@ source "drivers/spmi/Kconfig"
 
 source "drivers/slimbus/Kconfig"
 
+source "drivers/ssbi/Kconfig"
+
 source "drivers/hsi/Kconfig"
 
 source "drivers/pps/Kconfig"
@@ -124,6 +126,8 @@ source "drivers/vfio/Kconfig"
 
 source "drivers/vlynq/Kconfig"
 
+source "drivers/virt/Kconfig"
+
 source "drivers/virtio/Kconfig"
 
 source "drivers/hv/Kconfig"
@@ -149,8 +153,6 @@ source "drivers/iommu/Kconfig"
 source "drivers/remoteproc/Kconfig"
 
 source "drivers/rpmsg/Kconfig"
-
-source "drivers/virt/Kconfig"
 
 source "drivers/devfreq/Kconfig"
 
@@ -192,5 +194,7 @@ source "drivers/irqchip/Kconfig"
 
 source "drivers/ipack/Kconfig"
 source "drivers/iio/Kconfig"
+
+source "drivers/reset/Kconfig"
 
 endmenu

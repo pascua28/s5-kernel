@@ -96,11 +96,19 @@ enum {
 	/* module au0828 */
 	V4L2_IDENT_AU0828 = 828,
 
+	/* module bttv: ident 848 + 849 */
+	V4L2_IDENT_BT848 = 848,
+	V4L2_IDENT_BT849 = 849,
+
 	/* module bt856: just ident 856 */
 	V4L2_IDENT_BT856 = 856,
 
 	/* module bt866: just ident 866 */
 	V4L2_IDENT_BT866 = 866,
+
+	/* module bttv: ident 878 + 879 */
+	V4L2_IDENT_BT878 = 878,
+	V4L2_IDENT_BT879 = 879,
 
 	/* module ks0127: reserved range 1120-1129 */
 	V4L2_IDENT_KS0122S = 1122,
@@ -179,6 +187,15 @@ enum {
 
 	/* module adv7343: just ident 7343 */
 	V4L2_IDENT_ADV7343 = 7343,
+
+	/* module ths7353: just ident 7353 */
+	V4L2_IDENT_THS7353 = 7353,
+
+	/* module adv7393: just ident 7393 */
+	V4L2_IDENT_ADV7393 = 7393,
+
+	/* module adv7604: just ident 7604 */
+	V4L2_IDENT_ADV7604 = 7604,
 
 	/* module saa7706h: just ident 7706 */
 	V4L2_IDENT_SAA7706H = 7706,

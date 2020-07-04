@@ -17,7 +17,7 @@
 #include <linux/completion.h>
 #include <linux/hrtimer.h>
 
-#define CPUIDLE_STATE_MAX	8
+#define CPUIDLE_STATE_MAX	10
 #define CPUIDLE_NAME_LEN	16
 #define CPUIDLE_DESC_LEN	32
 
@@ -57,6 +57,7 @@ struct cpuidle_state {
 /* Idle State Flags */
 #define CPUIDLE_FLAG_TIME_VALID	(0x01) /* is residency time measurable? */
 #define CPUIDLE_FLAG_COUPLED	(0x02) /* state applies to multiple cpus */
+#define CPUIDLE_FLAG_TIMER_STOP (0x04)  /* timer is stopped on this state */
 
 #define CPUIDLE_DRIVER_FLAGS_MASK (0xFFFF0000)
 
@@ -104,8 +105,8 @@ struct cpuidle_driver {
 	struct module 		*owner;
 	int                     refcnt;
 
-	/* set to 1 to use the core cpuidle time keeping (for all states). */
-	unsigned int		en_core_tk_irqen:1;
+        /* used by the cpuidle framework to setup the broadcast timer */
+	unsigned int            bctimer:1;
 	/* states array must be ordered in decreasing power consumption */
 	struct cpuidle_state	states[CPUIDLE_STATE_MAX];
 	int			state_count;
@@ -131,10 +132,6 @@ extern void cpuidle_pause(void);
 extern void cpuidle_resume(void);
 extern int cpuidle_enable_device(struct cpuidle_device *dev);
 extern void cpuidle_disable_device(struct cpuidle_device *dev);
-extern int cpuidle_wrap_enter(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv, int index,
-				int (*enter)(struct cpuidle_device *dev,
-					struct cpuidle_driver *drv, int index));
 extern int cpuidle_play_dead(void);
 
 extern struct cpuidle_driver *cpuidle_get_cpu_driver(struct cpuidle_device *dev);
@@ -164,11 +161,6 @@ static inline void cpuidle_resume(void) { }
 static inline int cpuidle_enable_device(struct cpuidle_device *dev)
 {return -ENODEV; }
 static inline void cpuidle_disable_device(struct cpuidle_device *dev) { }
-static inline int cpuidle_wrap_enter(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv, int index,
-				int (*enter)(struct cpuidle_device *dev,
-					struct cpuidle_driver *drv, int index))
-{ return -ENODEV; }
 static inline int cpuidle_play_dead(void) {return -ENODEV; }
 #endif
 

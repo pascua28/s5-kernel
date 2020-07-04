@@ -50,6 +50,11 @@ module_param(dvb_demux_speedcheck, int, 0644);
 MODULE_PARM_DESC(dvb_demux_speedcheck,
 		"enable transport stream speed check");
 
+static int dvb_demux_feed_err_pkts = 1;
+module_param(dvb_demux_feed_err_pkts, int, 0644);
+MODULE_PARM_DESC(dvb_demux_feed_err_pkts,
+		 "when set to 0, drop packets with the TEI bit set (1 by default)");
+
 #define dprintk_tscheck(x...) do {                              \
 		if (dvb_demux_tscheck && printk_ratelimit())    \
 			printk(x);                              \
@@ -419,32 +424,38 @@ static void dvb_dmx_swfilter_packet(struct dvb_demux *demux, const u8 *buf)
 				printk(KERN_INFO "TS speed %llu Kbits/sec \n",
 						div64_u64(speed_bytes,
 							speed_timedelta));
-			};
+			}
 
 			demux->speed_last_time = cur_time;
 			demux->speed_pkts_cnt = 0;
-		};
-	};
+		}
+	}
 
-	if (demux->cnt_storage && dvb_demux_tscheck) {
-		/* check pkt counter */
-		if (pid < MAX_PID) {
-			if (buf[1] & 0x80)
-				dprintk_tscheck("TEI detected. "
-						"PID=0x%x data1=0x%x\n",
-						pid, buf[1]);
+	if (buf[1] & 0x80) {
+		dprintk_tscheck("TEI detected. "
+				"PID=0x%x data1=0x%x\n",
+				pid, buf[1]);
+		/* data in this packet cant be trusted - drop it unless
+		 * module option dvb_demux_feed_err_pkts is set */
+		if (!dvb_demux_feed_err_pkts)
+			return;
+	} else /* if TEI bit is set, pid may be wrong- skip pkt counter */
+		if (demux->cnt_storage && dvb_demux_tscheck) {
+			/* check pkt counter */
+			if (pid < MAX_PID) {
+				if (buf[3] & 0x10)
+					demux->cnt_storage[pid] =
+						(demux->cnt_storage[pid] + 1) & 0xf;
 
-			if ((buf[3] & 0xf) != demux->cnt_storage[pid])
-				dprintk_tscheck("TS packet counter mismatch. "
-						"PID=0x%x expected 0x%x "
-						"got 0x%x\n",
+				if ((buf[3] & 0xf) != demux->cnt_storage[pid]) {
+					dprintk_tscheck("TS packet counter mismatch. PID=0x%x expected 0x%x got 0x%x\n",
 						pid, demux->cnt_storage[pid],
 						buf[3] & 0xf);
-
-			demux->cnt_storage[pid] = ((buf[3] & 0xf) + 1)&0xf;
-		};
-		/* end check */
-	};
+					demux->cnt_storage[pid] = buf[3] & 0xf;
+				}
+			}
+			/* end check */
+		}
 
 	list_for_each_entry(feed, &demux->feed_list, list_head) {
 		if ((feed->pid != pid) && (feed->pid != 0x2000))
@@ -663,7 +674,7 @@ static int dmx_ts_feed_set(struct dmx_ts_feed *ts_feed, u16 pid, int ts_type,
 		return -ERESTARTSYS;
 
 	if (ts_type & TS_DECODER) {
-		if (pes_type >= DMX_TS_PES_OTHER) {
+		if (pes_type >= DMX_PES_OTHER) {
 			mutex_unlock(&demux->mutex);
 			return -EINVAL;
 		}
@@ -835,7 +846,7 @@ static int dvbdmx_release_ts_feed(struct dmx_demux *dmx,
 
 	feed->pid = 0xffff;
 
-	if (feed->ts_type & TS_DECODER && feed->pes_type < DMX_TS_PES_OTHER)
+	if (feed->ts_type & TS_DECODER && feed->pes_type < DMX_PES_OTHER)
 		demux->pesfilter[feed->pes_type] = NULL;
 
 	mutex_unlock(&demux->mutex);
@@ -1257,7 +1268,7 @@ int dvb_dmx_init(struct dvb_demux *dvbdemux)
 
 	INIT_LIST_HEAD(&dvbdemux->frontend_list);
 
-	for (i = 0; i < DMX_TS_PES_OTHER; i++) {
+	for (i = 0; i < DMX_PES_OTHER; i++) {
 		dvbdemux->pesfilter[i] = NULL;
 		dvbdemux->pids[i] = 0xffff;
 	}

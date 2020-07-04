@@ -3877,12 +3877,12 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 		reg = stv090x_read_reg(state, STV090x_TSTTNR1);
 		STV090x_SETFIELD(reg, ADC1_PON_FIELD, 0);
 		if (stv090x_write_reg(state, STV090x_TSTTNR1, reg) < 0)
-			goto err;
+			goto err_unlock;
 		/* power off DiSEqC 1 */
 		reg = stv090x_read_reg(state, STV090x_TSTTNR2);
 		STV090x_SETFIELD(reg, DISEQC1_PON_FIELD, 0);
 		if (stv090x_write_reg(state, STV090x_TSTTNR2, reg) < 0)
-			goto err;
+			goto err_unlock;
 
 		/* check whether path 2 is already sleeping, that is when
 		   ADC2 is off */
@@ -3901,7 +3901,7 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 		if (full_standby)
 			STV090x_SETFIELD(reg, STOP_CLKFEC_FIELD, 1);
 		if (stv090x_write_reg(state, STV090x_STOPCLK1, reg) < 0)
-			goto err;
+			goto err_unlock;
 		reg = stv090x_read_reg(state, STV090x_STOPCLK2);
 		/* sampling 1 clock */
 		STV090x_SETFIELD(reg, STOP_CLKSAMP1_FIELD, 1);
@@ -3912,7 +3912,7 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 		if (full_standby)
 			STV090x_SETFIELD(reg, STOP_CLKTS_FIELD, 1);
 		if (stv090x_write_reg(state, STV090x_STOPCLK2, reg) < 0)
-			goto err;
+			goto err_unlock;
 		break;
 
 	case STV090x_DEMODULATOR_1:
@@ -3920,12 +3920,12 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 		reg = stv090x_read_reg(state, STV090x_TSTTNR3);
 		STV090x_SETFIELD(reg, ADC2_PON_FIELD, 0);
 		if (stv090x_write_reg(state, STV090x_TSTTNR3, reg) < 0)
-			goto err;
+			goto err_unlock;
 		/* power off DiSEqC 2 */
 		reg = stv090x_read_reg(state, STV090x_TSTTNR4);
 		STV090x_SETFIELD(reg, DISEQC2_PON_FIELD, 0);
 		if (stv090x_write_reg(state, STV090x_TSTTNR4, reg) < 0)
-			goto err;
+			goto err_unlock;
 
 		/* check whether path 1 is already sleeping, that is when
 		   ADC1 is off */
@@ -3944,7 +3944,7 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 		if (full_standby)
 			STV090x_SETFIELD(reg, STOP_CLKFEC_FIELD, 1);
 		if (stv090x_write_reg(state, STV090x_STOPCLK1, reg) < 0)
-			goto err;
+			goto err_unlock;
 		reg = stv090x_read_reg(state, STV090x_STOPCLK2);
 		/* sampling 2 clock */
 		STV090x_SETFIELD(reg, STOP_CLKSAMP2_FIELD, 1);
@@ -3955,7 +3955,7 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 		if (full_standby)
 			STV090x_SETFIELD(reg, STOP_CLKTS_FIELD, 1);
 		if (stv090x_write_reg(state, STV090x_STOPCLK2, reg) < 0)
-			goto err;
+			goto err_unlock;
 		break;
 
 	default:
@@ -3968,7 +3968,7 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 		reg = stv090x_read_reg(state, STV090x_SYNTCTRL);
 		STV090x_SETFIELD(reg, STANDBY_FIELD, 0x01);
 		if (stv090x_write_reg(state, STV090x_SYNTCTRL, reg) < 0)
-			goto err;
+			goto err_unlock;
 	}
 
 	mutex_unlock(&state->internal->demod_lock);
@@ -3976,8 +3976,10 @@ static int stv090x_sleep(struct dvb_frontend *fe)
 
 err_gateoff:
 	stv090x_i2c_gate_ctrl(state, 0);
-err:
+	goto err;
+err_unlock:
 	mutex_unlock(&state->internal->demod_lock);
+err:
 	dprintk(FE_ERROR, 1, "I/O error");
 	return -1;
 }

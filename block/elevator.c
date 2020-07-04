@@ -572,6 +572,8 @@ void elv_requeue_request(struct request_queue *q, struct request *rq)
 
 	rq->cmd_flags &= ~REQ_STARTED;
 
+	blk_pm_requeue_request(rq);
+
 	__elv_add_request(q, rq, ELEVATOR_INSERT_REQUEUE);
 }
 
