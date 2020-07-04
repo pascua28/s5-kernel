@@ -5,13 +5,7 @@ export CROSS_COMPILE=~/ubertc/bin/arm-eabi-
 
 mkdir output
 
-if [ -e output/.config ]
-    then
-        make -j4 O=output oldconfig
-    else
-        cp defconfig output/.config
-        make -j4 O=output oldconfig
-fi
+make -j4 O=output klte_defconfig
 
 DATE_START=$(date +"%s")
 
