@@ -12,10 +12,8 @@
  *  GNU General Public License for more details.
  *
  */
-
 #include "ssp.h"
 #include <linux/iio/iio.h>
-#include <linux/iio/sysfs.h>
 #include <linux/iio/trigger.h>
 /*
  * ssp_iio_data_rdy_trigger_set_state() set data ready interrupt state
@@ -23,33 +21,27 @@
 static const struct iio_trigger_ops ssp_iio_trigger_ops = {
 	.owner = THIS_MODULE,
 };
-
-int ssp_iio_probe_trigger(struct ssp_data *data, struct iio_dev *indio_dev, struct iio_trigger *trig)
+int ssp_iio_probe_trigger(struct ssp_data *data,
+	struct iio_dev *indio_dev, struct iio_trigger *trig)
 {
 	int ret;
-
 	trig = iio_trigger_alloc("%s-dev%d",
 					indio_dev->name,
 					indio_dev->id);
 	if (trig == NULL)
 		return -ENOMEM;
 	trig->dev.parent = &data->client->dev;
-	trig->private_data = indio_dev;
 	trig->ops = &ssp_iio_trigger_ops;
 	ret = iio_trigger_register(trig);
-
 	if (ret) {
 		iio_trigger_free(trig);
 		return -EPERM;
 	}
 	indio_dev->trig = trig;
-
 	return 0;
 }
-
 void ssp_iio_remove_trigger(struct iio_trigger *trig)
 {
 	iio_trigger_unregister(trig);
 	iio_trigger_free(trig);
 }
-
