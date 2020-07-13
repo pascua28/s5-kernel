@@ -26,9 +26,8 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/wakeup_reason.h>
-
+#include <linux/irqchip/chained_irq.h>
 #include <asm/mach/irq.h>
-
 #include <mach/msm_iomap.h>
 #include <mach/gpiomux.h>
 #include <mach/mpm.h>
