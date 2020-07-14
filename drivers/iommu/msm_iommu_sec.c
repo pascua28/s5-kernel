@@ -770,7 +770,7 @@ fail:
 }
 
 static phys_addr_t msm_iommu_iova_to_phys(struct iommu_domain *domain,
-					  unsigned long va)
+					  phys_addr_t va)
 {
 	return 0;
 }
