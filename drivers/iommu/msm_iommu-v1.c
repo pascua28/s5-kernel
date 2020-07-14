@@ -933,7 +933,7 @@ static int msm_iommu_unmap_range(struct iommu_domain *domain, unsigned int va,
 }
 
 static phys_addr_t msm_iommu_iova_to_phys(struct iommu_domain *domain,
-					  unsigned long va)
+					  phys_addr_t va)
 {
 	struct msm_iommu_priv *priv;
 	struct msm_iommu_drvdata *iommu_drvdata;
