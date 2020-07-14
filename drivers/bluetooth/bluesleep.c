@@ -747,8 +747,7 @@ static ssize_t bluesleep_proc_write(struct file *file, const char *buf,
 	size_t count, loff_t *pos)
 {
 	void *data = PDE_DATA(file_inode(file));
-	char lbuf[32], b;
-	int ret;
+	char lbuf[32];
 
 	if (count >= sizeof(lbuf))
 		count = sizeof(lbuf)-1;
@@ -759,14 +758,8 @@ static ssize_t bluesleep_proc_write(struct file *file, const char *buf,
 
 	switch ((long)data) {
 	case PROC_BTWAKE:
-		if (count < 1)
-			return -EINVAL;
-
-		if (copy_from_user(&b, buf, 1))
-			return -EFAULT;
-
 		/* HCI_DEV_WRITE */
-		if (b != '0')
+		if (lbuf[0] != '0')
 			bluesleep_outgoing_data();
 		break;
 	case PROC_PROTO:
