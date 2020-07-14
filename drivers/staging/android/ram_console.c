@@ -15,6 +15,7 @@
 
 #include <linux/console.h>
 #include <linux/init.h>
+#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/persistent_ram.h>
 #include <linux/platform_device.h>
@@ -158,17 +159,16 @@ static int __init ram_console_late_init(void)
 	if (persistent_ram_old_size(prz) == 0)
 		return 0;
 
-	entry = create_proc_entry("last_kmsg", S_IFREG | S_IRUGO, NULL);
+	entry = proc_create_data("last_kmsg", S_IFREG | S_IRUGO, NULL, &ram_console_file_ops, NULL);
 	if (!entry) {
 		printk(KERN_ERR "ram_console: failed to create proc entry\n");
 		persistent_ram_free_old(prz);
 		return 0;
 	}
 
-	entry->proc_fops = &ram_console_file_ops;
-	entry->size = persistent_ram_old_size(prz) +
+	proc_set_size(entry, persistent_ram_old_size(prz) +
 		persistent_ram_ecc_string(prz, NULL, 0) +
-		bootinfo_size;
+		bootinfo_size);
 
 	return 0;
 }
