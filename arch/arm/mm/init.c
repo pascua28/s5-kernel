@@ -958,3 +958,17 @@ static int __init msm_krait_wfe_init(void)
 }
 pure_initcall(msm_krait_wfe_init);
 #endif
+
+#ifdef CONFIG_MSM_KRAIT_WFE_FIXUP
+static int __init msm_krait_wfe_init(void)
+{
+	unsigned int val, midr;
+	midr = read_cpuid_id() & 0xffffff00;
+	if ((midr == 0x511f0400) || (midr == 0x510f0600)) {
+		asm volatile("mrc p15, 7, %0, c15, c0, 5" : "=r" (val));
+		msm_krait_need_wfe_fixup = (val & 0x10000) ? 1 : 0;
+	}
+	return 0;
+}
+pure_initcall(msm_krait_wfe_init);
+#endif
