@@ -503,6 +503,7 @@ static void zr364xx_fillbuff(struct zr364xx_camera *cam,
 			     int jpgsize)
 {
 	int pos = 0;
+	struct timeval ts;
 	const char *tmpbuf;
 	char *vbuf = videobuf_to_vmalloc(&buf->vb);
 	unsigned long last_frame;
@@ -531,7 +532,8 @@ static void zr364xx_fillbuff(struct zr364xx_camera *cam,
 	/* tell v4l buffer was filled */
 
 	buf->vb.field_count = cam->frame_count * 2;
-	v4l2_get_timestamp(&buf->vb.ts);
+	do_gettimeofday(&ts);
+	buf->vb.ts = ts;
 	buf->vb.state = VIDEOBUF_DONE;
 }
 
@@ -559,7 +561,7 @@ static int zr364xx_got_frame(struct zr364xx_camera *cam, int jpgsize)
 		goto unlock;
 	}
 	list_del(&buf->vb.queue);
-	v4l2_get_timestamp(&buf->vb.ts);
+	do_gettimeofday(&buf->vb.ts);
 	DBG("[%p/%d] wakeup\n", buf, buf->vb.i);
 	zr364xx_fillbuff(cam, buf, jpgsize);
 	wake_up(&buf->vb.done);
@@ -1082,7 +1084,8 @@ static void read_pipe_completion(struct urb *purb)
 		return;
 	}
 
-	if (purb->actual_length > pipe_info->transfer_size) {
+	if (purb->actual_length < 0 ||
+	    purb->actual_length > pipe_info->transfer_size) {
 		dev_err(&cam->udev->dev, "wrong number of bytes\n");
 		return;
 	}

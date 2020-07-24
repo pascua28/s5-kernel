@@ -101,7 +101,7 @@ static int ak881x_g_register(struct v4l2_subdev *sd,
 }
 
 static int ak881x_s_register(struct v4l2_subdev *sd,
-			     const struct v4l2_dbg_register *reg)
+			     struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 

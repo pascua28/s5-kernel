@@ -25,7 +25,6 @@
 #include <linux/device.h>
 #include <linux/suspend.h>
 #include <media/v4l2-common.h>
-#include <media/tuner.h>
 
 #include "au0828.h"
 #include "au8522.h"
@@ -80,16 +79,9 @@ static struct au8522_config hauppauge_woodbury_config = {
 	.vsb_if        = AU8522_IF_3_25MHZ,
 };
 
-static struct xc5000_config hauppauge_xc5000a_config = {
+static struct xc5000_config hauppauge_hvr950q_tunerconfig = {
 	.i2c_address      = 0x61,
 	.if_khz           = 6000,
-	.chip_id          = XC5000A,
-};
-
-static struct xc5000_config hauppauge_xc5000c_config = {
-	.i2c_address      = 0x61,
-	.if_khz           = 6000,
-	.chip_id          = XC5000C,
 };
 
 static struct mxl5007t_config mxl5007t_hvr950q_config = {
@@ -101,14 +93,11 @@ static struct tda18271_config hauppauge_woodbury_tunerconfig = {
 	.gate    = TDA18271_GATE_DIGITAL,
 };
 
-static void au0828_restart_dvb_streaming(struct work_struct *work);
-
 /*-------------------------------------------------------------------*/
 static void urb_completion(struct urb *purb)
 {
 	struct au0828_dev *dev = purb->context;
 	int ptype = usb_pipetype(purb->pipe);
-	unsigned char *ptr;
 
 	dprintk(2, "%s()\n", __func__);
 
@@ -121,16 +110,6 @@ static void urb_completion(struct urb *purb)
 	if (ptype != PIPE_BULK) {
 		printk(KERN_ERR "%s() Unsupported URB type %d\n",
 		       __func__, ptype);
-		return;
-	}
-
-	/* See if the stream is corrupted (to work around a hardware
-	   bug where the stream gets misaligned */
-	ptr = purb->transfer_buffer;
-	if (purb->actual_length > 0 && ptr[0] != 0x47) {
-		dprintk(1, "Need to restart streaming %02x len=%d!\n",
-			ptr[0], purb->actual_length);
-		schedule_work(&dev->restart_streaming);
 		return;
 	}
 
@@ -151,12 +130,13 @@ static int stop_urb_transfer(struct au0828_dev *dev)
 
 	dprintk(2, "%s()\n", __func__);
 
-	dev->urb_streaming = 0;
 	for (i = 0; i < URB_COUNT; i++) {
 		usb_kill_urb(dev->urbs[i]);
 		kfree(dev->urbs[i]->transfer_buffer);
 		usb_free_urb(dev->urbs[i]);
 	}
+
+	dev->urb_streaming = 0;
 
 	return 0;
 }
@@ -258,43 +238,16 @@ static int au0828_dvb_stop_feed(struct dvb_demux_feed *feed)
 		mutex_lock(&dvb->lock);
 		if (--dvb->feeding == 0) {
 			/* Stop transport */
-			ret = stop_urb_transfer(dev);
+			au0828_write(dev, 0x608, 0x00);
+			au0828_write(dev, 0x609, 0x00);
+			au0828_write(dev, 0x60a, 0x00);
 			au0828_write(dev, 0x60b, 0x00);
+			ret = stop_urb_transfer(dev);
 		}
 		mutex_unlock(&dvb->lock);
 	}
 
 	return ret;
-}
-
-static void au0828_restart_dvb_streaming(struct work_struct *work)
-{
-	struct au0828_dev *dev = container_of(work, struct au0828_dev,
-					      restart_streaming);
-	struct au0828_dvb *dvb = &dev->dvb;
-
-	if (dev->urb_streaming == 0)
-		return;
-
-	dprintk(1, "Restarting streaming...!\n");
-
-	mutex_lock(&dvb->lock);
-
-	/* Stop transport */
-	stop_urb_transfer(dev);
-	au0828_write(dev, 0x608, 0x00);
-	au0828_write(dev, 0x609, 0x00);
-	au0828_write(dev, 0x60a, 0x00);
-	au0828_write(dev, 0x60b, 0x00);
-
-	/* Start transport */
-	au0828_write(dev, 0x608, 0x90);
-	au0828_write(dev, 0x609, 0x72);
-	au0828_write(dev, 0x60a, 0x71);
-	au0828_write(dev, 0x60b, 0x01);
-	start_urb_transfer(dev);
-
-	mutex_unlock(&dvb->lock);
 }
 
 static int dvb_register(struct au0828_dev *dev)
@@ -303,8 +256,6 @@ static int dvb_register(struct au0828_dev *dev)
 	int result;
 
 	dprintk(1, "%s()\n", __func__);
-
-	INIT_WORK(&dev->restart_streaming, au0828_restart_dvb_streaming);
 
 	/* register adapter */
 	result = dvb_register_adapter(&dvb->adapter, DRIVER_NAME, THIS_MODULE,
@@ -432,19 +383,8 @@ int au0828_dvb_register(struct au0828_dev *dev)
 				&hauppauge_hvr950q_config,
 				&dev->i2c_adap);
 		if (dvb->frontend != NULL)
-			switch (dev->board.tuner_type) {
-			default:
-			case TUNER_XC5000:
-				dvb_attach(xc5000_attach, dvb->frontend,
-					   &dev->i2c_adap,
-					   &hauppauge_xc5000a_config);
-				break;
-			case TUNER_XC5000C:
-				dvb_attach(xc5000_attach, dvb->frontend,
-					   &dev->i2c_adap,
-					   &hauppauge_xc5000c_config);
-				break;
-			}
+			dvb_attach(xc5000_attach, dvb->frontend, &dev->i2c_adap,
+				   &hauppauge_hvr950q_tunerconfig);
 		break;
 	case AU0828_BOARD_HAUPPAUGE_HVR950Q_MXL:
 		dvb->frontend = dvb_attach(au8522_attach,
@@ -471,7 +411,7 @@ int au0828_dvb_register(struct au0828_dev *dev)
 		if (dvb->frontend != NULL) {
 			dvb_attach(xc5000_attach, dvb->frontend,
 				&dev->i2c_adap,
-				&hauppauge_xc5000a_config);
+				&hauppauge_hvr950q_tunerconfig);
 		}
 		break;
 	default:

@@ -173,7 +173,7 @@ sn9c102_request_buffers(struct sn9c102_device* cam, u32 count,
 		cam->frame[i].buf.sequence = 0;
 		cam->frame[i].buf.field = V4L2_FIELD_NONE;
 		cam->frame[i].buf.memory = V4L2_MEMORY_MMAP;
-		cam->frame[i].buf.flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+		cam->frame[i].buf.flags = 0;
 	}
 
 	return cam->nbuffers;
@@ -773,8 +773,7 @@ end_of_frame:
 				       img);
 
 				if ((*f)->buf.bytesused == 0)
-					v4l2_get_timestamp(
-						&(*f)->buf.timestamp);
+					do_gettimeofday(&(*f)->buf.timestamp);
 
 				(*f)->buf.bytesused += img;
 
@@ -2483,13 +2482,11 @@ sn9c102_vidioc_enum_framesizes(struct sn9c102_device* cam, void __user * arg)
 		if (frmsize.pixel_format != V4L2_PIX_FMT_SN9C10X &&
 		    frmsize.pixel_format != V4L2_PIX_FMT_SBGGR8)
 			return -EINVAL;
-		break;
 	case BRIDGE_SN9C105:
 	case BRIDGE_SN9C120:
 		if (frmsize.pixel_format != V4L2_PIX_FMT_JPEG &&
 		    frmsize.pixel_format != V4L2_PIX_FMT_SBGGR8)
 			return -EINVAL;
-		break;
 	}
 
 	frmsize.type = V4L2_FRMSIZE_TYPE_STEPWISE;
@@ -2828,7 +2825,7 @@ sn9c102_vidioc_querybuf(struct sn9c102_device* cam, void __user * arg)
 	    b.index >= cam->nbuffers || cam->io != IO_MMAP)
 		return -EINVAL;
 
-	b = cam->frame[b.index].buf;
+	memcpy(&b, &cam->frame[b.index].buf, sizeof(b));
 
 	if (cam->frame[b.index].vma_use_count)
 		b.flags |= V4L2_BUF_FLAG_MAPPED;
@@ -2931,7 +2928,7 @@ sn9c102_vidioc_dqbuf(struct sn9c102_device* cam, struct file* filp,
 
 	f->state = F_UNUSED;
 
-	b = f->buf;
+	memcpy(&b, &f->buf, sizeof(b));
 	if (f->vma_use_count)
 		b.flags |= V4L2_BUF_FLAG_MAPPED;
 

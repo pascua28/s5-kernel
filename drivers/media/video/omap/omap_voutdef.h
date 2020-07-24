@@ -12,7 +12,7 @@
 #define OMAP_VOUTDEF_H
 
 #include <video/omapdss.h>
-#include <video/omapvrfb.h>
+#include <plat/vrfb.h>
 
 #define YUYV_BPP        2
 #define RGB565_BPP      2

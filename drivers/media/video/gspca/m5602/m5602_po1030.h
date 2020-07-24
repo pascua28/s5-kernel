@@ -151,7 +151,6 @@ extern bool dump_sensor;
 
 int po1030_probe(struct sd *sd);
 int po1030_init(struct sd *sd);
-int po1030_init_controls(struct sd *sd);
 int po1030_start(struct sd *sd);
 void po1030_disconnect(struct sd *sd);
 
@@ -163,7 +162,6 @@ static const struct m5602_sensor po1030 = {
 
 	.probe = po1030_probe,
 	.init = po1030_init,
-	.init_controls = po1030_init_controls,
 	.start = po1030_start,
 	.disconnect = po1030_disconnect,
 };

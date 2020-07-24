@@ -262,7 +262,8 @@ static void reg_w_var(struct gspca_dev *gspca_dev,
 			break;
 		default:
 			if (len > USB_BUF_SZ) {
-				PERR("Incorrect variable sequence");
+				PDEBUG(D_ERR|D_STREAM,
+					"Incorrect variable sequence");
 				return;
 			}
 			while (len > 0) {
@@ -574,7 +575,7 @@ static void sd_pkt_scan(struct gspca_dev *gspca_dev,
 	u8 *image;
 	unsigned char *sof;
 
-	sof = pac_find_sof(gspca_dev, &sd->sof_read, data, len);
+	sof = pac_find_sof(&sd->sof_read, data, len);
 	if (sof) {
 		int n, lum_offset, footer_length;
 
@@ -620,7 +621,7 @@ static void sd_pkt_scan(struct gspca_dev *gspca_dev,
 	gspca_frame_add(gspca_dev, INTER_PACKET, data, len);
 }
 
-#if IS_ENABLED(CONFIG_INPUT)
+#if defined(CONFIG_INPUT) || defined(CONFIG_INPUT_MODULE)
 static int sd_int_pkt_scan(struct gspca_dev *gspca_dev,
 			u8 *data,		/* interrupt packet data */
 			int len)		/* interrupt packet length */
@@ -660,7 +661,7 @@ static const struct sd_desc sd_desc = {
 	.stopN = sd_stopN,
 	.pkt_scan = sd_pkt_scan,
 	.dq_callback = do_autogain,
-#if IS_ENABLED(CONFIG_INPUT)
+#if defined(CONFIG_INPUT) || defined(CONFIG_INPUT_MODULE)
 	.int_pkt_scan = sd_int_pkt_scan,
 #endif
 };
