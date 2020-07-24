@@ -1660,7 +1660,6 @@ static void _kgsl_cmdbatch_timer(unsigned long data)
 			if (event->handle && event->handle->fence) {
 				set_bit(CMDBATCH_FLAG_FENCE_LOG,
 					&cmdbatch->priv);
-				kgsl_sync_fence_log(event->handle->fence);
 				clear_bit(CMDBATCH_FLAG_FENCE_LOG,
 					&cmdbatch->priv);
 			} else

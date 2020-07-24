@@ -51,10 +51,6 @@ void kgsl_sync_timeline_destroy(struct kgsl_context *context);
 struct kgsl_sync_fence_waiter *kgsl_sync_fence_async_wait(int fd,
 	void (*func)(void *priv), void *priv);
 int kgsl_sync_fence_async_cancel(struct kgsl_sync_fence_waiter *waiter);
-static inline void kgsl_sync_fence_log(struct sync_fence *fence)
-{
-	sync_fence_log(fence);
-}
 #else
 static inline struct sync_pt
 *kgsl_sync_pt_create(struct sync_timeline *timeline,
@@ -102,11 +98,6 @@ kgsl_sync_fence_async_cancel(struct kgsl_sync_fence_waiter *waiter)
 {
 	return 1;
 }
-
-static inline void kgsl_sync_fence_log(struct sync_fence *fence)
-{
-}
-
 #endif
 
 #endif /* __KGSL_SYNC_H */

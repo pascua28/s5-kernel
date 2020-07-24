@@ -271,14 +271,6 @@ static void kgsl_sync_pt_value_str(struct sync_pt *sync_pt,
 	snprintf(str, size, "%u", kpt->timestamp);
 }
 
-static void kgsl_sync_pt_log(struct sync_pt *sync_pt)
-{
-	struct kgsl_sync_pt *kpt = (struct kgsl_sync_pt *) sync_pt;
-	pr_info("-----\n");
-	kgsl_context_dump(kpt->context);
-	pr_info("-----\n");
-}
-
 static void kgsl_sync_timeline_release_obj(struct sync_timeline *sync_timeline)
 {
 	/*
@@ -296,7 +288,6 @@ static const struct sync_timeline_ops kgsl_sync_timeline_ops = {
 	.timeline_value_str = kgsl_sync_timeline_value_str,
 	.pt_value_str = kgsl_sync_pt_value_str,
 	.release_obj = kgsl_sync_timeline_release_obj,
-	.pt_log = kgsl_sync_pt_log,
 };
 
 int kgsl_sync_timeline_create(struct kgsl_context *context)
