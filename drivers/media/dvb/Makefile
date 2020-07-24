@@ -2,7 +2,9 @@
 # Makefile for the kernel multimedia device drivers.
 #
 
-obj-y        :=	ttpci/		\
+obj-y        := dvb-core/	\
+		frontends/	\
+		ttpci/		\
 		ttusb-dec/	\
 		ttusb-budget/	\
 		b2c2/		\
