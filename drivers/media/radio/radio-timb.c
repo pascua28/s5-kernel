@@ -85,7 +85,7 @@ static int timbradio_vidioc_g_audio(struct file *file, void *priv,
 }
 
 static int timbradio_vidioc_s_audio(struct file *file, void *priv,
-	const struct v4l2_audio *a)
+	struct v4l2_audio *a)
 {
 	return a->index ? -EINVAL : 0;
 }

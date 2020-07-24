@@ -18,6 +18,8 @@
  *    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #include "tda18212.h"
 
 struct tda18212_priv {
@@ -26,6 +28,16 @@ struct tda18212_priv {
 
 	u32 if_frequency;
 };
+
+#define dbg(fmt, arg...)					\
+do {								\
+	if (debug)						\
+		pr_info("%s: " fmt, __func__, ##arg);		\
+} while (0)
+
+static int debug;
+module_param(debug, int, 0644);
+MODULE_PARM_DESC(debug, "Turn on/off debugging (default:off).");
 
 /* write multiple registers */
 static int tda18212_wr_regs(struct tda18212_priv *priv, u8 reg, u8 *val,
@@ -49,8 +61,8 @@ static int tda18212_wr_regs(struct tda18212_priv *priv, u8 reg, u8 *val,
 	if (ret == 1) {
 		ret = 0;
 	} else {
-		dev_warn(&priv->i2c->dev, "%s: i2c wr failed=%d reg=%02x " \
-				"len=%d\n", KBUILD_MODNAME, ret, reg, len);
+		pr_warn("i2c wr failed ret:%d reg:%02x len:%d\n",
+			ret, reg, len);
 		ret = -EREMOTEIO;
 	}
 	return ret;
@@ -81,8 +93,8 @@ static int tda18212_rd_regs(struct tda18212_priv *priv, u8 reg, u8 *val,
 		memcpy(val, buf, len);
 		ret = 0;
 	} else {
-		dev_warn(&priv->i2c->dev, "%s: i2c rd failed=%d reg=%02x " \
-				"len=%d\n", KBUILD_MODNAME, ret, reg, len);
+		pr_warn("i2c rd failed ret:%d reg:%02x len:%d\n",
+			ret, reg, len);
 		ret = -EREMOTEIO;
 	}
 
@@ -145,10 +157,8 @@ static int tda18212_set_params(struct dvb_frontend *fe)
 		[DVBC_8]  = { 0x92, 0x53, 0x03 },
 	};
 
-	dev_dbg(&priv->i2c->dev,
-			"%s: delivery_system=%d frequency=%d bandwidth_hz=%d\n",
-			__func__, c->delivery_system, c->frequency,
-			c->bandwidth_hz);
+	dbg("delsys=%d RF=%d BW=%d\n",
+	    c->delivery_system, c->frequency, c->bandwidth_hz);
 
 	if (fe->ops.i2c_gate_ctrl)
 		fe->ops.i2c_gate_ctrl(fe, 1); /* open I2C-gate */
@@ -237,7 +247,7 @@ exit:
 	return ret;
 
 error:
-	dev_dbg(&priv->i2c->dev, "%s: failed=%d\n", __func__, ret);
+	dbg("failed:%d\n", ret);
 	goto exit;
 }
 
@@ -296,16 +306,13 @@ struct dvb_frontend *tda18212_attach(struct dvb_frontend *fe,
 	if (fe->ops.i2c_gate_ctrl)
 		fe->ops.i2c_gate_ctrl(fe, 0); /* close I2C-gate */
 
-	if (!ret)
-		dev_dbg(&priv->i2c->dev, "%s: chip id=%02x\n", __func__, val);
+	dbg("ret:%d chip ID:%02x\n", ret, val);
 	if (ret || val != 0xc7) {
 		kfree(priv);
 		return NULL;
 	}
 
-	dev_info(&priv->i2c->dev,
-			"%s: NXP TDA18212HN successfully identified\n",
-			KBUILD_MODNAME);
+	pr_info("NXP TDA18212HN successfully identified\n");
 
 	memcpy(&fe->ops.tuner_ops, &tda18212_tuner_ops,
 		sizeof(struct dvb_tuner_ops));

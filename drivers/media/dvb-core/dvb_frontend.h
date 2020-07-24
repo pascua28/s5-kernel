@@ -220,7 +220,6 @@ struct dvb_tuner_ops {
 #define TUNER_STATUS_STEREO 2
 	int (*get_status)(struct dvb_frontend *fe, u32 *status);
 	int (*get_rf_strength)(struct dvb_frontend *fe, u16 *strength);
-	int (*get_afc)(struct dvb_frontend *fe, s32 *afc);
 
 	/** These are provided separately from set_params in order to facilitate silicon
 	 * tuners which require sophisticated tuning loops, controlling each parameter separately. */
@@ -245,8 +244,8 @@ struct analog_demod_ops {
 
 	void (*set_params)(struct dvb_frontend *fe,
 			   struct analog_parameters *params);
-	int  (*has_signal)(struct dvb_frontend *fe, u16 *signal);
-	int  (*get_afc)(struct dvb_frontend *fe, s32 *afc);
+	int  (*has_signal)(struct dvb_frontend *fe);
+	int  (*get_afc)(struct dvb_frontend *fe);
 	void (*tuner_status)(struct dvb_frontend *fe);
 	void (*standby)(struct dvb_frontend *fe);
 	void (*release)(struct dvb_frontend *fe);
@@ -303,7 +302,6 @@ struct dvb_frontend_ops {
 	int (*dishnetwork_send_legacy_command)(struct dvb_frontend* fe, unsigned long cmd);
 	int (*i2c_gate_ctrl)(struct dvb_frontend* fe, int enable);
 	int (*ts_bus_ctrl)(struct dvb_frontend* fe, int acquire);
-	int (*set_lna)(struct dvb_frontend *);
 
 	/* These callbacks are for devices that implement their own
 	 * tuning algorithms, rather than a simple swzigzag
@@ -355,8 +353,6 @@ struct dtv_frontend_properties {
 
 	fe_delivery_system_t	delivery_system;
 
-	enum fe_interleaving	interleaving;
-
 	/* ISDB-T specifics */
 	u8			isdbt_partial_reception;
 	u8			isdbt_sb_mode;
@@ -371,8 +367,11 @@ struct dtv_frontend_properties {
 	    u8			interleaving;
 	} layer[3];
 
-	/* Multistream specifics */
-	u32			stream_id;
+	/* ISDB-T specifics */
+	u32			isdbs_ts_id;
+
+	/* DVB-T2 specifics */
+	u32                     dvbt2_plp_id;
 
 	/* ATSC-MH specifics */
 	u8			atscmh_fic_ver;
@@ -391,18 +390,6 @@ struct dtv_frontend_properties {
 	u8			atscmh_sccc_code_mode_b;
 	u8			atscmh_sccc_code_mode_c;
 	u8			atscmh_sccc_code_mode_d;
-
-	u32			lna;
-
-	/* statistics data */
-	struct dtv_fe_stats	strength;
-	struct dtv_fe_stats	cnr;
-	struct dtv_fe_stats	pre_bit_error;
-	struct dtv_fe_stats	pre_bit_count;
-	struct dtv_fe_stats	post_bit_error;
-	struct dtv_fe_stats	post_bit_count;
-	struct dtv_fe_stats	block_error;
-	struct dtv_fe_stats	block_count;
 };
 
 struct dvb_frontend {
@@ -428,8 +415,6 @@ extern int dvb_unregister_frontend(struct dvb_frontend *fe);
 extern void dvb_frontend_detach(struct dvb_frontend *fe);
 
 extern void dvb_frontend_reinitialise(struct dvb_frontend *fe);
-extern int dvb_frontend_suspend(struct dvb_frontend *fe);
-extern int dvb_frontend_resume(struct dvb_frontend *fe);
 
 extern void dvb_frontend_sleep_until(struct timeval *waketime, u32 add_usec);
 extern s32 timeval_usec_diff(struct timeval lasttime, struct timeval curtime);

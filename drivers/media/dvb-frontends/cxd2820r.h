@@ -63,20 +63,26 @@ struct cxd2820r_config {
 	 * Values: 0, 1
 	 */
 	bool spec_inv;
+
+	/* GPIOs for all used modes.
+	 * Default: none, disabled
+	 * Values: <see above>
+	 */
+	u8 gpio_dvbt[3];
+	u8 gpio_dvbt2[3];
+	u8 gpio_dvbc[3];
 };
 
 
 #if IS_ENABLED(CONFIG_DVB_CXD2820R)
 extern struct dvb_frontend *cxd2820r_attach(
 	const struct cxd2820r_config *config,
-	struct i2c_adapter *i2c,
-	int *gpio_chip_base
+	struct i2c_adapter *i2c
 );
 #else
 static inline struct dvb_frontend *cxd2820r_attach(
 	const struct cxd2820r_config *config,
-	struct i2c_adapter *i2c,
-	int *gpio_chip_base
+	struct i2c_adapter *i2c
 )
 {
 	printk(KERN_WARNING "%s: driver disabled by Kconfig\n", __func__);
