@@ -3325,96 +3325,9 @@ static const struct mmc_fixup blk_fixups[] =
 	END_FIXUP
 };
 
-#ifdef CONFIG_MMC_SUPPORT_BKOPS_MODE
-static ssize_t bkops_mode_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct gendisk *disk;
-	struct mmc_blk_data *md;
-	struct mmc_card *card;
-
-	disk = dev_to_disk(dev);
-
-	if (disk)
-		md = disk->private_data;
-	else
-		goto show_out;
-
-	if (md)
-		card = md->queue.card;
-	else
-		goto show_out;
-
-	return snprintf(buf, PAGE_SIZE, "%u\n", card->bkops_enable);
-
-show_out:
-	return snprintf(buf, PAGE_SIZE, "\n");
-}
-
-static ssize_t bkops_mode_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct gendisk *disk;
-	struct mmc_blk_data *md;
-	struct mmc_card *card;
-	u8 value;
-	int err = 0;
-
-	disk = dev_to_disk(dev);
-
-	if (disk)
-		md = disk->private_data;
-	else
-		goto store_out;
-
-	if (md)
-		card = md->queue.card;
-	else
-		goto store_out;
-
-	if (kstrtou8(buf, 0, &value))
-		goto store_out;
-
-	err = mmc_bkops_enable(card->host, value);
-	if (err)
-		return err;
-
-	return count;
-store_out:
-	return -EINVAL;
-}
-
-static inline void mmc_blk_bkops_sysfs_init(struct mmc_card *card)
-{
-	struct mmc_blk_data *md = mmc_get_drvdata(card);
-
-	card->bkops_attr.show = bkops_mode_show;
-	card->bkops_attr.store = bkops_mode_store;
-	sysfs_attr_init(&card->bkops_attr.attr);
-	card->bkops_attr.attr.name = "bkops_en";
-	card->bkops_attr.attr.mode = S_IRUGO | S_IWUSR | S_IWGRP;
-
-	if (device_create_file((disk_to_dev(md->disk)), &card->bkops_attr)) {
-		pr_err("%s: Failed to create bkops_en sysfs entry\n",
-				mmc_hostname(card->host));
-#if defined(CONFIG_MMC_BKOPS_NODE_UID) || defined(CONFIG_MMC_BKOPS_NODE_GID)
-	} else {
-		int rc;
-		struct device * dev;
-
-		dev = disk_to_dev(md->disk);
-		rc = sysfs_chown_file(&dev->kobj, &card->bkops_attr.attr);
-		if (rc)
-			pr_err("%s: Failed to change mode of sysfs entry\n",
-					mmc_hostname(card->host));
-#endif
-	}
-}
-#else
 static inline void mmc_blk_bkops_sysfs_init(struct mmc_card *card)
 {
 }
-#endif
 
 static int mmc_blk_probe(struct mmc_card *card)
 {
