@@ -1560,9 +1560,11 @@ int vb2_dqbuf(struct vb2_queue *q, struct v4l2_buffer *b, bool nonblocking)
 		dprintk(1, "dqbuf: invalid buffer type\n");
 		return -EINVAL;
 	}
+
 	ret = __vb2_get_done_vb(q, &vb, b, nonblocking);
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
+	}
 
 	ret = call_qop(q, buf_finish, vb);
 	if (ret) {
@@ -2601,10 +2603,9 @@ ssize_t vb2_fop_write(struct file *file, char __user *buf,
 {
 	struct video_device *vdev = video_devdata(file);
 	struct mutex *lock = vdev->queue->lock ? vdev->queue->lock : vdev->lock;
-	bool must_lock = !test_bit(V4L2_FL_LOCK_ALL_FOPS, &vdev->flags) && lock;
 	int err = -EBUSY;
 
-	if (must_lock && mutex_lock_interruptible(lock))
+	if (lock && mutex_lock_interruptible(lock))
 		return -ERESTARTSYS;
 	if (vb2_queue_is_busy(vdev, file))
 		goto exit;
@@ -2613,7 +2614,7 @@ ssize_t vb2_fop_write(struct file *file, char __user *buf,
 	if (vdev->queue->fileio)
 		vdev->queue->owner = file->private_data;
 exit:
-	if (must_lock)
+	if (lock)
 		mutex_unlock(lock);
 	return err;
 }
@@ -2624,10 +2625,9 @@ ssize_t vb2_fop_read(struct file *file, char __user *buf,
 {
 	struct video_device *vdev = video_devdata(file);
 	struct mutex *lock = vdev->queue->lock ? vdev->queue->lock : vdev->lock;
-	bool must_lock = !test_bit(V4L2_FL_LOCK_ALL_FOPS, &vdev->flags) && vdev->lock;
 	int err = -EBUSY;
 
-	if (must_lock && mutex_lock_interruptible(lock))
+	if (lock && mutex_lock_interruptible(lock))
 		return -ERESTARTSYS;
 	if (vb2_queue_is_busy(vdev, file))
 		goto exit;
@@ -2636,7 +2636,7 @@ ssize_t vb2_fop_read(struct file *file, char __user *buf,
 	if (vdev->queue->fileio)
 		vdev->queue->owner = file->private_data;
 exit:
-	if (must_lock)
+	if (lock)
 		mutex_unlock(lock);
 	return err;
 }
@@ -2650,11 +2650,6 @@ unsigned int vb2_fop_poll(struct file *file, poll_table *wait)
 	unsigned long req_events = poll_requested_events(wait);
 	unsigned res;
 	void *fileio;
-	/* Yuck. We really need to get rid of this flag asap. If it is
-	   set, then the core took the serialization lock before calling
-	   poll(). This is being phased out, but for now we have to handle
-	   this case. */
-	bool locked = test_bit(V4L2_FL_LOCK_ALL_FOPS, &vdev->flags);
 	bool must_lock = false;
 
 	/* Try to be smart: only lock if polling might start fileio,
@@ -2670,9 +2665,9 @@ unsigned int vb2_fop_poll(struct file *file, poll_table *wait)
 
 	/* If locking is needed, but this helper doesn't know how, then you
 	   shouldn't be using this helper but you should write your own. */
-	WARN_ON(must_lock && !locked && !lock);
+	WARN_ON(must_lock && !lock);
 
-	if (must_lock && !locked && lock && mutex_lock_interruptible(lock))
+	if (must_lock && lock && mutex_lock_interruptible(lock))
 		return POLLERR;
 
 	fileio = q->fileio;
@@ -2682,7 +2677,7 @@ unsigned int vb2_fop_poll(struct file *file, poll_table *wait)
 	/* If fileio was started, then we have a new queue owner. */
 	if (must_lock && !fileio && q->fileio)
 		q->owner = file->private_data;
-	if (must_lock && !locked && lock)
+	if (must_lock && lock)
 		mutex_unlock(lock);
 	return res;
 }
