@@ -131,9 +131,6 @@
 #define ETMR_VIEWDATACTRL3	0x3c
 #define ETMVDC3_EXCLONLY	BIT(16)
 
-<<<<<<< HEAD
-#define ETMCTRL_OPTS		(ETMCTRL_DO_CPRT)
-
 #define ETMR_ID			0x1e4
 #define ETMIDR_VERSION(x)	(((x) >> 4) & 0xff)
 #define ETMIDR_VERSION_3_1	0x21
@@ -144,11 +141,10 @@
 #define ETMCCER_TIMESTAMPING_IMPLEMENTED	BIT(22)
 
 #define ETMR_TRACEIDR		0x200
-=======
+
 #define ETMCTRL_OPTS		(ETMCTRL_DO_CPRT | \
 				ETMCTRL_BRANCH_OUTPUT | \
 				ETMCTRL_DO_CONTEXTID)
->>>>>>> f717d8b087a... ARM: etm: Configure data tracing
 
 #define ETMR_TRACEIDR		0x200
 
