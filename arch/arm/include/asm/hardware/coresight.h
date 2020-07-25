@@ -131,23 +131,7 @@
 #define ETMR_VIEWDATACTRL3	0x3c
 #define ETMVDC3_EXCLONLY	BIT(16)
 
-<<<<<<< HEAD
-#define ETMR_ID			0x1e4
-#define ETMIDR_VERSION(x)	(((x) >> 4) & 0xff)
-#define ETMIDR_VERSION_3_1	0x21
-#define ETMIDR_VERSION_PFT_1_0	0x30
-
-#define ETMR_CCE		0x1e8
-#define ETMCCER_RETURN_STACK_IMPLEMENTED	BIT(23)
-#define ETMCCER_TIMESTAMPING_IMPLEMENTED	BIT(22)
-
-#define ETMR_TRACEIDR		0x200
-
-#define ETMCTRL_OPTS		(ETMCTRL_DO_CPRT | \
-				ETMCTRL_BRANCH_OUTPUT)
-=======
 #define ETMCTRL_OPTS		(ETMCTRL_DO_CPRT)
->>>>>>> 395f8259e30... ARM: etm: Add sysfs entry to disable branch_output flag
 
 #define ETMR_ID			0x1e4
 #define ETMIDR_VERSION(x)	(((x) >> 4) & 0xff)
