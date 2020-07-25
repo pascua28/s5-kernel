@@ -360,10 +360,6 @@ int apparmor_bprm_set_creds(struct linux_binprm *bprm)
 	if (bprm->cred_prepared)
 		return 0;
 
-	/* XXX: no_new_privs is not usable with AppArmor yet */
-	if (bprm->unsafe & LSM_UNSAFE_NO_NEW_PRIVS)
-		return -EPERM;
-
 	cxt = bprm->cred->security;
 	BUG_ON(!cxt);
 
@@ -398,6 +394,11 @@ int apparmor_bprm_set_creds(struct linux_binprm *bprm)
 			new_profile = find_attach(ns, &ns->base.profiles, name);
 		if (!new_profile)
 			goto cleanup;
+		/*
+		 * NOTE: Domain transitions from unconfined are allowed
+		 * even when no_new_privs is set because this aways results
+		 * in a further reduction of permissions.
+		 */
 		goto apply;
 	}
 
@@ -458,6 +459,16 @@ int apparmor_bprm_set_creds(struct linux_binprm *bprm)
 	} else
 		/* fail exec */
 		error = -EACCES;
+
+	/*
+	 * Policy has specified a domain transition, if no_new_privs then
+	 * fail the exec.
+	 */
+	if (bprm->unsafe & LSM_UNSAFE_NO_NEW_PRIVS) {
+		aa_put_profile(new_profile);
+		error = -EPERM;
+		goto cleanup;
+	}
 
 	if (!new_profile)
 		goto audit;
