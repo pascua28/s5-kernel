@@ -63,6 +63,8 @@ DEBUGFS_READONLY_FILE(user_power, "%d",
 		      local->user_power_level);
 DEBUGFS_READONLY_FILE(power, "%d",
 		      local->hw.conf.power_level);
+DEBUGFS_READONLY_FILE(frequency, "%d",
+		      local->hw.conf.channel->center_freq);
 DEBUGFS_READONLY_FILE(total_ps_buffered, "%d",
 		      local->total_ps_buffered);
 DEBUGFS_READONLY_FILE(wep_iv, "%#08x",
@@ -70,7 +72,6 @@ DEBUGFS_READONLY_FILE(wep_iv, "%#08x",
 DEBUGFS_READONLY_FILE(rate_ctrl_alg, "%s",
 	local->rate_ctrl ? local->rate_ctrl->ops->name : "hw/driver");
 
-#ifdef CONFIG_PM
 static ssize_t reset_write(struct file *file, const char __user *user_buf,
 			   size_t count, loff_t *ppos)
 {
@@ -89,7 +90,33 @@ static const struct file_operations reset_ops = {
 	.open = simple_open,
 	.llseek = noop_llseek,
 };
-#endif
+
+static ssize_t channel_type_read(struct file *file, char __user *user_buf,
+		       size_t count, loff_t *ppos)
+{
+	struct ieee80211_local *local = file->private_data;
+	const char *buf;
+
+	switch (local->hw.conf.channel_type) {
+	case NL80211_CHAN_NO_HT:
+		buf = "no ht\n";
+		break;
+	case NL80211_CHAN_HT20:
+		buf = "ht20\n";
+		break;
+	case NL80211_CHAN_HT40MINUS:
+		buf = "ht40-\n";
+		break;
+	case NL80211_CHAN_HT40PLUS:
+		buf = "ht40+\n";
+		break;
+	default:
+		buf = "???";
+		break;
+	}
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, strlen(buf));
+}
 
 static ssize_t hwflags_read(struct file *file, char __user *user_buf,
 			    size_t count, loff_t *ppos)
@@ -121,8 +148,8 @@ static ssize_t hwflags_read(struct file *file, char __user *user_buf,
 		sf += snprintf(buf + sf, mxln - sf, "SIGNAL_UNSPEC\n");
 	if (local->hw.flags & IEEE80211_HW_SIGNAL_DBM)
 		sf += snprintf(buf + sf, mxln - sf, "SIGNAL_DBM\n");
-	if (local->hw.flags & IEEE80211_HW_NEED_DTIM_BEFORE_ASSOC)
-		sf += snprintf(buf + sf, mxln - sf, "NEED_DTIM_BEFORE_ASSOC\n");
+	if (local->hw.flags & IEEE80211_HW_NEED_DTIM_PERIOD)
+		sf += snprintf(buf + sf, mxln - sf, "NEED_DTIM_PERIOD\n");
 	if (local->hw.flags & IEEE80211_HW_SPECTRUM_MGMT)
 		sf += snprintf(buf + sf, mxln - sf, "SPECTRUM_MGMT\n");
 	if (local->hw.flags & IEEE80211_HW_AMPDU_AGGREGATION)
@@ -151,6 +178,8 @@ static ssize_t hwflags_read(struct file *file, char __user *user_buf,
 		sf += snprintf(buf + sf, mxln - sf, "AP_LINK_PS\n");
 	if (local->hw.flags & IEEE80211_HW_TX_AMPDU_SETUP_IN_HW)
 		sf += snprintf(buf + sf, mxln - sf, "TX_AMPDU_SETUP_IN_HW\n");
+	if (local->hw.flags & IEEE80211_HW_SCAN_WHILE_IDLE)
+		sf += snprintf(buf + sf, mxln - sf, "SCAN_WHILE_IDLE\n");
 
 	rv = simple_read_from_buffer(user_buf, count, ppos, buf, strlen(buf));
 	kfree(buf);
@@ -176,6 +205,7 @@ static ssize_t queues_read(struct file *file, char __user *user_buf,
 }
 
 DEBUGFS_READONLY_FILE_OPS(hwflags);
+DEBUGFS_READONLY_FILE_OPS(channel_type);
 DEBUGFS_READONLY_FILE_OPS(queues);
 
 /* statistics stuff */
@@ -242,12 +272,12 @@ void debugfs_hw_add(struct ieee80211_local *local)
 
 	local->debugfs.keys = debugfs_create_dir("keys", phyd);
 
+	DEBUGFS_ADD(frequency);
 	DEBUGFS_ADD(total_ps_buffered);
 	DEBUGFS_ADD(wep_iv);
 	DEBUGFS_ADD(queues);
-#ifdef CONFIG_PM
 	DEBUGFS_ADD_MODE(reset, 0200);
-#endif
+	DEBUGFS_ADD(channel_type);
 	DEBUGFS_ADD(hwflags);
 	DEBUGFS_ADD(user_power);
 	DEBUGFS_ADD(power);
@@ -295,6 +325,8 @@ void debugfs_hw_add(struct ieee80211_local *local)
 		local->rx_handlers_drop_defrag);
 	DEBUGFS_STATS_ADD(rx_handlers_drop_short,
 		local->rx_handlers_drop_short);
+	DEBUGFS_STATS_ADD(rx_handlers_drop_passive_scan,
+		local->rx_handlers_drop_passive_scan);
 	DEBUGFS_STATS_ADD(tx_expand_skb_head,
 		local->tx_expand_skb_head);
 	DEBUGFS_STATS_ADD(tx_expand_skb_head_cloned,
