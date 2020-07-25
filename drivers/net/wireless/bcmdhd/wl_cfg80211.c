@@ -5902,7 +5902,7 @@ wl_cfg80211_mgmt_tx(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 static s32
 wl_cfg80211_mgmt_tx(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 	struct ieee80211_channel *channel, bool offchan,
-#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 8, 0))
+#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 10, 0))
 	enum nl80211_channel_type channel_type,
 	bool channel_type_valid,
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0) */
@@ -8111,11 +8111,11 @@ static s32 wl_inform_single_bss(struct bcm_cfg80211 *cfg, struct wl_bss_info *bi
 		return -EINVAL;
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0))
 	cfg80211_put_bss(wiphy, cbss);
 #else
 	cfg80211_put_bss(cbss);
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) */
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) */
 	kfree(notif_bss_info);
 	return err;
 }
@@ -9461,11 +9461,11 @@ static s32 wl_update_bss_info(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		ie_len = bss->len_information_elements;
 #endif /* WL_CFG80211_P2P_DEV_IF */
 		beacon_interval = bss->beacon_interval;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0))
 		cfg80211_put_bss(wiphy, bss);
 #else
 		cfg80211_put_bss(bss);
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) */
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) */
 	}
 
 	tim = bcm_parse_tlvs(ie, ie_len, WLAN_EID_TIM);
