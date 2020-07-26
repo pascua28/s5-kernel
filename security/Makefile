@@ -30,6 +30,3 @@ subdir-$(CONFIG_INTEGRITY)		+= integrity
 obj-$(CONFIG_INTEGRITY)			+= integrity/built-in.o
 # TIMA uevent 
 obj-$(CONFIG_TIMA_UEVENT)     += tima_uevent/
-
-#TZ ICCC
-obj-$(CONFIG_TZ_ICCC)     += tz_iccc/
