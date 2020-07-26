@@ -61,12 +61,12 @@ static inline void secure_computing_strict(int this_syscall) { return; }
 
 static inline long prctl_get_seccomp(void)
 {
-	return 0;
+	return -EINVAL;
 }
 
 static inline long prctl_set_seccomp(unsigned long arg2, char __user *arg3)
 {
-	return 0;
+	return -EINVAL;
 }
 
 static inline int seccomp_mode(struct seccomp *s)
