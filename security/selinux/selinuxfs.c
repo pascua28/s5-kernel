@@ -31,10 +31,6 @@
 #include <linux/kobject.h>
 #include <linux/ctype.h>
 
-#ifdef CONFIG_SEC_DEBUG
-#include <linux/proc_avc.h>
-#endif
-
 /* selinuxfs pseudo filesystem for exporting the security policy API.
    Based on the proc code and the fs/nfsd/nfsctl.c code. */
 
@@ -44,10 +40,6 @@
 #include "security.h"
 #include "objsec.h"
 #include "conditional.h"
-
-#if defined(CONFIG_TZ_ICCC)
-#include <linux/security/iccc_interface.h>
-#endif
 
 /* Policy capability filenames */
 static char *policycap_names[] = {
@@ -192,16 +184,7 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 		selnl_notify_setenforce(selinux_enforcing);
 		selinux_status_update_setenforce(selinux_enforcing);
 	}
-
 	length = count;
-
-#if defined(CONFIG_TZ_ICCC)
-	if (selinux_enabled && selinux_enforcing)
-		Iccc_SaveData_Kernel(SELINUX_STATUS, 0x0);
-	else
-		Iccc_SaveData_Kernel(SELINUX_STATUS, 0x1);
-#endif
-
 out:
 	free_page((unsigned long) page);
 	return length;
@@ -515,6 +498,7 @@ static const struct file_operations sel_policy_ops = {
 	.read		= sel_read_policy,
 	.mmap		= sel_mmap_policy,
 	.release	= sel_release_policy,
+	.llseek		= generic_file_llseek,
 };
 
 static ssize_t sel_write_load(struct file *file, const char __user *buf,
