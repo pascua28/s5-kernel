@@ -82,9 +82,10 @@ module_param(enable, int, 0);
 static unsigned int regsave_vaddr;
 static unsigned int regsave_paddr;
 static unsigned long long last_pet;
-static void __iomem * wdog_base_addr;
 extern void sec_debug_save_last_pet(unsigned long long last_pet);
 #endif
+
+static void __iomem * wdog_base_addr;
 
 /*
  * On the kernel command line specify
@@ -239,7 +240,6 @@ static ssize_t wdog_disable_set(struct device *dev,
 
 static DEVICE_ATTR(disable, S_IWUSR | S_IRUSR, wdog_disable_get,
 							wdog_disable_set);
-#ifdef CONFIG_SEC_DEBUG
 static unsigned long long last_emerg_pet;
 void emerg_pet_watchdog(void)
 {
@@ -252,7 +252,6 @@ void emerg_pet_watchdog(void)
 	}
 }
 EXPORT_SYMBOL(emerg_pet_watchdog);
-#endif
 
 static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 {

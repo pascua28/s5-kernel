@@ -249,7 +249,6 @@ done:
 	mutex_unlock(&disable_lock);
 	return ret;
 }
-#ifdef CONFIG_SEC_DEBUG
 static unsigned long long last_emerg_pet;
 void emerg_pet_watchdog(void)
 {
@@ -259,7 +258,6 @@ void emerg_pet_watchdog(void)
 	}
 }
 EXPORT_SYMBOL(emerg_pet_watchdog);
-#endif
 
 unsigned min_slack_ticks = UINT_MAX;
 unsigned long long min_slack_ns = ULLONG_MAX;

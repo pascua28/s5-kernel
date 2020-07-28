@@ -81,9 +81,7 @@ void panic(const char *fmt, ...)
 	long i, i_next = 0;
 	int state = 0;
 
-#ifdef CONFIG_SEC_DEBUG
 	emerg_pet_watchdog(); /*To prevent watchdog reset during panic handling. */
-#endif
 
 	coresight_abort();
 	/*
