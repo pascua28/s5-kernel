@@ -164,6 +164,11 @@ struct usb_functionfs_event {
  */
 #define	FUNCTIONFS_ENDPOINT_REVMAP	_IO('g', 129)
 
+/*
+ * Returns endpoint descriptor. If function is not active returns -ENODEV.
+ */
+#define FUNCTIONFS_ENDPOINT_DESC    _IOR('g', 130, \
+						struct usb_endpoint_descriptor)
 
 #ifdef __KERNEL__
 
@@ -190,10 +195,8 @@ static int functionfs_ready_callback(struct ffs_data *ffs)
 	__attribute__((warn_unused_result, nonnull));
 static void functionfs_closed_callback(struct ffs_data *ffs)
 	__attribute__((nonnull));
-static void *functionfs_acquire_dev_callback(const char *dev_name)
+static int functionfs_check_dev_callback(const char *dev_name)
 	__attribute__((warn_unused_result, nonnull));
-static void functionfs_release_dev_callback(struct ffs_data *ffs_data)
-	__attribute__((nonnull));
 
 
 #endif
