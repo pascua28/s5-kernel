@@ -76,7 +76,9 @@ int install_user_keyrings(void)
 		if (IS_ERR(uid_keyring)) {
 			uid_keyring = keyring_alloc(buf, user->uid, INVALID_GID,
 						    cred, user_keyring_perm,
-						    KEY_ALLOC_IN_QUOTA, NULL);
+						    KEY_ALLOC_UID_KEYRING |
+							KEY_ALLOC_IN_QUOTA,
+						    NULL);
 			if (IS_ERR(uid_keyring)) {
 				ret = PTR_ERR(uid_keyring);
 				goto error;
@@ -92,7 +94,9 @@ int install_user_keyrings(void)
 			session_keyring =
 				keyring_alloc(buf, user->uid, INVALID_GID,
 					      cred, user_keyring_perm,
-					      KEY_ALLOC_IN_QUOTA, NULL);
+					      KEY_ALLOC_UID_KEYRING |
+						  KEY_ALLOC_IN_QUOTA,
+					      NULL);
 			if (IS_ERR(session_keyring)) {
 				ret = PTR_ERR(session_keyring);
 				goto error_release;
@@ -185,7 +189,7 @@ int install_process_keyring_to_cred(struct cred *new)
 		return 0;
 #else
 	if (new->process_keyring)
-		return -EEXIST;
+		return 0;
 #endif
 
 	keyring = keyring_alloc("_pid", new->uid, new->gid, new,
@@ -807,6 +811,7 @@ long join_session_keyring(const char *name)
 		ret = PTR_ERR(keyring);
 		goto error2;
 	} else if (keyring == new->session_keyring) {
+		key_put(keyring);
 		ret = 0;
 		goto error2;
 	}

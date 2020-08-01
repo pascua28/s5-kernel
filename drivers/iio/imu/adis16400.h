@@ -164,6 +164,7 @@ struct adis16400_state {
 	int				filt_int;
 
 	struct adis adis;
+	unsigned long avail_scan_mask[2];
 };
 
 /* At the moment triggers are only used for ring buffer
@@ -188,6 +189,7 @@ enum {
 	ADIS16300_SCAN_INCLI_X,
 	ADIS16300_SCAN_INCLI_Y,
 	ADIS16400_SCAN_ADC,
+	ADIS16400_SCAN_TIMESTAMP,
 };
 
 #ifdef CONFIG_IIO_BUFFER
