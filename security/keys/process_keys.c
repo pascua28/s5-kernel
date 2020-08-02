@@ -184,13 +184,8 @@ int install_process_keyring_to_cred(struct cred *new)
 {
 	struct key *keyring;
 
-#if 0
-	if (new->tgcred->process_keyring)
-		return 0;
-#else
 	if (new->process_keyring)
 		return 0;
-#endif
 
 	keyring = keyring_alloc("_pid", new->uid, new->gid, new,
 				KEY_POS_ALL | KEY_USR_VIEW,
