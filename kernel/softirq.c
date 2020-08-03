@@ -28,10 +28,6 @@
 #include <trace/events/irq.h>
 
 #include <asm/irq.h>
-#ifdef CONFIG_SEC_DEBUG
-#include <mach/sec_debug.h>
-#endif
-
 /*
    - No shared variables, all the data are CPU local.
    - If a softirq needs serialization, let it serialize itself
@@ -252,13 +248,7 @@ restart:
 			kstat_incr_softirqs_this_cpu(vec_nr);
 
 			trace_softirq_entry(vec_nr);
-#ifdef CONFIG_SEC_DEBUG
-			secdbg_msg("softirq %pS entry", h->action);
-#endif
 			h->action(h);
-#ifdef CONFIG_SEC_DEBUG
-			secdbg_msg("softirq %pS exit", h->action);
-#endif
 			trace_softirq_exit(vec_nr);
 			if (unlikely(prev_count != preempt_count())) {
 				printk(KERN_ERR "huh, entered softirq %u %s %p"
@@ -497,13 +487,7 @@ static void tasklet_action(struct softirq_action *a)
 			if (!atomic_read(&t->count)) {
 				if (!test_and_clear_bit(TASKLET_STATE_SCHED, &t->state))
 					BUG();
-#ifdef CONFIG_SEC_DEBUG
-				sec_debug_irq_sched_log(-1, t->func, 3);
 				t->func(t->data);
-				sec_debug_irq_sched_log(-1, t->func, 4);
-#else
-				t->func(t->data);
-#endif
 				tasklet_unlock(t);
 				continue;
 			}
