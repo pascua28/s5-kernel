@@ -150,7 +150,6 @@ ENTRY(cpu_v7_do_resume)
 	mov	r0, r8			@ control register
 	b	cpu_resume_mmu
 ENDPROC(cpu_v7_do_resume)
-#endif
 
 #ifdef CONFIG_CPU_PJ4B
 	globl_equ	cpu_pj4b_switch_mm,     cpu_v7_switch_mm
