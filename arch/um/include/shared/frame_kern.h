@@ -6,7 +6,7 @@
 #ifndef __FRAME_KERN_H_
 #define __FRAME_KERN_H_
 
-extern int setup_signal_stack_sc(unsigned long stack_top, int sig, 
+extern int setup_signal_stack_sc(unsigned long stack_top, int sig,
 				 struct k_sigaction *ka,
 				 struct pt_regs *regs,
 				 sigset_t *mask);

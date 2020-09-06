@@ -96,7 +96,7 @@ void __init init_current_timer_delay(unsigned long freq)
 	arm_delay_ops.udelay		= __timer_udelay;
 }
 
-unsigned long __cpuinit calibrate_delay_is_known(void)
+unsigned long calibrate_delay_is_known(void)
 {
 	delay_calibrated = true;
 	return lpj_fine;

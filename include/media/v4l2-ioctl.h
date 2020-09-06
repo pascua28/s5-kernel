@@ -250,8 +250,6 @@ struct v4l2_ioctl_ops {
 	int (*vidioc_s_register)       (struct file *file, void *fh,
 					struct v4l2_dbg_register *reg);
 #endif
-	int (*vidioc_g_chip_ident)     (struct file *file, void *fh,
-					struct v4l2_dbg_chip_ident *chip);
 
 	int (*vidioc_enum_framesizes)   (struct file *file, void *fh,
 					 struct v4l2_frmsizeenum *fsize);

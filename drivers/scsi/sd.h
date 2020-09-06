@@ -86,6 +86,8 @@ struct scsi_disk {
 	int		async_end;
 	int		prv_media_present;
 #endif
+	unsigned	ws10 : 1;
+	unsigned	ws16 : 1;
 };
 #define to_scsi_disk(obj) container_of(obj,struct scsi_disk,dev)
 

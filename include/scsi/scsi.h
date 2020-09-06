@@ -11,8 +11,13 @@
 #include <linux/types.h>
 #include <linux/scatterlist.h>
 #include <linux/device.h>
+#include <linux/kernel.h>
 
 struct scsi_cmnd;
+
+enum scsi_timeouts {
+	SCSI_DEFAULT_EH_TIMEOUT		= 10 * HZ,
+};
 
 /*
  * The maximum number of SG segments that we will put inside a

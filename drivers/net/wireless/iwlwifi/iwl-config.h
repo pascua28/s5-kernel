@@ -114,7 +114,7 @@ enum iwl_led_mode {
 #define IWL_MAX_PLCP_ERR_THRESHOLD_DISABLE	0
 
 /* TX queue watchdog timeouts in mSecs */
-#define IWL_WATCHHDOG_DISABLED	0
+#define IWL_WATCHDOG_DISABLED	0
 #define IWL_DEF_WD_TIMEOUT	2000
 #define IWL_LONG_WD_TIMEOUT	10000
 #define IWL_MAX_WD_TIMEOUT	120000
@@ -136,17 +136,9 @@ enum iwl_led_mode {
  * @led_compensation: compensate on the led on/off time per HW according
  *	to the deviation to achieve the desired led frequency.
  *	The detail algorithm is described in iwl-led.c
- * @chain_noise_num_beacons: number of beacons used to compute chain noise
- * @adv_thermal_throttle: support advance thermal throttle
- * @support_ct_kill_exit: support ct kill exit condition
- * @plcp_delta_threshold: plcp error rate threshold used to trigger
- *	radio tuning when there is a high receiving plcp error rate
- * @chain_noise_scale: default chain noise scale used for gain computation
  * @wd_timeout: TX queues watchdog timeout
  * @max_event_log_size: size of event log buffer size for ucode event logging
- * @shadow_reg_enable: HW shadhow register bit
- * @hd_v2: v2 of enhanced sensitivity value, used for 2000 series and up
- * @no_idle_support: do not support idle mode
+ * @shadow_reg_enable: HW shadow register support
  */
 struct iwl_base_params {
 	int eeprom_size;
@@ -157,39 +149,38 @@ struct iwl_base_params {
 	const u16 max_ll_items;
 	const bool shadow_ram_support;
 	u16 led_compensation;
-	bool adv_thermal_throttle;
-	bool support_ct_kill_exit;
-	u8 plcp_delta_threshold;
-	s32 chain_noise_scale;
 	unsigned int wd_timeout;
 	u32 max_event_log_size;
 	const bool shadow_reg_enable;
-	const bool hd_v2;
-	const bool no_idle_support;
 };
 
 /*
- * @advanced_bt_coexist: support advanced bt coexist
- * @bt_init_traffic_load: specify initial bt traffic load
- * @bt_prio_boost: default bt priority boost value
- * @agg_time_limit: maximum number of uSec in aggregation
- * @bt_sco_disable: uCode should not response to BT in SCO/ESCO mode
- */
-struct iwl_bt_params {
-	bool advanced_bt_coexist;
-	u8 bt_init_traffic_load;
-	u8 bt_prio_boost;
-	u16 agg_time_limit;
-	bool bt_sco_disable;
-	bool bt_session_2;
-};
-/*
  * @use_rts_for_aggregation: use rts/cts protection for HT traffic
+ * @ht40_bands: bitmap of bands (using %IEEE80211_BAND_*) that support HT40
  */
 struct iwl_ht_params {
+	enum ieee80211_smps_mode smps_mode;
 	const bool ht_greenfield_support; /* if used set to true */
 	bool use_rts_for_aggregation;
-	enum ieee80211_smps_mode smps_mode;
+	u8 ht40_bands;
+};
+
+/*
+ * information on how to parse the EEPROM
+ */
+#define EEPROM_REG_BAND_1_CHANNELS		0x08
+#define EEPROM_REG_BAND_2_CHANNELS		0x26
+#define EEPROM_REG_BAND_3_CHANNELS		0x42
+#define EEPROM_REG_BAND_4_CHANNELS		0x5C
+#define EEPROM_REG_BAND_5_CHANNELS		0x74
+#define EEPROM_REG_BAND_24_HT40_CHANNELS	0x82
+#define EEPROM_REG_BAND_52_HT40_CHANNELS	0x92
+#define EEPROM_6000_REG_BAND_24_HT40_CHANNELS	0x80
+#define EEPROM_REGULATORY_BAND_NO_HT40		0
+
+struct iwl_eeprom_params {
+	const u8 regulatory_bands[7];
+	bool enhanced_txpower;
 };
 
 /**
@@ -210,16 +201,10 @@ struct iwl_ht_params {
  * @nvm_calib_ver: NVM calibration version
  * @lib: pointer to the lib ops
  * @base_params: pointer to basic parameters
- * @ht_params: point to ht patameters
- * @bt_params: pointer to bt parameters
- * @need_temp_offset_calib: need to perform temperature offset calibration
- * @no_xtal_calib: some devices do not need crystal calibration data,
- *	don't send it to those
+ * @ht_params: point to ht parameters
  * @led_mode: 0=blinking, 1=On(RF On)/Off(RF Off)
- * @adv_pm: advance power management
  * @rx_with_siso_diversity: 1x1 device with rx antenna diversity
  * @internal_wimax_coex: internal wifi/wimax combo device
- * @temp_offset_v2: support v2 of temperature offset calibration
  *
  * We enable the driver to be backward compatible wrt. hardware features.
  * API differences in uCode shouldn't be handled here but through TLVs
@@ -237,25 +222,23 @@ struct iwl_cfg {
 	const u32 max_inst_size;
 	u8   valid_tx_ant;
 	u8   valid_rx_ant;
+	bool bt_shared_single_ant;
 	u16  nvm_ver;
 	u16  nvm_calib_ver;
 	/* params not likely to change within a device family */
 	const struct iwl_base_params *base_params;
 	/* params likely to change within a device family */
 	const struct iwl_ht_params *ht_params;
-	const struct iwl_bt_params *bt_params;
-	const bool need_temp_offset_calib; /* if used set to true */
-	const bool no_xtal_calib;
+	const struct iwl_eeprom_params *eeprom_params;
 	enum iwl_led_mode led_mode;
-	const bool adv_pm;
 	const bool rx_with_siso_diversity;
 	const bool internal_wimax_coex;
-	const bool temp_offset_v2;
 };
 
 /*
  * This list declares the config structures for all devices.
  */
+#if IS_ENABLED(CONFIG_IWLDVM)
 extern const struct iwl_cfg iwl5300_agn_cfg;
 extern const struct iwl_cfg iwl5100_agn_cfg;
 extern const struct iwl_cfg iwl5350_agn_cfg;
@@ -297,7 +280,14 @@ extern const struct iwl_cfg iwl6035_2agn_cfg;
 extern const struct iwl_cfg iwl105_bgn_cfg;
 extern const struct iwl_cfg iwl105_bgn_d_cfg;
 extern const struct iwl_cfg iwl135_bgn_cfg;
+#endif /* CONFIG_IWLDVM */
+#if IS_ENABLED(CONFIG_IWLMVM)
 extern const struct iwl_cfg iwl7260_2ac_cfg;
-extern const struct iwl_cfg iwl3160_ac_cfg;
+extern const struct iwl_cfg iwl7260_2n_cfg;
+extern const struct iwl_cfg iwl7260_n_cfg;
+extern const struct iwl_cfg iwl3160_2ac_cfg;
+extern const struct iwl_cfg iwl3160_2n_cfg;
+extern const struct iwl_cfg iwl3160_n_cfg;
+#endif /* CONFIG_IWLMVM */
 
 #endif /* __IWL_CONFIG_H__ */
