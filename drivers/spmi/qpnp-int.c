@@ -528,8 +528,6 @@ static int qpnpint_irq_domain_map(struct irq_domain *d,
 		return -EINVAL;
 	}
 
-	irq_radix_revmap_insert(d, virq, hwirq);
-
 	irq_d = qpnpint_alloc_irq_data(chip_d, hwirq);
 	if (IS_ERR(irq_d)) {
 		pr_err("failed to alloc irq data for hwirq %lu\n", hwirq);
