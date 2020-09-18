@@ -868,7 +868,6 @@ void __init mem_init(void)
 
 void free_initmem(void)
 {
-	unsigned long reclaimed_initmem;
 #ifdef CONFIG_HAVE_TCM
 	extern char __tcm_start, __tcm_end;
 
