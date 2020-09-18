@@ -125,8 +125,6 @@ struct thermal_cooling_device_ops {
 	int (*set_cur_state) (struct thermal_cooling_device *, unsigned long);
 };
 
-#define THERMAL_NO_LIMIT -1UL /* no upper/lower limit requirement */
-
 #define THERMAL_TRIPS_NONE -1
 #define THERMAL_MAX_TRIPS 12
 #define THERMAL_NAME_LENGTH 20
@@ -200,10 +198,6 @@ struct thermal_zone_device {
 	struct sensor_threshold tz_threshold[2];
 	struct sensor_info sensor;
 };
-/* Adding event notification support elements */
-#define THERMAL_GENL_FAMILY_NAME                "thermal_event"
-#define THERMAL_GENL_VERSION                    0x01
-#define THERMAL_GENL_MCAST_GROUP_NAME           "thermal_mc_group"
 
 enum events {
 	THERMAL_AUX0,
