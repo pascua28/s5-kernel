@@ -79,6 +79,7 @@ struct max77804k_regulator_data max77804k_regulators[] = {
 int max77804k_muic_set_safeout(int path)
 {
 	struct regulator *regulator;
+	int ret;
 
 	pr_info("%s: MUIC safeout path=%d\n", __func__, path);
 
@@ -93,16 +94,23 @@ int max77804k_muic_set_safeout(int path)
 		regulator = regulator_get(NULL, "safeout2");
 		if (IS_ERR(regulator))
 			return -ENODEV;
-		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+		if (!regulator_is_enabled(regulator)) {
+			ret = regulator_enable(regulator);
+			if (ret)
+				return ret;
+		}
+
 		regulator_put(regulator);
 	} else {
 		/* AP_USB_MODE || AUDIO_MODE */
 		regulator = regulator_get(NULL, "safeout1");
 		if (IS_ERR(regulator))
 			return -ENODEV;
-		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+		if (!regulator_is_enabled(regulator)) {
+			ret = regulator_enable(regulator);
+			if (ret)
+				return ret;
+		}
 		regulator_put(regulator);
 
 		regulator = regulator_get(NULL, "safeout2");
