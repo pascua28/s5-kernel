@@ -66,7 +66,7 @@ static struct platform_driver msm_pcm_hostless_driver = {
 		.of_match_table = msm_pcm_hostless_dt_match,
 	},
 	.probe = msm_pcm_hostless_probe,
-	.remove = __devexit_p(msm_pcm_hostless_remove),
+	.remove = msm_pcm_hostless_remove,
 };
 
 static int __init msm_soc_platform_init(void)
