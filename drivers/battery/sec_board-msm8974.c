@@ -1890,7 +1890,8 @@ void sec_bat_check_cable_result_callback(struct device *dev,
 		pr_info("%s set ldo on\n", __func__);
 		max77826_ldo6 = regulator_get(NULL, "max77826_ldo6");
 		if(max77826_ldo6) {
-			regulator_enable(max77826_ldo6);
+			if(regulator_enable(max77826_ldo6))
+				return;
 			regulator_put(max77826_ldo6);
 		}
 	}
