@@ -1631,7 +1631,7 @@ static struct spmi_driver qpnp_pon_driver = {
 		.of_match_table = spmi_match_table,
 	},
 	.probe		= qpnp_pon_probe,
-	.remove		= __devexit_p(qpnp_pon_remove),
+	.remove		= qpnp_pon_remove,
 };
 
 static int __init qpnp_pon_init(void)
