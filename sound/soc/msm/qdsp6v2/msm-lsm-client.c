@@ -352,7 +352,7 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 	.probe		= msm_asoc_lsm_probe,
 };
 
-static __devinit int msm_lsm_probe(struct platform_device *pdev)
+static int msm_lsm_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 		dev_set_name(&pdev->dev, "%s", "msm-lsm-client");

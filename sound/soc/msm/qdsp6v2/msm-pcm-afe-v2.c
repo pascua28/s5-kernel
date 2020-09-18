@@ -678,7 +678,7 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 	.probe		= msm_afe_afe_probe,
 };
 
-static __devinit int msm_afe_probe(struct platform_device *pdev)
+static int msm_afe_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 		dev_set_name(&pdev->dev, "%s", "msm-pcm-afe");

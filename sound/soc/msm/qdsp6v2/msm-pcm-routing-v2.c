@@ -4809,7 +4809,7 @@ static struct snd_soc_platform_driver msm_soc_routing_platform = {
 	.write		= msm_routing_write,
 };
 
-static __devinit int msm_routing_pcm_probe(struct platform_device *pdev)
+static int msm_routing_pcm_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 		dev_set_name(&pdev->dev, "%s", "msm-pcm-routing");

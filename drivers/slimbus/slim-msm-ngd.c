@@ -1336,7 +1336,7 @@ static ssize_t set_mask(struct device *device, struct device_attribute *attr,
 
 static DEVICE_ATTR(debug_mask, S_IRUGO | S_IWUSR, show_mask, set_mask);
 
-static int __devinit ngd_slim_probe(struct platform_device *pdev)
+static int ngd_slim_probe(struct platform_device *pdev)
 {
 	struct msm_slim_ctrl *dev;
 	int ret;
@@ -1569,7 +1569,7 @@ err_ioremap_failed:
 	return ret;
 }
 
-static int __devexit ngd_slim_remove(struct platform_device *pdev)
+static int ngd_slim_remove(struct platform_device *pdev)
 {
 	struct msm_slim_ctrl *dev = platform_get_drvdata(pdev);
 	ngd_slim_enable(dev, false);

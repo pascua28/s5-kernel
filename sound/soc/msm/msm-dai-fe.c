@@ -953,7 +953,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 	},
 };
 
-static __devinit int msm_fe_dai_dev_probe(struct platform_device *pdev)
+static int msm_fe_dai_dev_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 		dev_set_name(&pdev->dev, "%s", "msm-dai-fe");
@@ -964,7 +964,7 @@ static __devinit int msm_fe_dai_dev_probe(struct platform_device *pdev)
 		ARRAY_SIZE(msm_fe_dais));
 }
 
-static __devexit int msm_fe_dai_dev_remove(struct platform_device *pdev)
+static int msm_fe_dai_dev_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_dai(&pdev->dev);
 	return 0;

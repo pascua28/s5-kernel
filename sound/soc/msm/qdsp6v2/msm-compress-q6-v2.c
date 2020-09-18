@@ -2139,7 +2139,7 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 	.num_controls   = ARRAY_SIZE(msm_compr_gapless_controls),
 };
 
-static __devinit int msm_compr_dev_probe(struct platform_device *pdev)
+static int msm_compr_dev_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 		dev_set_name(&pdev->dev, "%s", "msm-compress-dsp");
