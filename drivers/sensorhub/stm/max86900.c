@@ -137,10 +137,12 @@ static int max86900_regulator_onoff(struct max86900_device_data *data, int onoff
 
 	if (onoff == HRM_LDO_ON) {
 		regulator_set_voltage(data->vdd_1p8, 1800000, 1800000);
-		regulator_enable(data->vdd_1p8);
+		if (regulator_enable(data->vdd_1p8))
+			goto err_1p8;
 #if defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_KSPORTSLTE_SPR)
 		regulator_set_voltage(data->vdd_3p3, 3300000, 3300000);
-		regulator_enable(data->vdd_3p3);
+		if (regulator_enable(data->vdd_3p3))
+			goto err_3p3;
 #endif
 	} else {
 		regulator_disable(data->vdd_1p8);
