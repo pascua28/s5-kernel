@@ -805,7 +805,7 @@ static struct platform_driver msm_pcm_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = msm_pcm_probe,
-	.remove = __devexit_p(msm_pcm_remove),
+	.remove = msm_pcm_remove,
 };
 
 static int __init msm_soc_platform_init(void)
