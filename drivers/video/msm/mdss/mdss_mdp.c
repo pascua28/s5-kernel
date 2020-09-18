@@ -1264,7 +1264,8 @@ void mdss_mdp_footswitch_ctrl_splash(int on)
 		if (on) {
 			pr_debug("Enable MDP FS for splash.\n");
 			mdata->handoff_pending = true;
-			regulator_enable(mdata->fs);
+			if (regulator_enable(mdata->fs))
+				return;
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 			mdss_hw_init(mdata);
 		} else {
@@ -2742,9 +2743,10 @@ void mdss_mdp_batfet_ctrl(struct mdss_data_type *mdata, int enable)
 		}
 	}
 
-	if (enable)
-		regulator_enable(mdata->batfet);
-	else
+	if (enable) {
+		if (regulator_enable(mdata->batfet))
+			return;
+	} else
 		regulator_disable(mdata->batfet);
 }
 
@@ -2756,7 +2758,8 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 	if (on) {
 		pr_debug("Enable MDP FS\n");
 		if (!mdata->fs_ena) {
-			regulator_enable(mdata->fs);
+			if (regulator_enable(mdata->fs))
+				return;
 			if (!mdata->idle_pc) {
 				mdss_mdp_cx_ctrl(mdata, true);
 				mdss_mdp_batfet_ctrl(mdata, true);

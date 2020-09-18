@@ -3432,7 +3432,7 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 	dev_dbg(dev, "dwc3-msm PM suspend\n");
 #endif
 
-	flush_delayed_work_sync(&mdwc->resume_work);
+	flush_delayed_work(&mdwc->resume_work);
 	if (!atomic_read(&mdwc->in_lpm)) {
 		dev_err(mdwc->dev, "Abort PM suspend!! (USB is outside LPM)\n");
 		return -EBUSY;
