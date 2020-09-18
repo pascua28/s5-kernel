@@ -535,6 +535,16 @@ static void pil_release_mmap(struct pil_desc *desc)
 
 #define IOMAP_SIZE SZ_1M
 
+static void *map_fw_mem(phys_addr_t paddr, size_t size)
+{
+	return ioremap(paddr, size);
+}
+
+static void unmap_fw_mem(void *vaddr)
+{
+	iounmap(vaddr);
+}
+
 static int pil_load_seg(struct pil_desc *desc, struct pil_seg *seg)
 {
 	int ret = 0, count;
@@ -546,7 +556,8 @@ static int pil_load_seg(struct pil_desc *desc, struct pil_seg *seg)
 		snprintf(fw_name, ARRAY_SIZE(fw_name), "%s.b%02d",
 				desc->name, num);
 		ret = request_firmware_direct(fw_name, desc->dev, seg->paddr,
-					      seg->filesz);
+					      seg->filesz, desc->map_fw_mem,
+					      desc->unmap_fw_mem);
 		if (ret < 0) {
 			pil_err(desc, "Failed to locate blob %s or blob is too big.\n",
 				fw_name);
@@ -857,6 +868,13 @@ int pil_desc_init(struct pil_desc *desc)
 	wake_lock_init(&priv->wlock, WAKE_LOCK_SUSPEND, priv->wname);
 	INIT_DELAYED_WORK(&priv->proxy, pil_proxy_unvote_work);
 	INIT_LIST_HEAD(&priv->segs);
+
+	/* Make sure mapping functions are set. */
+	if (!desc->map_fw_mem)
+		desc->map_fw_mem = map_fw_mem;
+
+	if (!desc->unmap_fw_mem)
+		desc->unmap_fw_mem = unmap_fw_mem;
 
 	return 0;
 err:

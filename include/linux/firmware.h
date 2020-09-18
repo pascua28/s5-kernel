@@ -39,28 +39,41 @@ struct builtin_fw {
 	__used __section(.builtin_fw) = { name, blob, size }
 
 #if defined(CONFIG_FW_LOADER) || (defined(CONFIG_FW_LOADER_MODULE) && defined(MODULE))
-int request_firmware_direct(const char *name, struct device *device,
-			    phys_addr_t addr, size_t size);
 int request_firmware(const struct firmware **fw, const char *name,
 		     struct device *device);
 int request_firmware_nowait(
 	struct module *module, bool uevent,
 	const char *name, struct device *device, gfp_t gfp, void *context,
 	void (*cont)(const struct firmware *fw, void *context));
-
+int request_firmware_direct(const char *name, struct device *device,
+			    phys_addr_t dest_addr, size_t dest_size,
+			    void * (*map_fw_mem)(phys_addr_t phys,
+						 size_t size),
+			    void (*unmap_fw_mem)(void *virt));
+int request_firmware_nowait_direct(
+	struct module *module, bool uevent,
+	const char *name, struct device *device, gfp_t gfp, void *context,
+	void (*cont)(const struct firmware *fw, void *context),
+	phys_addr_t dest_addr, size_t dest_size,
+	void * (*map_fw_mem)(phys_addr_t phys, size_t size),
+	void (*unmap_fw_mem)(void *virt));
 void release_firmware(const struct firmware *fw);
 int cache_firmware(const char *name);
 int uncache_firmware(const char *name);
 #else
-static inline int request_firmware_direct(const char *name,
-					  struct device *device,
-					  phys_addr_t addr, size_t size)
-{
-	return -EINVAL;
-}
 static inline int request_firmware(const struct firmware **fw,
 				   const char *name,
 				   struct device *device)
+{
+	return -EINVAL;
+}
+static inline int request_firmware_direct(const char *name,
+					  struct device *device,
+					  phys_addr_t dest_addr,
+					  size_t dest_size,
+					  void * (*map_fw_mem)(phys_addr_t phys,
+							       size_t size),
+					  void (*unmap_fw_mem)(void *virt))
 {
 	return -EINVAL;
 }
@@ -71,7 +84,16 @@ static inline int request_firmware_nowait(
 {
 	return -EINVAL;
 }
-
+static inline int request_firmware_nowait_direct(
+	struct module *module, bool uevent,
+	const char *name, struct device *device, gfp_t gfp, void *context,
+	void (*cont)(const struct firmware *fw, void *context),
+	phys_addr_t dest_addr, size_t dest_size,
+	void * (*map_fw_mem)(phys_addr_t phys, size_t size),
+	void (*unmap_fw_mem)(void *virt))
+{
+	return -EINVAL;
+}
 static inline void release_firmware(const struct firmware *fw)
 {
 }
