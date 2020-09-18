@@ -1001,31 +1001,6 @@ trip_point_temp_show(struct device *dev, struct device_attribute *attr,
 }
 
 static ssize_t
-trip_point_temp_set(struct device *dev, struct device_attribute *attr,
-		     const char *buf, size_t count)
-{
-	struct thermal_zone_device *tz = to_thermal_zone(dev);
-	int trip, ret;
-	long temperature;
-
-	if (!tz->ops->set_trip_temp)
-		return -EPERM;
-
-	if (!sscanf(attr->attr.name, "trip_point_%d_temp", &trip))
-		return -EINVAL;
-
-	if (!sscanf(buf, "%ld", &temperature))
-		return -EINVAL;
-
-	ret = sensor_set_trip_temp(tz, trip, temperature);
-
-	if (ret)
-		return ret;
-
-	return count;
-}
-
-static ssize_t
 trip_point_hyst_store(struct device *dev, struct device_attribute *attr,
 			const char *buf, size_t count)
 {
@@ -1939,6 +1914,7 @@ static int create_trip_attrs(struct thermal_zone_device *tz, int mask)
 						tz->trip_type_attrs[indx].name;
 		tz->trip_type_attrs[indx].attr.attr.mode = S_IRUGO;
 		tz->trip_type_attrs[indx].attr.show = trip_point_type_show;
+		tz->trip_type_attrs[indx].attr.store = trip_point_type_activate;
 
 		device_create_file(&tz->device,
 				   &tz->trip_type_attrs[indx].attr);
