@@ -4838,7 +4838,7 @@ static struct platform_driver msm_routing_pcm_driver = {
 		.of_match_table = msm_pcm_routing_dt_match,
 	},
 	.probe = msm_routing_pcm_probe,
-	.remove = __devexit_p(msm_routing_pcm_remove),
+	.remove = msm_routing_pcm_remove,
 };
 
 int msm_routing_check_backend_enabled(int fedai_id)
