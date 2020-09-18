@@ -911,7 +911,6 @@ void free_initmem(void)
 	poison_init_mem(__init_begin, __init_end - __init_begin);
 	if (!machine_is_integrator() && !machine_is_cintegrator())
 		free_initmem_default(0);
-#endif
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
