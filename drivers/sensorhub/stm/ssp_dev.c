@@ -340,7 +340,8 @@ static int ssp_parse_dt(struct device *dev,
 		pr_err("[SSP] could not get hub_vreg, %ld\n",
 			PTR_ERR(data->reg_hub));
 	} else {
-		regulator_enable(data->reg_hub);
+		if (regulator_enable(data->reg_hub))
+			goto dt_exit;
 	}
 
 	data->reg_sns= devm_regulator_get(dev, "psns_vreg");
@@ -348,7 +349,8 @@ static int ssp_parse_dt(struct device *dev,
 		pr_err("[SSP] could not get psns_vreg, %ld\n",
 			PTR_ERR(data->reg_sns));
 	} else {
-		regulator_enable(data->reg_sns);
+		if (regulator_enable(data->reg_sns))
+		goto dt_exit;
 	}
 
 dt_exit:
