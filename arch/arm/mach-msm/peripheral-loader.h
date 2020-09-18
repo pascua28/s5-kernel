@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,6 +28,10 @@ struct pil_priv;
  * @priv: DON'T USE - internal only
  * @proxy_unvote_irq: IRQ to trigger a proxy unvote. proxy_timeout
  * is ignored if this is set.
+ * @map_fw_mem: Custom function used to map physical address space to virtual.
+ * This defaults to ioremap if not specified.
+ * @unmap_fw_mem: Custom function used to undo mapping by map_fw_mem.
+ * This defaults to iounmap if not specified.
  */
 struct pil_desc {
 	const char *name;
@@ -38,6 +43,8 @@ struct pil_desc {
 #define PIL_SKIP_ENTRY_CHECK	BIT(0)
 	struct pil_priv *priv;
 	unsigned int proxy_unvote_irq;
+	void * (*map_fw_mem)(phys_addr_t phys, size_t size);
+	void (*unmap_fw_mem)(void *virt);
 };
 
 /**
