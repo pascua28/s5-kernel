@@ -379,7 +379,7 @@ static struct platform_driver msm_lsm_driver = {
 		.of_match_table = of_match_ptr(msm_lsm_client_dt_match),
 	},
 	.probe = msm_lsm_probe,
-	.remove = __devexit_p(msm_lsm_remove),
+	.remove = msm_lsm_remove,
 };
 
 static int __init msm_soc_platform_init(void)

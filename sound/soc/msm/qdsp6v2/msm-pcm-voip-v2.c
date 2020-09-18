@@ -1683,7 +1683,7 @@ static struct platform_driver msm_pcm_driver = {
 		.of_match_table = msm_voip_dt_match,
 	},
 	.probe = msm_pcm_probe,
-	.remove = __devexit_p(msm_pcm_remove),
+	.remove = msm_pcm_remove,
 };
 
 static int __init msm_soc_platform_init(void)
