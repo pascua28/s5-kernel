@@ -613,7 +613,6 @@ static void ipi_cpu_stop(unsigned int cpu)
 }
 
 static cpumask_t backtrace_mask;
-static DEFINE_RAW_SPINLOCK(backtrace_lock);
 
 /* "in progress" flag of arch_trigger_all_cpu_backtrace */
 static unsigned long backtrace_flag;
