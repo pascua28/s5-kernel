@@ -140,7 +140,7 @@ static const struct dev_pm_ops slimbus_pm = {
 	SET_RUNTIME_PM_OPS(
 		pm_generic_suspend,
 		pm_generic_resume,
-		pm_generic_runtime_idle
+		NULL
 		)
 };
 struct bus_type slimbus_type = {
