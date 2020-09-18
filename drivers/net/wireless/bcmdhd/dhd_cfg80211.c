@@ -190,11 +190,11 @@ default_conf_out:
 }
 
 #ifdef CONFIG_NL80211_TESTMODE
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0))
 int dhd_cfg80211_testmode_cmd(struct wiphy *wiphy, struct wireless_dev *wdev, void *data, int len)
 #else
 int dhd_cfg80211_testmode_cmd(struct wiphy *wiphy, void *data, int len)
-#endif  /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
+#endif  /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0) */
 {
 	struct sk_buff *reply;
 	struct bcm_cfg80211 *cfg;
@@ -207,10 +207,10 @@ int dhd_cfg80211_testmode_cmd(struct wiphy *wiphy, void *data, int len)
 	u16 maxmsglen = PAGE_SIZE - 0x100;
 	bool newbuf = false;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0))
 	int8 index = 0;
 	struct net_device *ndev = NULL;
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0) */
 
 	WL_TRACE(("entry: cmd = %d\n", nlioc->cmd));
 	cfg = wiphy_priv(wiphy);
@@ -244,14 +244,14 @@ int dhd_cfg80211_testmode_cmd(struct wiphy *wiphy, void *data, int len)
 		}
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0))
 	ndev = wdev_to_wlc_ndev(wdev, cfg);
 	index = dhd_net2idx(dhd->info, ndev);
 	if (index == DHD_BAD_IF) {
 	WL_ERR(("Bad ifidx from wdev:%p\n", wdev));
 		return BCME_ERROR;
 }
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0) */
 
 	ioc.cmd = nlioc->cmd;
 	ioc.len = nlioc->len;
