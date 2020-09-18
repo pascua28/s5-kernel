@@ -1487,7 +1487,7 @@ static struct platform_driver msm_eeprom_platform_driver = {
 		.owner		= THIS_MODULE,
 		.of_match_table = msm_eeprom_dt_match,
 	},
-	.remove			= __devexit_p(msm_eeprom_platform_remove),
+	.remove			= msm_eeprom_platform_remove,
 };
 
 static const struct i2c_device_id msm_eeprom_i2c_id[] = {
@@ -1498,7 +1498,7 @@ static const struct i2c_device_id msm_eeprom_i2c_id[] = {
 static struct i2c_driver msm_eeprom_i2c_driver = {
 	.id_table	= msm_eeprom_i2c_id,
 	.probe		= msm_eeprom_i2c_probe,
-	.remove		= __devexit_p(msm_eeprom_i2c_remove),
+	.remove		= msm_eeprom_i2c_remove,
 	.driver		= {
 		.name	= "msm_eeprom",
 	},
@@ -1511,7 +1511,7 @@ static struct spi_driver msm_eeprom_spi_driver = {
 		.of_match_table = msm_eeprom_dt_match,
 	},
 	.probe			= msm_eeprom_spi_probe,
-	.remove			= __devexit_p(msm_eeprom_spi_remove),
+	.remove			= msm_eeprom_spi_remove,
 };
 
 static int __init msm_eeprom_init_module(void)
