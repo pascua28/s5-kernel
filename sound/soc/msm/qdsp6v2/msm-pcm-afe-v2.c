@@ -707,7 +707,7 @@ static struct platform_driver msm_afe_driver = {
 		.of_match_table = msm_pcm_afe_dt_match,
 	},
 	.probe = msm_afe_probe,
-	.remove = __devexit_p(msm_afe_remove),
+	.remove = msm_afe_remove,
 };
 
 static int __init msm_soc_platform_init(void)
