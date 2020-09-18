@@ -929,10 +929,12 @@ static ssize_t midas_switch_store_vbus(struct device *dev,
 		if (regulator_is_enabled(regulator))
 			regulator_force_disable(regulator);
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if(regulator_enable(regulator))
+				return count;
 	} else {
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if(regulator_enable(regulator))
+				return count;
 	}
 	regulator_put(regulator);
 
@@ -1405,7 +1407,8 @@ int max77804k_muic_set_safeout(int path)
 		if (IS_ERR(regulator))
 			return -ENODEV;
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if(regulator_enable(regulator))
+				return -EINVAL;
 		regulator_put(regulator);
 	} else {
 #if defined CONFIG_SEC_RUBENS_PROJECT
@@ -1432,7 +1435,8 @@ int max77804k_muic_set_safeout(int path)
                 if (IS_ERR(regulator))
                         return -ENODEV;
                 if (!regulator_is_enabled(regulator))
-                        regulator_enable(regulator);
+                        if(regulator_enable(regulator))
+				return -EINVAL;
                 regulator_put(regulator);
 
                 regulator = regulator_get(NULL, "safeout2");
