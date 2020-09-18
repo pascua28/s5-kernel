@@ -14,7 +14,6 @@ static void devm_clk_release(struct device *dev, void *res)
 	clk_put(*(struct clk **)res);
 }
 
-#if 0
 struct clk *devm_clk_get(struct device *dev, const char *id)
 {
 	struct clk **ptr, *clk;
@@ -34,7 +33,6 @@ struct clk *devm_clk_get(struct device *dev, const char *id)
 	return clk;
 }
 EXPORT_SYMBOL(devm_clk_get);
-#endif
 
 static int devm_clk_match(struct device *dev, void *res, void *data)
 {
@@ -46,7 +44,6 @@ static int devm_clk_match(struct device *dev, void *res, void *data)
 	return *c == data;
 }
 
-#if 0
 void devm_clk_put(struct device *dev, struct clk *clk)
 {
 	int ret;
@@ -56,4 +53,3 @@ void devm_clk_put(struct device *dev, struct clk *clk)
 	WARN_ON(ret);
 }
 EXPORT_SYMBOL(devm_clk_put);
-#endif
