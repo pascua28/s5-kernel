@@ -67,7 +67,6 @@ static int cryptomgr_probe(void *data)
 	int err;
 
 	tmpl = crypto_lookup_template(param->template);
-
 	if (!tmpl)
 		goto out;
 
