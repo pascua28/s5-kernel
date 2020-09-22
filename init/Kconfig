@@ -1072,8 +1072,6 @@ config IPC_NS
 config USER_NS
 	bool "User namespace"
 	depends on UIDGID_CONVERTED
-	select UIDGID_STRICT_TYPE_CHECKS
-
 	default n
 	help
 	  This allows containers, i.e. vservers, to use user namespaces
@@ -1115,16 +1113,6 @@ config UIDGID_CONVERTED
 
 	# Filesystems
 	depends on XFS_FS = n
-
-config UIDGID_STRICT_TYPE_CHECKS
-	bool "Require conversions between uid/gids and their internal representation"
-	depends on UIDGID_CONVERTED
-	default n
-	help
-	 While the nececessary conversions are being added to all subsystems this option allows
-	 the code to continue to build for unconverted subsystems.
-
-	 Say Y here if you want the strict type checking enabled
 
 config SCHED_AUTOGROUP
 	bool "Automatic process group scheduling"
