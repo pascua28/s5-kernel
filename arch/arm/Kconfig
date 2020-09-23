@@ -1888,7 +1888,7 @@ config DONT_MAP_HOLE_AFTER_MEMBANK0
 	depends on ENABLE_VMALLOC_SAVING=n
 
 config ENABLE_VMALLOC_SAVING
-	def_bool n
+	def_bool y
 	depends on DONT_MAP_HOLE_AFTER_MEMBANK0=n
 
 config HOLES_IN_ZONE
