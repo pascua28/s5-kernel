@@ -2,11 +2,11 @@
  * fs/sdcardfs/dentry.c
  *
  * Copyright (c) 2013 Samsung Electronics Co. Ltd
- *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun,
+ *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun, 
  *               Sunghwan Yun, Sungjong Seo
- *
+ *                      
  * This program has been developed as a stackable file system based on
- * the WrapFS which written by
+ * the WrapFS which written by 
  *
  * Copyright (c) 1998-2011 Erez Zadok
  * Copyright (c) 2009     Shrikar Archak
@@ -47,9 +47,8 @@ static int sdcardfs_d_revalidate(struct dentry *dentry, unsigned int flags)
 	}
 	spin_unlock(&dentry->d_lock);
 
-	/* check uninitialized obb_dentry and
-	 * whether the base obbpath has been changed or not
-	 */
+	/* check uninitialized obb_dentry and  
+	 * whether the base obbpath has been changed or not */
 	if (is_obbpath_invalid(dentry)) {
 		d_drop(dentry);
 		return 0;
@@ -132,16 +131,18 @@ out:
 static void sdcardfs_d_release(struct dentry *dentry)
 {
 	/* release and reset the lower paths */
-	if (has_graft_path(dentry))
+	if(has_graft_path(dentry)) {
 		sdcardfs_put_reset_orig_path(dentry);
+	}
 	sdcardfs_put_reset_lower_path(dentry);
 	free_dentry_private_data(dentry);
+	return;
 }
 
-static int sdcardfs_hash_ci(const struct dentry *dentry,
+static int sdcardfs_hash_ci(const struct dentry *dentry, 
 				const struct inode *inode, struct qstr *qstr)
 {
-	/*
+	/* 
 	 * This function is copy of vfat_hashi.
 	 * FIXME Should we support national language?
 	 *       Refer to vfat_hashi()
@@ -152,10 +153,12 @@ static int sdcardfs_hash_ci(const struct dentry *dentry,
 	unsigned long hash;
 
 	name = qstr->name;
-	len = qstr->len;
+	//len = vfat_striptail_len(qstr);
+	len = qstr->len; 
 
 	hash = init_name_hash();
 	while (len--)
+		//hash = partial_name_hash(nls_tolower(t, *name++), hash);
 		hash = partial_name_hash(tolower(*name++), hash);
 	qstr->hash = end_name_hash(hash);
 
@@ -165,13 +168,25 @@ static int sdcardfs_hash_ci(const struct dentry *dentry,
 /*
  * Case insensitive compare of two vfat names.
  */
-static int sdcardfs_cmp_ci(const struct dentry *parent,
+static int sdcardfs_cmp_ci(const struct dentry *parent, 
 		const struct inode *pinode,
 		const struct dentry *dentry, const struct inode *inode,
 		unsigned int len, const char *str, const struct qstr *name)
 {
-	/* FIXME Should we support national language? */
+	/* This function is copy of vfat_cmpi */
+	// FIXME Should we support national language? 
+	//struct nls_table *t = MSDOS_SB(parent->d_sb)->nls_io;
+	//unsigned int alen, blen;
 
+	/* A filename cannot end in '.' or we treat it like it has none */
+	/*
+	alen = vfat_striptail_len(name);
+	blen = __vfat_striptail_len(len, str);
+	if (alen == blen) {
+		if (nls_strnicmp(t, name->name, str, alen) == 0)
+			return 0;
+	}
+	*/
 	if (name->len == len) {
 		if (str_n_case_eq(name->name, str, len))
 			return 0;
@@ -179,16 +194,14 @@ static int sdcardfs_cmp_ci(const struct dentry *parent,
 	return 1;
 }
 
-static void sdcardfs_canonical_path(const struct path *path,
-				struct path *actual_path)
-{
+static void sdcardfs_canonical_path(const struct path *path, struct path *actual_path) {
 	sdcardfs_get_real_lower(path->dentry, actual_path);
 }
 
 const struct dentry_operations sdcardfs_ci_dops = {
 	.d_revalidate	= sdcardfs_d_revalidate,
 	.d_release	= sdcardfs_d_release,
-	.d_hash	= sdcardfs_hash_ci,
+	.d_hash 	= sdcardfs_hash_ci, 
 	.d_compare	= sdcardfs_cmp_ci,
 	.d_canonical_path = sdcardfs_canonical_path,
 };

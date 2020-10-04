@@ -2,11 +2,11 @@
  * fs/sdcardfs/lookup.c
  *
  * Copyright (c) 2013 Samsung Electronics Co. Ltd
- *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun,
+ *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun, 
  *               Sunghwan Yun, Sungjong Seo
- *
+ *                      
  * This program has been developed as a stackable file system based on
- * the WrapFS which written by
+ * the WrapFS which written by 
  *
  * Copyright (c) 1998-2011 Erez Zadok
  * Copyright (c) 2009     Shrikar Archak
@@ -20,6 +20,7 @@
 
 #include "sdcardfs.h"
 #include "linux/delay.h"
+#include "../internal.h"
 
 /* The dentry cache is just so we have properly sized dentries */
 static struct kmem_cache *sdcardfs_dentry_cachep;
@@ -163,8 +164,12 @@ struct inode *sdcardfs_iget(struct super_block *sb, struct inode *lower_inode, u
 }
 
 /*
- * Helper interpose routine, called directly by ->lookup to handle
- * spliced dentries.
+ * Connect a sdcardfs inode dentry/inode with several lower ones.  This is
+ * the classic stackable file system "vnode interposition" action.
+ *
+ * @dentry: sdcardfs's dentry which interposes on lower one
+ * @sb: sdcardfs's super_block
+ * @lower_path: the lower path (caller does path_get/put)
  */
 static struct dentry *__sdcardfs_interpose(struct dentry *dentry,
 					 struct super_block *sb,
@@ -197,7 +202,7 @@ static struct dentry *__sdcardfs_interpose(struct dentry *dentry,
 		goto out;
 	}
 
-	ret_dentry = d_splice_alias(inode, dentry);
+	ret_dentry = d_materialise_unique(dentry, inode);
 	dentry = ret_dentry ?: dentry;
 	if (!IS_ERR(dentry))
 		update_derived_permission_lock(dentry);
@@ -223,10 +228,10 @@ int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 }
 
 struct sdcardfs_name_data {
-	struct dir_context ctx;
 	const struct qstr *to_find;
 	char *name;
 	bool found;
+	int result;
 };
 
 static int sdcardfs_name_match(void *__buf, const char *name, int namelen,
@@ -235,7 +240,8 @@ static int sdcardfs_name_match(void *__buf, const char *name, int namelen,
 	struct sdcardfs_name_data *buf = (struct sdcardfs_name_data *) __buf;
 	struct qstr candidate = QSTR_INIT(name, namelen);
 
-	if (qstr_case_eq(buf->to_find, &candidate)) {
+	buf->result++;
+	if (qstr_n_case_eq(buf->to_find, &candidate)) {
 		memcpy(buf->name, name, namelen);
 		buf->name[namelen] = 0;
 		buf->found = true;
@@ -259,9 +265,15 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	struct dentry *lower_dentry;
 	const struct qstr *name;
 	struct path lower_path;
-	struct qstr dname;
 	struct dentry *ret_dentry = NULL;
 	struct sdcardfs_sb_info *sbi;
+
+#ifdef CONFIG_SDCARD_FS_CI_SEARCH
+	unsigned int lower_flags = LOOKUP_CASE_INSENSITIVE;
+#else
+	unsigned int lower_flags = 0;
+#endif
+	unsigned long lower_magic;
 
 	sbi = SDCARDFS_SB(dentry->d_sb);
 	/* must initialize dentry operations */
@@ -275,20 +287,21 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	/* now start the actual lookup procedure */
 	lower_dir_dentry = lower_parent_path->dentry;
 	lower_dir_mnt = lower_parent_path->mnt;
+	lower_magic = lower_dir_mnt->mnt_sb->s_magic;
 
 	/* Use vfs_path_lookup to check if the dentry exists or not */
-	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name->name, 0,
-				&lower_path);
-	/* check for other cases */
-	if (err == -ENOENT) {
+	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name->name,
+			lower_flags, &lower_path);
+	if (err == -ENOENT && (lower_magic == ECRYPTFS_SUPER_MAGIC ||
+			(!lower_flags && lower_magic == EXT4_SUPER_MAGIC))) {
 		struct file *file;
 		const struct cred *cred = current_cred();
 
 		struct sdcardfs_name_data buffer = {
-			.ctx.actor = sdcardfs_name_match,
 			.to_find = name,
 			.name = __getname(),
 			.found = false,
+			.result = 0,
 		};
 
 		if (!buffer.name) {
@@ -300,7 +313,17 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 			err = PTR_ERR(file);
 			goto put_name;
 		}
-		err = iterate_dir(file, &buffer.ctx);
+		while (1) {
+			err = vfs_readdir(file, sdcardfs_name_match, &buffer);
+			if (err < 0)
+				break;
+
+			err = 0;
+			if (buffer.found || !buffer.result)
+				break;
+
+			buffer.result = 0;
+		}
 		fput(file);
 		if (err)
 			goto put_name;
@@ -323,24 +346,22 @@ put_name:
 		 * the inode of the graft path
 		 */
 
-		if (need_graft_path(dentry)) {
+		if(need_graft_path(dentry)) {
 
 			/* setup_obb_dentry()
-			 * The lower_path will be stored to the dentry's orig_path
+ 			 * The lower_path will be stored to the dentry's orig_path 
 			 * and the base obbpath will be copyed to the lower_path variable.
-			 * if an error returned, there's no change in the lower_path
-			 * returns: -ERRNO if error (0: no error)
-			 */
+			 * if an error returned, there's no change in the lower_path 
+			 * 		returns: -ERRNO if error (0: no error) */
 			err = setup_obb_dentry(dentry, &lower_path);
 
-			if (err) {
+			if(err) { 
 				/* if the sbi->obbpath is not available, we can optionally
-				 * setup the lower_path with its orig_path.
+				 * setup the lower_path with its orig_path. 
 				 * but, the current implementation just returns an error
-				 * because the sdcard daemon also regards this case as
-				 * a lookup fail.
-				 */
-				pr_info("sdcardfs: base obbpath is not available\n");
+				 * because the sdcard daemon also regards this case as 
+				 * a lookup fail. */
+				printk(KERN_INFO "sdcardfs: base obbpath is not available\n"); 
 				sdcardfs_put_reset_orig_path(dentry);
 				goto out;
 			}
@@ -364,22 +385,12 @@ put_name:
 	if (err && err != -ENOENT)
 		goto out;
 
-	/* instatiate a new negative dentry */
-	dname.name = name->name;
-	dname.len = name->len;
-
-	/* See if the low-level filesystem might want
-	 * to use its own hash
-	 */
-	lower_dentry = d_hash_and_lookup(lower_dir_dentry, &dname);
-	if (IS_ERR(lower_dentry))
-		return lower_dentry;
-	if (!lower_dentry) {
-		/* We called vfs_path_lookup earlier, and did not get a negative
-		 * dentry then. Don't confuse the lower filesystem by forcing
-		 * one on it now...
-		 */
-		err = -ENOENT;
+	mutex_lock(&lower_dir_dentry->d_inode->i_mutex);
+	lower_dentry = lookup_one_len(dentry->d_name.name, lower_dir_dentry, 
+			dentry->d_name.len);
+	mutex_unlock(&lower_dir_dentry->d_inode->i_mutex);
+	if (unlikely(IS_ERR(lower_dentry))) {
+		err =  PTR_ERR(lower_dentry);
 		goto out;
 	}
 
@@ -401,16 +412,16 @@ out:
 	return ret_dentry;
 }
 
-/*
+/* 
  * On success:
- * fills dentry object appropriate values and returns NULL.
+ * 	fills dentry object appropriate values and returns NULL. 
  * On fail (== error)
- * returns error ptr
+ * 	returns error ptr
  *
  * @dir : Parent inode. It is locked (dir->i_mutex)
  * @dentry : Target dentry to lookup. we should set each of fields.
  *	     (dentry->d_name is initialized already)
- * @nd : nameidata of parent inode
+ * @nd : nameidata of parent inode 
  */
 struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 			     unsigned int flags)
@@ -428,12 +439,7 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 	}
 
 	/* save current_cred and override it */
-	saved_cred = override_fsids(SDCARDFS_SB(dir->i_sb),
-						SDCARDFS_I(dir)->data);
-	if (!saved_cred) {
-		ret = ERR_PTR(-ENOMEM);
-		goto out_err;
-	}
+	OVERRIDE_CRED_PTR(SDCARDFS_SB(dir->i_sb), saved_cred, SDCARDFS_I(dir));
 
 	sdcardfs_get_lower_path(parent, &lower_parent_path);
 
@@ -453,7 +459,7 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 	if (dentry->d_inode) {
 		fsstack_copy_attr_times(dentry->d_inode,
 					sdcardfs_lower_inode(dentry->d_inode));
-		/* get derived permission */
+		/* get drived permission */
 		get_derived_permission(parent, dentry);
 		fixup_tmp_permissions(dentry->d_inode);
 		fixup_lower_ownership(dentry, dentry->d_name.name);
@@ -464,7 +470,7 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 
 out:
 	sdcardfs_put_lower_path(parent, &lower_parent_path);
-	revert_fsids(saved_cred);
+	REVERT_CRED(saved_cred);
 out_err:
 	dput(parent);
 	return ret;

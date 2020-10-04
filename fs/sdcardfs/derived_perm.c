@@ -2,11 +2,11 @@
  * fs/sdcardfs/derived_perm.c
  *
  * Copyright (c) 2013 Samsung Electronics Co. Ltd
- *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun,
+ *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun, 
  *               Sunghwan Yun, Sungjong Seo
- *
+ *                      
  * This program has been developed as a stackable file system based on
- * the WrapFS which written by
+ * the WrapFS which written by 
  *
  * Copyright (c) 1998-2011 Erez Zadok
  * Copyright (c) 2009     Shrikar Archak
@@ -33,6 +33,8 @@ static void inherit_derived_state(struct inode *parent, struct inode *child)
 	ci->data->under_cache = pi->data->under_cache;
 	ci->data->under_obb = pi->data->under_obb;
 	set_top(ci, pi->top_data);
+
+	ci->data->under_knox = pi->data->under_knox;
 }
 
 /* helper function for derived state */
@@ -49,6 +51,8 @@ void setup_derived_state(struct inode *inode, perm_t perm, userid_t userid,
 	info->data->under_cache = false;
 	info->data->under_obb = false;
 	set_top(info, top);
+
+	info->data->under_knox = false;
 }
 
 /* While renaming, there is a point where we want the path from dentry,
@@ -60,9 +64,6 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 	struct sdcardfs_inode_info *info = SDCARDFS_I(dentry->d_inode);
 	struct sdcardfs_inode_data *parent_data =
 			SDCARDFS_I(parent->d_inode)->data;
-#ifdef CONFIG_SDP
-	struct sdcardfs_dentry_info *parent_dinfo = SDCARDFS_D(parent);
-#endif
 	appid_t appid;
 	unsigned long user_num;
 	int err;
@@ -71,13 +72,16 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 	struct qstr q_obb = QSTR_LITERAL("obb");
 	struct qstr q_media = QSTR_LITERAL("media");
 	struct qstr q_cache = QSTR_LITERAL("cache");
+	/* refer to perm_t in sdcardfs.h */
+	struct qstr q_knox = QSTR_LITERAL("knox");
+	struct qstr q_shared = QSTR_LITERAL("shared");
 
-	/* By default, each inode inherits from its parent.
+	/* By default, each inode inherits from its parent. 
 	 * the properties are maintained on its private fields
-	 * because the inode attributes will be modified with that of
+	 * because the inode attributes will be modified with that of 
 	 * its lower inode.
-	 * These values are used by our custom permission call instead
-	 * of using the inode permissions.
+	 * The derived state will be updated on the last 
+	 * stage of each system call by fix_derived_permission(inode).
 	 */
 
 	inherit_derived_state(parent->d_inode, dentry->d_inode);
@@ -100,11 +104,6 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 		else
 			info->data->userid = user_num;
 		set_top(info, info->data);
-#ifdef CONFIG_SDP
-			if(parent_dinfo->under_knox && (parent_dinfo->userid >= 0)) {
-				info->data->userid = parent_dinfo->userid;
-			}
-#endif
 		break;
 	case PERM_ROOT:
 		/* Assume masked off by default. */
@@ -112,6 +111,10 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 			/* App-specific directories inside; let anyone traverse */
 			info->data->perm = PERM_ANDROID;
 			info->data->under_android = true;
+			set_top(info, info->data);
+		} else if (qstr_case_eq(name, &q_knox)) {
+			info->data->perm = PERM_KNOX_PRE_ROOT;
+			info->data->under_knox = true;
 			set_top(info, info->data);
 		}
 		break;
@@ -148,6 +151,42 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 			info->data->under_cache = true;
 		}
 		break;
+
+	/* KNOX */
+	case PERM_KNOX_PRE_ROOT:
+		info->data->perm = PERM_KNOX_ROOT;
+		err = kstrtoul(name->name, 10, &user_num);
+		if (err)
+			info->data->userid = 10; /* default container no. */
+		else
+			info->data->userid = user_num;
+		set_top(info, info->data);
+		break;
+	case PERM_KNOX_ROOT:
+		if (qstr_case_eq(name, &q_Android))
+			info->data->perm = PERM_KNOX_ANDROID;
+		break;
+	case PERM_KNOX_ANDROID:
+		if (qstr_case_eq(name, &q_data)) {
+			info->data->perm = PERM_KNOX_ANDROID_DATA;
+		} else if (qstr_case_eq(name, &q_shared)) {
+			info->data->perm = PERM_KNOX_ANDROID_SHARED;
+			info->data->d_uid =
+				multiuser_get_uid(parent_data->userid, 0);
+			set_top(info, info->data);
+		}
+		break;
+	case PERM_KNOX_ANDROID_DATA:
+		info->data->perm = PERM_KNOX_ANDROID_PACKAGE;
+		appid = get_appid(name->name);
+		if (appid != 0 && !is_excluded(name->name, parent_data->userid))
+			info->data->d_uid =
+				multiuser_get_uid(parent_data->userid, appid);
+		set_top(info, info->data);
+		break;
+	case PERM_KNOX_ANDROID_SHARED:
+	case PERM_KNOX_ANDROID_PACKAGE:
+		break;
 	}
 }
 
@@ -173,6 +212,7 @@ void fixup_lower_ownership(struct dentry *dentry, const char *name)
 {
 	struct path path;
 	struct inode *inode;
+	//struct inode *delegated_inode = NULL;
 	int error;
 	struct sdcardfs_inode_info *info;
 	struct sdcardfs_inode_data *info_d;
@@ -259,7 +299,7 @@ void fixup_lower_ownership(struct dentry *dentry, const char *name)
 		if (!error)
 			error = notify_change2(path.mnt, path.dentry, &newattrs);
 		mutex_unlock(&inode->i_mutex);
-		if (error)
+	if (error)
 			pr_debug("sdcardfs: Failed to touch up lower fs gid/uid for %s\n", name);
 	}
 	sdcardfs_put_lower_path(dentry, &path);
@@ -333,17 +373,17 @@ inline void update_derived_permission_lock(struct dentry *dentry)
 {
 	struct dentry *parent;
 
-	if (!dentry || !dentry->d_inode) {
-		pr_err("sdcardfs: %s: invalid dentry\n", __func__);
+	if(!dentry || !dentry->d_inode) {
+		printk(KERN_ERR "sdcardfs: %s: invalid dentry\n", __func__);
 		return;
 	}
-	/* FIXME:
-	 * 1. need to check whether the dentry is updated or not
+	/* FIXME: 
+	 * 1. need to check whether the dentry is updated or not 
 	 * 2. remove the root dentry update
 	 */
 	if (!IS_ROOT(dentry)) {
 		parent = dget_parent(dentry);
-		if (parent) {
+		if(parent) {
 			get_derived_permission(parent, dentry);
 			dput(parent);
 		}
@@ -355,7 +395,7 @@ int need_graft_path(struct dentry *dentry)
 {
 	int ret = 0;
 	struct dentry *parent = dget_parent(dentry);
-	struct sdcardfs_inode_info *parent_info = SDCARDFS_I(parent->d_inode);
+	struct sdcardfs_inode_info *parent_info= SDCARDFS_I(parent->d_inode);
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 	struct qstr obb = QSTR_LITERAL("obb");
 
@@ -437,39 +477,37 @@ int is_base_obbpath(struct dentry *dentry)
 	return ret;
 }
 
-/* The lower_path will be stored to the dentry's orig_path
+/* The lower_path will be stored to the dentry's orig_path 
  * and the base obbpath will be copyed to the lower_path variable.
- * if an error returned, there's no change in the lower_path
- * returns: -ERRNO if error (0: no error)
- */
+ * if an error returned, there's no change in the lower_path 
+ * returns: -ERRNO if error (0: no error) */
 int setup_obb_dentry(struct dentry *dentry, struct path *lower_path)
 {
 	int err = 0;
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 	struct path obbpath;
 
-	/* A local obb dentry must have its own orig_path to support rmdir
-	 * and mkdir of itself. Usually, we expect that the sbi->obbpath
-	 * is avaiable on this stage.
-	 */
+	/* A local obb dentry must have its own orig_path to support rmdir 
+	 * and mkdir of itself. Usually, we expect that the sbi->obbpath 
+	 * is avaiable on this stage. */
 	sdcardfs_set_orig_path(dentry, lower_path);
 
 	err = kern_path(sbi->obbpath_s,
 			LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &obbpath);
 
-	if (!err) {
+	if(!err) {
 		/* the obbpath base has been found */
+		printk(KERN_INFO "sdcardfs: "
+				"the sbi->obbpath is found\n");
 		pathcpy(lower_path, &obbpath);
 	} else {
 		/* if the sbi->obbpath is not available, we can optionally
-		 * setup the lower_path with its orig_path.
+		 * setup the lower_path with its orig_path. 
 		 * but, the current implementation just returns an error
-		 * because the sdcard daemon also regards this case as
-		 * a lookup fail.
-		 */
-		pr_info("sdcardfs: the sbi->obbpath is not available\n");
+		 * because the sdcard daemon also regards this case as 
+		 * a lookup fail. */
+		printk(KERN_INFO "sdcardfs: "
+				"the sbi->obbpath is not available\n");
 	}
 	return err;
 }
-
-

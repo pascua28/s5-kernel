@@ -24,5 +24,7 @@
 #define AID_NET_ADMIN    3005
 #define AID_NET_BW_STATS 3006  /* read bandwidth statistics */
 #define AID_NET_BW_ACCT  3007  /* change bandwidth statistics accounting */
+#define AID_USE_SEC_RESERVED	4444
+#define AID_USE_ROOT_RESERVED	5555
 
 #endif
