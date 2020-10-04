@@ -66,6 +66,8 @@ struct audit_krule;
 struct user_namespace;
 struct timezone;
 
+#define RKP_RO_AREA
+
 /*
  * These functions are in security/capability.c and are used
  * as the default capabilities functions
