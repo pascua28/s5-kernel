@@ -224,7 +224,7 @@ static void ecryptfs_mm_drop_pagecache(struct super_block *sb, void *arg)
 		if (inode->i_mapping->nrpages == 0) {
 			spin_unlock(&inode->i_lock);
 			spin_unlock(&inode_sb_list_lock);
-
+			
 			if(ecryptfs_mm_debug)
 				printk("%s() ecryptfs inode [ino:%lu]\n",__func__, inode->i_ino);
 				
