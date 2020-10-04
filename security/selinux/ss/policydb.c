@@ -149,7 +149,7 @@ static struct policydb_compat_info policydb_compat[] = {
 		.ocon_num	= OCON_NUM,
 	},
 	{
-		.version	= POLICYDB_VERSION_XPERMS_IOCTL,
+		.version	= POLICYDB_VERSION_IOCTL_OPERATIONS,
 		.sym_num	= SYM_NUM,
 		.ocon_num	= OCON_NUM,
 	},
@@ -622,6 +622,7 @@ static int common_destroy(void *key, void *datum, void *p)
 	kfree(datum);
 	return 0;
 }
+
 
 static void constraint_expr_destroy(struct constraint_expr *expr)
 {
@@ -1514,6 +1515,9 @@ static int type_read(struct policydb *p, struct hashtab *h, void *fp)
 		goto bad;
 	return 0;
 bad:
+#ifndef CONFIG_ALWAYS_ENFORCE
+	panic("SELinux:Failed to type read");
+#endif /*CONFIG_ALWAYS_ENFORCE*/
 	type_destroy(key, typdatum, NULL);
 	return rc;
 }
@@ -2564,6 +2568,9 @@ int policydb_read(struct policydb *p, void *fp)
 out:
 	return rc;
 bad:
+#ifndef CONFIG_ALWAYS_ENFORCE
+	panic("SELinux:Failed to load policy");
+#endif /*CONFIG_ALWAYS_ENFORCE*/
 	policydb_destroy(p);
 	goto out;
 }
