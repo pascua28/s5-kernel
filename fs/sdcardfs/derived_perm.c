@@ -60,6 +60,9 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 	struct sdcardfs_inode_info *info = SDCARDFS_I(dentry->d_inode);
 	struct sdcardfs_inode_data *parent_data =
 			SDCARDFS_I(parent->d_inode)->data;
+#ifdef CONFIG_SDP
+	struct sdcardfs_dentry_info *parent_dinfo = SDCARDFS_D(parent);
+#endif
 	appid_t appid;
 	unsigned long user_num;
 	int err;
@@ -97,6 +100,11 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 		else
 			info->data->userid = user_num;
 		set_top(info, info->data);
+#ifdef CONFIG_SDP
+			if(parent_dinfo->under_knox && (parent_dinfo->userid >= 0)) {
+				info->data->userid = parent_dinfo->userid;
+			}
+#endif
 		break;
 	case PERM_ROOT:
 		/* Assume masked off by default. */

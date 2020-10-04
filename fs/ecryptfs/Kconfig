@@ -20,3 +20,20 @@ config ECRYPT_FS_MESSAGING
 	  Enables the /dev/ecryptfs entry for use by ecryptfsd. This allows
 	  for userspace to wrap/unwrap file encryption keys by other
 	  backends, like OpenSSL.
+
+config SDP
+	bool "Enables SDP"
+	default n
+	depends on ECRYPT_FS
+	help
+	Sensitive Data Protection
+	
+config SDP_KEY_DUMP
+	bool "SDP KEY DUMP"
+	default n
+
+config FORCE_DISABLE_FIPS
+	bool "Force disable FIPS config"
+	default n
+	help
+	  Force disable FIPS config
