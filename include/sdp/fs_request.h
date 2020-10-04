@@ -31,9 +31,13 @@
 #define FSOP_DLP_FILE_INIT_RESTRICTED     24
 #define FSOP_DLP_FILE_REMOVE     25
 #define FSOP_DLP_FILE_RENAME     26
+#define FSOP_DLP_FILE_ACCESS_DENIED     27
+#define FSOP_DLP_FILE_OPENED_CREATOR    28
+#define FSOP_DLP_FILE_REMOVE_MEDIA     29
 
 #define FSOP_AUDIT_FAIL_ENCRYPT		51
 #define FSOP_AUDIT_FAIL_DECRYPT		52
+#define FSOP_AUDIT_FAIL_ACCESS		53
 
 // opcode, ret, inode
 typedef void (*fs_request_cb_t)(int, int, unsigned long);
@@ -55,6 +59,11 @@ static inline sdp_fs_command_t *sdp_fs_command_alloc(int opcode, int pid,
     sdp_fs_command_t *cmd;
 
     cmd = kmalloc(sizeof(sdp_fs_command_t), gfp);
+
+    if(cmd == NULL) {
+	printk(KERN_ERR "sdp_fs_command_alloc is failed\n");
+	return NULL;
+    }
 
     cmd->opcode = opcode;
     cmd->pid = pid;

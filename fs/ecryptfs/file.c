@@ -90,7 +90,6 @@ static ssize_t ecryptfs_read_update_atime(struct kiocb *iocb,
 }
 
 struct ecryptfs_getdents_callback {
-	struct dir_context ctx;
 	void *dirent;
 	struct dentry *dentry;
 	filldir_t filldir;
@@ -138,19 +137,18 @@ static int ecryptfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	int rc;
 	struct file *lower_file;
 	struct inode *inode;
-	struct ecryptfs_getdents_callback buf = {
-		.dirent = dirent,
-		.dentry = file->f_path.dentry,
-		.filldir = filldir,
-		.filldir_called = 0,
-		.entries_written = 0,
-		.ctx.actor = ecryptfs_filldir
-	};
+	struct ecryptfs_getdents_callback buf;
 
 	lower_file = ecryptfs_file_to_lower(file);
 	lower_file->f_pos = file->f_pos;
 	inode = file_inode(file);
-	rc = iterate_dir(lower_file, &buf.ctx);
+	memset(&buf, 0, sizeof(buf));
+	buf.dirent = dirent;
+	buf.dentry = file->f_path.dentry;
+	buf.filldir = filldir;
+	buf.filldir_called = 0;
+	buf.entries_written = 0;
+	rc = vfs_readdir(lower_file, ecryptfs_filldir, (void *)&buf);
 	file->f_pos = lower_file->f_pos;
 	if (rc < 0)
 		goto out;
@@ -275,15 +273,104 @@ out:
 	return rc;
 }
 
+#if defined(CONFIG_MMC_DW_FMP_ECRYPT_FS) || defined(CONFIG_UFS_FMP_ECRYPT_FS)
+static void ecryptfs_set_rapages(struct file *file, unsigned int flag)
+{
+	if (!flag)
+		file->f_ra.ra_pages = 0;
+	else
+		file->f_ra.ra_pages = (unsigned int)file->f_mapping->backing_dev_info->ra_pages;
+}
+
+static int ecryptfs_set_fmpinfo(struct file *file, struct inode *inode, unsigned int set_flag)
+{
+	struct address_space *mapping = file->f_mapping;
+
+	if (set_flag) {
+		struct ecryptfs_crypt_stat *crypt_stat =
+			&ecryptfs_inode_to_private(inode)->crypt_stat;
+		struct ecryptfs_mount_crypt_stat *mount_crypt_stat =
+			&ecryptfs_superblock_to_private(inode->i_sb)->mount_crypt_stat;
+
+		if (strncmp(crypt_stat->cipher, "aesxts", sizeof("aesxts"))
+			&& strncmp(crypt_stat->cipher, "aes", sizeof("aes"))) {
+			if (!(crypt_stat->flags & ECRYPTFS_ENCRYPTED)) {
+				mapping->plain_text = 1;
+				return 0;
+			} else {
+				ecryptfs_printk(KERN_ERR,
+						"%s: Error invalid file encryption algorithm, inode %lu, filename %s alg %s\n"
+						, __func__, inode->i_ino,  file->f_dentry->d_name.name, crypt_stat->cipher);
+				return -EINVAL;
+			}
+		}
+		mapping->iv = crypt_stat->root_iv;
+		mapping->key = crypt_stat->key;
+		mapping->sensitive_data_index = crypt_stat->metadata_size/4096;
+		if (mount_crypt_stat->cipher_code == RFC2440_CIPHER_AES_XTS_256) {
+			mapping->key_length = crypt_stat->key_size * 2;
+			mapping->alg = "aesxts";
+		} else {
+			mapping->key_length = crypt_stat->key_size;
+			mapping->alg = crypt_stat->cipher;
+		}
+		mapping->hash_tfm = crypt_stat->hash_tfm;
+#ifdef CONFIG_CRYPTO_FIPS
+		mapping->cc_enable =
+			(mount_crypt_stat->flags & ECRYPTFS_ENABLE_CC)?1:0;
+#endif
+	} else {
+		mapping->iv = NULL;
+		mapping->key = NULL;
+		mapping->key_length = 0;
+		mapping->sensitive_data_index = 0;
+		mapping->alg = NULL;
+		mapping->hash_tfm = NULL;
+#ifdef CONFIG_CRYPTO_FIPS
+		mapping->cc_enable = 0;
+#endif
+		mapping->plain_text = 0;
+	}
+
+	return 0;
+}
+
+void ecryptfs_propagate_rapages(struct file *file, unsigned int flag)
+{
+	struct file *f = file;
+
+	do {
+		if (!f)
+			return;
+		ecryptfs_set_rapages(f, flag);
+	} while(f->f_op->get_lower_file && (f = f->f_op->get_lower_file(f)));
+
+}
+
+int ecryptfs_propagate_fmpinfo(struct inode *inode, unsigned int flag)
+{
+	struct file *f = ecryptfs_inode_to_private(inode)->lower_file;
+
+	do {
+		if (!f)
+			return 0;
+		if (ecryptfs_set_fmpinfo(f, inode, flag))
+			return -EINVAL;
+	} while(f->f_op->get_lower_file && (f = f->f_op->get_lower_file(f)));
+
+	return 0;
+}
+#endif
+
 static int ecryptfs_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	struct file *lower_file = ecryptfs_file_to_lower(file);
+	struct dentry *dentry = ecryptfs_dentry_to_lower(file->f_path.dentry);
 	/*
 	 * Don't allow mmap on top of file systems that don't support it
 	 * natively.  If FILESYSTEM_MAX_STACK_DEPTH > 2 or ecryptfs
 	 * allows recursive mounting, this will need to be extended.
 	 */
-	if (!lower_file->f_op->mmap)
+	if (!dentry->d_inode->i_fop->mmap)
 		return -ENODEV;
 	return generic_file_mmap(file, vma);
 }
@@ -396,6 +483,16 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 #endif
 		goto out_put;
 	}
+
+#if defined(CONFIG_MMC_DW_FMP_ECRYPT_FS) || defined(CONFIG_UFS_FMP_ECRYPT_FS)
+	if (mount_crypt_stat->flags & ECRYPTFS_USE_FMP)
+		rc = ecryptfs_propagate_fmpinfo(inode, FMPINFO_SET);
+	else
+		rc = ecryptfs_propagate_fmpinfo(inode, FMPINFO_CLEAR);
+#endif
+	if (rc)
+		goto out_put;
+
 #ifdef CONFIG_SDP
 	if (crypt_stat->flags & ECRYPTFS_DEK_IS_SENSITIVE) {
 #ifdef CONFIG_SDP_KEY_DUMP
@@ -437,30 +534,50 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 #ifdef CONFIG_DLP
 	if(crypt_stat->flags & ECRYPTFS_DLP_ENABLED) {
 #if DLP_DEBUG
-		printk("DLP %s: try to open %s with crypt_stat->flags %d\n",
-				__func__, ecryptfs_dentry->d_name.name, crypt_stat->flags);
+		printk("DLP %s: try to open %s [%lu] with crypt_stat->flags %d\n",
+				__func__, ecryptfs_dentry->d_name.name, inode->i_ino, crypt_stat->flags);
 #endif
+
+		dlp_len = ecryptfs_dentry->d_inode->i_op->getxattr(
+			ecryptfs_dentry,
+			KNOX_DLP_XATTR_NAME,
+			&dlp_data, sizeof(dlp_data));
+
+		if(dlp_data.expiry_time.tv_sec <= 0){
+#if DLP_DEBUG
+			printk("[LOG] %s: DLP flag is set but it is not DLP file -> media created file but not DLP [%s]\n",
+				__func__, ecryptfs_dentry->d_name.name);
+#endif
+			goto dlp_out;
+		}
+
 		if (dlp_is_locked(mount_crypt_stat->userid)) {
 			printk("%s: DLP locked\n", __func__);
 			rc = -EPERM;
 			goto out_put;
 		}
-		if(in_egroup_p(AID_KNOX_DLP) || in_egroup_p(AID_KNOX_DLP_RESTRICTED)) {
-			dlp_len = ecryptfs_getxattr_lower(
-					ecryptfs_dentry_to_lower(ecryptfs_dentry),
-					KNOX_DLP_XATTR_NAME,
-					&dlp_data, sizeof(dlp_data));
+
+		if(in_egroup_p(AID_KNOX_DLP) || in_egroup_p(AID_KNOX_DLP_RESTRICTED) || in_egroup_p(AID_KNOX_DLP_MEDIA)) {
 			if (dlp_len == sizeof(dlp_data)) {
 				getnstimeofday(&ts);
 #if DLP_DEBUG
 				printk("DLP %s: current time [%ld/%ld] %s\n",
 						__func__, (long)ts.tv_sec, (long)dlp_data.expiry_time.tv_sec, ecryptfs_dentry->d_name.name);
 #endif
-				if ((ts.tv_sec > dlp_data.expiry_time.tv_sec) && dlp_isInterestedFile(ecryptfs_dentry->d_name.name)==0) {
+				if ((ts.tv_sec > dlp_data.expiry_time.tv_sec) &&
+						dlp_isInterestedFile(mount_crypt_stat->userid, ecryptfs_dentry->d_name.name)==0) {
+					
+					if(in_egroup_p(AID_KNOX_DLP_MEDIA)) { //ignore media notifications
+					/* Command to delete expired file  */
+					cmd = sdp_fs_command_alloc(FSOP_DLP_FILE_REMOVE_MEDIA,
+							current->tgid, mount_crypt_stat->userid, mount_crypt_stat->partition_id,
+							inode->i_ino, GFP_KERNEL);
+					} else {
 					/* Command to delete expired file  */
 					cmd = sdp_fs_command_alloc(FSOP_DLP_FILE_REMOVE,
 							current->tgid, mount_crypt_stat->userid, mount_crypt_stat->partition_id,
 							inode->i_ino, GFP_KERNEL);
+					}
 					rc = -ENOENT;
 					goto out_put;
 				}
@@ -483,13 +600,26 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 				cmd = sdp_fs_command_alloc(FSOP_DLP_FILE_OPENED,
 						current->tgid, mount_crypt_stat->userid, mount_crypt_stat->partition_id,
 						inode->i_ino, GFP_KERNEL);
+			} else if(in_egroup_p(AID_KNOX_DLP)) {
+				cmd = sdp_fs_command_alloc(FSOP_DLP_FILE_OPENED_CREATOR,
+						current->tgid, mount_crypt_stat->userid, mount_crypt_stat->partition_id,
+						inode->i_ino, GFP_KERNEL);
+			} else {
+				printk("DLP %s: DLP open file file from Media process ignoring sending event\n", __func__);
 			}
 		} else {
 			printk("DLP %s: not DLP app [%s]\n", __func__, current->comm);
+			printk("DLP %s: DLP open file failed\n", __func__);
+			cmd = sdp_fs_command_alloc(FSOP_DLP_FILE_ACCESS_DENIED,
+							current->tgid, mount_crypt_stat->userid, mount_crypt_stat->partition_id,
+							inode->i_ino, GFP_KERNEL);
+							
 			rc = -EPERM;
 			goto out_put;
 		}
 	}
+
+dlp_out:
 #endif
 
 	ecryptfs_printk(KERN_DEBUG, "inode w/ addr = [0x%p], i_ino = "
@@ -506,6 +636,17 @@ out:
 	if(cmd) {
 		sdp_fs_request(cmd, NULL);
 		sdp_fs_command_free(cmd);
+	}
+#endif
+#ifdef CONFIG_SDP
+	if (rc && (rc != -ENOENT)) {
+		cmd = sdp_fs_command_alloc(FSOP_AUDIT_FAIL_ACCESS,
+				current->tgid, mount_crypt_stat->userid, mount_crypt_stat->partition_id,
+				inode->i_ino, GFP_KERNEL);
+		if(cmd) {
+			sdp_fs_request(cmd, NULL);
+			sdp_fs_command_free(cmd);
+		}
 	}
 #endif
 	return rc;
@@ -526,7 +667,19 @@ static int ecryptfs_flush(struct file *file, fl_owner_t td)
 static int ecryptfs_release(struct inode *inode, struct file *file)
 {
 	struct ecryptfs_crypt_stat *crypt_stat;
+
+#ifdef CONFIG_DLP
+//	sdp_fs_command_t *cmd = NULL;
+//	struct ecryptfs_mount_crypt_stat *mount_crypt_stat =
+//			&ecryptfs_superblock_to_private(inode->i_sb)->mount_crypt_stat;
+
+//	cmd = sdp_fs_command_alloc(FSOP_DLP_FILE_CLOSED,
+//			current->pid, mount_crypt_stat->userid, mount_crypt_stat->partition_id,
+//			inode->i_ino, GFP_KERNEL);
+#endif
+
 	crypt_stat = &ecryptfs_inode_to_private(inode)->crypt_stat;
+
 #ifdef CONFIG_SDP
 	mutex_lock(&crypt_stat->cs_mutex);
 #endif
@@ -536,6 +689,12 @@ static int ecryptfs_release(struct inode *inode, struct file *file)
 #endif
 	kmem_cache_free(ecryptfs_file_info_cache,
 			ecryptfs_file_to_private(file));
+#ifdef CONFIG_DLP
+//	if(cmd) {
+//	    sdp_fs_request(cmd, NULL);
+//	    sdp_fs_command_free(cmd);
+//	}
+#endif
 	return 0;
 }
 
@@ -567,7 +726,6 @@ ecryptfs_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct file *lower_file = NULL;
 	long rc = -ENOTTY;
-
 #ifdef CONFIG_WTL_ENCRYPTION_FILTER
 	if (cmd == ECRYPTFS_IOCTL_GET_ATTRIBUTES) {
 		u32 __user *user_attr = (u32 __user *)arg;
@@ -614,6 +772,7 @@ ecryptfs_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #else
 	printk("%s CONFIG_SDP not enabled \n", __func__);
 #endif
+
 	if (ecryptfs_file_to_private(file))
 		lower_file = ecryptfs_file_to_lower(file);
 	if (lower_file && lower_file->f_op && lower_file->f_op->unlocked_ioctl)
@@ -656,7 +815,7 @@ int is_file_name_match(struct ecryptfs_mount_crypt_stat *mcs,
 	str = kzalloc(mcs->max_name_filter_len + 1, GFP_KERNEL);
 	if (!str) {
 		printk(KERN_ERR "%s: Out of memory whilst attempting "
-			       "to kzalloc [%zd] bytes\n", __func__,
+			       "to kzalloc [%d] bytes\n", __func__,
 			       (mcs->max_name_filter_len + 1));
 		return 0;
 	}
@@ -664,8 +823,7 @@ int is_file_name_match(struct ecryptfs_mount_crypt_stat *mcs,
 	for (i = 0; i < ENC_NAME_FILTER_MAX_INSTANCE; i++) {
 		int len = 0;
 		struct dentry *p = fp_dentry;
-		if (!mcs->enc_filter_name[i] ||
-			 !strlen(mcs->enc_filter_name[i]))
+		if (!strlen(mcs->enc_filter_name[i]))
 			break;
 
 		while (1) {
@@ -715,7 +873,7 @@ int is_file_ext_match(struct ecryptfs_mount_crypt_stat *mcs, char *str)
 		return 0;
 
 	for (i = 0; i < ENC_EXT_FILTER_MAX_INSTANCE; i++) {
-		if (!mcs->enc_filter_ext[i] || !strlen(mcs->enc_filter_ext[i]))
+		if (!strlen(mcs->enc_filter_ext[i]))
 			return 0;
 		if (strlen(ext) != strlen(mcs->enc_filter_ext[i]))
 			continue;
