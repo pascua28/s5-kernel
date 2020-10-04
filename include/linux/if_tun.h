@@ -29,14 +29,5 @@ static inline struct socket *tun_get_socket(struct file *f)
 	return ERR_PTR(-EINVAL);
 }
 
-// ------------- START of KNOX_VPN ------------------//
-#define TUN_META_HDR	0x0800
-#define TUNGETMETAPARAM _IOR('T', 218, int)
-#define IFF_META_HDR	0x0004
-#define TUN_GET_META_HDR_SZ 0
-#define TUN_GET_META_MARK_OFFSET 1
-#define DEFAULT_IHL 5
-// ------------- END of KNOX_VPN -------------------//
-
 #endif /* CONFIG_TUN */
 #endif /* __IF_TUN_H */

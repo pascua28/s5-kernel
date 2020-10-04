@@ -56,6 +56,7 @@
 #define TUNGETVNETHDRSZ _IOR('T', 215, int)
 #define TUNSETVNETHDRSZ _IOW('T', 216, int)
 #define TUNSETQUEUE  _IOW('T', 217, int)
+#define TUNGETMETAPARAM _IOR('T', 218, int)
 
 /* TUNSETIFF ifr flags */
 #define IFF_TUN		0x0001
@@ -97,5 +98,18 @@ struct tun_filter {
 	__u16  count; /* Number of addresses */
 	__u8   addr[0][ETH_ALEN];
 };
+
+/* TUNGETMETAPARAM metadata header request types. */
+#define TUN_GET_META_HDR_SZ 0
+#define TUN_GET_META_MARK_OFFSET 1
+
+// ------------- START of KNOX_VPN ------------------//
+#define TUN_META_HDR	0x0800
+#define TUNGETMETAPARAM _IOR('T', 218, int)
+#define IFF_META_HDR	0x0004
+#define TUN_GET_META_HDR_SZ	0
+#define TUN_GET_META_MARK_OFFSET	1
+#define DEFAULT_IHL	5
+// ------------- END of KNOX_VPN -------------------//
 
 #endif /* _UAPI__IF_TUN_H */
