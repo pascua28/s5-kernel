@@ -284,6 +284,58 @@ static void ecryptfs_init_mount_crypt_stat(
 #endif
 }
 
+#ifdef CONFIG_WTL_ENCRYPTION_FILTER
+
+static int parse_enc_file_filter_parms(
+	struct ecryptfs_mount_crypt_stat *mcs, char *str)
+{
+	char *token = NULL;
+	int count = 0;
+	mcs->max_name_filter_len = 0;
+	while ((token = strsep(&str, "|")) != NULL) {
+		if (count >= ENC_NAME_FILTER_MAX_INSTANCE)
+			return -1;
+		strncpy(mcs->enc_filter_name[count++],
+			token, ENC_NAME_FILTER_MAX_LEN);
+		if (mcs->max_name_filter_len < strlen(token))
+			mcs->max_name_filter_len = strlen(token);
+	}
+	return 0;
+}
+
+
+static int parse_enc_ext_filter_parms(
+	struct ecryptfs_mount_crypt_stat *mcs, char *str)
+{
+	char *token = NULL;
+	int count = 0;
+	while ((token = strsep(&str, "|")) != NULL) {
+		if (count >= ENC_EXT_FILTER_MAX_INSTANCE)
+			return -1;
+		strncpy(mcs->enc_filter_ext[count++],
+			token, ENC_EXT_FILTER_MAX_LEN);
+	}
+	return 0;
+}
+
+static int parse_enc_filter_parms(
+	struct ecryptfs_mount_crypt_stat *mcs, char *str)
+{
+	char *token = NULL;
+	if (!strcmp("*", str)) {
+		mcs->flags |= ECRYPTFS_ENABLE_NEW_PASSTHROUGH;
+		return 0;
+	}
+	token = strsep(&str, ":");
+	if (token != NULL)
+		parse_enc_file_filter_parms(mcs, token);
+	token = strsep(&str, ":");
+	if (token != NULL)
+		parse_enc_ext_filter_parms(mcs, token);
+	return 0;
+}
+#endif
+
 /**
  * ecryptfs_parse_options
  * @sb: The ecryptfs super block

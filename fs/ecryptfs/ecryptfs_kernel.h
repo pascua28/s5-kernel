@@ -797,4 +797,11 @@ int ecryptfs_set_f_namelen(long *namelen, long lower_namelen,
 int ecryptfs_derive_iv(char *iv, struct ecryptfs_crypt_stat *crypt_stat,
 		       loff_t offset);
 
+#ifdef CONFIG_WTL_ENCRYPTION_FILTER
+extern int is_file_name_match(struct ecryptfs_mount_crypt_stat *mcs,
+			      struct dentry *fp_dentry);
+extern int is_file_ext_match(struct ecryptfs_mount_crypt_stat *mcs,
+			     char *str);
+#endif
+
 #endif /* #ifndef ECRYPTFS_KERNEL_H */
