@@ -408,6 +408,8 @@ static int ecryptfs_flush(struct file *file, fl_owner_t td)
 
 static int ecryptfs_release(struct inode *inode, struct file *file)
 {
+	struct ecryptfs_crypt_stat *crypt_stat;
+	crypt_stat = &ecryptfs_inode_to_private(inode)->crypt_stat;
 #ifdef CONFIG_SDP
 	mutex_lock(&crypt_stat->cs_mutex);
 #endif
