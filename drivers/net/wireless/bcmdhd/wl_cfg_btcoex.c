@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver - Dongle Host Driver (DHD) related
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfg_btcoex.c 638312 2016-05-17 09:23:34Z $
+ * $Id: wl_cfg_btcoex.c 427707 2013-10-04 10:28:29Z $
  */
 
 #include <net/rtnetlink.h>
@@ -91,7 +91,7 @@ dev_wlc_intvar_get_reg(struct net_device *dev, char *name,
 
 	bcm_mkiovar(name, (char *)(&reg), sizeof(reg),
 		(char *)(&var), sizeof(var.buf));
-	error = wldev_ioctl_get(dev, WLC_GET_VAR, (char *)(&var), sizeof(var.buf));
+	error = wldev_ioctl(dev, WLC_GET_VAR, (char *)(&var), sizeof(var.buf), false);
 
 	*retval = dtoh32(var.val);
 	return (error);
@@ -100,11 +100,15 @@ dev_wlc_intvar_get_reg(struct net_device *dev, char *name,
 static int
 dev_wlc_bufvar_set(struct net_device *dev, char *name, char *buf, int len)
 {
-	char ioctlbuf_local[WLC_IOCTL_SMLEN];
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 31)
+	char ioctlbuf_local[1024];
+#else
+	static char ioctlbuf_local[1024];
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 31) */
 
 	bcm_mkiovar(name, buf, len, ioctlbuf_local, sizeof(ioctlbuf_local));
 
-	return (wldev_ioctl_set(dev, WLC_SET_VAR, ioctlbuf_local, sizeof(ioctlbuf_local)));
+	return (wldev_ioctl(dev, WLC_SET_VAR, ioctlbuf_local, sizeof(ioctlbuf_local), true));
 }
 /*
 get named driver variable to uint register value and return error indication
@@ -428,7 +432,7 @@ int wl_cfg80211_set_btcoex_dhcp(struct net_device *dev, dhd_pub_t *dhd, char *co
 	char buf_flag7_default[8] =   { 7, 00, 00, 00, 0x0, 0x00, 0x00, 0x00};
 
 	/* Figure out powermode 1 or o command */
-	strncpy((char *)&powermode_val, command + strlen("BTCOEXMODE") +1, 1);
+	memcpy((char *)&powermode_val, command + strlen("BTCOEXMODE") +1, 1);
 
 	if (strnicmp((char *)&powermode_val, "1", strlen("1")) == 0) {
 		WL_TRACE_HW4(("DHCP session starts\n"));

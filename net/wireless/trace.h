@@ -186,6 +186,28 @@
 
 #define BOOL_TO_STR(bo) (bo) ? "true" : "false"
 
+#define QOS_MAP_ENTRY __field(u8, num_des)			\
+		      __array(u8, dscp_exception,		\
+			      2 * IEEE80211_QOS_MAP_MAX_EX)	\
+		      __array(u8, up, IEEE80211_QOS_MAP_LEN_MIN)
+#define QOS_MAP_ASSIGN(qos_map)					\
+	do {							\
+		if ((qos_map)) {				\
+			__entry->num_des = (qos_map)->num_des;	\
+			memcpy(__entry->dscp_exception,		\
+			       &(qos_map)->dscp_exception,	\
+			       2 * IEEE80211_QOS_MAP_MAX_EX);	\
+			memcpy(__entry->up, &(qos_map)->up,	\
+			       IEEE80211_QOS_MAP_LEN_MIN);	\
+		} else {					\
+			__entry->num_des = 0;			\
+			memset(__entry->dscp_exception, 0,	\
+			       2 * IEEE80211_QOS_MAP_MAX_EX);	\
+			memset(__entry->up, 0,			\
+			       IEEE80211_QOS_MAP_LEN_MIN);	\
+		}						\
+	} while (0)
+
 /*************************************************************
  *			rdev->ops traces		     *
  *************************************************************/
@@ -668,9 +690,34 @@ DECLARE_EVENT_CLASS(wiphy_netdev_mac_evt,
 		  WIPHY_PR_ARG, NETDEV_PR_ARG, MAC_PR_ARG(sta_mac))
 );
 
-DEFINE_EVENT(wiphy_netdev_mac_evt, rdev_del_station,
-	TP_PROTO(struct wiphy *wiphy, struct net_device *netdev, const u8 *mac),
-	TP_ARGS(wiphy, netdev, mac)
+DECLARE_EVENT_CLASS(station_del,
+	TP_PROTO(struct wiphy *wiphy, struct net_device *netdev,
+		 struct station_del_parameters *params),
+	TP_ARGS(wiphy, netdev, params),
+	TP_STRUCT__entry(
+		WIPHY_ENTRY
+		NETDEV_ENTRY
+		MAC_ENTRY(sta_mac)
+		__field(u8, subtype)
+		__field(u16, reason_code)
+	),
+	TP_fast_assign(
+		WIPHY_ASSIGN;
+		NETDEV_ASSIGN;
+		MAC_ASSIGN(sta_mac, params->mac);
+		__entry->subtype = params->subtype;
+		__entry->reason_code = params->reason_code;
+	),
+	TP_printk(WIPHY_PR_FMT ", " NETDEV_PR_FMT ", station mac: " MAC_PR_FMT
+		  ", subtype: %u, reason_code: %u",
+		  WIPHY_PR_ARG, NETDEV_PR_ARG, MAC_PR_ARG(sta_mac),
+		  __entry->subtype, __entry->reason_code)
+);
+
+DEFINE_EVENT(station_del, rdev_del_station,
+	TP_PROTO(struct wiphy *wiphy, struct net_device *netdev,
+		 struct station_del_parameters *params),
+	TP_ARGS(wiphy, netdev, params)
 );
 
 DEFINE_EVENT(wiphy_netdev_mac_evt, rdev_get_station,
@@ -1444,9 +1491,10 @@ TRACE_EVENT(rdev_sched_scan_start,
 TRACE_EVENT(rdev_tdls_mgmt,
 	TP_PROTO(struct wiphy *wiphy, struct net_device *netdev,
 		 u8 *peer, u8 action_code, u8 dialog_token,
-		 u16 status_code, const u8 *buf, size_t len),
+		 u16 status_code, u32 peer_capability,
+		 const u8 *buf, size_t len),
 	TP_ARGS(wiphy, netdev, peer, action_code, dialog_token, status_code,
-		buf, len),
+		peer_capability, buf, len),
 	TP_STRUCT__entry(
 		WIPHY_ENTRY
 		NETDEV_ENTRY
@@ -1454,6 +1502,7 @@ TRACE_EVENT(rdev_tdls_mgmt,
 		__field(u8, action_code)
 		__field(u8, dialog_token)
 		__field(u16, status_code)
+		__field(u32, peer_capability)
 		__dynamic_array(u8, buf, len)
 	),
 	TP_fast_assign(
@@ -1463,13 +1512,16 @@ TRACE_EVENT(rdev_tdls_mgmt,
 		__entry->action_code = action_code;
 		__entry->dialog_token = dialog_token;
 		__entry->status_code = status_code;
+		__entry->peer_capability = peer_capability;
 		memcpy(__get_dynamic_array(buf), buf, len);
 	),
-	TP_printk(WIPHY_PR_FMT ", " NETDEV_PR_FMT ", " MAC_PR_FMT ", action_code: %u, "
-		  "dialog_token: %u, status_code: %u, buf: %#.2x ",
+	TP_printk(WIPHY_PR_FMT ", " NETDEV_PR_FMT ", " MAC_PR_FMT
+		  ", action_code: %u, dialog_token: %u, status_code: %u,"
+		  " peer_capability: %u buf: %#.2x ",
 		  WIPHY_PR_ARG, NETDEV_PR_ARG, MAC_PR_ARG(peer),
 		  __entry->action_code, __entry->dialog_token,
-		  __entry->status_code, ((u8 *)__get_dynamic_array(buf))[0])
+		  __entry->status_code, __entry->peer_capability,
+		  ((u8 *)__get_dynamic_array(buf))[0])
 );
 
 TRACE_EVENT(rdev_dump_survey,
@@ -1839,6 +1891,42 @@ TRACE_EVENT(rdev_crit_proto_stop,
 	),
 	TP_printk(WIPHY_PR_FMT ", " WDEV_PR_FMT,
 		  WIPHY_PR_ARG, WDEV_PR_ARG)
+);
+
+TRACE_EVENT(rdev_set_qos_map,
+	TP_PROTO(struct wiphy *wiphy, struct net_device *netdev,
+		 struct cfg80211_qos_map *qos_map),
+	TP_ARGS(wiphy, netdev, qos_map),
+	TP_STRUCT__entry(
+		WIPHY_ENTRY
+		NETDEV_ENTRY
+		QOS_MAP_ENTRY
+	),
+	TP_fast_assign(
+		WIPHY_ASSIGN;
+		NETDEV_ASSIGN;
+		QOS_MAP_ASSIGN(qos_map);
+	),
+	TP_printk(WIPHY_PR_FMT ", " NETDEV_PR_FMT ", num_des: %u",
+		  WIPHY_PR_ARG, NETDEV_PR_ARG, __entry->num_des)
+);
+
+TRACE_EVENT(rdev_set_ap_chanwidth,
+	TP_PROTO(struct wiphy *wiphy, struct net_device *netdev,
+		 struct cfg80211_chan_def *chandef),
+	TP_ARGS(wiphy, netdev, chandef),
+	TP_STRUCT__entry(
+		WIPHY_ENTRY
+		NETDEV_ENTRY
+		CHAN_DEF_ENTRY
+	),
+	TP_fast_assign(
+		WIPHY_ASSIGN;
+		NETDEV_ASSIGN;
+		CHAN_DEF_ASSIGN(chandef);
+	),
+	TP_printk(WIPHY_PR_FMT ", " NETDEV_PR_FMT ", " CHAN_DEF_PR_FMT,
+		  WIPHY_PR_ARG, NETDEV_PR_ARG, CHAN_DEF_PR_ARG)
 );
 
 /*************************************************************

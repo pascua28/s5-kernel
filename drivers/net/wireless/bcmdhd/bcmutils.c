@@ -1,7 +1,7 @@
 /*
  * Driver O/S-independent utility routines
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -20,7 +20,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: bcmutils.c 613265 2016-01-18 11:36:02Z $
+ * $Id: bcmutils.c 551820 2015-04-24 08:43:23Z $
  */
 
 #include <bcm_cfg.h>
@@ -262,11 +262,10 @@ pktq_penq(struct pktq *pq, int prec, void *p)
 	struct pktq_prec *q;
 
 	ASSERT(prec >= 0 && prec < pq->num_prec);
-	/* queueing chains not allowed and no segmented SKB (Kernel-3.18.y) */
-	ASSERT(!((PKTLINK(p) != NULL) && (PKTLINK(p) != p)));
+	ASSERT(PKTLINK(p) == NULL);         /* queueing chains not allowed */
+
 	ASSERT(!pktq_full(pq));
 	ASSERT(!pktq_pfull(pq, prec));
-	PKTSETLINK(p, NULL);
 
 	q = &pq->q[prec];
 
@@ -292,12 +291,10 @@ pktq_penq_head(struct pktq *pq, int prec, void *p)
 	struct pktq_prec *q;
 
 	ASSERT(prec >= 0 && prec < pq->num_prec);
-	/* queueing chains not allowed and no segmented SKB (Kernel-3.18.y) */
-	ASSERT(!((PKTLINK(p) != NULL) && (PKTLINK(p) != p)));
+	ASSERT(PKTLINK(p) == NULL);         /* queueing chains not allowed */
 
 	ASSERT(!pktq_full(pq));
 	ASSERT(!pktq_pfull(pq, prec));
-	PKTSETLINK(p, NULL);
 
 	q = &pq->q[prec];
 
@@ -1167,7 +1164,7 @@ bcm_ipv6_ntoa(void *ipv6, char *buf)
 
 	for (i = 0; i < IPV6_ADDR_LEN/2; i++) {
 		if ((uint8*) (a + i) == a4) {
-			snprintf(p, 16, ":%u.%u.%u.%u", a4[0], a4[1], a4[2], a4[3]);
+			scnprintf(p, 16, ":%u.%u.%u.%u", a4[0], a4[1], a4[2], a4[3]);
 			break;
 		} else if (i == i_max) {
 			*p++ = ':';
@@ -1971,7 +1968,7 @@ bcm_format_field(const bcm_bit_desc_ex_t *bd, uint32 flags, char* buf, int len)
 		if ((flags & mask) == bit) {
 			if (len > (int)strlen(name)) {
 				slen = strlen(name);
-				strncpy(buf, name, slen+1);
+				memcpy(buf, name, slen+1);
 			}
 			break;
 		}
@@ -2014,7 +2011,7 @@ bcm_format_flags(const bcm_bit_desc_t *bd, uint32 flags, char* buf, int len)
 		if (len <= slen)
 			break;
 		/* copy NULL char but don't count it */
-		strncpy(p, name, nlen + 1);
+		memcpy(p, name, nlen + 1);
 		p += nlen;
 		/* copy btwn flag space and NULL char */
 		if (flags != 0)
@@ -2202,7 +2199,7 @@ bcm_mkiovar(char *name, char *data, uint datalen, char *buf, uint buflen)
 {
 	uint len;
 
-	len = (uint)strlen(name) + 1;
+	len = strlen(name) + 1;
 
 	if ((len + datalen) > buflen)
 		return 0;
@@ -2210,7 +2207,7 @@ bcm_mkiovar(char *name, char *data, uint datalen, char *buf, uint buflen)
 	strncpy(buf, name, buflen);
 
 	/* append data onto the end of the name string */
-	if (data && datalen != 0) {
+	if (data) {
 		memcpy(&buf[len], data, datalen);
 		len += datalen;
 	}
