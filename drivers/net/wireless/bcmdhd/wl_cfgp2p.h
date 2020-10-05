@@ -203,7 +203,7 @@ enum wl_cfgp2p_status {
 		add_timer(timer); \
 	} while (0);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)) && !defined(WL_CFG80211_P2P_DEV_IF)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)) && !defined(WL_CFG80211_P2P_DEV_IF)
 #define WL_CFG80211_P2P_DEV_IF
 
 #ifdef WL_ENABLE_P2P_IF
@@ -222,7 +222,7 @@ enum wl_cfgp2p_status {
 #endif /* WL_CFG80211_P2P_DEV_IF */
 
 #if defined(WL_ENABLE_P2P_IF) && (defined(WL_CFG80211_P2P_DEV_IF) || \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)))
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)))
 #error Disable 'WL_ENABLE_P2P_IF', if 'WL_CFG80211_P2P_DEV_IF' is enabled \
 	or kernel version is 3.10.0 or above
 #endif /* WL_ENABLE_P2P_IF && (WL_CFG80211_P2P_DEV_IF || (LINUX_VERSION >= VERSION(3, 10, 0))) */
