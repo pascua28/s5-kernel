@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,7 +17,6 @@
 #include <kgsl_device.h>
 
 #include "kgsl_trace.h"
-#include "adreno.h"
 
 /*
  * Define an kmem cache for the event structures since we allocate and free them
@@ -45,38 +44,32 @@ static void _kgsl_event_worker(struct work_struct *work)
 	struct kgsl_event *event = container_of(work, struct kgsl_event, work);
 	int id = KGSL_CONTEXT_ID(event->context);
 
-	trace_kgsl_fire_event(id, event->timestamp, event->result, jiffies - event->created,
-		event->func);
+	trace_kgsl_fire_event(id, event->timestamp, event->result,
+		jiffies - event->created, event->func);
 
-	if (event->func)
-		event->func(event->device, event->context, event->priv, event->result);
+	event->func(event->device, event->context, event->priv, event->result);
 
 	kgsl_context_put(event->context);
 	kmem_cache_free(events_cache, event);
 }
 
 /**
- * kgsl_process_event_group() - Handle all the retired events in a group
+ * retire_events() - Handle all the retired events in a group
  * @device: Pointer to a KGSL device
  * @group: Pointer to a GPU events group to process
  */
-void kgsl_process_event_group(struct kgsl_device *device,
+static void retire_events(struct kgsl_device *device,
 		struct kgsl_event_group *group)
 {
 	struct kgsl_event *event, *tmp;
 	unsigned int timestamp;
-	struct kgsl_context *context;
-
-	if (group == NULL)
-		return;
-
-	context = group->context;
+	struct kgsl_context *context = group->context;
 
 	_kgsl_context_get(context);
 
 	spin_lock(&group->lock);
 
-	timestamp = kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED);
+	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &timestamp);
 
 	/*
 	 * If no timestamps have been retired since the last time we were here
@@ -96,7 +89,6 @@ out:
 	spin_unlock(&group->lock);
 	kgsl_context_put(context);
 }
-EXPORT_SYMBOL(kgsl_process_event_group);
 
 /**
  * kgsl_cancel_events_timestamp() - Cancel pending events for a given timestamp
@@ -164,6 +156,7 @@ void kgsl_cancel_event(struct kgsl_device *device,
 }
 EXPORT_SYMBOL(kgsl_cancel_event);
 
+
 /**
  * kgsl_add_event() - Add a new GPU event to a group
  * @device: Pointer to a KGSL device
@@ -188,7 +181,8 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 	 * queued.
 	 */
 	if (!context || !(context->flags & KGSL_CONTEXT_USER_GENERATED_TS)) {
-		queued = kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_QUEUED);
+		kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_QUEUED,
+			&queued);
 		if (timestamp_cmp(timestamp, queued) > 0)
 			return -EINVAL;
 	}
@@ -217,7 +211,7 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 	 * Check to see if the requested timestamp has already retired.  If so,
 	 * schedule the callback right away
 	 */
-	retired = kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED);
+	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &retired);
 
 	if (timestamp_cmp(retired, timestamp) >= 0) {
 		event->result = KGSL_EVENT_RETIRED;
@@ -250,7 +244,7 @@ void kgsl_process_events(struct work_struct *work)
 
 	read_lock(&group_lock);
 	list_for_each_entry(group, &group_list, group)
-		kgsl_process_event_group(device, group);
+		retire_events(device, group);
 	read_unlock(&group_lock);
 }
 EXPORT_SYMBOL(kgsl_process_events);
