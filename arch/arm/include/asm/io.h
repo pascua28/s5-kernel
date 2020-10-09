@@ -95,6 +95,7 @@ static inline u16 __raw_readw(const volatile void __iomem *addr)
 
 #define __raw_readb(a) __raw_read_logged((a), b, char)
 #define __raw_readl(a) __raw_read_logged((a), l, int)
+#define __raw_readq(a)		__raw_read_logged((a), q, long long)
 
 #define __raw_writeb_no_log(v, a)	(__chk_io_ptr(a), *(volatile unsigned char __force  *)(a) = (v))
 #define __raw_writew_no_log(v, a)	(__chk_io_ptr(a), *(volatile unsigned short __force *)(a) = (v))
@@ -107,6 +108,16 @@ static inline u16 __raw_readw(const volatile void __iomem *addr)
 #define __raw_readw_no_log(a)		(__chk_io_ptr(a), *(volatile unsigned short __force *)(a))
 #define __raw_readl_no_log(a)		(__chk_io_ptr(a), *(volatile unsigned int __force *)(a))
 #define __raw_readll_no_log(a)		(__chk_io_ptr(a), *(volatile unsigned long long __force *)(a))
+
+static inline u64 __raw_readq_no_log(const volatile void __iomem *addr)
+{
+	register u64 val asm ("r2");
+
+	asm volatile("ldrd %1, %0"
+		     : "+Qo" (*(volatile u64 __force *)addr),
+		       "=r" (val));
+	return val;
+}
 
 #define __raw_read_logged(a, _l, _t)		({ \
 	unsigned _t __a; \
@@ -304,10 +315,14 @@ extern void _memset_io(volatile void __iomem *, int, size_t);
 					__raw_readw(c)); __r; })
 #define readl_relaxed(c) ({ u32 __r = le32_to_cpu((__force __le32) \
 					__raw_readl(c)); __r; })
+#define readq_relaxed(c) ({ u64 __r = le64_to_cpu((__force __le64) \
+					__raw_readq(c)); __r; })
 #define readll_relaxed(c) ({ u64 __r = le64_to_cpu((__force __le64) \
 					__raw_readll(c)); __r; })
 #define readl_relaxed_no_log(c) ({ u32 __r = le32_to_cpu((__force __le32) \
 					__raw_readl_no_log(c)); __r; })
+#define readq_relaxed_no_log(c) ({ u64 __r = le64_to_cpu((__force __le64) \
+					__raw_readq_no_log(c)); __r; })
 #define readll_relaxed_no_log(c) ({ u64 __r = le64_to_cpu((__force __le64) \
 					__raw_readll_no_log(c)); __r; })
 
