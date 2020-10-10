@@ -2,7 +2,7 @@
  * drivers/gpu/ion/ion_removed_heap.c
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,8 +27,8 @@
 #include <linux/seq_file.h>
 #include "ion_priv.h"
 
-#include <asm/mach/map.h>
 #include <asm/cacheflush.h>
+#include <linux/io.h>
 #include <linux/msm_ion.h>
 
 struct ion_removed_heap {
@@ -37,8 +37,8 @@ struct ion_removed_heap {
 	ion_phys_addr_t base;
 	unsigned long allocated_bytes;
 	unsigned long total_size;
-	int (*msm_request_region)(void *);
-	int (*msm_release_region)(void *);
+	int (*request_ion_region)(void *);
+	int (*release_ion_region)(void *);
 	atomic_t map_count;
 	void *bus_id;
 };
@@ -142,8 +142,8 @@ static int ion_removed_request_region(struct ion_removed_heap *removed_heap)
 {
 	int ret_value = 0;
 	if (atomic_inc_return(&removed_heap->map_count) == 1) {
-		if (removed_heap->msm_request_region) {
-			ret_value = removed_heap->msm_request_region(
+		if (removed_heap->request_ion_region) {
+			ret_value = removed_heap->request_ion_region(
 						removed_heap->bus_id);
 			if (ret_value) {
 				pr_err("Unable to request SMI region");
@@ -158,8 +158,8 @@ static int ion_removed_release_region(struct ion_removed_heap *removed_heap)
 {
 	int ret_value = 0;
 	if (atomic_dec_and_test(&removed_heap->map_count)) {
-		if (removed_heap->msm_release_region) {
-			ret_value = removed_heap->msm_release_region(
+		if (removed_heap->release_ion_region) {
+			ret_value = removed_heap->release_ion_region(
 						removed_heap->bus_id);
 			if (ret_value)
 				pr_err("Unable to release SMI region");
@@ -194,7 +194,7 @@ void ion_removed_heap_unmap_kernel(struct ion_heap *heap,
 	struct ion_removed_heap *removed_heap =
 		container_of(heap, struct ion_removed_heap, heap);
 
-	__arm_iounmap(buffer->vaddr);
+	iounmap(buffer->vaddr);
 	buffer->vaddr = NULL;
 
 	ion_removed_release_region(removed_heap);
@@ -215,7 +215,7 @@ int ion_removed_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
 		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 
 	ret_value =  remap_pfn_range(vma, vma->vm_start,
-			__phys_to_pfn(buffer->priv_phys) + vma->vm_pgoff,
+			PFN_DOWN(buffer->priv_phys) + vma->vm_pgoff,
 			vma->vm_end - vma->vm_start,
 			vma->vm_page_prot);
 
@@ -263,8 +263,8 @@ static int ion_removed_print_debug(struct ion_heap *heap, struct seq_file *s,
 				da = data->addr-1;
 				seq_printf(s, "%16.s %14pa %14pa %14lu (%lx)\n",
 					   "FREE", &last_end, &da,
-					   data->addr-last_end,
-					   data->addr-last_end);
+					   (unsigned long)data->addr-last_end,
+					   (unsigned long)data->addr-last_end);
 			}
 
 			if (data->client_name)
@@ -328,14 +328,14 @@ struct ion_heap *ion_removed_heap_create(struct ion_platform_heap *heap_data)
 		struct ion_co_heap_pdata *extra_data =
 				heap_data->extra_data;
 
-		if (extra_data->setup_region)
-			removed_heap->bus_id = extra_data->setup_region();
-		if (extra_data->msm_request_region)
-			removed_heap->msm_request_region =
-					extra_data->msm_request_region;
-		if (extra_data->msm_release_region)
-			removed_heap->msm_release_region =
-					extra_data->msm_release_region;
+		if (extra_data->setup_ion_region)
+			removed_heap->bus_id = extra_data->setup_ion_region();
+		if (extra_data->request_ion_region)
+			removed_heap->request_ion_region =
+					extra_data->request_ion_region;
+		if (extra_data->release_ion_region)
+			removed_heap->release_ion_region =
+					extra_data->release_ion_region;
 	}
 	return &removed_heap->heap;
 }

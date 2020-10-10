@@ -3,7 +3,7 @@
  *
  * Copyright (C) Linaro 2012
  * Author: <benjamin.gaignard@linaro.org> for ST-Ericsson.
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -23,7 +23,7 @@
 #include <linux/err.h>
 #include <linux/dma-mapping.h>
 #include <linux/msm_ion.h>
-#include <mach/iommu_domains.h>
+#include <trace/events/kmem.h>
 
 #include <asm/cacheflush.h>
 
@@ -34,10 +34,6 @@
 #define ION_CMA_ALLOCATE_FAILED NULL
 
 struct ion_secure_cma_buffer_info {
-	/*
-	 * This needs to come first for compatibility with the secure buffer API
-	 */
-	struct ion_cp_buffer secure;
 	dma_addr_t phys;
 	struct sg_table *table;
 	bool is_cached;
@@ -105,7 +101,7 @@ static void ion_secure_pool_pages(struct work_struct *work);
 int ion_secure_cma_get_sgtable(struct device *dev, struct sg_table *sgt,
 			dma_addr_t handle, size_t size)
 {
-	struct page *page = phys_to_page(handle);
+	struct page *page = pfn_to_page(PFN_DOWN(handle));
 	int ret;
 
 	ret = sg_alloc_table(sgt, 1, GFP_KERNEL);
@@ -119,7 +115,8 @@ int ion_secure_cma_get_sgtable(struct device *dev, struct sg_table *sgt,
 
 static int ion_secure_cma_add_to_pool(
 					struct ion_cma_secure_heap *sheap,
-					unsigned long len)
+					unsigned long len,
+					bool prefetch)
 {
 	void *cpu_addr;
 	dma_addr_t handle;
@@ -127,6 +124,9 @@ static int ion_secure_cma_add_to_pool(
 	int ret = 0;
 	struct ion_cma_alloc_chunk *chunk;
 
+
+	trace_ion_secure_cma_add_to_pool_start(len,
+				atomic_read(&sheap->total_pool_size), prefetch);
 	mutex_lock(&sheap->chunk_lock);
 
 	chunk = kzalloc(sizeof(*chunk), GFP_KERNEL);
@@ -160,6 +160,10 @@ out_free:
 	kfree(chunk);
 out:
 	mutex_unlock(&sheap->chunk_lock);
+
+	trace_ion_secure_cma_add_to_pool_end(len,
+				atomic_read(&sheap->total_pool_size), prefetch);
+
 	return ret;
 }
 
@@ -168,7 +172,7 @@ static void ion_secure_pool_pages(struct work_struct *work)
 	struct ion_cma_secure_heap *sheap = container_of(work,
 			struct ion_cma_secure_heap, work);
 
-	ion_secure_cma_add_to_pool(sheap, sheap->last_alloc);
+	ion_secure_cma_add_to_pool(sheap, sheap->last_alloc, true);
 }
 /*
  * @s1: start of the first region
@@ -241,6 +245,7 @@ int ion_secure_cma_prefetch(struct ion_heap *heap, void *data)
 		len = diff;
 
 	sheap->last_alloc = len;
+	trace_ion_prefetching(sheap->last_alloc);
 	schedule_work(&sheap->work);
 
 	return 0;
@@ -324,20 +329,39 @@ static void ion_secure_cma_free_chunk(struct ion_cma_secure_heap *sheap,
 
 }
 
-int ion_secure_cma_drain_pool(struct ion_heap *heap, void *unused)
+void __ion_secure_cma_shrink_pool(struct ion_cma_secure_heap *sheap, int max_nr)
 {
-	struct ion_cma_secure_heap *sheap =
-		container_of(heap, struct ion_cma_secure_heap, heap);
 	struct list_head *entry, *_n;
+	unsigned long drained_size = 0, skipped_size = 0;
 
-	mutex_lock(&sheap->chunk_lock);
+	trace_ion_secure_cma_shrink_pool_start(drained_size, skipped_size);
+
 	list_for_each_safe(entry, _n, &sheap->chunks) {
 		struct ion_cma_alloc_chunk *chunk = container_of(entry,
 					struct ion_cma_alloc_chunk, entry);
 
-		if (atomic_read(&chunk->cnt) == 0)
+		if (max_nr < 0)
+			break;
+
+		if (atomic_read(&chunk->cnt) == 0) {
+			max_nr -= chunk->chunk_size;
+			drained_size += chunk->chunk_size;
 			ion_secure_cma_free_chunk(sheap, chunk);
+		} else {
+			skipped_size += chunk->chunk_size;
+		}
 	}
+
+	trace_ion_secure_cma_shrink_pool_end(drained_size, skipped_size);
+}
+
+int ion_secure_cma_drain_pool(struct ion_heap *heap, void *unused)
+{
+	struct ion_cma_secure_heap *sheap =
+		container_of(heap, struct ion_cma_secure_heap, heap);
+
+	mutex_lock(&sheap->chunk_lock);
+	__ion_secure_cma_shrink_pool(sheap, INT_MAX);
 	mutex_unlock(&sheap->chunk_lock);
 
 	return 0;
@@ -349,7 +373,6 @@ static int ion_secure_cma_shrinker(struct shrinker *shrinker,
 	struct ion_cma_secure_heap *sheap = container_of(shrinker,
 					struct ion_cma_secure_heap, shrinker);
 	int nr_to_scan = sc->nr_to_scan;
-	struct list_head *entry, *_n;
 
 	if (nr_to_scan == 0)
 		return atomic_read(&sheap->total_pool_size);
@@ -362,24 +385,15 @@ static int ion_secure_cma_shrinker(struct shrinker *shrinker,
 		return atomic_read(&sheap->total_pool_size);
 
 	/*
-	 * Allocation path may recursively call the shrinker. Don't shrink if
-	 * that happens.
+	 * Allocation path may invoke the shrinker. Proceeding any further
+	 * would cause a deadlock in several places so don't shrink if that
+	 * happens.
 	 */
 	if (!mutex_trylock(&sheap->chunk_lock))
 		return -1;
 
-	list_for_each_safe(entry, _n, &sheap->chunks) {
-		struct ion_cma_alloc_chunk *chunk = container_of(entry,
-					struct ion_cma_alloc_chunk, entry);
+	__ion_secure_cma_shrink_pool(sheap, nr_to_scan);
 
-		if (nr_to_scan < 0)
-			break;
-
-		if (atomic_read(&chunk->cnt) == 0) {
-			nr_to_scan -= chunk->chunk_size;
-			ion_secure_cma_free_chunk(sheap, chunk);
-		}
-	}
 	mutex_unlock(&sheap->chunk_lock);
 
 	return atomic_read(&sheap->total_pool_size);
@@ -444,8 +458,7 @@ static struct ion_secure_cma_buffer_info *__ion_secure_cma_allocate(
 	ret = ion_secure_cma_alloc_from_pool(sheap, &info->phys, len);
 
 	if (ret) {
-retry:
-		ret = ion_secure_cma_add_to_pool(sheap, len);
+		ret = ion_secure_cma_add_to_pool(sheap, len, false);
 		if (ret) {
 			mutex_unlock(&sheap->alloc_lock);
 			dev_err(sheap->dev, "Fail to allocate buffer\n");
@@ -454,9 +467,10 @@ retry:
 		ret = ion_secure_cma_alloc_from_pool(sheap, &info->phys, len);
 		if (ret) {
 			/*
-			 * Lost the race with the shrinker, try again
+			 * We just added memory to the pool, we shouldn't be
+			 * failing to get memory
 			 */
-			goto retry;
+			BUG();
 		}
 	}
 	mutex_unlock(&sheap->alloc_lock);
@@ -470,8 +484,6 @@ retry:
 
 	ion_secure_cma_get_sgtable(sheap->dev,
 			info->table, info->phys, len);
-
-	info->secure.buffer = info->phys;
 
 	/* keep this for memory release */
 	buffer->priv_virt = info;
@@ -509,17 +521,13 @@ static int ion_secure_cma_allocate(struct ion_heap *heap,
 	if (buf) {
 		int ret;
 
-		buf->secure.want_delayed_unsecure = 0;
-		atomic_set(&buf->secure.secure_cnt, 0);
-		mutex_init(&buf->secure.lock);
-		buf->secure.is_secure = 1;
-		buf->secure.ignore_check = true;
-
-		/*
-		 * make sure the size is set before trying to secure
-		 */
-		buffer->size = len;
-		ret = ion_cp_secure_buffer(buffer, ION_CP_V2, 0, 0);
+		if (!msm_secure_v2_is_supported()) {
+			pr_debug("%s: securing buffers is not supported on this platform\n",
+				__func__);
+			ret = 1;
+		} else {
+			ret = msm_ion_secure_table(buf->table, 0, 0);
+		}
 		if (ret) {
 			/*
 			 * Don't treat the secure buffer failing here as an
@@ -543,7 +551,8 @@ static void ion_secure_cma_free(struct ion_buffer *buffer)
 	struct ion_secure_cma_buffer_info *info = buffer->priv_virt;
 
 	dev_dbg(sheap->dev, "Release buffer %p\n", buffer);
-	ion_cp_unsecure_buffer(buffer, 1);
+	if (msm_secure_v2_is_supported())
+		msm_ion_unsecure_table(info->table);
 	atomic_sub(buffer->size, &sheap->total_allocated);
 	BUG_ON(atomic_read(&sheap->total_allocated) < 0);
 	/* release memory */
@@ -651,8 +660,6 @@ static struct ion_heap_ops ion_secure_cma_ops = {
 	.map_kernel = ion_secure_cma_map_kernel,
 	.unmap_kernel = ion_secure_cma_unmap_kernel,
 	.print_debug = ion_secure_cma_print_debug,
-	.secure_buffer = ion_cp_secure_buffer,
-	.unsecure_buffer = ion_cp_unsecure_buffer,
 };
 
 struct ion_heap *ion_secure_cma_heap_create(struct ion_platform_heap *data)
