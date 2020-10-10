@@ -460,7 +460,7 @@ obj-$(CONFIG_SEC_DEBUG) += sec_debug.o sec_gaf.o sec_getlog.o
 obj-$(CONFIG_SEC_DEBUG_DOUBLE_FREE) += sec_debug-dfd.o
 
 obj-$(CONFIG_ARCH_MSM8960) += mdm2.o mdm_common.o
-obj-$(CONFIG_MSM_RTB) += msm_rtb.o
+# obj-$(CONFIG_MSM_RTB) += msm_rtb.o
 obj-$(CONFIG_MSM_CACHE_ERP) += cache_erp.o
 obj-$(CONFIG_MSM_EBI_ERP) += ebi_erp.o
 obj-$(CONFIG_MSM_CACHE_DUMP) += msm_cache_dump.o

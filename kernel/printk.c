@@ -98,12 +98,6 @@ static struct lockdep_map console_lock_dep_map = {
 static int console_locked, console_suspended;
 
 /*
- * The indices into log_buf are not constrained to log_buf_len - they
- * must be masked before subscripting
- */
-static unsigned log_end;	/* Index into log_buf: most-recently-written-char + 1 */
-
-/*
  * If exclusive_console is non-NULL then only this console is to be printed to.
  */
 static struct console *exclusive_console;
@@ -726,7 +720,6 @@ const struct file_operations kmsg_fops = {
 void log_buf_kexec_setup(void)
 {
 	VMCOREINFO_SYMBOL(log_buf);
-	VMCOREINFO_SYMBOL(log_end);
 	VMCOREINFO_SYMBOL(log_buf_len);
 	VMCOREINFO_SYMBOL(log_first_idx);
 	VMCOREINFO_SYMBOL(log_next_idx);
@@ -867,22 +860,6 @@ static inline void boot_delay_msec(int level)
 {
 }
 #endif
-
-#ifdef CONFIG_SECURITY_DMESG_RESTRICT
-int dmesg_restrict = 1;
-#else
-int dmesg_restrict;
-#endif
-
-void sec_debug_subsys_set_kloginfo(unsigned int *idx_paddr,
-	unsigned int *log_paddr, unsigned int *size)
-{
-	*idx_paddr = (unsigned int)&log_end -
-		CONFIG_PAGE_OFFSET + CONFIG_PHYS_OFFSET;
-	*log_paddr = (unsigned int)__log_buf -
-		CONFIG_PAGE_OFFSET + CONFIG_PHYS_OFFSET;
-	*size = __LOG_BUF_LEN;
-}
 
 #if defined(CONFIG_PRINTK_TIME)
 static bool printk_time = 1;
@@ -1392,9 +1369,9 @@ static int console_trylock_for_printk(unsigned int cpu)
 		}
 	}
 	logbuf_cpu = UINT_MAX;
+	raw_spin_unlock(&logbuf_lock);
 	if (wake)
 		up(&console_sem);
-	raw_spin_unlock(&logbuf_lock);
 	return retval;
 }
 
@@ -1933,6 +1910,14 @@ void resume_console(void)
 	console_unlock();
 }
 
+static void __cpuinit console_flush(struct work_struct *work)
+{
+	console_lock();
+	console_unlock();
+}
+
+static __cpuinitdata DECLARE_WORK(console_cpu_notify_work, console_flush);
+
 /**
  * console_cpu_notify - print deferred console messages after CPU hotplug
  * @self: notifier struct
@@ -1943,17 +1928,27 @@ void resume_console(void)
  * will be spooled but will not show up on the console.  This function is
  * called when a new CPU comes online (or fails to come up), and ensures
  * that any such output gets printed.
+ *
+ * Special handling must be done for cases invoked from an atomic context,
+ * as we can't be taking the console semaphore here.
  */
 static int __cpuinit console_cpu_notify(struct notifier_block *self,
 	unsigned long action, void *hcpu)
 {
 	switch (action) {
-	case CPU_ONLINE:
 	case CPU_DEAD:
 	case CPU_DOWN_FAILED:
 	case CPU_UP_CANCELED:
 		console_lock();
 		console_unlock();
+		break;
+	case CPU_ONLINE:
+	case CPU_DYING:
+		/* invoked with preemption disabled, so defer */
+		if (!console_trylock())
+			schedule_work(&console_cpu_notify_work);
+		else
+			console_unlock();
 	}
 	return NOTIFY_OK;
 }
