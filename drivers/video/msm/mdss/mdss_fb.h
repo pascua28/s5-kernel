@@ -195,7 +195,7 @@ struct msm_fb_data_type {
 	struct disp_info_type_suspend suspend;
 
 	struct ion_handle *ihdl;
-	unsigned long iova;
+	dma_addr_t iova;
 	void *cursor_buf;
 	unsigned long cursor_buf_phys;
 	unsigned long cursor_buf_iova;
@@ -320,7 +320,7 @@ enum TE_SETTING {
 #endif
 
 extern int boot_mode_lpm, boot_mode_recovery;
-int mdss_fb_get_phys_info(unsigned long *start, unsigned long *len, int fb_num);
+int mdss_fb_get_phys_info(dma_addr_t *start, unsigned long *len, int fb_num);
 int mdss_fb_get_first_cmt_flag(void);
 void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl);
 void mdss_fb_update_backlight(struct msm_fb_data_type *mfd);

@@ -1623,7 +1623,7 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 	}
 
 	rc = msm_iommu_map_contig_buffer(phys, dom, 0, size, SZ_4K, 0,
-					    &mfd->iova);
+					    (unsigned long *)&mfd->iova);
 	if (rc)
 		pr_warn("Cannot map fb_mem %pa to IOMMU. rc=%d\n", &phys, rc);
 
@@ -3228,7 +3228,7 @@ int mdss_fb_get_first_cmt_flag(void)
 }
 EXPORT_SYMBOL(mdss_fb_get_first_cmt_flag);
 
-int mdss_fb_get_phys_info(unsigned long *start, unsigned long *len, int fb_num)
+int mdss_fb_get_phys_info(dma_addr_t *start, unsigned long *len, int fb_num)
 {
 	struct fb_info *info;
 	struct msm_fb_data_type *mfd;
