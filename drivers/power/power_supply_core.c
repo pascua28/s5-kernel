@@ -704,6 +704,7 @@ int power_supply_register(struct device *parent, struct power_supply *psy)
 	goto success;
 
 create_triggers_failed:
+	wake_lock_destroy(&psy->work_wake_lock);
 	psy_unregister_cooler(psy);
 register_cooler_failed:
 	psy_unregister_thermal(psy);
