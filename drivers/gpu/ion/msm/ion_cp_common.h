@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -73,14 +73,6 @@ int ion_cp_secure_buffer(struct ion_buffer *buffer, int version, void *data,
 				int flags);
 
 int ion_cp_unsecure_buffer(struct ion_buffer *buffer, int force_unsecure);
-
-int msm_ion_secure_table(struct sg_table *table, enum cp_mem_usage usage,
-			int flags);
-
-int msm_ion_unsecure_table(struct sg_table *table);
-
-bool msm_secure_v2_is_supported(void);
-
 #else
 static inline int ion_cp_change_chunks_state(unsigned long chunks,
 			unsigned int nchunks, unsigned int chunk_size,
@@ -114,23 +106,6 @@ static inline int ion_cp_unsecure_buffer(struct ion_buffer *buffer,
 {
 	return -ENODEV;
 }
-
-int msm_ion_secure_table(struct sg_table *table, enum cp_mem_usage usage,
-			int flags)
-{
-	return -ENODEV;
-}
-
-int msm_ion_unsecure_table(struct sg_table *table)
-{
-	return -ENODEV;
-}
-
-bool msm_secure_v2_is_supported(void)
-{
-	return false;
-}
-
 #endif
 
 #endif

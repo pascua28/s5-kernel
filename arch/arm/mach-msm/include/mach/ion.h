@@ -1,5 +1,6 @@
-/*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/**
+ *
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,21 +12,18 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _LINUX_COMPAT_ION_H
-#define _LINUX_COMPAT_ION_H
+#ifndef __MACH_ION_H_
+#define __MACH_ION_H_
 
-#include <linux/ion.h>
+enum ion_memory_types {
+	ION_EBI_TYPE,
+	ION_SMI_TYPE,
+};
 
-#if IS_ENABLED(CONFIG_COMPAT)
+enum ion_permission_type {
+	IPT_TYPE_MM_CARVEOUT = 0,
+	IPT_TYPE_MFC_SHAREDMEM = 1,
+	IPT_TYPE_MDP_WRITEBACK = 2,
+};
 
-long compat_msm_ion_ioctl(struct ion_client *client, unsigned int cmd,
-					unsigned long arg);
-
-#define compat_ion_user_handle_t compat_int_t
-
-#else
-
-#define compat_msm_ion_ioctl  NULL
-
-#endif
 #endif

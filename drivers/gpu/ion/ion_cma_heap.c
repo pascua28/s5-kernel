@@ -16,15 +16,18 @@
  */
 
 #include <linux/device.h>
+#include <linux/ion.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/dma-mapping.h>
 #include <linux/msm_ion.h>
+#include <linux/highmem.h>
+#include <mach/iommu_domains.h>
 
 #include <asm/cacheflush.h>
 
-#include "ion.h"
+/* for ion_heap_ops structure */
 #include "ion_priv.h"
 
 #define ION_CMA_ALLOCATE_FAILED -1
@@ -42,10 +45,10 @@ static int cma_heap_has_outer_cache;
  * This function could be replace by dma_common_get_sgtable
  * as soon as it will avalaible.
  */
-static int ion_cma_get_sgtable(struct device *dev, struct sg_table *sgt,
-			       void *cpu_addr, dma_addr_t handle, size_t size)
+int ion_cma_get_sgtable(struct device *dev, struct sg_table *sgt,
+			void *cpu_addr, dma_addr_t handle, size_t size)
 {
-	struct page *page = pfn_to_page(PFN_DOWN(handle));
+	struct page *page = phys_to_page(handle);
 	int ret;
 
 	ret = sg_alloc_table(sgt, 1, GFP_KERNEL);
@@ -98,6 +101,11 @@ static int ion_cma_allocate(struct ion_heap *heap, struct ion_buffer *buffer,
 	/* keep this for memory release */
 	buffer->priv_virt = info;
 	dev_dbg(dev, "Allocate buffer %p\n", buffer);
+	if (heap->id == ION_QSECOM_HEAP_ID ) {
+		// printk("[ION_alloc id==27|QSEECOM] 0x%p/0x%x => kmap_flush_unused\n", (void*)info->handle, (unsigned int)len);
+		kmap_flush_unused();
+	}
+
 	return 0;
 
 err:
@@ -135,16 +143,16 @@ static int ion_cma_phys(struct ion_heap *heap, struct ion_buffer *buffer,
 	return 0;
 }
 
-static struct sg_table *ion_cma_heap_map_dma(struct ion_heap *heap,
-					     struct ion_buffer *buffer)
+struct sg_table *ion_cma_heap_map_dma(struct ion_heap *heap,
+					 struct ion_buffer *buffer)
 {
 	struct ion_cma_buffer_info *info = buffer->priv_virt;
 
 	return info->table;
 }
 
-static void ion_cma_heap_unmap_dma(struct ion_heap *heap,
-				   struct ion_buffer *buffer)
+void ion_cma_heap_unmap_dma(struct ion_heap *heap,
+			       struct ion_buffer *buffer)
 {
 	return;
 }
@@ -154,6 +162,18 @@ static int ion_cma_mmap(struct ion_heap *mapper, struct ion_buffer *buffer,
 {
 	struct device *dev = buffer->heap->priv;
 	struct ion_cma_buffer_info *info = buffer->priv_virt;
+#ifdef CONFIG_TIMA_RKP
+        if (buffer->size) {
+        /* iommu optimization- needs to be turned ON from
+         * the tz side.
+         */
+                cpu_v7_tima_iommu_opt(vma->vm_start, vma->vm_end, (unsigned long)vma->vm_mm->pgd);
+                __asm__ __volatile__ (
+                "mcr    p15, 0, r0, c8, c3, 0\n"
+                "dsb\n"
+                "isb\n");
+        }
+#endif
 
 	if (info->is_cached)
 		return dma_mmap_nonconsistent(dev, vma, info->cpu_addr,
