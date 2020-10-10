@@ -539,11 +539,10 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 	struct file *file;
 	int ret = -EINVAL;
 	int fb_num;
-	unsigned long *len;
-	dma_addr_t *start;
+	unsigned long *start, *len;
 	struct ion_client *iclient = mdss_get_ionclient();
 
-	start = &data->addr;
+	start = (unsigned long *) &data->addr;
 	len = (unsigned long *) &data->len;
 	data->flags |= img->flags;
 	data->p_need = 0;
