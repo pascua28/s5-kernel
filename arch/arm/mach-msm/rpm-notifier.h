@@ -46,7 +46,7 @@ int msm_rpm_unregister_notifier(struct notifier_block *nb);
  *
  * return 0 on success errno on failure.
  */
-int msm_rpm_enter_sleep(bool print, const struct cpumask *cpumask);
+int msm_rpm_enter_sleep(bool print, struct cpumask *cpumask);
 
 /**
  * msm_rpm_exit_sleep - Notify RPM driver about resuming from power collapse

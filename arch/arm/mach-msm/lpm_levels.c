@@ -137,6 +137,7 @@ module_param_named(
 static int msm_pm_sleep_time_override;
 module_param_named(sleep_time_override,
 	msm_pm_sleep_time_override, int, S_IRUGO | S_IWUSR | S_IWGRP);
+static uint64_t suspend_wake_time;
 
 static int msm_pm_sleep_sec_debug;
 module_param_named(secdebug,
@@ -348,6 +349,38 @@ static int lpm_system_mode_select(
 	return best_level;
 }
 
+static uint64_t lpm_get_system_sleep(bool from_idle, struct cpumask *mask)
+{
+	struct clock_event_device *ed = NULL;
+	uint64_t us = (~0ULL);
+
+	if (tick_get_broadcast_device())
+		ed = tick_get_broadcast_device()->evtdev;
+
+	if (!suspend_wake_time)
+		suspend_wake_time =  msm_pm_sleep_time_override;
+	if (!from_idle) {
+		if (mask)
+			cpumask_copy(mask, cpumask_of(smp_processor_id()));
+		if (suspend_wake_time)
+			us = USEC_PER_SEC * suspend_wake_time;
+		return us;
+	}
+
+	if (ed && !cpumask_empty(ed->cpumask)) {
+		us = ktime_to_us(ktime_sub(ed->next_event, ktime_get()));
+		if (mask)
+			cpumask_copy(mask, ed->cpumask);
+	} else {
+		BUG_ON(num_possible_cpus() > 1);
+		us = ktime_to_us(tick_nohz_get_sleep_length());
+		if (mask)
+			cpumask_copy(mask, cpumask_of(smp_processor_id()));
+	}
+
+	return us;
+}
+
 static void lpm_system_prepare(struct lpm_system_state *system_state,
 		int index, bool from_idle)
 {
@@ -357,7 +390,7 @@ static void lpm_system_prepare(struct lpm_system_state *system_state,
 	int64_t us = (~0ULL);
 	int dbg_mask;
 	int ret;
-	const struct cpumask *nextcpu;
+	struct cpumask nextcpu;
 
 	spin_lock(&system_state->sync_lock);
 	if (index < 0 ||
@@ -367,14 +400,12 @@ static void lpm_system_prepare(struct lpm_system_state *system_state,
 		return;
 	}
 
-	if (from_idle) {
+	us = lpm_get_system_sleep(from_idle, &nextcpu);
+
+	if (from_idle)
 		dbg_mask = lpm_lvl_dbg_msk & MSM_LPM_LVL_DBG_IDLE_LIMITS;
-		us = ktime_to_us(ktime_sub(bc->next_event, ktime_get()));
-		nextcpu = bc->cpumask;
-	} else {
+	else
 		dbg_mask = lpm_lvl_dbg_msk & MSM_LPM_LVL_DBG_SUSPEND_LIMITS;
-		nextcpu = cpumask_of(smp_processor_id());
-	}
 
 	lvl = &system_state->system_level[index];
 
@@ -387,7 +418,7 @@ static void lpm_system_prepare(struct lpm_system_state *system_state,
 	}
 
 	if (lvl->notify_rpm) {
-		ret = msm_rpm_enter_sleep(dbg_mask, nextcpu);
+		ret = msm_rpm_enter_sleep(dbg_mask, &nextcpu);
 		if (ret) {
 			pr_err("rpm_enter_sleep() failed with rc = %d\n", ret);
 			goto bail_system_sleep;
@@ -399,7 +430,7 @@ static void lpm_system_prepare(struct lpm_system_state *system_state,
 
 		do_div(us, USEC_PER_SEC/SCLK_HZ);
 		sclk = (uint32_t)us;
-		msm_mpm_enter_sleep(sclk, from_idle, nextcpu);
+		msm_mpm_enter_sleep(sclk, from_idle, &nextcpu);
 	}
 	system_state->last_entered_cluster_index = index;
 	spin_unlock(&system_state->sync_lock);
@@ -472,6 +503,21 @@ s32 msm_cpuidle_get_deep_idle_latency(void)
 	else
 		return level->pwr.latency_us;
 }
+
+void lpm_suspend_wake_time(uint64_t wakeup_time)
+{
+	if (wakeup_time <= 0) {
+		suspend_wake_time = msm_pm_sleep_time_override;
+		return;
+	}
+
+	if (msm_pm_sleep_time_override &&
+			(msm_pm_sleep_time_override < wakeup_time))
+			suspend_wake_time = msm_pm_sleep_time_override;
+	else
+			suspend_wake_time = wakeup_time;
+}
+EXPORT_SYMBOL(lpm_suspend_wake_time);
 
 static int lpm_cpu_callback(struct notifier_block *cpu_nb,
 	unsigned long action, void *hcpu)
@@ -734,7 +780,9 @@ static int lpm_system_select(struct lpm_system_state *system_state,
 	else
 		us = (~0ULL);
 
-	return lpm_system_mode_select(system_state, (uint32_t)(us), from_idle);
+	return lpm_system_mode_select(system_state,
+			(uint32_t)lpm_get_system_sleep(from_idle, NULL),
+			from_idle);
 }
 
 static void lpm_enter_low_power(struct lpm_system_state *system_state,
