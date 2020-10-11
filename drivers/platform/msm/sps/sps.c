@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,6 +27,7 @@
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 
 #include "sps_bam.h"
 #include "spsi.h"
@@ -81,6 +82,8 @@ static struct sps_drv *sps;
 u32 d_type;
 bool enhd_pipe;
 bool imem;
+enum sps_bam_type bam_type;
+enum sps_bam_type bam_types[] = {SPS_BAM_LEGACY, SPS_BAM_NDP, SPS_BAM_NDP_4K};
 
 static void sps_device_de_init(void);
 
@@ -98,6 +101,7 @@ static char *debugfs_buf;
 static u32 debugfs_buf_size;
 static u32 debugfs_buf_used;
 static int wraparound;
+static struct mutex sps_debugfs_lock;
 
 struct dentry *dent;
 struct dentry *dfile_info;
@@ -115,6 +119,7 @@ static struct sps_bam *phy2bam(phys_addr_t phys_addr);
 /* record debug info for debugfs */
 void sps_debugfs_record(const char *msg)
 {
+	mutex_lock(&sps_debugfs_lock);
 	if (debugfs_record_enabled) {
 		if (debugfs_buf_used + MAX_MSG_LEN >= debugfs_buf_size) {
 			debugfs_buf_used = 0;
@@ -128,6 +133,7 @@ void sps_debugfs_record(const char *msg)
 					debugfs_buf_size - debugfs_buf_used,
 					"\n**** end line of sps log ****\n\n");
 	}
+	mutex_unlock(&sps_debugfs_lock);
 }
 
 /* read the recorded debug info to userspace */
@@ -137,6 +143,7 @@ static ssize_t sps_read_info(struct file *file, char __user *ubuf,
 	int ret = 0;
 	int size;
 
+	mutex_lock(&sps_debugfs_lock);
 	if (debugfs_record_enabled) {
 		if (wraparound)
 			size = debugfs_buf_size - MAX_MSG_LEN;
@@ -146,6 +153,7 @@ static ssize_t sps_read_info(struct file *file, char __user *ubuf,
 		ret = simple_read_from_buffer(ubuf, count, ppos,
 				debugfs_buf, size);
 	}
+	mutex_unlock(&sps_debugfs_lock);
 
 	return ret;
 }
@@ -190,11 +198,13 @@ static ssize_t sps_set_info(struct file *file, const char __user *buf,
 
 	new_buf_size = buf_size_kb * SZ_1K;
 
+	mutex_lock(&sps_debugfs_lock);
 	if (debugfs_record_enabled) {
 		if (debugfs_buf_size == new_buf_size) {
 			/* need do nothing */
 			pr_info("sps:debugfs: input buffer size "
 				"is the same as before.\n");
+			mutex_unlock(&sps_debugfs_lock);
 			return count;
 		} else {
 			/* release the current buffer */
@@ -214,12 +224,14 @@ static ssize_t sps_set_info(struct file *file, const char __user *buf,
 	if (!debugfs_buf) {
 		debugfs_buf_size = 0;
 		pr_err("sps:fail to allocate memory for debug_fs.\n");
+		mutex_unlock(&sps_debugfs_lock);
 		return -ENOMEM;
 	}
 
 	debugfs_buf_used = 0;
 	wraparound = false;
 	debugfs_record_enabled = true;
+	mutex_unlock(&sps_debugfs_lock);
 
 	return count;
 }
@@ -267,6 +279,7 @@ static ssize_t sps_set_logging_option(struct file *file, const char __user *buf,
 		return count;
 	}
 
+	mutex_lock(&sps_debugfs_lock);
 	if (((option == 0) || (option == 2)) &&
 		((logging_option == 1) || (logging_option == 3))) {
 		debugfs_record_enabled = false;
@@ -278,6 +291,7 @@ static ssize_t sps_set_logging_option(struct file *file, const char __user *buf,
 	}
 
 	logging_option = option;
+	mutex_unlock(&sps_debugfs_lock);
 
 	return count;
 }
@@ -603,6 +617,8 @@ static void sps_debugfs_init(void)
 			"bam_addr.\n");
 		goto bam_addr_err;
 	}
+
+	mutex_init(&sps_debugfs_lock);
 
 	return;
 
@@ -1323,6 +1339,7 @@ int sps_connect(struct sps_pipe *h, struct sps_connect *connect)
 		goto exit_err;
 	}
 
+	mutex_lock(&bam->lock);
 	SPS_DBG2("sps:sps_connect: bam %pa src 0x%lx dest 0x%lx mode %s",
 			BAM_ID(bam),
 			connect->source,
@@ -1331,14 +1348,13 @@ int sps_connect(struct sps_pipe *h, struct sps_connect *connect)
 
 	/* Allocate resources for the specified connection */
 	pipe->connect = *connect;
-	mutex_lock(&bam->lock);
 	result = sps_rm_state_change(pipe, SPS_STATE_ALLOCATE);
-	mutex_unlock(&bam->lock);
-	if (result)
+	if (result) {
+		mutex_unlock(&bam->lock);
 		goto exit_err;
+	}
 
 	/* Configure the connection */
-	mutex_lock(&bam->lock);
 	result = sps_rm_state_change(pipe, SPS_STATE_CONNECT);
 	mutex_unlock(&bam->lock);
 	if (result) {
@@ -1475,7 +1491,7 @@ int sps_flow_on(struct sps_pipe *h)
 {
 	struct sps_pipe *pipe = h;
 	struct sps_bam *bam;
-	int result;
+	int result = 0;
 
 	SPS_DBG2("sps:%s.", __func__);
 
@@ -1488,8 +1504,8 @@ int sps_flow_on(struct sps_pipe *h)
 	if (bam == NULL)
 		return SPS_ERROR;
 
-	/* Enable the pipe data flow */
-	result = sps_rm_state_change(pipe, SPS_STATE_ENABLE);
+	bam_pipe_halt(bam->base, pipe->pipe_index, false);
+
 	sps_bam_unlock(bam);
 
 	return result;
@@ -1504,7 +1520,7 @@ int sps_flow_off(struct sps_pipe *h, enum sps_flow_off mode)
 {
 	struct sps_pipe *pipe = h;
 	struct sps_bam *bam;
-	int result;
+	int result = 0;
 
 	SPS_DBG2("sps:%s.", __func__);
 
@@ -1517,8 +1533,8 @@ int sps_flow_off(struct sps_pipe *h, enum sps_flow_off mode)
 	if (bam == NULL)
 		return SPS_ERROR;
 
-	/* Disable the pipe data flow */
-	result = sps_rm_state_change(pipe, SPS_STATE_DISABLE);
+	bam_pipe_halt(bam->base, pipe->pipe_index, true);
+
 	sps_bam_unlock(bam);
 
 	return result;
@@ -2193,6 +2209,7 @@ EXPORT_SYMBOL(sps_register_bam_device);
 int sps_deregister_bam_device(unsigned long dev_handle)
 {
 	struct sps_bam *bam;
+	int n;
 
 	SPS_DBG2("sps:%s.", __func__);
 
@@ -2208,6 +2225,12 @@ int sps_deregister_bam_device(unsigned long dev_handle)
 	}
 
 	SPS_DBG2("sps:SPS deregister BAM: phys %pa.", &bam->props.phys_addr);
+
+	if (bam->props.options & SPS_BAM_HOLD_MEM) {
+		for (n = 0; n < BAM_MAX_PIPES; n++)
+			if (bam->desc_cache_pointers[n] != NULL)
+				kfree(bam->desc_cache_pointers[n]);
+	}
 
 	/* If this BAM is attached to a BAM-DMA, init the BAM-DMA device */
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
@@ -2305,6 +2328,133 @@ int sps_timer_ctrl(struct sps_pipe *h,
 	return result;
 }
 EXPORT_SYMBOL(sps_timer_ctrl);
+
+/*
+ * Reset a BAM pipe
+ */
+int sps_pipe_reset(unsigned long dev, u32 pipe)
+{
+	struct sps_bam *bam;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!dev) {
+		SPS_ERR("sps:%s:BAM handle is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (pipe >= BAM_MAX_PIPES) {
+		SPS_ERR("sps:%s:pipe index is invalid.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		SPS_ERR("sps:%s:BAM is not found by handle.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam_pipe_reset(bam->base, pipe);
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_pipe_reset);
+
+/*
+ * Disable a BAM pipe
+ */
+int sps_pipe_disable(unsigned long dev, u32 pipe)
+{
+	struct sps_bam *bam;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!dev) {
+		SPS_ERR("sps:%s:BAM handle is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (pipe >= BAM_MAX_PIPES) {
+		SPS_ERR("sps:%s:pipe index is invalid.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		SPS_ERR("sps:%s:BAM is not found by handle.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam_disable_pipe(bam->base, pipe);
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_pipe_disable);
+
+/*
+ * Check pending descriptors in the descriptor FIFO
+ * of a pipe
+ */
+int sps_pipe_pending_desc(unsigned long dev, u32 pipe, bool *pending)
+{
+
+	struct sps_bam *bam;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!dev) {
+		SPS_ERR("sps:%s:BAM handle is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (pipe >= BAM_MAX_PIPES) {
+		SPS_ERR("sps:%s:pipe index is invalid.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (!pending) {
+		SPS_ERR("sps:%s:input flag is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		SPS_ERR("sps:%s:BAM is not found by handle.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	*pending = sps_bam_pipe_pending_desc(bam, pipe);
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_pipe_pending_desc);
+
+/*
+ * Process any pending IRQ of a BAM
+ */
+int sps_bam_process_irq(unsigned long dev)
+{
+	struct sps_bam *bam;
+	int ret = 0;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!dev) {
+		SPS_ERR("sps:%s:BAM handle is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		SPS_ERR("sps:%s:BAM is not found by handle.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	ret = sps_bam_check_irq(bam);
+
+	return ret;
+}
+EXPORT_SYMBOL(sps_bam_process_irq);
 
 /**
  * Allocate client state context
@@ -2484,7 +2634,7 @@ static int get_device_tree_data(struct platform_device *pdev)
 	if (of_property_read_u32((&pdev->dev)->of_node,
 				"qcom,device-type",
 				&d_type)) {
-		d_type = 1;
+		d_type = 3;
 		SPS_DBG("sps:default device type.\n");
 	} else
 		SPS_DBG("sps:device type is %d.", d_type);
@@ -2497,18 +2647,39 @@ static int get_device_tree_data(struct platform_device *pdev)
 	return 0;
 }
 
-static int msm_sps_probe(struct platform_device *pdev)
+static struct of_device_id msm_sps_match[] = {
+	{	.compatible = "qcom,msm_sps",
+		.data = &bam_types[SPS_BAM_NDP]
+	},
+	{	.compatible = "qcom,msm_sps_4k",
+		.data = &bam_types[SPS_BAM_NDP_4K]
+	},
+	{}
+};
+
+static int __devinit msm_sps_probe(struct platform_device *pdev)
 {
 	int ret = -ENODEV;
 
 	SPS_DBG2("sps:%s.", __func__);
 
 	if (pdev->dev.of_node) {
+		const struct of_device_id *match;
+
 		if (get_device_tree_data(pdev)) {
 			SPS_ERR("sps:Fail to get data from device tree.");
 			return -ENODEV;
 		} else
 			SPS_DBG("sps:get data from device tree.");
+
+		match = of_match_device(msm_sps_match, &pdev->dev);
+		if (match) {
+			bam_type = *((enum sps_bam_type *)(match->data));
+			SPS_DBG("sps:BAM type is:%d\n", bam_type);
+		} else {
+			bam_type = SPS_BAM_NDP;
+			SPS_DBG("sps:use default BAM type:%d\n", bam_type);
+		}
 	} else {
 		d_type = 0;
 		if (get_platform_data(pdev)) {
@@ -2516,6 +2687,7 @@ static int msm_sps_probe(struct platform_device *pdev)
 			return -ENODEV;
 		} else
 			SPS_DBG("sps:get platform data.");
+		bam_type = SPS_BAM_LEGACY;
 	}
 
 	/* Create Device */
@@ -2635,7 +2807,7 @@ alloc_chrdev_region_err:
 	return ret;
 }
 
-static int msm_sps_remove(struct platform_device *pdev)
+static int __devexit msm_sps_remove(struct platform_device *pdev)
 {
 	SPS_DBG("sps:%s.", __func__);
 
@@ -2651,12 +2823,6 @@ static int msm_sps_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-static struct of_device_id msm_sps_match[] = {
-	{	.compatible = "qcom,msm_sps",
-	},
-	{}
-};
 
 static struct platform_driver msm_sps_driver = {
 	.probe          = msm_sps_probe,
