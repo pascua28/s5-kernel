@@ -398,7 +398,7 @@ static void iucv_sock_destruct(struct sock *sk)
 	sk_mem_reclaim(sk);
 
 	if (!sock_flag(sk, SOCK_DEAD)) {
-		pr_err("Attempt to release alive iucv socket %p\n", sk);
+		WARN(1, "Attempt to release alive iucv socket %p\n", sk);
 		return;
 	}
 
@@ -1323,8 +1323,6 @@ static int iucv_sock_recvmsg(struct kiocb *iocb, struct socket *sock,
 	struct sk_buff *skb, *rskb, *cskb;
 	int err = 0;
 	u32 offset;
-
-	msg->msg_namelen = 0;
 
 	if ((sk->sk_state == IUCV_DISCONN) &&
 	    skb_queue_empty(&iucv->backlog_skb_q) &&

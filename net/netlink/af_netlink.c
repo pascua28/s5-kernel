@@ -2233,8 +2233,6 @@ static int netlink_recvmsg(struct kiocb *kiocb, struct socket *sock,
 	}
 #endif
 
-	msg->msg_namelen = 0;
-
 	copied = data_skb->len;
 	if (len < copied) {
 		msg->msg_flags |= MSG_TRUNC;
@@ -2335,11 +2333,11 @@ __netlink_kernel_create(struct net *net, int unit, struct module *module,
 	if (cfg && cfg->input)
 		nlk_sk(sk)->netlink_rcv = cfg->input;
 
-	if (netlink_insert(sk, net, 0))
-		goto out_sock_release;
-
 	nlk = nlk_sk(sk);
 	nlk->flags |= NETLINK_KERNEL_SOCKET;
+
+	if (netlink_insert(sk, net, 0))
+		goto out_sock_release;
 
 	netlink_table_grab();
 	if (!nl_table[unit].registered) {

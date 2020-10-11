@@ -765,6 +765,12 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(struct net *net,
 		struct sctp_chunk auth;
 		sctp_ierror_t ret;
 
+		/* Make sure that we and the peer are AUTH capable */
+		if (!net->sctp.auth_enable || !new_asoc->peer.auth_capable) {
+			sctp_association_free(new_asoc);
+			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+		}
+
 		/* set-up our fake chunk so that we can process it */
 		auth.skb = chunk->auth_chunk;
 		auth.asoc = chunk->asoc;
@@ -775,10 +781,6 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(struct net *net,
 		auth.transport = chunk->transport;
 
 		ret = sctp_sf_authenticate(net, ep, new_asoc, type, &auth);
-
-		/* We can now safely free the auth_chunk clone */
-		kfree_skb(chunk->auth_chunk);
-
 		if (ret != SCTP_IERROR_NO_ERROR) {
 			sctp_association_free(new_asoc);
 			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
@@ -3408,12 +3410,6 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
 		/* Report violation if the chunk is less then minimal */
 		if (ntohs(ch->length) < sizeof(sctp_chunkhdr_t))
 			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
-						  commands);
-
-		/* Report violation if chunk len overflows */
-		ch_end = ((__u8 *)ch) + WORD_ROUND(ntohs(ch->length));
-		if (ch_end > skb_tail_pointer(skb))
-			return sctp_sf_violation_chunklen(ep, asoc, type, arg,
 						  commands);
 
 		/* Now that we know we at least have a chunk header,
