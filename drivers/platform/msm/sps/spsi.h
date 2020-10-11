@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,7 +27,7 @@
 
 #include "sps_map.h"
 
-#if defined(CONFIG_PHYS_ADDR_T_64BIT) || defined(CONFIG_ARM_LPAE)
+#ifdef CONFIG_ARM_LPAE
 #define SPS_LPAE (true)
 #else
 #define SPS_LPAE (false)
@@ -53,7 +53,6 @@
 extern u32 d_type;
 extern bool enhd_pipe;
 extern bool imem;
-extern enum sps_bam_type bam_type;
 
 #ifdef CONFIG_DEBUG_FS
 extern u8 debugfs_record_enabled;
@@ -61,6 +60,11 @@ extern u8 logging_option;
 extern u8 debug_level_option;
 extern u8 print_limit_option;
 
+#define SPS_DEBUGFS(msg, args...) do {					\
+		char buf[MAX_MSG_LEN];		\
+		snprintf(buf, MAX_MSG_LEN, msg"\n", ##args);	\
+		sps_debugfs_record(buf);	\
+	} while (0)
 #define SPS_ERR(msg, args...) do {					\
 		if (logging_option != 1) {	\
 			if (unlikely(print_limit_option > 2))	\
@@ -68,6 +72,8 @@ extern u8 print_limit_option;
 			else	\
 				pr_err(msg, ##args);	\
 		}	\
+		if (unlikely(debugfs_record_enabled))	\
+			SPS_DEBUGFS(msg, ##args);	\
 	} while (0)
 #define SPS_INFO(msg, args...) do {					\
 		if (logging_option != 1) {	\
@@ -76,6 +82,8 @@ extern u8 print_limit_option;
 			else	\
 				pr_info(msg, ##args);	\
 		}	\
+		if (unlikely(debugfs_record_enabled))	\
+			SPS_DEBUGFS(msg, ##args);	\
 	} while (0)
 #define SPS_DBG(msg, args...) do {					\
 		if ((unlikely(logging_option > 1))	\
@@ -86,6 +94,8 @@ extern u8 print_limit_option;
 				pr_info(msg, ##args);	\
 		} else	\
 			pr_debug(msg, ##args);	\
+		if (unlikely(debugfs_record_enabled))	\
+			SPS_DEBUGFS(msg, ##args);	\
 	} while (0)
 #define SPS_DBG1(msg, args...) do {					\
 		if ((unlikely(logging_option > 1))	\
@@ -96,6 +106,8 @@ extern u8 print_limit_option;
 				pr_info(msg, ##args);	\
 		} else	\
 			pr_debug(msg, ##args);	\
+		if (unlikely(debugfs_record_enabled))	\
+			SPS_DEBUGFS(msg, ##args);	\
 	} while (0)
 #define SPS_DBG2(msg, args...) do {					\
 		if ((unlikely(logging_option > 1))	\
@@ -106,6 +118,8 @@ extern u8 print_limit_option;
 				pr_info(msg, ##args);	\
 		} else	\
 			pr_debug(msg, ##args);	\
+		if (unlikely(debugfs_record_enabled))	\
+			SPS_DEBUGFS(msg, ##args);	\
 	} while (0)
 #define SPS_DBG3(msg, args...) do {					\
 		if ((unlikely(logging_option > 1))	\
@@ -116,6 +130,8 @@ extern u8 print_limit_option;
 				pr_info(msg, ##args);	\
 		} else	\
 			pr_debug(msg, ##args);	\
+		if (unlikely(debugfs_record_enabled))	\
+			SPS_DEBUGFS(msg, ##args);	\
 	} while (0)
 #else
 #define	SPS_DBG3(x...)		pr_debug(x)
@@ -180,12 +196,6 @@ struct sps_mem_stats {
 	u32 max_bytes_used;
 };
 
-enum sps_bam_type {
-	SPS_BAM_LEGACY,
-	SPS_BAM_NDP,
-	SPS_BAM_NDP_4K
-};
-
 #ifdef CONFIG_DEBUG_FS
 /* record debug info for debugfs */
 void sps_debugfs_record(const char *);
@@ -208,9 +218,6 @@ void print_bam_pipe_desc_fifo(void *, u32, u32);
 
 /* output BAM_TEST_BUS_REG */
 void print_bam_test_bus_reg(void *, u32);
-
-/* halt and un-halt a pipe */
-void bam_pipe_halt(void *, u32, bool);
 
 /**
  * Translate physical to virtual address
@@ -407,21 +414,4 @@ int sps_map_init(const struct sps_map *map_props, u32 options);
  */
 void sps_map_de_init(void);
 
-/*
- * bam_pipe_reset - reset a BAM pipe.
- * @base:	BAM virtual address
- * @pipe:	pipe index
- *
- * This function resets a BAM pipe.
- */
-void bam_pipe_reset(void *base, u32 pipe);
-
-/*
- * bam_disable_pipe - disable a BAM pipe.
- * @base:	BAM virtual address
- * @pipe:	pipe index
- *
- * This function disables a BAM pipe.
- */
-void bam_disable_pipe(void *base, u32 pipe);
 #endif	/* _SPSI_H_ */
