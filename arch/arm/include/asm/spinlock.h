@@ -37,11 +37,9 @@ extern int msm_krait_need_wfe_fixup;
 #endif
 
 /*
- * The fixup involves disabling FIQs during execution of the WFE instruction.
- * This could potentially lead to deadlock if a thread is trying to acquire a
- * spinlock which is being released from an FIQ. This should not be a problem
- * because FIQs are handled by the secure environment and do not directly
- * manipulate spinlocks.
+ * The fixup involves disabling interrupts during execution of the WFE
+ * instruction. This could potentially lead to deadlock if a thread is trying
+ * to acquire a spinlock which is being released from an interrupt context.
  */
 #ifdef CONFIG_MSM_KRAIT_WFE_FIXUP
 #define WFE_SAFE(fixup, tmp) 				\
@@ -49,7 +47,7 @@ extern int msm_krait_need_wfe_fixup;
 "	cmp	" fixup ", #0\n"			\
 "	wfeeq\n"					\
 "	beq	10f\n"					\
-"	cpsid   f\n"					\
+"	cpsid	if\n"					\
 "	mrc	p15, 7, " fixup ", c15, c0, 5\n"	\
 "	bic	" fixup ", " fixup ", #0x10000\n"	\
 "	mcr	p15, 7, " fixup ", c15, c0, 5\n"	\
@@ -95,9 +93,6 @@ static inline void dsb_sev(void)
 static inline void arch_spin_lock(arch_spinlock_t *lock)
 {
 	unsigned long tmp;
-#ifdef CONFIG_MSM_KRAIT_WFE_FIXUP
-	unsigned long flags = 0;
-#endif
 	u32 newval;
 	arch_spinlock_t lockval;
 
@@ -112,59 +107,7 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 	: "cc");
 
 	while (lockval.tickets.next != lockval.tickets.owner) {
-#ifdef CONFIG_MSM_KRAIT_WFE_FIXUP
-		if (msm_krait_need_wfe_fixup) {
-			local_save_flags(flags);
-			local_fiq_disable();
-			__asm__ __volatile__(
-			"mrc	p15, 7, %0, c15, c0, 5\n"
-			: "=r" (tmp)
-			:
-			: "cc");
-			tmp &= ~(0x10000);
-			__asm__ __volatile__(
-			"mcr	p15, 7, %0, c15, c0, 5\n"
-			:
-			: "r" (tmp)
-			: "cc");
-			isb();
-		}
-#endif
-		__asm__ __volatile__(
-		    "mrc    p15, 7, %0, c15, c0, 5\n"
-		    : "=r" (tmp)
-		    :
-		    : "cc");
-		tmp |= 0x1;
-		__asm__ __volatile__(
-		    "mcr    p15, 7, %0, c15, c0, 5\n"
-		    :
-		    : "r" (tmp)
-		    : "cc");
-		isb();
-
 		wfe();
-
-		tmp &= ~(0x1);
-		__asm__ __volatile__(
-		    "mcr   p15, 7, %0, c15, c0, 5\n"
-		    :
-		    : "r" (tmp)
-		    : "cc");
-		isb();
-
-#ifdef CONFIG_MSM_KRAIT_WFE_FIXUP
-		if (msm_krait_need_wfe_fixup) {
-			tmp |= 0x10000;
-			__asm__ __volatile__(
-			"mcr	p15, 7, %0, c15, c0, 5\n"
-			:
-			: "r" (tmp)
-			: "cc");
-			isb();
-			local_irq_restore(flags);
-		}
-#endif
 		lockval.tickets.owner = ACCESS_ONCE(lock->tickets.owner);
 	}
 
@@ -173,22 +116,19 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 
 static inline int arch_spin_trylock(arch_spinlock_t *lock)
 {
-	unsigned long contended, res;
+	unsigned long tmp;
 	u32 slock;
 
-	do {
-		__asm__ __volatile__(
-		"	ldrex	%0, [%3]\n"
-		"	mov	%2, #0\n"
-		"	subs	%1, %0, %0, ror #16\n"
-		"	addeq	%0, %0, %4\n"
-		"	strexeq	%2, %0, [%3]"
-		: "=&r" (slock), "=&r" (contended), "=&r" (res)
-		: "r" (&lock->slock), "I" (1 << TICKET_SHIFT)
-		: "cc");
-	} while (res);
+	__asm__ __volatile__(
+"	ldrex	%0, [%2]\n"
+"	subs	%1, %0, %0, ror #16\n"
+"	addeq	%0, %0, %3\n"
+"	strexeq	%1, %0, [%2]"
+	: "=&r" (slock), "=&r" (tmp)
+	: "r" (&lock->slock), "I" (1 << TICKET_SHIFT)
+	: "cc");
 
-	if (!contended) {
+	if (tmp == 0) {
 		smp_mb();
 		return 1;
 	} else {
@@ -229,16 +169,16 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 	unsigned long tmp, fixup = msm_krait_need_wfe_fixup;
 
 	__asm__ __volatile__(
-"1:	ldrex	%0, [%2]\n"
-"	teq	%0, #0\n"
+"1:	ldrex	%[tmp], [%[lock]]\n"
+"	teq	%[tmp], #0\n"
 "	beq	2f\n"
-	WFE_SAFE("%1", "%0")
+	WFE_SAFE("%[fixup]", "%[tmp]")
 "2:\n"
-"	strexeq	%0, %3, [%2]\n"
-"	teq	%0, #0\n"
+"	strexeq	%[tmp], %[bit31], [%[lock]]\n"
+"	teq	%[tmp], #0\n"
 "	bne	1b"
-	: "=&r" (tmp), "+r" (fixup)
-	: "r" (&rw->lock), "r" (0x80000000)
+	: [tmp] "=&r" (tmp), [fixup] "+r" (fixup)
+	: [lock] "r" (&rw->lock), [bit31] "r" (0x80000000)
 	: "cc");
 
 	smp_mb();
@@ -246,20 +186,17 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 
 static inline int arch_write_trylock(arch_rwlock_t *rw)
 {
-	unsigned long contended, res;
+	unsigned long tmp;
 
-	do {
-		__asm__ __volatile__(
-		"	ldrex	%0, [%2]\n"
-		"	mov	%1, #0\n"
-		"	teq	%0, #0\n"
-		"	strexeq	%1, %3, [%2]"
-		: "=&r" (contended), "=&r" (res)
-		: "r" (&rw->lock), "r" (0x80000000)
-		: "cc");
-	} while (res);
+	__asm__ __volatile__(
+"	ldrex	%0, [%1]\n"
+"	teq	%0, #0\n"
+"	strexeq	%0, %2, [%1]"
+	: "=&r" (tmp)
+	: "r" (&rw->lock), "r" (0x80000000)
+	: "cc");
 
-	if (!contended) {
+	if (tmp == 0) {
 		smp_mb();
 		return 1;
 	} else {
@@ -300,16 +237,16 @@ static inline void arch_read_lock(arch_rwlock_t *rw)
 	unsigned long tmp, tmp2, fixup = msm_krait_need_wfe_fixup;
 
 	__asm__ __volatile__(
-"1:	ldrex	%0, [%3]\n"
-"	adds	%0, %0, #1\n"
-"	strexpl	%1, %0, [%3]\n"
+"1:	ldrex	%[tmp], [%[lock]]\n"
+"	adds	%[tmp], %[tmp], #1\n"
+"	strexpl	%[tmp2], %[tmp], [%[lock]]\n"
 "	bpl	2f\n"
-	WFE_SAFE("%2", "%0")
+	WFE_SAFE("%[fixup]", "%[tmp]")
 "2:\n"
-"	rsbpls	%0, %1, #0\n"
+"	rsbpls	%[tmp], %[tmp2], #0\n"
 "	bmi	1b"
-	: "=&r" (tmp), "=&r" (tmp2), "+r" (fixup)
-	: "r" (&rw->lock)
+	: [tmp] "=&r" (tmp), [tmp2] "=&r" (tmp2), [fixup] "+r" (fixup)
+	: [lock] "r" (&rw->lock)
 	: "cc");
 
 	smp_mb();
@@ -337,26 +274,18 @@ static inline void arch_read_unlock(arch_rwlock_t *rw)
 
 static inline int arch_read_trylock(arch_rwlock_t *rw)
 {
-	unsigned long contended, res;
+	unsigned long tmp, tmp2 = 1;
 
-	do {
-		__asm__ __volatile__(
-		"	ldrex	%0, [%2]\n"
-		"	mov	%1, #0\n"
-		"	adds	%0, %0, #1\n"
-		"	strexpl	%1, %0, [%2]"
-		: "=&r" (contended), "=&r" (res)
-		: "r" (&rw->lock)
-		: "cc");
-	} while (res);
+	__asm__ __volatile__(
+"	ldrex	%0, [%2]\n"
+"	adds	%0, %0, #1\n"
+"	strexpl	%1, %0, [%2]\n"
+	: "=&r" (tmp), "+r" (tmp2)
+	: "r" (&rw->lock)
+	: "cc");
 
-	/* If the lock is negative, then it is already held for write. */
-	if (contended < 0x80000000) {
-		smp_mb();
-		return 1;
-	} else {
-		return 0;
-	}
+	smp_mb();
+	return tmp2 == 0;
 }
 
 /* read_can_lock - would read_trylock() succeed? */
