@@ -125,9 +125,6 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
 #define FMODE_PATH		((__force fmode_t)0x4000)
 
 /* File hasn't page cache and can't be mmaped, for stackable filesystem */
-/* File page don't need to be cached, for stackable filesystem's lower file */
-#define FMODE_NONCACHEABLE     ((__force fmode_t)0x800000)
-
 #define FMODE_NONMAPPABLE       ((__force fmode_t)0x400000)
 
 /* File was opened by fanotify and shouldn't generate fanotify events */
@@ -204,66 +201,6 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
 #define WRITE_FUA		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FUA)
 #define WRITE_FLUSH_FUA		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FLUSH | REQ_FUA)
 
-#define BLKSANITIZE _IO(0x12, 127)
-
-#include <linux/linkage.h>
-#include <linux/wait.h>
-#include <linux/kdev_t.h>
-#include <linux/dcache.h>
-#include <linux/path.h>
-#include <linux/stat.h>
-#include <linux/cache.h>
-#include <linux/list.h>
-#include <linux/radix-tree.h>
-#include <linux/init.h>
-#include <linux/pid.h>
-#include <linux/bug.h>
-#include <linux/mutex.h>
-#include <linux/capability.h>
-#include <linux/semaphore.h>
-#include <linux/fiemap.h>
-#include <linux/rculist_bl.h>
-#include <linux/atomic.h>
-#include <linux/shrinker.h>
-#include <linux/migrate_mode.h>
-#include <linux/uidgid.h>
-#include <linux/lockdep.h>
-
-#include <asm/byteorder.h>
-
-struct export_operations;
-struct hd_geometry;
-struct iovec;
-struct nameidata;
-struct kiocb;
-struct kobject;
-struct pipe_inode_info;
-struct poll_table_struct;
-struct kstatfs;
-struct vm_area_struct;
-struct vfsmount;
-struct cred;
-struct swap_info_struct;
-
-extern void __init inode_init(void);
-extern void __init inode_init_early(void);
-extern void __init files_init(unsigned long);
-
-extern struct files_stat_struct files_stat;
-extern unsigned long get_max_files(void);
-extern int sysctl_nr_open;
-extern struct inodes_stat_t inodes_stat;
-extern int leases_enable, lease_break_time;
-extern int sysctl_protected_symlinks;
-extern int sysctl_protected_hardlinks;
-
-struct buffer_head;
-typedef int (get_block_t)(struct inode *inode, sector_t iblock,
-			struct buffer_head *bh_result, int create);
-typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
-			ssize_t bytes, void *private, int ret,
-			bool is_async);
-
 /*
  * Attribute flags.  These should be or-ed together to figure out what
  * has been changed!
@@ -334,7 +271,7 @@ struct iattr {
  * 			    be a candidate for writeback again in the near
  * 			    future.  Other callers must be careful to unlock
  * 			    the page if they get this return.  Returned by
- * 			    writepage();
+ * 			    writepage(); 
  *
  * @AOP_TRUNCATED_PAGE: The AOP method that was handed a locked page has
  *  			unlocked it and the page might have been truncated.
@@ -952,8 +889,8 @@ static inline int file_check_writeable(struct file *filp)
 
 #define	MAX_NON_LFS	((1UL<<31) - 1)
 
-/* Page cache limit. The filesystems should put that into their s_maxbytes
-   limits, otherwise bad things can happen in VM. */
+/* Page cache limit. The filesystems should put that into their s_maxbytes 
+   limits, otherwise bad things can happen in VM. */ 
 #if BITS_PER_LONG==32
 #define MAX_LFS_FILESIZE	(((loff_t)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1) 
 #elif BITS_PER_LONG==64
@@ -1641,8 +1578,6 @@ struct file_operations {
 	int (*setlease)(struct file *, long, struct file_lock **);
 	long (*fallocate)(struct file *file, int mode, loff_t offset,
 			  loff_t len);
-	/* get_lower_file is for stackable file system */
-	struct file* (*get_lower_file)(struct file *f);
 	int (*show_fdinfo)(struct seq_file *m, struct file *f);
 	struct file* (*get_lower_file)(struct file *f);
 };
@@ -1718,7 +1653,6 @@ struct super_operations {
 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
 	int (*nr_cached_objects)(struct super_block *);
 	void (*free_cached_objects)(struct super_block *, int);
-	long (*unlink_callback)(struct super_block *, char *);
 };
 
 /*
@@ -2403,7 +2337,7 @@ extern int do_pipe_flags(int *, int);
 extern int kernel_read(struct file *, loff_t, char *, unsigned long);
 extern ssize_t kernel_write(struct file *, const char *, size_t, loff_t);
 extern struct file * open_exec(const char *);
-
+ 
 /* fs/dcache.c -- generic fs support functions */
 extern int is_subdir(struct dentry *, struct dentry *);
 extern int path_is_under(struct path *, struct path *);
@@ -2555,7 +2489,7 @@ enum {
 };
 
 void dio_end_io(struct bio *bio, int error);
-struct inode *dio_bio_get_inode(struct bio *bio);
+
 
 ssize_t __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
 	struct block_device *bdev, const struct iovec *iov, loff_t offset,
@@ -2574,6 +2508,7 @@ static inline ssize_t blockdev_direct_IO(int rw, struct kiocb *iocb,
 
 void inode_dio_wait(struct inode *inode);
 void inode_dio_done(struct inode *inode);
+struct inode *dio_bio_get_inode(struct bio *bio);
 
 extern const struct file_operations generic_ro_fops;
 
