@@ -292,8 +292,7 @@ static int lpm_system_mode_select(
 	int i;
 	uint32_t best_level_pwr = ~0U;
 	uint32_t pwr;
-	uint32_t latency_us = pm_qos_request_for_cpumask(PM_QOS_CPU_DMA_LATENCY,
-							&num_powered_cores);
+	uint32_t latency_us = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
 
 	if (!system_state->system_level)
 		return -EINVAL;
