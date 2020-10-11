@@ -2,6 +2,7 @@
  *  include/linux/irqchip/arm-gic.h
  *
  *  Copyright (C) 2002 ARM Limited, All Rights Reserved.
+ *  Copyright (c) 2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,9 +19,11 @@
 #define GIC_CPU_RUNNINGPRI		0x14
 #define GIC_CPU_HIGHPRI			0x18
 
+#define GICC_IAR_INT_ID_MASK		0x3ff
+
 #define GIC_DIST_CTRL			0x000
-#define GIC_DIST_CTR			0x004
 #define GIC_DIST_ISR			0x080
+#define GIC_DIST_CTR			0x004
 #define GIC_DIST_IGROUP			0x080
 #define GIC_DIST_ENABLE_SET		0x100
 #define GIC_DIST_ENABLE_CLEAR		0x180
@@ -62,29 +65,28 @@
 
 struct device_node;
 
-#if defined (CONFIG_MACH_AFYONLTE_TMO) || defined(CONFIG_MACH_ATLANTICLTE_ATT) || defined(CONFIG_MACH_ATLANTIC3GEUR_OPEN)
-void gic_dump_register_set(void);
-#endif
 extern struct irq_chip gic_arch_extn;
 
 void gic_init_bases(unsigned int, int, void __iomem *, void __iomem *,
 		    u32 offset, struct device_node *);
 void gic_cascade_irq(unsigned int gic_nr, unsigned int irq);
 void gic_raise_softirq(const struct cpumask *mask, unsigned int irq);
+bool gic_is_irq_pending(unsigned int irq);
+void gic_clear_irq_pending(unsigned int irq);
 #ifdef CONFIG_ARM_GIC
 void gic_set_irq_secure(unsigned int irq);
 #else
 static inline void gic_set_irq_secure(unsigned int irq) { }
 #endif
-
 static inline void gic_init(unsigned int nr, int start,
 			    void __iomem *dist , void __iomem *cpu)
 {
 	gic_init_bases(nr, start, dist, cpu, 0, NULL);
 }
+
 bool gic_is_spi_pending(unsigned int irq);
 void gic_clear_spi_pending(unsigned int irq);
 void gic_set_irq_secure(unsigned int irq);
-#endif
-
+void gic_show_pending_irq(void);
 #endif /* __ASSEMBLY */
+#endif
