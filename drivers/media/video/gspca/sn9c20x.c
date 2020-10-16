@@ -1598,7 +1598,7 @@ static int sd_dbg_g_register(struct gspca_dev *gspca_dev,
 }
 
 static int sd_dbg_s_register(struct gspca_dev *gspca_dev,
-			struct v4l2_dbg_register *reg)
+			const struct v4l2_dbg_register *reg)
 {
 	struct sd *sd = (struct sd *) gspca_dev;
 
@@ -2203,7 +2203,7 @@ static void qual_upd(struct work_struct *work)
 	mutex_unlock(&gspca_dev->usb_lock);
 }
 
-#if defined(CONFIG_INPUT) || defined(CONFIG_INPUT_MODULE)
+#if IS_ENABLED(CONFIG_INPUT)
 static int sd_int_pkt_scan(struct gspca_dev *gspca_dev,
 			u8 *data,		/* interrupt packet */
 			int len)		/* interrupt packet length */
@@ -2347,7 +2347,7 @@ static const struct sd_desc sd_desc = {
 	.stopN = sd_stopN,
 	.stop0 = sd_stop0,
 	.pkt_scan = sd_pkt_scan,
-#if defined(CONFIG_INPUT) || defined(CONFIG_INPUT_MODULE)
+#if IS_ENABLED(CONFIG_INPUT)
 	.int_pkt_scan = sd_int_pkt_scan,
 #endif
 	.dq_callback = sd_dqcallback,

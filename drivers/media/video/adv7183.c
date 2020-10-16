@@ -507,7 +507,7 @@ static int adv7183_g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *
 	return 0;
 }
 
-static int adv7183_s_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg)
+static int adv7183_s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
@@ -677,22 +677,11 @@ static struct i2c_driver adv7183_driver = {
 		.name   = "adv7183",
 	},
 	.probe          = adv7183_probe,
-	.remove         = __devexit_p(adv7183_remove),
+	.remove         = adv7183_remove,
 	.id_table       = adv7183_id,
 };
 
-static __init int adv7183_init(void)
-{
-	return i2c_add_driver(&adv7183_driver);
-}
-
-static __exit void adv7183_exit(void)
-{
-	i2c_del_driver(&adv7183_driver);
-}
-
-module_init(adv7183_init);
-module_exit(adv7183_exit);
+module_i2c_driver(adv7183_driver);
 
 MODULE_DESCRIPTION("Analog Devices ADV7183 video decoder driver");
 MODULE_AUTHOR("Scott Jiang <Scott.Jiang.Linux@gmail.com>");

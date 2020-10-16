@@ -19,6 +19,7 @@ comment "Multimedia core support"
 
 config MEDIA_CONTROLLER
 	bool "Media Controller API (EXPERIMENTAL)"
+	depends on EXPERIMENTAL
 	---help---
 	  Enable the media controller API used to query media devices internal
 	  topology and configure it dynamically.
@@ -54,7 +55,7 @@ config VIDEO_V4L2_COMMON
 
 config VIDEO_V4L2_SUBDEV_API
 	bool "V4L2 sub-device userspace API (EXPERIMENTAL)"
-	depends on VIDEO_DEV && MEDIA_CONTROLLER
+	depends on VIDEO_DEV && MEDIA_CONTROLLER && EXPERIMENTAL
 	---help---
 	  Enables the V4L2 sub-device pad-level userspace API used to configure
 	  video format, size and frame rate between hardware blocks.

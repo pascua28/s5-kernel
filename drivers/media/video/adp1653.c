@@ -3,10 +3,10 @@
  *
  * Copyright (C) 2008--2011 Nokia Corporation
  *
- * Contact: Sakari Ailus <sakari.ailus@maxwell.research.nokia.com>
+ * Contact: Sakari Ailus <sakari.ailus@iki.fi>
  *
  * Contributors:
- *	Sakari Ailus <sakari.ailus@maxwell.research.nokia.com>
+ *	Sakari Ailus <sakari.ailus@iki.fi>
  *	Tuukka Toivonen <tuukkat76@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
@@ -448,7 +448,7 @@ free_and_quit:
 	return ret;
 }
 
-static int __exit adp1653_remove(struct i2c_client *client)
+static int adp1653_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct adp1653_flash *flash = to_adp1653_flash(subdev);
@@ -477,7 +477,7 @@ static struct i2c_driver adp1653_i2c_driver = {
 		.pm	= &adp1653_pm_ops,
 	},
 	.probe		= adp1653_probe,
-	.remove		= __exit_p(adp1653_remove),
+	.remove		= adp1653_remove,
 	.id_table	= adp1653_id_table,
 };
 
