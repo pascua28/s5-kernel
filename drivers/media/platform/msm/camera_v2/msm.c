@@ -583,7 +583,7 @@ static int __msm_close_destry_session_notify_apps(void *d1, void *d2)
 }
 
 static long msm_private_ioctl(struct file *file, void *fh,
-			      bool valid_prio, int cmd, void *arg)
+			      bool valid_prio, unsigned int cmd, void *arg)
 {
 	int rc = 0;
 	struct msm_v4l2_event_data *event_data;
@@ -678,13 +678,13 @@ static long msm_private_ioctl(struct file *file, void *fh,
 }
 
 static int msm_unsubscribe_event(struct v4l2_fh *fh,
-				 struct v4l2_event_subscription *sub)
+	const struct v4l2_event_subscription *sub)
 {
 	return v4l2_event_unsubscribe(fh, sub);
 }
 
 static int msm_subscribe_event(struct v4l2_fh *fh,
-			       struct v4l2_event_subscription *sub)
+	const struct v4l2_event_subscription *sub)
 {
 	return v4l2_event_subscribe(fh, sub, 5, NULL);
 }

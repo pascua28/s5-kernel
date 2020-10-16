@@ -173,7 +173,7 @@ int msm_v4l2_streamoff(struct file *file, void *fh,
 }
 
 static int msm_v4l2_subscribe_event(struct v4l2_fh *fh,
-				struct v4l2_event_subscription *sub)
+	const struct v4l2_event_subscription *sub)
 {
 	struct msm_vidc_inst *vidc_inst = container_of(fh,
 			struct msm_vidc_inst, event_handler);
@@ -181,7 +181,7 @@ static int msm_v4l2_subscribe_event(struct v4l2_fh *fh,
 }
 
 static int msm_v4l2_unsubscribe_event(struct v4l2_fh *fh,
-				struct v4l2_event_subscription *sub)
+	const struct v4l2_event_subscription *sub)
 {
 	struct msm_vidc_inst *vidc_inst = container_of(fh,
 			struct msm_vidc_inst, event_handler);
