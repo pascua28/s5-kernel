@@ -17,9 +17,16 @@ comment "Multimedia core support"
 # Media controller
 #
 
+config MEDIA_CAMERA_SUPPORT
+	bool "Cameras/video grabbers support"
+	---help---
+	  Enable support for webcams and video grabbers.
+
+	  Say Y when you have a webcam or a video capture grabber board.
+
 config MEDIA_CONTROLLER
-	bool "Media Controller API (EXPERIMENTAL)"
-	depends on EXPERIMENTAL
+	bool "Media Controller API"
+	depends on MEDIA_CAMERA_SUPPORT
 	---help---
 	  Enable the media controller API used to query media devices internal
 	  topology and configure it dynamically.
@@ -48,19 +55,16 @@ config VIDEO_DEV
 	  To compile this driver as a module, choose M here: the
 	  module will be called videodev.
 
-config VIDEO_V4L2_COMMON
-	tristate
-	depends on (I2C || I2C=n) && VIDEO_DEV
-	default (I2C || I2C=n) && VIDEO_DEV
-
-config VIDEO_V4L2_SUBDEV_API
-	bool "V4L2 sub-device userspace API (EXPERIMENTAL)"
-	depends on VIDEO_DEV && MEDIA_CONTROLLER && EXPERIMENTAL
+	config VIDEO_V4L2_SUBDEV_API
+	bool "V4L2 sub-device userspace API"
+	depends on VIDEO_DEV && MEDIA_CONTROLLER
 	---help---
 	  Enables the V4L2 sub-device pad-level userspace API used to configure
 	  video format, size and frame rate between hardware blocks.
 
 	  This API is mostly used by camera interfaces in embedded platforms.
+
+source "drivers/media/v4l2-core/Kconfig"
 
 #
 # DVB Core
@@ -117,8 +121,6 @@ source "drivers/media/common/tuners/Kconfig"
 #
 # Video/Radio/Hybrid adapters
 #
-
-source "drivers/media/video/Kconfig"
 
 source "drivers/media/radio/Kconfig"
 
