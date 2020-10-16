@@ -56,8 +56,6 @@
  * @WLAN_STA_INSERTED: This station is inserted into the hash table.
  * @WLAN_STA_RATE_CONTROL: rate control was initialized for this station.
  * @WLAN_STA_TOFFSET_KNOWN: toffset calculated for this station is valid.
- * @WLAN_STA_MPSP_OWNER: local STA is owner of a mesh Peer Service Period.
- * @WLAN_STA_MPSP_RECIPIENT: local STA is recipient of a MPSP.
  */
 enum ieee80211_sta_info_flags {
 	WLAN_STA_AUTH,
@@ -80,10 +78,9 @@ enum ieee80211_sta_info_flags {
 	WLAN_STA_INSERTED,
 	WLAN_STA_RATE_CONTROL,
 	WLAN_STA_TOFFSET_KNOWN,
-	WLAN_STA_MPSP_OWNER,
-	WLAN_STA_MPSP_RECIPIENT,
 };
 
+#define STA_TID_NUM 16
 #define ADDBA_RESP_INTERVAL HZ
 #define HT_AGG_MAX_RETRIES		15
 #define HT_AGG_BURST_RETRIES		3
@@ -95,13 +92,6 @@ enum ieee80211_sta_info_flags {
 #define HT_AGG_STATE_STOPPING		3
 #define HT_AGG_STATE_WANT_START		4
 #define HT_AGG_STATE_WANT_STOP		5
-
-enum ieee80211_agg_stop_reason {
-	AGG_STOP_DECLINED,
-	AGG_STOP_LOCAL_REQUEST,
-	AGG_STOP_PEER_REQUEST,
-	AGG_STOP_DESTROY_STA,
-};
 
 /**
  * struct tid_ampdu_tx - TID aggregation information (Tx).
@@ -203,20 +193,19 @@ struct tid_ampdu_rx {
  *	driver requested to close until the work for it runs
  * @mtx: mutex to protect all TX data (except non-NULL assignments
  *	to tid_tx[idx], which are protected by the sta spinlock)
- *	tid_start_tx is also protected by sta->lock.
  */
 struct sta_ampdu_mlme {
 	struct mutex mtx;
 	/* rx */
-	struct tid_ampdu_rx __rcu *tid_rx[IEEE80211_NUM_TIDS];
-	unsigned long tid_rx_timer_expired[BITS_TO_LONGS(IEEE80211_NUM_TIDS)];
-	unsigned long tid_rx_stop_requested[BITS_TO_LONGS(IEEE80211_NUM_TIDS)];
+	struct tid_ampdu_rx __rcu *tid_rx[STA_TID_NUM];
+	unsigned long tid_rx_timer_expired[BITS_TO_LONGS(STA_TID_NUM)];
+	unsigned long tid_rx_stop_requested[BITS_TO_LONGS(STA_TID_NUM)];
 	/* tx */
 	struct work_struct work;
-	struct tid_ampdu_tx __rcu *tid_tx[IEEE80211_NUM_TIDS];
-	struct tid_ampdu_tx *tid_start_tx[IEEE80211_NUM_TIDS];
-	unsigned long last_addba_req_time[IEEE80211_NUM_TIDS];
-	u8 addba_req_num[IEEE80211_NUM_TIDS];
+	struct tid_ampdu_tx __rcu *tid_tx[STA_TID_NUM];
+	struct tid_ampdu_tx *tid_start_tx[STA_TID_NUM];
+	unsigned long last_addba_req_time[STA_TID_NUM];
+	u8 addba_req_num[STA_TID_NUM];
 	u8 dialog_token_allocator;
 };
 
@@ -239,7 +228,6 @@ struct sta_ampdu_mlme {
  *	"the" transmit rate
  * @last_rx_rate_idx: rx status rate index of the last data packet
  * @last_rx_rate_flag: rx status flag of the last data packet
- * @last_rx_rate_vht_nss: rx status nss of last data packet
  * @lock: used for locking all fields that require locking, see comments
  *	in the header file.
  * @drv_unblock_wk: used for driver PS unblocking
@@ -262,7 +250,6 @@ struct sta_ampdu_mlme {
  * @rx_dropped: number of dropped MPDUs from this STA
  * @last_signal: signal of last received frame from this STA
  * @avg_signal: moving average of signal of received frames from this STA
- * @last_ack_signal: signal of last received Ack frame from this STA
  * @last_seq_ctrl: last received seq/frag number from this STA (per RX queue)
  * @tx_filtered_count: number of frames the hardware filtered for this STA
  * @tx_retry_failed: number of frames that failed retry
@@ -285,9 +272,7 @@ struct sta_ampdu_mlme {
  * @t_offset: timing offset relative to this host
  * @t_offset_setpoint: reference timing offset of this sta to be used when
  * 	calculating clockdrift
- * @local_pm: local link-specific power save mode
- * @peer_pm: peer-specific power save mode towards local STA
- * @nonpeer_pm: STA power save mode towards non-peer neighbors
+ * @ch_type: peer's channel type
  * @debugfs: debug filesystem info
  * @dead: set to true when sta is unlinked
  * @uploaded: set to true when sta is uploaded to the driver
@@ -295,17 +280,12 @@ struct sta_ampdu_mlme {
  * @sta: station information we share with the driver
  * @sta_state: duplicates information about station state (for debug)
  * @beacon_loss_count: number of times beacon loss has triggered
- * @rcu_head: RCU head used for freeing this station struct
- * @cur_max_bandwidth: maximum bandwidth to use for TX to the station,
- *	taken from HT/VHT capabilities or VHT operating mode notification
- * @chains: chains ever used for RX from this station
- * @chain_signal_last: last signal (per chain)
- * @chain_signal_avg: signal average (per chain)
+ * @supports_40mhz: tracks whether the station advertised 40 MHz support
+ *	as we overwrite its HT parameters with the currently used value
  */
 struct sta_info {
 	/* General information, mostly static */
 	struct list_head list;
-	struct rcu_head rcu_head;
 	struct sta_info __rcu *hnext;
 	struct ieee80211_local *local;
 	struct ieee80211_sub_if_data *sdata;
@@ -316,6 +296,7 @@ struct sta_info {
 	spinlock_t lock;
 
 	struct work_struct drv_unblock_wk;
+	struct work_struct free_sta_wk;
 
 	u16 listen_interval;
 
@@ -347,14 +328,8 @@ struct sta_info {
 	unsigned long rx_dropped;
 	int last_signal;
 	struct ewma avg_signal;
-	int last_ack_signal;
-
-	u8 chains;
-	s8 chain_signal_last[IEEE80211_MAX_CHAINS];
-	struct ewma chain_signal_avg[IEEE80211_MAX_CHAINS];
-
 	/* Plus 1 for non-QoS frames */
-	__le16 last_seq_ctrl[IEEE80211_NUM_TIDS + 1];
+	__le16 last_seq_ctrl[NUM_RX_DATA_QUEUES + 1];
 
 	/* Updated from TX status path only, no locking requirements */
 	unsigned long tx_filtered_count;
@@ -368,15 +343,14 @@ struct sta_info {
 	u64 tx_bytes[IEEE80211_NUM_ACS];
 	struct ieee80211_tx_rate last_tx_rate;
 	int last_rx_rate_idx;
-	u32 last_rx_rate_flag;
-	u8 last_rx_rate_vht_nss;
+	int last_rx_rate_flag;
 	u16 tid_seq[IEEE80211_QOS_CTL_TID_MASK + 1];
 
 	/*
 	 * Aggregation information, locked with lock.
 	 */
 	struct sta_ampdu_mlme ampdu_mlme;
-	u8 timer_to_tid[IEEE80211_NUM_TIDS];
+	u8 timer_to_tid[STA_TID_NUM];
 
 #ifdef CONFIG_MAC80211_MESH
 	/*
@@ -393,10 +367,7 @@ struct sta_info {
 	struct timer_list plink_timer;
 	s64 t_offset;
 	s64 t_offset_setpoint;
-	/* mesh power save */
-	enum nl80211_mesh_power_mode local_pm;
-	enum nl80211_mesh_power_mode peer_pm;
-	enum nl80211_mesh_power_mode nonpeer_pm;
+	enum nl80211_channel_type ch_type;
 #endif
 
 #ifdef CONFIG_MAC80211_DEBUGFS
@@ -406,10 +377,10 @@ struct sta_info {
 	} debugfs;
 #endif
 
-	enum ieee80211_sta_rx_bandwidth cur_max_bandwidth;
-
 	unsigned int lost_packets;
 	unsigned int beacon_loss_count;
+
+	bool supports_40mhz;
 
 	/* keep last! */
 	struct ieee80211_sta sta;
@@ -573,43 +544,10 @@ void sta_info_recalc_tim(struct sta_info *sta);
 
 void sta_info_init(struct ieee80211_local *local);
 void sta_info_stop(struct ieee80211_local *local);
-int sta_info_flush_defer(struct ieee80211_sub_if_data *sdata);
-
-/**
- * sta_info_flush_cleanup - flush the sta_info cleanup queue
- * @sdata: the interface
- *
- * Flushes the sta_info cleanup queue for a given interface;
- * this is necessary before the interface is removed or, for
- * AP/mesh interfaces, before it is deconfigured.
- *
- * Note an rcu_barrier() must precede the function, after all
- * stations have been flushed/removed to ensure the call_rcu()
- * calls that add stations to the cleanup queue have completed.
- */
-void sta_info_flush_cleanup(struct ieee80211_sub_if_data *sdata);
-
-/**
- * sta_info_flush - flush matching STA entries from the STA table
- *
- * Returns the number of removed STA entries.
- *
- * @sdata: sdata to remove all stations from
- */
-static inline int sta_info_flush(struct ieee80211_sub_if_data *sdata)
-{
-	int ret = sta_info_flush_defer(sdata);
-
-	rcu_barrier();
-	sta_info_flush_cleanup(sdata);
-
-	return ret;
-}
-
+int sta_info_flush(struct ieee80211_local *local,
+		   struct ieee80211_sub_if_data *sdata);
 void sta_set_rate_info_tx(struct sta_info *sta,
 			  const struct ieee80211_tx_rate *rate,
-			  struct rate_info *rinfo);
-void sta_set_rate_info_rx(struct sta_info *sta,
 			  struct rate_info *rinfo);
 void ieee80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 			  unsigned long exp_time);
@@ -617,7 +555,5 @@ void ieee80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 void ieee80211_sta_ps_deliver_wakeup(struct sta_info *sta);
 void ieee80211_sta_ps_deliver_poll_response(struct sta_info *sta);
 void ieee80211_sta_ps_deliver_uapsd(struct sta_info *sta);
-
-void ieee80211_cleanup_sdata_stas(struct ieee80211_sub_if_data *sdata);
 
 #endif /* STA_INFO_H */
