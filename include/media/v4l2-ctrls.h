@@ -22,7 +22,6 @@
 #define _V4L2_CTRLS_H
 
 #include <linux/list.h>
-#include <linux/mutex.h>
 #include <linux/videodev2.h>
 
 /* forward references */
@@ -387,29 +386,6 @@ struct v4l2_ctrl *v4l2_ctrl_new_std_menu(struct v4l2_ctrl_handler *hdl,
 			const struct v4l2_ctrl_ops *ops,
 			u32 id, s32 max, s32 mask, s32 def);
 
-/** v4l2_ctrl_new_std_menu_items() - Create a new standard V4L2 menu control
-  * with driver specific menu.
-  * @hdl:	The control handler.
-  * @ops:	The control ops.
-  * @id:	The control ID.
-  * @max:	The control's maximum value.
-  * @mask:	The control's skip mask for menu controls. This makes it
-  *		easy to skip menu items that are not valid. If bit X is set,
-  *		then menu item X is skipped. Of course, this only works for
-  *		menus with <= 32 menu items. There are no menus that come
-  *		close to that number, so this is OK. Should we ever need more,
-  *		then this will have to be extended to a u64 or a bit array.
-  * @def:	The control's default value.
-  * @qmenu:	The new menu.
-  *
-  * Same as v4l2_ctrl_new_std_menu(), but @qmenu will be the driver specific
-  * menu of this control.
-  *
-  */
-struct v4l2_ctrl *v4l2_ctrl_new_std_menu_items(struct v4l2_ctrl_handler *hdl,
-			const struct v4l2_ctrl_ops *ops, u32 id, s32 max,
-			s32 mask, s32 def, const char * const *qmenu);
-
 /** v4l2_ctrl_new_int_menu() - Create a new standard V4L2 integer menu control.
   * @hdl:	The control handler.
   * @ops:	The control ops.
@@ -443,28 +419,14 @@ struct v4l2_ctrl *v4l2_ctrl_add_ctrl(struct v4l2_ctrl_handler *hdl,
   * @hdl:	The control handler.
   * @add:	The control handler whose controls you want to add to
   *		the @hdl control handler.
-  * @filter:	This function will filter which controls should be added.
   *
-  * Does nothing if either of the two handlers is a NULL pointer.
-  * If @filter is NULL, then all controls are added. Otherwise only those
-  * controls for which @filter returns true will be added.
+  * Does nothing if either of the two is a NULL pointer.
   * In case of an error @hdl->error will be set to the error code (if it
   * wasn't set already).
   */
 int v4l2_ctrl_add_handler(struct v4l2_ctrl_handler *hdl,
-			  struct v4l2_ctrl_handler *add,
-			  bool (*filter)(const struct v4l2_ctrl *ctrl));
+			  struct v4l2_ctrl_handler *add);
 
-/** v4l2_ctrl_radio_filter() - Standard filter for radio controls.
-  * @ctrl:	The control that is filtered.
-  *
-  * This will return true for any controls that are valid for radio device
-  * nodes. Those are all of the V4L2_CID_AUDIO_* user controls and all FM
-  * transmitter class controls.
-  *
-  * This function is to be used with v4l2_ctrl_add_handler().
-  */
-bool v4l2_ctrl_radio_filter(const struct v4l2_ctrl *ctrl);
 
 /** v4l2_ctrl_cluster() - Mark all controls in the cluster as belonging to that cluster.
   * @ncontrols:	The number of controls in this cluster.
@@ -543,26 +505,6 @@ void v4l2_ctrl_activate(struct v4l2_ctrl *ctrl, bool active);
   */
 void v4l2_ctrl_grab(struct v4l2_ctrl *ctrl, bool grabbed);
 
-/** v4l2_ctrl_modify_range() - Update the range of a control.
-  * @ctrl:	The control to update.
-  * @min:	The control's minimum value.
-  * @max:	The control's maximum value.
-  * @step:	The control's step value
-  * @def:	The control's default value.
-  *
-  * Update the range of a control on the fly. This works for control types
-  * INTEGER, BOOLEAN, MENU, INTEGER MENU and BITMASK. For menu controls the
-  * @step value is interpreted as a menu_skip_mask.
-  *
-  * An error is returned if one of the range arguments is invalid for this
-  * control type.
-  *
-  * This function assumes that the control handler is not locked and will
-  * take the lock itself.
-  */
-int v4l2_ctrl_modify_range(struct v4l2_ctrl *ctrl,
-			s32 min, s32 max, u32 step, s32 def);
-
 /** v4l2_ctrl_lock() - Helper function to lock the handler
   * associated with the control.
   * @ctrl:	The control to lock.
@@ -618,29 +560,6 @@ s32 v4l2_ctrl_g_ctrl(struct v4l2_ctrl *ctrl);
   */
 int v4l2_ctrl_s_ctrl(struct v4l2_ctrl *ctrl, s32 val);
 
-/** v4l2_ctrl_g_ctrl_int64() - Helper function to get a 64-bit control's value from within a driver.
-  * @ctrl:	The control.
-  *
-  * This returns the control's value safely by going through the control
-  * framework. This function will lock the control's handler, so it cannot be
-  * used from within the &v4l2_ctrl_ops functions.
-  *
-  * This function is for 64-bit integer type controls only.
-  */
-s64 v4l2_ctrl_g_ctrl_int64(struct v4l2_ctrl *ctrl);
-
-/** v4l2_ctrl_s_ctrl_int64() - Helper function to set a 64-bit control's value from within a driver.
-  * @ctrl:	The control.
-  * @val:	The new value.
-  *
-  * This set the control's new value safely by going through the control
-  * framework. This function will lock the control's handler, so it cannot be
-  * used from within the &v4l2_ctrl_ops functions.
-  *
-  * This function is for 64-bit integer type controls only.
-  */
-int v4l2_ctrl_s_ctrl_int64(struct v4l2_ctrl *ctrl, s64 val);
-
 /* Internal helper functions that deal with control events. */
 extern const struct v4l2_subscribed_event_ops v4l2_ctrl_sub_ev_ops;
 void v4l2_ctrl_replace(struct v4l2_event *old, const struct v4l2_event *new);
@@ -653,7 +572,7 @@ int v4l2_ctrl_log_status(struct file *file, void *fh);
 /* Can be used as a vidioc_subscribe_event function that just subscribes
    control events. */
 int v4l2_ctrl_subscribe_event(struct v4l2_fh *fh,
-				const struct v4l2_event_subscription *sub);
+				struct v4l2_event_subscription *sub);
 
 /* Can be used as a poll function that just polls for control events. */
 unsigned int v4l2_ctrl_poll(struct file *file, struct poll_table_struct *wait);
