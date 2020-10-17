@@ -14,7 +14,6 @@
 #include <linux/jiffies.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
-#include <linux/videodev2.h>
 #include <asm/div64.h>
 #include <mach/subsystem_restart.h>
 
@@ -3299,7 +3298,7 @@ enum hal_extradata_id msm_comm_get_hal_extradata_index(
 	case V4L2_MPEG_VIDC_EXTRADATA_METADATA_FILLER:
 		ret = HAL_EXTRADATA_METADATA_FILLER;
 		break;
-	case V4L2_MPEG_VIDC_EXTRADATA_ASPECT_RATIO:
+	case V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO:
 		ret = HAL_EXTRADATA_ASPECT_RATIO;
 		break;
 	case V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP:
