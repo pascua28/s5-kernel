@@ -116,8 +116,7 @@ static const struct vm_operations_struct videobuf2_vm_ops = {
 	.close    = videobuf2_vm_close,
 };
 
-static void *msm_vb2_mem_ops_alloc(void *alloc_ctx, unsigned long size,
-		gfp_t gfp_flags)
+static void *msm_vb2_mem_ops_alloc(void *alloc_ctx, unsigned long size)
 {
 	struct videobuf2_contig_pmem *mem;
 	mem = kzalloc(sizeof(*mem), GFP_KERNEL);

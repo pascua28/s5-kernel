@@ -155,7 +155,7 @@ static struct video_device pwc_template = {
 /***************************************************************************/
 /* Private functions */
 
-static struct pwc_frame_buf *pwc_get_next_fill_buf(struct pwc_device *pdev)
+struct pwc_frame_buf *pwc_get_next_fill_buf(struct pwc_device *pdev)
 {
 	unsigned long flags = 0;
 	struct pwc_frame_buf *buf = NULL;
@@ -316,8 +316,7 @@ static void pwc_isoc_handler(struct urb *urb)
 			struct pwc_frame_buf *fbuf = pdev->fill_buf;
 
 			if (pdev->vsync == 1) {
-				v4l2_get_timestamp(
-					&fbuf->vb.v4l2_buf.timestamp);
+				do_gettimeofday(&fbuf->vb.v4l2_buf.timestamp);
 				pdev->vsync = 2;
 			}
 
@@ -1002,15 +1001,10 @@ static int usb_pwc_probe(struct usb_interface *intf, const struct usb_device_id 
 	pdev->vb_queue.buf_struct_size = sizeof(struct pwc_frame_buf);
 	pdev->vb_queue.ops = &pwc_vb_queue_ops;
 	pdev->vb_queue.mem_ops = &vb2_vmalloc_memops;
-	pdev->vb_queue.timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
-	rc = vb2_queue_init(&pdev->vb_queue);
-	if (rc < 0) {
-		PWC_ERROR("Oops, could not initialize vb2 queue.\n");
-		goto err_free_mem;
-	}
+	vb2_queue_init(&pdev->vb_queue);
 
 	/* Init video_device structure */
-	pdev->vdev = pwc_template;
+	memcpy(&pdev->vdev, &pwc_template, sizeof(pwc_template));
 	strcpy(pdev->vdev.name, name);
 	pdev->vdev.queue = &pdev->vb_queue;
 	pdev->vdev.queue->lock = &pdev->vb_queue_lock;

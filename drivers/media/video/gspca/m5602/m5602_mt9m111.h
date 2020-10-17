@@ -110,7 +110,6 @@ extern bool dump_sensor;
 
 int mt9m111_probe(struct sd *sd);
 int mt9m111_init(struct sd *sd);
-int mt9m111_init_controls(struct sd *sd);
 int mt9m111_start(struct sd *sd);
 void mt9m111_disconnect(struct sd *sd);
 
@@ -122,7 +121,6 @@ static const struct m5602_sensor mt9m111 = {
 
 	.probe = mt9m111_probe,
 	.init = mt9m111_init,
-	.init_controls = mt9m111_init_controls,
 	.disconnect = mt9m111_disconnect,
 	.start = mt9m111_start,
 };

@@ -1601,7 +1601,7 @@ static int s5k6aa_probe(struct i2c_client *client,
 	for (i = 0; i < S5K6AA_NUM_SUPPLIES; i++)
 		s5k6aa->supplies[i].supply = s5k6aa_supply_names[i];
 
-	ret = devm_regulator_bulk_get(&client->dev, S5K6AA_NUM_SUPPLIES,
+	ret = regulator_bulk_get(&client->dev, S5K6AA_NUM_SUPPLIES,
 				 s5k6aa->supplies);
 	if (ret) {
 		dev_err(&client->dev, "Failed to get regulators\n");
@@ -1610,7 +1610,7 @@ static int s5k6aa_probe(struct i2c_client *client,
 
 	ret = s5k6aa_initialize_ctrls(s5k6aa);
 	if (ret)
-		goto out_err3;
+		goto out_err4;
 
 	s5k6aa_presets_data_init(s5k6aa);
 
@@ -1621,6 +1621,8 @@ static int s5k6aa_probe(struct i2c_client *client,
 
 	return 0;
 
+out_err4:
+	regulator_bulk_free(S5K6AA_NUM_SUPPLIES, s5k6aa->supplies);
 out_err3:
 	s5k6aa_free_gpios(s5k6aa);
 out_err2:
@@ -1638,6 +1640,7 @@ static int s5k6aa_remove(struct i2c_client *client)
 	v4l2_device_unregister_subdev(sd);
 	v4l2_ctrl_handler_free(sd->ctrl_handler);
 	media_entity_cleanup(&sd->entity);
+	regulator_bulk_free(S5K6AA_NUM_SUPPLIES, s5k6aa->supplies);
 	s5k6aa_free_gpios(s5k6aa);
 	kfree(s5k6aa);
 

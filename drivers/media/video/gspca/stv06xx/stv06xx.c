@@ -42,10 +42,8 @@ static bool dump_sensor;
 int stv06xx_write_bridge(struct sd *sd, u16 address, u16 i2c_data)
 {
 	int err;
-	struct gspca_dev *gspca_dev = (struct gspca_dev *)sd;
 	struct usb_device *udev = sd->gspca_dev.dev;
 	__u8 *buf = sd->gspca_dev.usb_buf;
-
 	u8 len = (i2c_data > 0xff) ? 2 : 1;
 
 	buf[0] = i2c_data & 0xff;
@@ -64,7 +62,6 @@ int stv06xx_write_bridge(struct sd *sd, u16 address, u16 i2c_data)
 int stv06xx_read_bridge(struct sd *sd, u16 address, u8 *i2c_data)
 {
 	int err;
-	struct gspca_dev *gspca_dev = (struct gspca_dev *)sd;
 	struct usb_device *udev = sd->gspca_dev.dev;
 	__u8 *buf = sd->gspca_dev.usb_buf;
 
@@ -113,7 +110,6 @@ static int stv06xx_write_sensor_finish(struct sd *sd)
 int stv06xx_write_sensor_bytes(struct sd *sd, const u8 *data, u8 len)
 {
 	int err, i, j;
-	struct gspca_dev *gspca_dev = (struct gspca_dev *)sd;
 	struct usb_device *udev = sd->gspca_dev.dev;
 	__u8 *buf = sd->gspca_dev.usb_buf;
 
@@ -143,7 +139,6 @@ int stv06xx_write_sensor_bytes(struct sd *sd, const u8 *data, u8 len)
 int stv06xx_write_sensor_words(struct sd *sd, const u16 *data, u8 len)
 {
 	int err, i, j;
-	struct gspca_dev *gspca_dev = (struct gspca_dev *)sd;
 	struct usb_device *udev = sd->gspca_dev.dev;
 	__u8 *buf = sd->gspca_dev.usb_buf;
 
@@ -175,7 +170,6 @@ int stv06xx_write_sensor_words(struct sd *sd, const u16 *data, u8 len)
 int stv06xx_read_sensor(struct sd *sd, const u8 address, u16 *value)
 {
 	int err;
-	struct gspca_dev *gspca_dev = (struct gspca_dev *)sd;
 	struct usb_device *udev = sd->gspca_dev.dev;
 	__u8 *buf = sd->gspca_dev.usb_buf;
 
@@ -289,7 +283,7 @@ static int stv06xx_start(struct gspca_dev *gspca_dev)
 	intf = usb_ifnum_to_if(sd->gspca_dev.dev, sd->gspca_dev.iface);
 	alt = usb_altnum_to_altsetting(intf, sd->gspca_dev.alt);
 	if (!alt) {
-		PERR("Couldn't get altsetting");
+		PDEBUG(D_ERR, "Couldn't get altsetting");
 		return -EIO;
 	}
 
@@ -347,7 +341,7 @@ static int stv06xx_isoc_nego(struct gspca_dev *gspca_dev)
 
 	ret = usb_set_interface(gspca_dev->dev, gspca_dev->iface, 1);
 	if (ret < 0)
-		PERR("set alt 1 err %d", ret);
+		PDEBUG(D_ERR|D_STREAM, "set alt 1 err %d", ret);
 
 	return ret;
 }
@@ -412,7 +406,7 @@ static void stv06xx_pkt_scan(struct gspca_dev *gspca_dev,
 		len -= 4;
 
 		if (len < chunk_len) {
-			PERR("URB packet length is smaller"
+			PDEBUG(D_ERR, "URB packet length is smaller"
 				" than the specified chunk length");
 			gspca_dev->last_packet_type = DISCARD_PACKET;
 			return;
@@ -455,7 +449,7 @@ frame_data:
 				sd->to_skip = gspca_dev->width * 4;
 
 			if (chunk_len)
-				PERR("Chunk length is "
+				PDEBUG(D_ERR, "Chunk length is "
 					      "non-zero on a SOF");
 			break;
 
@@ -469,7 +463,7 @@ frame_data:
 					NULL, 0);
 
 			if (chunk_len)
-				PERR("Chunk length is "
+				PDEBUG(D_ERR, "Chunk length is "
 					      "non-zero on a EOF");
 			break;
 
@@ -498,7 +492,7 @@ frame_data:
 	}
 }
 
-#if IS_ENABLED(CONFIG_INPUT)
+#if defined(CONFIG_INPUT) || defined(CONFIG_INPUT_MODULE)
 static int sd_int_pkt_scan(struct gspca_dev *gspca_dev,
 			u8 *data,		/* interrupt packet data */
 			int len)		/* interrupt packet length */
@@ -535,7 +529,7 @@ static const struct sd_desc sd_desc = {
 	.pkt_scan = stv06xx_pkt_scan,
 	.isoc_init = stv06xx_isoc_init,
 	.isoc_nego = stv06xx_isoc_nego,
-#if IS_ENABLED(CONFIG_INPUT)
+#if defined(CONFIG_INPUT) || defined(CONFIG_INPUT_MODULE)
 	.int_pkt_scan = sd_int_pkt_scan,
 #endif
 };
@@ -602,6 +596,7 @@ MODULE_DEVICE_TABLE(usb, device_table);
 static int sd_probe(struct usb_interface *intf,
 			const struct usb_device_id *id)
 {
+	PDEBUG(D_PROBE, "Probing for a stv06xx device");
 	return gspca_dev_probe(intf, id, &sd_desc, sizeof(struct sd),
 			       THIS_MODULE);
 }
