@@ -437,9 +437,9 @@ struct files_struct init_files = {
 /*
  * allocate a file descriptor, mark it busy.
  */
-int __alloc_fd(struct files_struct *files,
-	       unsigned start, unsigned end, unsigned flags)
+int alloc_fd(unsigned start, unsigned flags)
 {
+	struct files_struct *files = current->files;
 	unsigned int fd;
 	int error;
 	struct fdtable *fdt;
@@ -499,13 +499,8 @@ out:
 	return error;
 }
 
-int alloc_fd(unsigned start, unsigned flags)
-{
-	return __alloc_fd(current->files, start, rlimit(RLIMIT_NOFILE), flags);
-}
-
 int get_unused_fd_flags(unsigned flags)
 {
-	return __alloc_fd(current->files, 0, rlimit(RLIMIT_NOFILE), flags);
+	return alloc_fd(0, flags);
 }
 EXPORT_SYMBOL(get_unused_fd_flags);
