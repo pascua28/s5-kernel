@@ -64,11 +64,11 @@ struct list_head exp_fn_list;
 
 void synaptics_power_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable);
 
-static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
+static inline int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
 
-static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
+static inline int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
 
@@ -1080,7 +1080,7 @@ static int synaptics_rmi4_set_page(struct synaptics_rmi4_data *rmi4_data,
  * starting from an assigned register address of the sensor, via I2C
  * with a retry mechanism.
  */
-static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
+static inline int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data, unsigned short length)
 {
 	int retval;
@@ -1167,7 +1167,7 @@ exit:
  * starting from an assigned register address of the sensor, via I2C with
  * a retry mechanism.
  */
-static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
+static inline int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data, unsigned short length)
 {
 	int retval;
