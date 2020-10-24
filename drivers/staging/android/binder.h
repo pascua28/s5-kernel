@@ -26,5 +26,7 @@
 
 #include "uapi/binder.h"
 
+extern int is_nougat;
+
 #endif /* _LINUX_BINDER_H */
 

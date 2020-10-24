@@ -19,12 +19,15 @@
 #include <linux/moduleparam.h>
 #include <linux/init.h>
 #include <linux/proc_fs.h>
+#include "binder.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("S. G. Pascua");
 
 extern int binder_init(void);
 extern int binder32_init(void);
+
+int is_nougat = 0;
 
 static int binder_helper_init(void)
 {
@@ -35,6 +38,7 @@ static int binder_helper_init(void)
 	} else {
 		binder32_init();
 		filp_close(f, NULL);
+		is_nougat = 0;
 	}
 	return 0;
 }

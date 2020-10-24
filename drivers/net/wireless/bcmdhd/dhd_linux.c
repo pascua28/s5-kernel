@@ -63,6 +63,9 @@
 #include <dhd_bus.h>
 #include <dhd_proto.h>
 #include <dhd_dbg.h>
+
+#include "../../../staging/android/binder.h"
+
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
 #endif
@@ -4431,7 +4434,6 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 
 	/* set default firmware and nvram path for built-in type driver */
 	if (!dhd_download_fw_on_driverload) {
-		struct file *f;
 #ifdef CONFIG_BCMDHD_FW_PATH
 		fw = CONFIG_BCMDHD_FW_PATH;
 #endif /* CONFIG_BCMDHD_FW_PATH */
@@ -4439,11 +4441,9 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 		nv = CONFIG_BCMDHD_NVRAM_PATH;
 #endif /* CONFIG_BCMDHD_NVRAM_PATH */
 #if defined(CONFIG_BCMDHD_FW_PATH_NOUGAT) && defined(CONFIG_BCMDHD_NVRAM_PATH_NOUGAT)
-	        f = filp_open("/nougat", O_RDONLY, 0);
-	        if (!IS_ERR(f)) {
+	        if (is_nougat) {
 			fw = CONFIG_BCMDHD_FW_PATH_NOUGAT;
 			nv = CONFIG_BCMDHD_NVRAM_PATH_NOUGAT;
-	                filp_close(f, NULL);
 	        }
 #endif
 	}
