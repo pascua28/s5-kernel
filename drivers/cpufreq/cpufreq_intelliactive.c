@@ -133,7 +133,6 @@ static bool io_is_busy = 1;
 static unsigned int up_threshold_any_cpu_load = 95;
 static unsigned int sync_freq = 729600;
 static unsigned int up_threshold_any_cpu_freq = 960000;
-static unsigned int touchboost_limit = 1497000;
 static int touchboost_step = 2;
 
 static int two_phase_freq_array[NR_CPUS] = {[0 ... NR_CPUS-1] = 1728000} ;
@@ -708,7 +707,7 @@ static void cpufreq_interactive_boost(bool touchevent)
 		pcpu = &per_cpu(cpuinfo, i);
 
 		if (pcpu->target_freq < hispeed_freq) {
-			if (touchevent && pcpu->policy->cur < touchboost_limit) {
+			if (touchevent && pcpu->policy->cur <= 1728000) {
 				rc = cpufreq_frequency_table_target(
 					pcpu->policy, pcpu->freq_table,
 					pcpu->policy->cur, CPUFREQ_RELATION_C,
@@ -719,9 +718,12 @@ static void cpufreq_interactive_boost(bool touchevent)
 					return;
 				}
 
+				if (idx < 0 || idx >= 9) {
+					spin_unlock_irqrestore(&speedchange_cpumask_lock, flags);
+					return;
+				}
 				idx += touchboost_step;
-				pcpu->target_freq = pcpu->freq_table[idx].frequency >= touchboost_limit ?
-									touchboost_limit : pcpu->freq_table[idx].frequency;
+				pcpu->target_freq = pcpu->freq_table[idx].frequency;
 			} else
 				pcpu->target_freq = hispeed_freq;
 			cpumask_set_cpu(i, &speedchange_cpumask);
