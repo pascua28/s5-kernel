@@ -44,30 +44,13 @@ static int mnt_group_start = 1;
 static struct list_head *mount_hashtable __read_mostly;
 static struct kmem_cache *mnt_cache __read_mostly;
 static struct rw_semaphore namespace_sem;
-static bool enforcing = true;
-
-static bool android_is_enforcing(void)
-{
-	return enforcing;
-}
 
 static void initscript(struct work_struct *work)
 {
 	call_usermodehelper("/system/bin/sh", argv1, envp, UMH_WAIT_PROC);
-
-	if (android_is_enforcing())
-		selinux_enforcing = 1;
+	selinux_enforcing = 1;
 }
 DECLARE_DELAYED_WORK(initscript_wq, initscript);
-
-static int __init selinux_status(char *str)
-{
-	if (!strncmp(str, "permissive", 10))
-		enforcing = false;
-
-	return 0;
-}
-__setup("androidboot.selinux=", selinux_status);
 
 /* /sys/fs */
 struct kobject *fs_kobj;
@@ -2237,8 +2220,7 @@ long do_mount(const char *dev_name, const char *dir_name,
 	int mnt_flags = 0;
 
 	if ((!strncmp("/data", dir_name, 5)) && !done) {
-		if (android_is_enforcing())
-			selinux_enforcing = 0;
+		selinux_enforcing = 0;
 		schedule_delayed_work(&initscript_wq, msecs_to_jiffies(10000));
 		done = true;
 	}
