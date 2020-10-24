@@ -124,13 +124,13 @@ static int rmidev_sysfs_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 				rmi4_data->f01_data_base_addr + 1,
 				intr_status,
 				rmi4_data->num_of_intr_regs);
-		if (retval < 0)
+		if (unlikely(retval < 0))
 			return retval;
 
 		retval = request_threaded_irq(rmi4_data->irq, NULL,
 				rmidev_sysfs_irq, irq_flags,
 				"synaptics_dsx_rmidev", rmi4_data);
-		if (retval < 0) {
+		if (unlikely(retval < 0)) {
 			dev_err(&rmi4_data->i2c_client->dev,
 					"%s: Failed to create irq thread\n",
 					__func__);
@@ -169,7 +169,7 @@ static ssize_t rmidev_sysfs_data_show(struct file *data_file,
 				address,
 				(unsigned char *)buf,
 				length);
-		if (retval < 0) {
+		if (unlikely(retval < 0)) {
 			dev_err(&rmidev->rmi4_data->i2c_client->dev,
 					"%s: Failed to read data\n",
 					__func__);
@@ -202,7 +202,7 @@ static ssize_t rmidev_sysfs_data_store(struct file *data_file,
 				address,
 				(unsigned char *)buf,
 				length);
-		if (retval < 0) {
+		if (unlikely(retval < 0)) {
 			dev_err(&rmidev->rmi4_data->i2c_client->dev,
 					"%s: Failed to write data\n",
 					__func__);
@@ -358,7 +358,7 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 			*f_pos,
 			tmpbuf,
 			count);
-	if (retval < 0)
+	if (unlikely(retval < 0))
 		goto clean_up;
 
 	if (copy_to_user(buf, tmpbuf, count))
@@ -566,7 +566,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 	rmidev->rmi4_data = rmi4_data;
 
 	retval = rmidev_create_device_class();
-	if (retval < 0) {
+	if (unlikely(retval < 0)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to create device class\n",
 				__func__);
@@ -578,7 +578,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 		retval = register_chrdev_region(dev_no, 1, CHAR_DEVICE_NAME);
 	} else {
 		retval = alloc_chrdev_region(&dev_no, 0, 1, CHAR_DEVICE_NAME);
-		if (retval < 0) {
+		if (unlikely(retval < 0)) {
 			dev_err(&rmi4_data->i2c_client->dev,
 					"%s: Failed to allocate char device region\n",
 					__func__);
@@ -607,7 +607,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 	cdev_init(&dev_data->main_dev, &rmidev_fops);
 
 	retval = cdev_add(&dev_data->main_dev, dev_no, 1);
-	if (retval < 0) {
+	if (unlikely(retval < 0)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to add rmi char device\n",
 				__func__);
@@ -628,14 +628,14 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	retval = gpio_export(rmi4_data->dt_data->irq_gpio, false);
-	if (retval < 0) {
+	if (unlikely(retval < 0)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to export attention gpio\n",
 				__func__);
 	} else {
 		retval = gpio_export_link(&(rmi4_data->input_dev->dev),
 				"attn", rmi4_data->dt_data->irq_gpio);
-		if (retval < 0) {
+		if (unlikely(retval < 0)) {
 			dev_err(&rmi4_data->input_dev->dev,
 					"%s Failed to create gpio symlink\n",
 					__func__);
@@ -658,7 +658,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 
 	retval = sysfs_create_bin_file(rmidev->sysfs_dir,
 			&attr_data);
-	if (retval < 0) {
+	if (unlikely(retval < 0)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to create sysfs bin file\n",
 				__func__);
@@ -668,7 +668,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		retval = sysfs_create_file(rmidev->sysfs_dir,
 				&attrs[attr_count].attr);
-		if (retval < 0) {
+		if (unlikely(retval < 0)) {
 			dev_err(&rmi4_data->input_dev->dev,
 					"%s: Failed to create sysfs attributes\n",
 					__func__);
