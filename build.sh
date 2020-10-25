@@ -5,6 +5,12 @@ K_VERSION="v15"
 
 make ARCH=arm klte_defconfig
 find arch/arm/boot/ -name "*.dtb" -type f -delete
+
+for patch in patches/*
+do
+    patch -p1 -m < $patch
+done
+
 case "$1" in
 	klte)
     echo "Compiling kernel for klte"
@@ -194,6 +200,11 @@ tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
 
 DATE_END=$(date +"%s")
 DIFF=$(($DATE_END - $DATE_START))
+
+for patch in patches/*
+do
+    patch -p1 -R < $patch
+done
 
 mv arch/arm/boot/zImage build/zImage
 mv arch/arm/boot/dtb build/dt
