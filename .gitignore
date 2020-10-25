@@ -86,3 +86,4 @@ GTAGS
 
 # Generated firmware files
 firmware/epen/*.bin
+arch/arm/boot/compressed/bswapsdi2.S
