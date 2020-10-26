@@ -32,7 +32,6 @@
 #include <linux/slab.h>
 #include <linux/kernel_stat.h>
 #include <asm/cputime.h>
-#include <linux/input.h>
 
 static int active_count;
 
@@ -1257,83 +1256,6 @@ static struct attribute *interactive_attributes[] = {
 	NULL,
 };
 
-static void interactive_input_event(struct input_handle *handle,
-		unsigned int type,
-		unsigned int code, int value)
-{
-	if (type == EV_SYN && code == SYN_REPORT) {
-		boostpulse_endtime = ktime_to_us(ktime_get()) +
-			boostpulse_duration_val;
-		cpufreq_interactive_boost();
-	}
-}
-
-static int input_dev_filter(const char *input_dev_name)
-{
-	if (strstr(input_dev_name, "touchscreen") ||
-	    strstr(input_dev_name, "touch_dev") ||
-	    strstr(input_dev_name, "sec-touchscreen") ||
-	    strstr(input_dev_name, "keypad")) {
-		return 0;
-	} else {
-		return 1;
-	}
-}
-
-
-static int interactive_input_connect(struct input_handler *handler,
-		struct input_dev *dev, const struct input_device_id *id)
-{
-	struct input_handle *handle;
-	int error;
-
-	if (input_dev_filter(dev->name))
-		return -ENODEV;
-
-	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
-	if (!handle)
-		return -ENOMEM;
-
-	handle->dev = dev;
-	handle->handler = handler;
-	handle->name = "cpufreq";
-
-	error = input_register_handle(handle);
-	if (error)
-		goto err2;
-
-	error = input_open_device(handle);
-	if (error)
-		goto err1;
-
-	return 0;
-err1:
-	input_unregister_handle(handle);
-err2:
-	kfree(handle);
-	return error;
-}
-
-static void interactive_input_disconnect(struct input_handle *handle)
-{
-	input_close_device(handle);
-	input_unregister_handle(handle);
-	kfree(handle);
-}
-
-static const struct input_device_id interactive_ids[] = {
-	{ .driver_info = 1 },
-	{ },
-};
-
-static struct input_handler interactive_input_handler = {
-	.event		= interactive_input_event,
-	.connect	= interactive_input_connect,
-	.disconnect	= interactive_input_disconnect,
-	.name		= "intelliactive",
-	.id_table	= interactive_ids,
-};
-
 static struct attribute_group interactive_attr_group = {
 	.attrs = interactive_attributes,
 	.name = "intelliactive",
@@ -1404,10 +1326,6 @@ static int cpufreq_governor_intelliactive(struct cpufreq_policy *policy,
 			return 0;
 		}
 
-		if (!policy->cpu)
-			rc = input_register_handler
-				(&interactive_input_handler);
-
 		rc = sysfs_create_group(cpufreq_global_kobject,
 				&interactive_attr_group);
 		if (rc) {
@@ -1430,13 +1348,6 @@ static int cpufreq_governor_intelliactive(struct cpufreq_policy *policy,
 			del_timer_sync(&pcpu->cpu_timer);
 			del_timer_sync(&pcpu->cpu_slack_timer);
 			up_write(&pcpu->enable_sem);
-		}
-
-		if (--active_count > 0) {
-			if (!policy->cpu)
-				input_unregister_handler(&interactive_input_handler);
-			mutex_unlock(&gov_lock);
-			return 0;
 		}
 
 		cpufreq_unregister_notifier(
