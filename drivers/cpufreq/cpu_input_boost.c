@@ -612,6 +612,7 @@ static int __init cpu_ib_init(void)
 	b->ib.freq[0] = 1190400;
 	b->ib.freq[1] = 1497600;
 	b->ib.duration_ms = 50;
+	b->enabled = 1;
 
 	return 0;
 
