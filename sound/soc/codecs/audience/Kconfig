@@ -37,11 +37,11 @@ config SND_SOC_ES515
 if SND_SOC_ES515
 menu "eS515 Bus Interface"
 
-config SND_SOC_ES_SLIM
-	tristate "SLIMbus" if SLIMBUS
+#config SND_SOC_ES_SLIM
+#	tristate "SLIMbus" if SLIMBUS
 
-config SND_SOC_ES_I2C
-	tristate "I2C command bus"
+#config SND_SOC_ES_I2C
+#	tristate "I2C command bus"
 
 config SND_SOC_ES_SPI
 	tristate "SPI command bus"
