@@ -238,7 +238,7 @@ static void gps_unbind(struct usb_configuration *c, struct usb_function *f)
 		usb_free_descriptors(f->ss_descriptors);
 	if (gadget_is_dualspeed(c->cdev->gadget))
 		usb_free_descriptors(f->hs_descriptors);
-	usb_free_descriptors(f->fs_descriptors);
+	usb_free_descriptors(f->descriptors);
 
 	gps_free_req(dev->notify, dev->notify_req);
 
@@ -650,9 +650,9 @@ static int gps_bind(struct usb_configuration *c, struct usb_function *f)
 	dev->notify_req->context = dev;
 
 	ret = -ENOMEM;
-	f->fs_descriptors = usb_copy_descriptors(gps_fs_function);
+	f->descriptors = usb_copy_descriptors(gps_fs_function);
 
-	if (!f->fs_descriptors)
+	if (!f->descriptors)
 		goto fail;
 
 	if (gadget_is_dualspeed(cdev->gadget)) {
@@ -688,8 +688,8 @@ fail:
 		usb_free_descriptors(f->ss_descriptors);
 	if (f->hs_descriptors)
 		usb_free_descriptors(f->hs_descriptors);
-	if (f->fs_descriptors)
-		usb_free_descriptors(f->fs_descriptors);
+	if (f->descriptors)
+		usb_free_descriptors(f->descriptors);
 	if (dev->notify_req)
 		gps_free_req(dev->notify, dev->notify_req);
 ep_notify_alloc_fail:
