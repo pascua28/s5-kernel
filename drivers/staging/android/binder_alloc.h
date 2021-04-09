@@ -31,6 +31,8 @@ struct binder_transaction;
  * @free:               true if buffer is free
  * @allow_user_free:    describe the second member of struct blah,
  * @async_transaction:  describe the second member of struct blah,
+ * @oneway_spam_suspect: %true if total async allocate size just exceed
+ * spamming detect threshold
  * @debug_id:           describe the second member of struct blah,
  * @transaction:        describe the second member of struct blah,
  * @target_node:        describe the second member of struct blah,
@@ -48,7 +50,8 @@ struct binder_buffer {
 	unsigned free:1;
 	unsigned allow_user_free:1;
 	unsigned async_transaction:1;
-	unsigned debug_id:29;
+	unsigned oneway_spam_suspect:1;
+	unsigned debug_id:28;
 
 	struct binder_transaction *transaction;
 
@@ -78,6 +81,8 @@ struct binder_buffer {
  *                      page of mmap'd space
  * @buffer_size:        size of address space specified via mmap
  * @pid:                pid for associated binder_proc (invariant after init)
+ * @oneway_spam_detected: %true if oneway spam detection fired, clear that
+ * flag once the async buffer has returned to a healthy state
  *
  * Bookkeeping structure for per-proc address space management for binder
  * buffers. It is normally initialized during binder_init() and binder_mmap()
@@ -99,6 +104,7 @@ struct binder_alloc {
 	size_t buffer_size;
 	uint32_t buffer_free;
 	int pid;
+	bool oneway_spam_detected;
 };
 
 #ifdef CONFIG_ANDROID_BINDER_IPC_SELFTEST
