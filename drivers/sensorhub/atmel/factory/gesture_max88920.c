@@ -111,7 +111,7 @@ static ssize_t ir_current_store(struct device *dev,
 			}	
 		}
 		set_gesture_current(data, data->uIr_Current);
-		data->uIr_Current= uNewIrCurrent;
+		data->uIr_Current = uNewIrCurrent;
 	}
 
 	ssp_dbg("[SSP]: %s - new Ir_Current Setting : %d\n",
