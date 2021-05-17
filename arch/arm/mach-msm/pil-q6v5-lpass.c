@@ -418,7 +418,7 @@ static int __devinit pil_lpass_driver_probe(struct platform_device *pdev)
 	desc->proxy_timeout = PROXY_TIMEOUT_MS;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "restart_reg");
-	q6->restart_reg = devm_request_and_ioremap(&pdev->dev, res);
+	q6->restart_reg = devm_ioremap_resource(&pdev->dev, res);
 	if (!q6->restart_reg)
 		return -ENOMEM;
 

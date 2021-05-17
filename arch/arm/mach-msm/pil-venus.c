@@ -517,12 +517,12 @@ static int __devinit pil_venus_probe(struct platform_device *pdev)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 					    "wrapper_base");
-	drv->venus_wrapper_base = devm_request_and_ioremap(&pdev->dev, res);
+	drv->venus_wrapper_base = devm_ioremap_resource(&pdev->dev, res);
 	if (!drv->venus_wrapper_base)
 		return -ENOMEM;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vbif_base");
-	drv->venus_vbif_base = devm_request_and_ioremap(&pdev->dev, res);
+	drv->venus_vbif_base = devm_ioremap_resource(&pdev->dev, res);
 	if (!drv->venus_vbif_base)
 		return -ENOMEM;
 

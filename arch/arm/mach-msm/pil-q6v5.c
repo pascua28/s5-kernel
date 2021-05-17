@@ -247,7 +247,7 @@ struct q6v5_data __devinit *pil_q6v5_init(struct platform_device *pdev)
 		return ERR_PTR(-ENOMEM);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "qdsp6_base");
-	drv->reg_base = devm_request_and_ioremap(&pdev->dev, res);
+	drv->reg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (!drv->reg_base)
 		return ERR_PTR(-ENOMEM);
 

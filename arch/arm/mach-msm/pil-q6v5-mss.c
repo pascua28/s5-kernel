@@ -319,14 +319,14 @@ static int __devinit pil_mss_loadable_init(struct modem_data *drv,
 	if (q6->self_auth) {
 		res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						    "rmb_base");
-		q6->rmb_base = devm_request_and_ioremap(&pdev->dev, res);
+		q6->rmb_base = devm_ioremap_resource(&pdev->dev, res);
 		if (!q6->rmb_base)
 			return -ENOMEM;
 		mba->rmb_base = q6->rmb_base;
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "restart_reg");
-	q6->restart_reg = devm_request_and_ioremap(&pdev->dev, res);
+	q6->restart_reg = devm_ioremap_resource(&pdev->dev, res);
 	if (!q6->restart_reg)
 		return -ENOMEM;
 
