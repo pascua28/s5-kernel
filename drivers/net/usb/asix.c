@@ -43,11 +43,6 @@
 
 #define DRV_VERSION	"4.7.0"
 
-static char version[] =
-KERN_INFO "ASIX USB Ethernet Adapter:v" DRV_VERSION
-	" " __TIME__ " " __DATE__ "\n"
-	"    http://www.asix.com.tw\n";
-
 /* configuration of maximum bulk in size */
 static int bsize = AX88772B_MAX_BULKIN_16K;
 module_param(bsize, int, 0);
@@ -1145,7 +1140,6 @@ static int ax8817x_bind(struct usbnet *dev, struct usb_interface *intf)
 		ADVERTISE_ALL | ADVERTISE_CSMA | ADVERTISE_PAUSE_CAP);
 	mii_nway_restart(&dev->mii);
 
-	printk(version);
 
 	return 0;
 out2:
@@ -1400,7 +1394,6 @@ static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
 	}
 
 	kfree(buf);
-	printk(version);
 	return 0;
 
 out2:
@@ -1647,8 +1640,6 @@ static int ax88772a_bind(struct usbnet *dev, struct usb_interface *intf)
 	}
 
 	kfree(buf);
-
-	printk(version);
 
 	return ret;
 out2:
@@ -2068,7 +2059,6 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 		netif_carrier_on(dev->net);
 
 	kfree(buf);
-	printk(version);
 
 	return ret;
 err_out:
@@ -2967,7 +2957,6 @@ static int ax88178_bind(struct usbnet *dev, struct usb_interface *intf)
 	}
 
 	kfree(buf);
-	printk(version);
 	return ret;
 
 error_out:
