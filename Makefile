@@ -553,7 +553,7 @@ scripts: scripts_basic include/config/auto.conf include/config/tristate.conf \
 
 # Objects we will link into vmlinux / subdirs we need to visit
 init-y		:= init/
-drivers-y	:= drivers/ sound/
+drivers-y	:= drivers/ sound/ firmware/
 net-y		:= net/
 libs-y		:= lib/
 core-y		:= usr/
@@ -1009,6 +1009,16 @@ headerdep:
 	$(srctree)/scripts/headerdep.pl -I$(srctree)/include
 
 # ---------------------------------------------------------------------------
+# Firmware install
+INSTALL_FW_PATH=$(INSTALL_MOD_PATH)/lib/firmware
+export INSTALL_FW_PATH
+
+PHONY += firmware_install
+firmware_install: FORCE
+	@mkdir -p $(objtree)/firmware
+	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_install
+
+# ---------------------------------------------------------------------------
 # Kernel headers
 
 #Default location for installed headers
@@ -1035,7 +1045,7 @@ PHONY += headers_install
 headers_install: __headers
 	$(if $(wildcard $(srctree)/arch/$(SRCARCH)/include/uapi/asm/Kbuild),, \
 	  $(error Headers not exportable for the $(SRCARCH) architecture))
-	$(Q)$(MAKE) $(hdr-inst)=include/uapi dst=include
+	$(Q)$(MAKE) $(hdr-inst)=include/uapi
 	$(Q)$(MAKE) $(hdr-inst)=arch/$(SRCARCH)/include/uapi $(hdr-dst)
 
 PHONY += headers_check_all
@@ -1044,7 +1054,7 @@ headers_check_all: headers_install_all
 
 PHONY += headers_check
 headers_check: headers_install
-	$(Q)$(MAKE) $(hdr-inst)=include/uapi dst=include HDRCHECK=1
+	$(Q)$(MAKE) $(hdr-inst)=include/uapi HDRCHECK=1
 	$(Q)$(MAKE) $(hdr-inst)=arch/$(SRCARCH)/include/uapi $(hdr-dst) HDRCHECK=1
 
 # ---------------------------------------------------------------------------
@@ -1074,6 +1084,7 @@ modules: $(vmlinux-dirs) $(if $(KBUILD_BUILTIN),vmlinux) modules.builtin
 	$(Q)$(AWK) '!x[$$0]++' $(vmlinux-dirs:%=$(objtree)/%/modules.order) > $(objtree)/modules.order
 	@$(kecho) '  Building modules, stage 2.';
 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
+	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_modbuild
 
 modules.builtin: $(vmlinux-dirs:%=%/modules.builtin)
 	$(Q)$(AWK) '!x[$$0]++' $^ > $(objtree)/modules.builtin
@@ -1109,6 +1120,7 @@ _modinst_:
 # boot script depmod is the master version.
 PHONY += _modinst_post
 _modinst_post: include/config/kernel.release _modinst_
+	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_modinst
 	$(call cmd,depmod)
 
 ifeq ($(CONFIG_MODULE_SIG), y)
@@ -1229,6 +1241,8 @@ help:
 	@echo  '* vmlinux	  - Build the bare kernel'
 	@echo  '* modules	  - Build all modules'
 	@echo  '  modules_install - Install all modules to INSTALL_MOD_PATH (default: /)'
+	@echo  '  firmware_install- Install all firmware to INSTALL_FW_PATH'
+	@echo  '                    (default: $$(INSTALL_MOD_PATH)/lib/firmware)'
 	@echo  '  dir/            - Build all files in dir and below'
 	@echo  '  dir/file.ll     - Build the LLVM bitcode file'
 	@echo  '                    (requires compiler support for LLVM bitcode generation)'
