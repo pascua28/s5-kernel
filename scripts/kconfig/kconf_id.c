@@ -26,7 +26,7 @@ static struct kconf_id kconf_id_array[] = {
 	{ "hex",		T_TYPE,			TF_COMMAND, S_HEX },
 	{ "string",		T_TYPE,			TF_COMMAND, S_STRING },
 	{ "select",		T_SELECT,		TF_COMMAND },
-	{ "imply",		T_IMPLY,		TF_COMMAND },
+	{ "imply",		P_IMPLY,		TF_COMMAND },
 	{ "range",		T_RANGE,		TF_COMMAND },
 	{ "visible",		T_VISIBLE,		TF_COMMAND },
 	{ "option",		T_OPTION,		TF_COMMAND },
