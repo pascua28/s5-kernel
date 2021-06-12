@@ -29,7 +29,7 @@ config MMC_CLKGATE
 	  If unsure, say N.
 
 config MMC_EMBEDDED_SDIO
-	boolean "MMC embedded SDIO device support (EXPERIMENTAL)"
+	bool "MMC embedded SDIO device support (EXPERIMENTAL)"
 	depends on EXPERIMENTAL
 	help
 	  If you say Y here, support will be added for embedded SDIO

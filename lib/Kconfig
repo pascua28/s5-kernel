@@ -14,7 +14,7 @@ config BITREVERSE
 	tristate
 
 config RATIONAL
-	boolean
+	bool
 
 config GENERIC_FIND_FIRST_BIT
 	bool
@@ -30,7 +30,7 @@ config GENERIC_IOMAP
 	select GENERIC_PCI_IOMAP
 
 config GENERIC_IO
-	boolean
+	bool
 	default n
 
 config CRC_CCITT
@@ -218,7 +218,7 @@ config DECOMPRESS_LZ4
 # Generic allocator support is selected if needed
 #
 config GENERIC_ALLOCATOR
-	boolean
+	bool
 
 #
 # reed solomon support is select'ed if needed
@@ -227,16 +227,16 @@ config REED_SOLOMON
 	tristate
 	
 config REED_SOLOMON_ENC8
-	boolean
+	bool
 
 config REED_SOLOMON_DEC8
-	boolean
+	bool
 
 config REED_SOLOMON_ENC16
-	boolean
+	bool
 
 config REED_SOLOMON_DEC16
-	boolean
+	bool
 
 #
 # BCH support is selected if needed
@@ -245,7 +245,7 @@ config BCH
 	tristate
 
 config BCH_CONST_PARAMS
-	boolean
+	bool
 	help
 	  Drivers may select this option to force specific constant
 	  values for parameters 'm' (Galois field order) and 't'
@@ -281,7 +281,7 @@ config BCH_CONST_T
 # Textsearch support is select'ed if needed
 #
 config TEXTSEARCH
-	boolean
+	bool
 
 config TEXTSEARCH_KMP
 	tristate
@@ -293,21 +293,21 @@ config TEXTSEARCH_FSM
 	tristate
 
 config BTREE
-	boolean
+	bool
 
 config HAS_IOMEM
-	boolean
+	bool
 	depends on !NO_IOMEM
 	select GENERIC_IO
 	default y
 
 config HAS_IOPORT
-	boolean
+	bool
 	depends on HAS_IOMEM && !NO_IOPORT
 	default y
 
 config HAS_DMA
-	boolean
+	bool
 	depends on !NO_DMA
 	default y
 

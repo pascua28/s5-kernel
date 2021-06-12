@@ -48,7 +48,7 @@ config IIO_KFIFO_BUF
 endif # IIO_BUFFER
 
 config IIO_TRIGGER
-	boolean "Enable triggered sampling support"
+	bool "Enable triggered sampling support"
 	help
 	  Provides IIO core support for triggers.  Currently these
 	  are used to initialize capture of samples to push into
@@ -95,13 +95,13 @@ config IIO_SIMPLE_DUMMY
 if IIO_SIMPLE_DUMMY
 
 config IIO_SIMPLE_DUMMY_EVENTS
-       boolean "Event generation support"
+       bool "Event generation support"
        select IIO_DUMMY_EVGEN
        help
          Add some dummy events to the simple dummy driver.
 
 config IIO_SIMPLE_DUMMY_BUFFER
-       boolean "Buffered capture support"
+       bool "Buffered capture support"
        depends on IIO_KFIFO_BUF
        help
          Add buffered data capture to the simple dummy driver.

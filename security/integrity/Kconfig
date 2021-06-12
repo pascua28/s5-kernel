@@ -4,7 +4,7 @@ config INTEGRITY
 	depends on IMA || EVM
 
 config INTEGRITY_SIGNATURE
-	boolean "Digital signature verification using multiple keyrings"
+	bool "Digital signature verification using multiple keyrings"
 	depends on INTEGRITY && KEYS
 	default n
 	select SIGNATURE

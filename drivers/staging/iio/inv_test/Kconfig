@@ -3,7 +3,7 @@
 #
 
 config INV_TESTING
-    boolean "Invensense IIO testing hooks"
+    bool "Invensense IIO testing hooks"
     depends on INV_MPU_IIO || INV_AMI306_IIO || INV_YAS530 || INV_HUB_IIO
     default n
     help

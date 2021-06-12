@@ -201,7 +201,7 @@ config USB_EHCI_MSM_HOST4
 	  present on the Qualcomm chipsets.
 
 config USB_EHCI_TEGRA
-       boolean "NVIDIA Tegra HCD support"
+       bool "NVIDIA Tegra HCD support"
        depends on USB_EHCI_HCD && ARCH_TEGRA
        select USB_EHCI_ROOT_HUB_TT
        help
@@ -224,7 +224,7 @@ config USB_EHCI_SH
 	  If you use the PCI EHCI controller, this option is not necessary.
 
 config USB_EHCI_S5P
-       boolean "S5P EHCI support"
+       bool "S5P EHCI support"
        depends on USB_EHCI_HCD && PLAT_S5P
        help
 	 Enable support for the S5P SOC's on-chip EHCI controller.
@@ -439,7 +439,7 @@ config USB_OHCI_SH
 	  If you use the PCI OHCI controller, this option is not necessary.
 
 config USB_OHCI_EXYNOS
-	boolean "OHCI support for Samsung EXYNOS SoC Series"
+	bool "OHCI support for Samsung EXYNOS SoC Series"
 	depends on USB_OHCI_HCD && ARCH_EXYNOS
 	help
 	 Enable support for the Samsung Exynos SOC's on-chip OHCI controller.

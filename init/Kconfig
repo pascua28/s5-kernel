@@ -606,7 +606,7 @@ config GENERIC_SCHED_CLOCK
 	bool
 
 menuconfig CGROUPS
-	boolean "Control Group support"
+	bool "Control Group support"
 	depends on EVENTFD
 	help
 	  This option adds support for grouping sets of processes together, for
@@ -1420,7 +1420,7 @@ config SLABINFO
 	default y
 
 config RT_MUTEXES
-	boolean
+	bool
 
 config BASE_SMALL
 	int

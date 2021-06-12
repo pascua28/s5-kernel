@@ -186,7 +186,7 @@ config MD_FAULTY
 	  In unsure, say N.
 
 config BLK_DEV_DM_BUILTIN
-	boolean
+	bool
 
 config BLK_DEV_DM
 	tristate "Device mapper support"
@@ -205,7 +205,7 @@ config BLK_DEV_DM
 	  If unsure, say N.
 
 config DM_DEBUG
-	boolean "Device mapper debugging support"
+	bool "Device mapper debugging support"
 	depends on BLK_DEV_DM
 	---help---
 	  Enable this for messages that may help debug device-mapper problems.
@@ -272,7 +272,7 @@ config DM_THIN_PROVISIONING
          Provides thin provisioning and snapshots that share a data store.
 
 config DM_DEBUG_BLOCK_STACK_TRACING
-	boolean "Keep stack trace of thin provisioning block lock holders"
+	bool "Keep stack trace of thin provisioning block lock holders"
 	depends on STACKTRACE_SUPPORT && DM_THIN_PROVISIONING
 	select STACKTRACE
 	---help---
@@ -282,7 +282,7 @@ config DM_DEBUG_BLOCK_STACK_TRACING
 	  If unsure, say N.
 
 config DM_DEBUG_SPACE_MAPS
-	boolean "Extra validation for thin provisioning space maps"
+	bool "Extra validation for thin provisioning space maps"
 	depends on DM_THIN_PROVISIONING
 	---help---
 	  Enable this for messages that may help debug problems with the

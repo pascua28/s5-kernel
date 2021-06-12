@@ -1,5 +1,5 @@
 config EVM
-	boolean "EVM support"
+	bool "EVM support"
 	depends on SECURITY && KEYS && (TRUSTED_KEYS=y || TRUSTED_KEYS=n)
 	select CRYPTO_HMAC
 	select CRYPTO_MD5

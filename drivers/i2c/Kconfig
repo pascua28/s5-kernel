@@ -25,11 +25,11 @@ menuconfig I2C
 if I2C
 
 config I2C_BOARDINFO
-	boolean
+	bool
 	default y
 
 config I2C_COMPAT
-	boolean "Enable compatibility bits for old user-space"
+	bool "Enable compatibility bits for old user-space"
 	default y
 	help
 	  Say Y here if you intend to run lm-sensors 3.1.1 or older, or any

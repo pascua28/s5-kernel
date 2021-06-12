@@ -129,16 +129,16 @@ config SPARSEMEM_VMEMMAP
 	 efficient option when sufficient kernel resources are available.
 
 config HAVE_MEMBLOCK
-	boolean
+	bool
 
 config HAVE_MEMBLOCK_NODE_MAP
-	boolean
+	bool
 
 config ARCH_DISCARD_MEMBLOCK
-	boolean
+	bool
 
 config NO_BOOTMEM
-	boolean
+	bool
 
 # eventually, we can have this option just 'select SPARSEMEM'
 config MEMORY_HOTPLUG
