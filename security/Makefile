@@ -17,17 +17,17 @@ obj-$(CONFIG_MMU)			+= min_addr.o
 obj-$(CONFIG_SECURITY)			+= security.o capability.o
 obj-$(CONFIG_SECURITYFS)		+= inode.o
 # Must precede capability.o in order to stack properly.
-obj-$(CONFIG_SECURITY_SELINUX)		+= selinux/built-in.o
-obj-$(CONFIG_SECURITY_SMACK)		+= smack/built-in.o
+obj-$(CONFIG_SECURITY_SELINUX)		+= selinux/built-in.a
+obj-$(CONFIG_SECURITY_SMACK)		+= smack/built-in.a
 obj-$(CONFIG_AUDIT)			+= lsm_audit.o
-obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/built-in.o
-obj-$(CONFIG_SECURITY_APPARMOR)		+= apparmor/built-in.o
-obj-$(CONFIG_SECURITY_YAMA)		+= yama/built-in.o
+obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/built-in.a
+obj-$(CONFIG_SECURITY_APPARMOR)		+= apparmor/built-in.a
+obj-$(CONFIG_SECURITY_YAMA)		+= yama/built-in.a
 obj-$(CONFIG_CGROUP_DEVICE)		+= device_cgroup.o
 
 # Object integrity file lists
 subdir-$(CONFIG_INTEGRITY)		+= integrity
-obj-$(CONFIG_INTEGRITY)			+= integrity/built-in.o
+obj-$(CONFIG_INTEGRITY)			+= integrity/built-in.a
 # TIMA uevent 
 obj-$(CONFIG_TIMA_UEVENT)     += tima_uevent/
 
