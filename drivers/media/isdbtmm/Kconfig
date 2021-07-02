@@ -5,7 +5,7 @@
 config ISDBTMM
 	bool "ISDB-TMM tuner"
 	default n
-	---help---
+	help
 	  Enable the ISDB-TMM tuner driver for mmbi/DTV
 
 config TMM_ANT_DET
