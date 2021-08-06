@@ -72,8 +72,6 @@ static int lz4_uncompress(const char *source, char *dest, int osize)
 			len = *ip++;
 			for (; len == 255; length += 255)
 				len = *ip++;
-			if (unlikely(length > (size_t)(length + len)))
-				goto _output_error;
 			length += len;
 		}
 
@@ -108,8 +106,6 @@ static int lz4_uncompress(const char *source, char *dest, int osize)
 		if (length == ML_MASK) {
 			for (; *ip == 255; length += 255)
 				ip++;
-			if (unlikely(length > (size_t)(length + *ip)))
-				goto _output_error;
 			length += *ip++;
 		}
 
@@ -139,9 +135,6 @@ static int lz4_uncompress(const char *source, char *dest, int osize)
 			/* Error: request to write beyond destination buffer */
 			if (cpy > oend)
 				goto _output_error;
-			if ((ref + COPYLENGTH) > oend ||
-					(op + COPYLENGTH) > oend)
-				goto _output_error;
 			LZ4_SECURECOPY(ref, op, (oend - COPYLENGTH));
 			while (op < cpy)
 				*op++ = *ref++;
@@ -162,7 +155,7 @@ static int lz4_uncompress(const char *source, char *dest, int osize)
 
 	/* write overflow error detected */
 _output_error:
-	return -1;
+	return (int) (-(((char *)ip) - source));
 }
 
 static int lz4_uncompress_unknownoutputsize(const char *source, char *dest,
@@ -195,8 +188,6 @@ static int lz4_uncompress_unknownoutputsize(const char *source, char *dest,
 			int s = 255;
 			while ((ip < iend) && (s == 255)) {
 				s = *ip++;
-				if (unlikely(length > (size_t)(length + s)))
-					goto _output_error;
 				length += s;
 			}
 		}
@@ -237,8 +228,6 @@ static int lz4_uncompress_unknownoutputsize(const char *source, char *dest,
 		if (length == ML_MASK) {
 			while (ip < iend) {
 				int s = *ip++;
-				if (unlikely(length > (size_t)(length + s)))
-					goto _output_error;
 				length += s;
 				if (s == 255)
 					continue;
@@ -291,11 +280,11 @@ static int lz4_uncompress_unknownoutputsize(const char *source, char *dest,
 
 	/* write overflow error detected */
 _output_error:
-	return -1;
+	return (int) (-(((char *) ip) - source));
 }
 
-int lz4_decompress(const unsigned char *src, size_t *src_len,
-		unsigned char *dest, size_t actual_dest_len)
+int lz4_decompress(const char *src, size_t *src_len, char *dest,
+		size_t actual_dest_len)
 {
 	int ret = -1;
 	int input_len = 0;
@@ -310,11 +299,11 @@ exit_0:
 	return ret;
 }
 #ifndef STATIC
-EXPORT_SYMBOL(lz4_decompress);
+EXPORT_SYMBOL_GPL(lz4_decompress);
 #endif
 
-int lz4_decompress_unknownoutputsize(const unsigned char *src, size_t src_len,
-		unsigned char *dest, size_t *dest_len)
+int lz4_decompress_unknownoutputsize(const char *src, size_t src_len,
+		char *dest, size_t *dest_len)
 {
 	int ret = -1;
 	int out_len = 0;
@@ -330,8 +319,8 @@ exit_0:
 	return ret;
 }
 #ifndef STATIC
-EXPORT_SYMBOL(lz4_decompress_unknownoutputsize);
+EXPORT_SYMBOL_GPL(lz4_decompress_unknownoutputsize);
 
-MODULE_LICENSE("Dual BSD/GPL");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("LZ4 Decompressor");
 #endif
