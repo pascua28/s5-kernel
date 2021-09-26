@@ -1394,7 +1394,7 @@ wl_process_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, uint pktlen
 
 		/* Ignore the event if NOIF is set */
 		if (ifevent->reserved & WLC_E_IF_FLAGS_BSSCFG_NOIF) {
-			DHD_ERROR(("WLC_E_IF: NO_IF set, event Ignored\n"));
+			DHD_ERROR(("WLC_E_IF: NO_IF set, event Ignored\r\n"));
 			return (BCME_UNSUPPORTED);
 		}
 
