@@ -43,8 +43,8 @@ void mmc_set_ungated(struct mmc_host *host);
 void mmc_set_bus_mode(struct mmc_host *host, unsigned int mode);
 void mmc_set_bus_width(struct mmc_host *host, unsigned int width);
 u32 mmc_select_voltage(struct mmc_host *host, u32 ocr);
-int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage,
-			   bool cmd11);
+int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage);
+int __mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage);
 void mmc_set_timing(struct mmc_host *host, unsigned int timing);
 void mmc_set_driver_type(struct mmc_host *host, unsigned int drv_type);
 void mmc_power_off(struct mmc_host *host);
@@ -74,14 +74,7 @@ int mmc_attach_sdio(struct mmc_host *host);
 
 /* Module parameters */
 extern bool use_spi_crc;
-#if defined(CONFIG_MACH_HLTESKT)||defined(CONFIG_MACH_HLTEKTT)||defined(CONFIG_MACH_HLTELGT)\
-	|| defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || defined(CONFIG_MACH_LT03LGT)\
-	|| defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) \
-	|| defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_MACH_JS01LTESBM) \
-	|| defined(CONFIG_MACH_H3GDUOS_CTC) || defined(CONFIG_MACH_H3GDUOS_CU)\
-	|| defined(CONFIG_MACH_FRESCOLTESKT)||defined(CONFIG_MACH_FRESCOLTEKTT)||defined(CONFIG_MACH_FRESCOLTELGT) || defined(CONFIG_MACH_HLTE_CHN_CMCC)
-extern bool fw_dl_complete;
-#endif
+
 /* Debugfs information for hosts and cards */
 void mmc_add_host_debugfs(struct mmc_host *host);
 void mmc_remove_host_debugfs(struct mmc_host *host);
@@ -89,11 +82,13 @@ void mmc_remove_host_debugfs(struct mmc_host *host);
 void mmc_add_card_debugfs(struct mmc_card *card);
 void mmc_remove_card_debugfs(struct mmc_card *card);
 
+void mmc_init_context_info(struct mmc_host *host);
+
 extern void mmc_disable_clk_scaling(struct mmc_host *host);
 extern bool mmc_can_scale_clk(struct mmc_host *host);
 extern void mmc_init_clk_scaling(struct mmc_host *host);
 extern void mmc_exit_clk_scaling(struct mmc_host *host);
 extern void mmc_reset_clk_scale_stats(struct mmc_host *host);
 extern unsigned long mmc_get_max_frequency(struct mmc_host *host);
-void mmc_init_context_info(struct mmc_host *host);
 #endif
+

@@ -4,7 +4,7 @@
  *  Copyright (C) 2003 Russell King, All Rights Reserved.
  *  Copyright (C) 2007-2008 Pierre Ossman
  *  Copyright (C) 2010 Linus Walleij
- *  Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +16,8 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/idr.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/pagemap.h>
 #include <linux/export.h>
 #include <linux/leds.h>
@@ -25,6 +27,7 @@
 
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
+#include <linux/mmc/slot-gpio.h>
 
 #include "core.h"
 #include "host.h"
@@ -34,10 +37,12 @@
 static void mmc_host_classdev_release(struct device *dev)
 {
 	struct mmc_host *host = cls_dev_to_mmc_host(dev);
+	mutex_destroy(&host->slot.lock);
 	kfree(host->wlock_name);
 	kfree(host);
 }
 
+#ifdef CONFIG_PM_RUNTIME
 static int mmc_host_runtime_suspend(struct device *dev)
 {
 	struct mmc_host *host = cls_dev_to_mmc_host(dev);
@@ -47,9 +52,28 @@ static int mmc_host_runtime_suspend(struct device *dev)
 		return 0;
 
 	ret = mmc_suspend_host(host);
-	if (ret < 0)
+	if (ret < 0 && ret != -ENOMEDIUM)
 		pr_err("%s: %s: suspend host failed: %d\n", mmc_hostname(host),
 		       __func__, ret);
+
+	/*
+	 * During card detection within mmc_rescan(), mmc_rpm_hold() will
+	 * be called on host->class_dev before initializing the card and
+	 * shall be released after card detection.
+	 *
+	 * During card detection, once the card device is added, MMC block
+	 * driver probe gets called and in case that probe fails due to some
+	 * block read/write cmd error, then the block driver marks that card
+	 * as removed. Later when mmc_rpm_release() is called within
+	 * mmc_rescan(), the runtime suspend of host->class_dev will be invoked
+	 * immediately. The commands that are sent during runtime would fail
+	 * with -ENOMEDIUM and if we propagate the same to rpm framework, the
+	 * runtime suspend/resume for this device will never be invoked even
+	 * if the card is detected fine later on when it is removed and
+	 * inserted again. Hence, do not report this error to upper layers.
+	 */
+	if (ret == -ENOMEDIUM)
+		ret = 0;
 
 	return ret;
 }
@@ -72,7 +96,9 @@ static int mmc_host_runtime_resume(struct device *dev)
 
 	return ret;
 }
+#endif
 
+#ifdef CONFIG_PM_SLEEP
 static int mmc_host_suspend(struct device *dev)
 {
 	struct mmc_host *host = cls_dev_to_mmc_host(dev);
@@ -81,7 +107,6 @@ static int mmc_host_suspend(struct device *dev)
 
 	if (!mmc_use_core_pm(host))
 		return 0;
-
 	spin_lock_irqsave(&host->clk_lock, flags);
 	/*
 	 * let the driver know that suspend is in progress and must
@@ -131,6 +156,7 @@ static int mmc_host_resume(struct device *dev)
 	host->dev_status = DEV_RESUMED;
 	return ret;
 }
+#endif
 
 static const struct dev_pm_ops mmc_host_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(mmc_host_suspend, mmc_host_resume)
@@ -318,8 +344,8 @@ void mmc_host_clk_release(struct mmc_host *host)
 	host->clk_requests--;
 	if (mmc_host_may_gate_card(host->card) &&
 	    !host->clk_requests)
-		queue_delayed_work(system_nrt_wq, &host->clk_gate_work,
-				msecs_to_jiffies(host->clkgate_delay));
+		schedule_delayed_work(&host->clk_gate_work,
+				      msecs_to_jiffies(host->clkgate_delay));
 	spin_unlock_irqrestore(&host->clk_lock, flags);
 }
 
@@ -409,6 +435,126 @@ static inline void mmc_host_clk_sysfs_init(struct mmc_host *host)
 #endif
 
 /**
+ *	mmc_of_parse() - parse host's device-tree node
+ *	@host: host whose node should be parsed.
+ *
+ * To keep the rest of the MMC subsystem unaware of whether DT has been
+ * used to to instantiate and configure this host instance or not, we
+ * parse the properties and set respective generic mmc-host flags and
+ * parameters.
+ */
+void mmc_of_parse(struct mmc_host *host)
+{
+	struct device_node *np;
+	u32 bus_width;
+	bool explicit_inv_wp, gpio_inv_wp = false;
+	enum of_gpio_flags flags;
+	int len, ret, gpio;
+
+	if (!host->parent || !host->parent->of_node)
+		return;
+
+	np = host->parent->of_node;
+
+	/* "bus-width" is translated to MMC_CAP_*_BIT_DATA flags */
+	if (of_property_read_u32(np, "bus-width", &bus_width) < 0) {
+		dev_dbg(host->parent,
+			"\"bus-width\" property is missing, assuming 1 bit.\n");
+		bus_width = 1;
+	}
+
+	switch (bus_width) {
+	case 8:
+		host->caps |= MMC_CAP_8_BIT_DATA;
+		/* Hosts capable of 8-bit transfers can also do 4 bits */
+	case 4:
+		host->caps |= MMC_CAP_4_BIT_DATA;
+		break;
+	case 1:
+		break;
+	default:
+		dev_err(host->parent,
+			"Invalid \"bus-width\" value %ud!\n", bus_width);
+	}
+
+	/* f_max is obtained from the optional "max-frequency" property */
+	of_property_read_u32(np, "max-frequency", &host->f_max);
+
+	/*
+	 * Configure CD and WP pins. They are both by default active low to
+	 * match the SDHCI spec. If GPIOs are provided for CD and / or WP, the
+	 * mmc-gpio helpers are used to attach, configure and use them. If
+	 * polarity inversion is specified in DT, one of MMC_CAP2_CD_ACTIVE_HIGH
+	 * and MMC_CAP2_RO_ACTIVE_HIGH capability-2 flags is set. If the
+	 * "broken-cd" property is provided, the MMC_CAP_NEEDS_POLL capability
+	 * is set. If the "non-removable" property is found, the
+	 * MMC_CAP_NONREMOVABLE capability is set and no card-detection
+	 * configuration is performed.
+	 */
+
+	/* Parse Card Detection */
+	if (of_find_property(np, "non-removable", &len)) {
+		host->caps |= MMC_CAP_NONREMOVABLE;
+	} else {
+		bool explicit_inv_cd, gpio_inv_cd = false;
+
+		explicit_inv_cd = of_property_read_bool(np, "cd-inverted");
+
+		if (of_find_property(np, "broken-cd", &len))
+			host->caps |= MMC_CAP_NEEDS_POLL;
+
+		gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
+		if (gpio_is_valid(gpio)) {
+			if (!(flags & OF_GPIO_ACTIVE_LOW))
+				gpio_inv_cd = true;
+
+			ret = mmc_gpio_request_cd(host, gpio);
+			if (ret < 0)
+				dev_err(host->parent,
+					"Failed to request CD GPIO #%d: %d!\n",
+					gpio, ret);
+			else
+				dev_info(host->parent, "Got CD GPIO #%d.\n",
+					 gpio);
+		}
+
+		if (explicit_inv_cd ^ gpio_inv_cd)
+			host->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
+	}
+
+	/* Parse Write Protection */
+	explicit_inv_wp = of_property_read_bool(np, "wp-inverted");
+
+	gpio = of_get_named_gpio_flags(np, "wp-gpios", 0, &flags);
+	if (gpio_is_valid(gpio)) {
+		if (!(flags & OF_GPIO_ACTIVE_LOW))
+			gpio_inv_wp = true;
+
+		ret = mmc_gpio_request_ro(host, gpio);
+		if (ret < 0)
+			dev_err(host->parent,
+				"Failed to request WP GPIO: %d!\n", ret);
+	}
+	if (explicit_inv_wp ^ gpio_inv_wp)
+		host->caps2 |= MMC_CAP2_RO_ACTIVE_HIGH;
+
+	if (of_find_property(np, "cap-sd-highspeed", &len))
+		host->caps |= MMC_CAP_SD_HIGHSPEED;
+	if (of_find_property(np, "cap-mmc-highspeed", &len))
+		host->caps |= MMC_CAP_MMC_HIGHSPEED;
+	if (of_find_property(np, "cap-power-off-card", &len))
+		host->caps |= MMC_CAP_POWER_OFF_CARD;
+	if (of_find_property(np, "cap-sdio-irq", &len))
+		host->caps |= MMC_CAP_SDIO_IRQ;
+	if (of_find_property(np, "keep-power-in-suspend", &len))
+		host->pm_caps |= MMC_PM_KEEP_POWER;
+	if (of_find_property(np, "enable-sdio-wakeup", &len))
+		host->pm_caps |= MMC_PM_WAKE_SDIO_IRQ;
+}
+
+EXPORT_SYMBOL(mmc_of_parse);
+
+/**
  *	mmc_alloc_host - initialise the per-host structure.
  *	@extra: sizeof private data structure
  *	@dev: pointer to host device model structure
@@ -424,6 +570,8 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	if (!host)
 		return NULL;
 
+	/* scanning will be enabled when we're ready */
+	host->rescan_disable = 1;
 	idr_preload(GFP_KERNEL);
 	spin_lock(&mmc_host_lock);
 	err = idr_alloc(&mmc_host_idr, host, 0, 0, GFP_NOWAIT);
@@ -442,6 +590,9 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	device_initialize(&host->class_dev);
 
 	mmc_host_clk_init(host);
+
+	mutex_init(&host->slot.lock);
+	host->slot.cd_irq = -EINVAL;
 
 	spin_lock_init(&host->lock);
 	init_waitqueue_head(&host->wq);
@@ -495,6 +646,10 @@ static ssize_t store_enable(struct device *dev,
 	if (!host)
 		goto out;
 
+	/* Not safe against removal of the card */
+	if (host->card)
+		mmc_rpm_hold(host, &host->card->dev);
+
 	mmc_claim_host(host);
 	if (!host->card || kstrtoul(buf, 0, &value))
 		goto err;
@@ -512,7 +667,8 @@ static ssize_t store_enable(struct device *dev,
 		mmc_disable_clk_scaling(host);
 
 		/* Set to max. frequency, since we are disabling */
-		if (host->bus_ops && host->bus_ops->change_bus_speed) {
+		if (host->bus_ops && host->bus_ops->change_bus_speed &&
+				host->clk_scaling.state == MMC_LOAD_LOW) {
 			freq = mmc_get_max_frequency(host);
 			if (host->bus_ops->change_bus_speed(host, &freq))
 				goto err;
@@ -526,6 +682,10 @@ static ssize_t store_enable(struct device *dev,
 	retval = count;
 err:
 	mmc_release_host(host);
+
+	/* Not safe against removal of the card */
+	if (host->card)
+		mmc_rpm_release(host, &host->card->dev);
 out:
 	return retval;
 }
@@ -715,7 +875,7 @@ int mmc_add_host(struct mmc_host *host)
 	err = pm_runtime_set_active(&host->class_dev);
 	if (err)
 		pr_err("%s: %s: failed setting runtime active: err: %d\n",
-				mmc_hostname(host), __func__, err);
+		       mmc_hostname(host), __func__, err);
 	else if (mmc_use_core_runtime_pm(host))
 		pm_runtime_enable(&host->class_dev);
 
@@ -723,7 +883,6 @@ int mmc_add_host(struct mmc_host *host)
 	if (err)
 		return err;
 
-	device_enable_async_suspend(&host->class_dev);
 	led_trigger_register_simple(dev_name(&host->class_dev), &host->led);
 
 #ifdef CONFIG_DEBUG_FS

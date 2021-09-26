@@ -237,6 +237,12 @@ static int sdio_enable_wide(struct mmc_card *card)
 	if (ret)
 		return ret;
 
+	if ((ctrl & SDIO_BUS_WIDTH_MASK) == SDIO_BUS_WIDTH_RESERVED)
+		pr_warning("%s: SDIO_CCCR_IF is invalid: 0x%02x\n",
+			   mmc_hostname(card->host), ctrl);
+
+	/* set as 4-bit bus width */
+	ctrl &= ~SDIO_BUS_WIDTH_MASK;
 	if (card->host->caps & MMC_CAP_8_BIT_DATA)
 		ctrl |= SDIO_BUS_WIDTH_8BIT;
 	else if (card->host->caps & MMC_CAP_4_BIT_DATA)
@@ -582,17 +588,6 @@ static int mmc_sdio_init_uhs_card(struct mmc_card *card)
 	if (err)
 		goto out;
 
-// #if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE)
-#if 0
-	/*
-	* Prevent tuning operation when init a card
-	* for WiFi operation with sdmmc.
-	*/
-	if (!strcmp(mmc_hostname(card->host), "mmc1"))
-		printk("%s: remove initialize and start re-tuning timer"
-			"to prevent CMD53 request timeout \n", mmc_hostname(card->host));
-	else
-#endif
 	/* Initialize and start re-tuning timer */
 	if (!mmc_host_is_spi(card->host) && card->host->ops->execute_tuning)
 		err = card->host->ops->execute_tuning(card->host,
@@ -614,30 +609,23 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 {
 	struct mmc_card *card;
 	int err;
+	int retries = 10;
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
 
-#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
-    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
-    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE)
-	/* If host that supports UHS-I sets S18R to 1 in arg of CMD5 to request
-	 * change of signaling level to 1.8V
-	 */
-	if (host->caps &
-			(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
-			 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |
-			 MMC_CAP_UHS_DDR50))
-		host->ocr |= R4_18V_PRESENT;
-#endif
+try_again:
+	if (!retries) {
+		pr_warning("%s: Skipping voltage switch\n",
+				mmc_hostname(host));
+		ocr &= ~R4_18V_PRESENT;
+		host->ocr &= ~R4_18V_PRESENT;
+	}
 
 	/*
 	 * Inform the card of the voltage
 	 */
 	if (!powered_resume) {
-		/* The initialization should be done at 3.3 V I/O voltage. */
-		mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330, 0);
-
 		err = mmc_send_io_op_cond(host, host->ocr, &ocr);
 		if (err)
 			goto err;
@@ -691,14 +679,20 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	/*
 	 * If the host and card support UHS-I mode request the card
 	 * to switch to 1.8V signaling level.  No 1.8v signalling if
-	 * UHS mode is not enabled to maintain compatibilty and some
+	 * UHS mode is not enabled to maintain compatibility and some
 	 * systems that claim 1.8v signalling in fact do not support
 	 * it.
 	 */
-	if ((ocr & R4_18V_PRESENT) && mmc_host_uhs(host)) {
-		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180,
-				true);
-		if (err) {
+	if (!powered_resume && (ocr & R4_18V_PRESENT) && mmc_host_uhs(host)) {
+		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180);
+		if (err == -EAGAIN) {
+			sdio_reset(host);
+			mmc_go_idle(host);
+			mmc_send_if_cond(host, host->ocr_avail);
+			mmc_remove_card(card);
+			retries--;
+			goto try_again;
+		} else if (err) {
 			ocr &= ~R4_18V_PRESENT;
 			host->ocr &= ~R4_18V_PRESENT;
 		}
@@ -914,8 +908,10 @@ static void mmc_sdio_detect(struct mmc_host *host)
 	/* Make sure card is powered before detecting it */
 	if (host->caps & MMC_CAP_POWER_OFF_CARD) {
 		err = pm_runtime_get_sync(&host->card->dev);
-		if (err < 0)
+		if (err < 0) {
+			pm_runtime_put_noidle(&host->card->dev);
 			goto out;
+		}
 	}
 
 	mmc_claim_host(host);
@@ -1072,10 +1068,6 @@ static int mmc_sdio_power_restore(struct mmc_host *host)
 	 * With these steps taken, mmc_select_voltage() is also required to
 	 * restore the correct voltage setting of the card.
 	 */
-
-	/* The initialization should be done at 3.3 V I/O voltage. */
-	if (!mmc_card_keep_power(host))
-		mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330, 0);
 
 	sdio_reset(host);
 	mmc_go_idle(host);
@@ -1284,54 +1276,7 @@ err:
 
 int sdio_reset_comm(struct mmc_card *card)
 {
-#if defined(CONFIG_BCM4339) || defined(CONFIG_BCM4335) || defined(CONFIG_BCM4354)
-	struct mmc_host *host = card->host;
-	u32 ocr;
-	int err;
-
-	printk("%s():\n", __func__);
-	mmc_claim_host(host);
-
-	mmc_set_timing(host, MMC_TIMING_LEGACY);
-	mmc_set_clock(host, host->f_init);
-
-	sdio_reset(host);
-	mmc_go_idle(host);
-
-	mmc_send_if_cond(host, host->ocr_avail);
-
-	err = mmc_send_io_op_cond(host, 0, &ocr);
-	if (err)
-		goto err;
-
-	if (host->ocr_avail_sdio)
-		host->ocr_avail = host->ocr_avail_sdio;
-
-	host->ocr = mmc_select_voltage(host, ocr & ~0x7F);
-	if (!host->ocr) {
-		err = -EINVAL;
-		printk("%s(): voltage err\n", __func__);
-		goto err;
-	}
-
-	if (mmc_host_uhs(host))
-		/* to query card if 1.8V signalling is supported */
-		host->ocr |= R4_18V_PRESENT;
-
-	err = mmc_sdio_init_card(host, host->ocr, card, 0);
-	if (err)
-		goto err;
-
-	mmc_release_host(host);
-	return 0;
-err:
-	printk("%s: Error resetting SDIO communications (%d)\n",
-		mmc_hostname(host), err);
-	mmc_release_host(host);
-	return err;
-#else
 	return mmc_power_restore_host(card->host);
-#endif /* CONFIG_BCM4339 || CONFIG_BCM4335  || CONFIG_BCM4354 */
 }
 EXPORT_SYMBOL(sdio_reset_comm);
 

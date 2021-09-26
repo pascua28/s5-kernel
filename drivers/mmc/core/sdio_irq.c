@@ -130,7 +130,6 @@ static int sdio_irq_thread(void *_host)
 			pm_wakeup_event(&host->card->dev, 100);
 			ws = true;
 		}
-
 		ret = process_sdio_pending_irqs(host);
 		host->sdio_irq_pending = false;
 		mmc_release_host(host);
@@ -173,7 +172,6 @@ static int sdio_irq_thread(void *_host)
 		 */
 		if (ws && (host->dev_status == DEV_RESUMED))
 			pm_relax(&host->card->dev);
-
 		if (!kthread_should_stop())
 			schedule_timeout(period);
 		set_current_state(TASK_RUNNING);
@@ -235,14 +233,14 @@ static void sdio_single_irq_set(struct mmc_card *card)
 
 	card->sdio_single_irq = NULL;
 	if ((card->host->caps & MMC_CAP_SDIO_IRQ) &&
-			card->host->sdio_irqs == 1)
+	    card->host->sdio_irqs == 1)
 		for (i = 0; i < card->sdio_funcs; i++) {
-			func = card->sdio_func[i];
-			if (func && func->irq_handler) {
-				card->sdio_single_irq = func;
-				break;
-			}
-		}
+		       func = card->sdio_func[i];
+		       if (func && func->irq_handler) {
+			       card->sdio_single_irq = func;
+			       break;
+		       }
+	       }
 }
 
 /**
