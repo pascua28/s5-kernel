@@ -54,6 +54,8 @@ bool cfg80211_chandef_valid(const struct cfg80211_chan_def *chandef)
 	control_freq = chandef->chan->center_freq;
 
 	switch (chandef->width) {
+	case NL80211_CHAN_WIDTH_5:
+	case NL80211_CHAN_WIDTH_10:
 	case NL80211_CHAN_WIDTH_20:
 	case NL80211_CHAN_WIDTH_20_NOHT:
 		if (chandef->center_freq1 != control_freq)
@@ -152,6 +154,12 @@ static int cfg80211_chandef_get_width(const struct cfg80211_chan_def *c)
 	int width;
 
 	switch (c->width) {
+	case NL80211_CHAN_WIDTH_5:
+		width = 5;
+		break;
+	case NL80211_CHAN_WIDTH_10:
+		width = 10;
+		break;
 	case NL80211_CHAN_WIDTH_20:
 	case NL80211_CHAN_WIDTH_20_NOHT:
 		width = 20;
@@ -194,6 +202,16 @@ cfg80211_chandef_compatible(const struct cfg80211_chan_def *c1,
 	if (c1->width == c2->width)
 		return NULL;
 
+	/*
+	 * can't be compatible if one of them is 5 or 10 MHz,
+	 * but they don't have the same width.
+	 */
+	if (c1->width == NL80211_CHAN_WIDTH_5 ||
+	    c1->width == NL80211_CHAN_WIDTH_10 ||
+	    c2->width == NL80211_CHAN_WIDTH_5 ||
+	    c2->width == NL80211_CHAN_WIDTH_10)
+		return NULL;
+
 	if (c1->width == NL80211_CHAN_WIDTH_20_NOHT ||
 	    c1->width == NL80211_CHAN_WIDTH_20)
 		return c2;
@@ -223,11 +241,17 @@ static void cfg80211_set_chans_dfs_state(struct wiphy *wiphy, u32 center_freq,
 					 enum nl80211_dfs_state dfs_state)
 {
 	struct ieee80211_channel *c;
-	u32 freq;
+	u32 freq, start_freq, end_freq;
 
-	for (freq = center_freq - bandwidth/2 + 10;
-	     freq <= center_freq + bandwidth/2 - 10;
-	     freq += 20) {
+	if (bandwidth <= 20) {
+		start_freq = center_freq;
+		end_freq = center_freq;
+	} else {
+		start_freq = center_freq - bandwidth/2 + 10;
+		end_freq = center_freq + bandwidth/2 - 10;
+	}
+
+	for (freq = start_freq; freq <= end_freq; freq += 20) {
 		c = ieee80211_get_channel(wiphy, freq);
 		if (!c || !(c->flags & IEEE80211_CHAN_RADAR))
 			continue;
@@ -273,7 +297,8 @@ static int cfg80211_get_chans_dfs_required(struct wiphy *wiphy,
 		if (!c)
 			return -EINVAL;
 
-		if (c->flags & IEEE80211_CHAN_RADAR)
+		if ((c->flags & IEEE80211_CHAN_RADAR) &&
+		    !(wiphy->flags & WIPHY_FLAG_DFS_OFFLOAD))
 			return 1;
 	}
 	return 0;
@@ -310,17 +335,24 @@ static bool cfg80211_secondary_chans_ok(struct wiphy *wiphy,
 					u32 prohibited_flags)
 {
 	struct ieee80211_channel *c;
-	u32 freq;
+	u32 freq, start_freq, end_freq;
 
-	for (freq = center_freq - bandwidth/2 + 10;
-	     freq <= center_freq + bandwidth/2 - 10;
-	     freq += 20) {
+	if (bandwidth <= 20) {
+		start_freq = center_freq;
+		end_freq = center_freq;
+	} else {
+		start_freq = center_freq - bandwidth/2 + 10;
+		end_freq = center_freq + bandwidth/2 - 10;
+	}
+
+	for (freq = start_freq; freq <= end_freq; freq += 20) {
 		c = ieee80211_get_channel(wiphy, freq);
 		if (!c)
 			return false;
 
 		/* check for radar flags */
-		if ((prohibited_flags & c->flags & IEEE80211_CHAN_RADAR) &&
+		if ((!(wiphy->flags & WIPHY_FLAG_DFS_OFFLOAD)) &&
+		    (prohibited_flags & c->flags & IEEE80211_CHAN_RADAR) &&
 		    (c->dfs_state != NL80211_DFS_AVAILABLE))
 			return false;
 
@@ -349,6 +381,12 @@ bool cfg80211_chandef_usable(struct wiphy *wiphy,
 	control_freq = chandef->chan->center_freq;
 
 	switch (chandef->width) {
+	case NL80211_CHAN_WIDTH_5:
+		width = 5;
+		break;
+	case NL80211_CHAN_WIDTH_10:
+		width = 10;
+		break;
 	case NL80211_CHAN_WIDTH_20:
 		if (!ht_cap->ht_supported)
 			return false;
@@ -404,6 +442,11 @@ bool cfg80211_chandef_usable(struct wiphy *wiphy,
 
 	if (width > 20)
 		prohibited_flags |= IEEE80211_CHAN_NO_OFDM;
+
+	/* 5 and 10 MHz are only defined for the OFDM PHY */
+	if (width < 20)
+		prohibited_flags |= IEEE80211_CHAN_NO_OFDM;
+
 
 	if (!cfg80211_secondary_chans_ok(wiphy, chandef->center_freq1,
 					 width, prohibited_flags))
