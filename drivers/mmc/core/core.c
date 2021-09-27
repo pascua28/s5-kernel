@@ -37,6 +37,7 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
+#include <linux/mmc/sdhci.h>
 
 #include "core.h"
 #include "bus.h"
@@ -3244,11 +3245,23 @@ EXPORT_SYMBOL_GPL(mmc_exit_clk_scaling);
 
 static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 {
+#if defined(CONFIG_BCM4354)
+	struct sdhci_host *sd_host = NULL;
+#endif
 	host->f_init = freq;
 
 #ifdef CONFIG_MMC_DEBUG
 	pr_info("%s: %s: trying to init card at %u Hz\n",
 		mmc_hostname(host), __func__, host->f_init);
+#endif
+
+#if defined(CONFIG_BCM4354)
+	/* To detect absence of wifi chipset */
+	sd_host = (struct sdhci_host *)mmc_priv(host);
+	if (sd_host != NULL) {
+		if (sd_host->flags & SDHCI_DEVICE_DEAD)
+			return -EIO;
+	}
 #endif
 	mmc_power_up(host);
 
