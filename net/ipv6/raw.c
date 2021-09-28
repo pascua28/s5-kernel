@@ -107,21 +107,20 @@ found:
  *	0 - deliver
  *	1 - block
  */
-static __inline__ int icmpv6_filter(struct sock *sk, struct sk_buff *skb)
+static int icmpv6_filter(const struct sock *sk, const struct sk_buff *skb)
 {
-	struct icmp6hdr *icmph;
-	struct raw6_sock *rp = raw6_sk(sk);
+	struct icmp6hdr *_hdr;
+	const struct icmp6hdr *hdr;
 
-	if (pskb_may_pull(skb, sizeof(struct icmp6hdr))) {
-		__u32 *data = &rp->filter.data[0];
-		int bit_nr;
+	hdr = skb_header_pointer(skb, skb_transport_offset(skb),
+				 sizeof(_hdr), &_hdr);
+	if (hdr) {
+		const __u32 *data = &raw6_sk(sk)->filter.data[0];
+		unsigned int type = hdr->icmp6_type;
 
-		icmph = (struct icmp6hdr *) skb->data;
-		bit_nr = icmph->icmp6_type;
-
-		return (data[bit_nr >> 5] & (1 << (bit_nr & 31))) != 0;
+		return (data[type >> 5] & (1U << (type & 31))) != 0;
 	}
-	return 0;
+	return 1;
 }
 
 #if defined(CONFIG_IPV6_MIP6) || defined(CONFIG_IPV6_MIP6_MODULE)
@@ -728,6 +727,7 @@ static int rawv6_probe_proto_opt(struct flowi6 *fl6, struct msghdr *msg)
 static int rawv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 		   struct msghdr *msg, size_t len)
 {
+	struct ipv6_txoptions *opt_to_free = NULL;
 	struct ipv6_txoptions opt_space;
 	struct sockaddr_in6 * sin6 = (struct sockaddr_in6 *) msg->msg_name;
 	struct in6_addr *daddr, *final_p, final;
@@ -835,8 +835,10 @@ static int rawv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 		if (!(opt->opt_nflen|opt->opt_flen))
 			opt = NULL;
 	}
-	if (opt == NULL)
-		opt = np->opt;
+	if (!opt) {
+		opt = txopt_get(np);
+		opt_to_free = opt;
+	}
 	if (flowlabel)
 		opt = fl6_merge_options(&opt_space, flowlabel, opt);
 	opt = ipv6_fixup_options(&opt_space, opt);
@@ -903,6 +905,7 @@ done:
 	dst_release(dst);
 out:
 	fl6_sock_release(flowlabel);
+	txopt_put(opt_to_free);
 	return err<0?err:len;
 do_confirm:
 	dst_confirm(dst);
