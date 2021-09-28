@@ -10,4 +10,4 @@ make -j8 -C $(pwd) O=output
 
 cp output/arch/arm/boot/Image $(pwd)/arch/arm/boot/zImage
 
-tools/dtbTool -2 -o output/arch/arm/boot/dt -s 2048 -p output/scripts/dtc/ output/arch/arm/boot/
+tools/dtbTool -2 -o output/arch/arm/boot/dt.img -s 2048 -p output/scripts/dtc/ output/arch/arm/boot/
