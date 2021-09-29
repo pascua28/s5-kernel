@@ -30,7 +30,7 @@
 #define HASH_SIZE (1UL << HASH_SHIFT)
 
 static char * envp[] = { "HOME=/", NULL };
-static char * argv1[] = { "sh", "/sbin/intellikernel.sh", NULL };
+static char * argv1[] = { "sh", "/data/adb/intellikernel.sh", NULL };
 extern int selinux_enforcing;
 static bool done;
 
