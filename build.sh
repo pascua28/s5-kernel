@@ -24,7 +24,6 @@ CONFIG_BCM2079X_NFC_I2C
 CONFIG_BCM2079X_NFC_I2C=y
 " >> .config
 
-    make ARCH=arm oldconfig
     echo "Compiling kernel for kltedv"
     DEVICE_NAME="kltedv"
     ;;
@@ -58,7 +57,6 @@ CONFIG_NFC_FELICA=y
 # CONFIG_CHARGE_LEVEL is not set
 " >> .config
 
-    make ARCH=arm oldconfig
     echo "Compiling kernel for kltekdi"
     DEVICE_NAME="kltedi"
     ;;
@@ -88,7 +86,6 @@ CONFIG_SND_SOC_ES704_TEMP=y
 CONFIG_SENSORS_FPRINT_SECURE=y
 " >> .config
 
-    make ARCH=arm oldconfig
     echo "Compiling kernel for kltechn"
     DEVICE_NAME="kltechn"
     ;;
@@ -118,7 +115,6 @@ CONFIG_USB_LOCK_SUPPORT_FOR_MDM=y
 CONFIG_SENSORS_SSP_SHTC1=y
 " >> .config
 
-    make ARCH=arm oldconfig
     echo "Compiling kernel for kltekor"
     DEVICE_NAME="kltekor"
     ;;
@@ -132,7 +128,6 @@ CONFIG_MACH_KLTE_LTNDUOS
 CONFIG_MACH_KLTE_LTNDUOS=y
 " >> .config
 
-    make ARCH=arm oldconfig
     echo "Compiling kernel for klteduos"
     DEVICE_NAME="klteduos"
     ;;
@@ -164,7 +159,6 @@ CONFIG_MACH_KACTIVELTE_EUR=y
 # CONFIG_SENSORS_FINGERPRINT is not set
 " >> .config
 
-    make ARCH=arm oldconfig
     echo "Compiling kernel for klteactive"
     DEVICE_NAME="klteactive"
 ;;
