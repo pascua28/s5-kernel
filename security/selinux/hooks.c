@@ -61,7 +61,7 @@
 #include <linux/bitops.h>
 #include <linux/interrupt.h>
 #include <linux/netdevice.h>	/* for network interface checks */
-#include <net/netlink.h>
+#include <linux/netlink.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 #include <linux/dccp.h>
@@ -4742,7 +4742,7 @@ static int selinux_nlmsg_perm(struct sock *sk, struct sk_buff *skb)
 	struct nlmsghdr *nlh;
 	struct sk_security_struct *sksec = sk->sk_security;
 
-	if (skb->len < NLMSG_HDRLEN) {
+	if (skb->len < NLMSG_SPACE(0)) {
 		err = -EINVAL;
 		goto out;
 	}
