@@ -1001,7 +1001,6 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	spin_unlock(&inode->i_mapping->private_lock);
 done:
 	ret = (block < end_block) ? 1 : -ENXIO;
-
 failed:
 	unlock_page(page);
 	page_cache_release(page);
@@ -1046,9 +1045,6 @@ grow_buffers(struct block_device *bdev, sector_t block, int size)
 static struct buffer_head *
 __getblk_slow(struct block_device *bdev, sector_t block, int size)
 {
-	int ret;
-	struct buffer_head *bh;
-
 	/* Size must be multiple of hard sectorsize */
 	if (unlikely(size & (bdev_logical_block_size(bdev)-1) ||
 			(size < 512 || size > PAGE_SIZE))) {
@@ -1061,21 +1057,20 @@ __getblk_slow(struct block_device *bdev, sector_t block, int size)
 		return NULL;
 	}
 
-retry:
-	bh = __find_get_block(bdev, block, size);
-	if (bh)
-		return bh;
+	for (;;) {
+		struct buffer_head *bh;
+		int ret;
 
-	ret = grow_buffers(bdev, block, size);
-	if (ret == 0) {
-		free_more_memory();
-		goto retry;
-	} else if (ret > 0) {
 		bh = __find_get_block(bdev, block, size);
 		if (bh)
 			return bh;
+
+		ret = grow_buffers(bdev, block, size);
+		if (ret < 0)
+			return NULL;
+		if (ret == 0)
+			free_more_memory();
 	}
-	return NULL;
 }
 
 /*
