@@ -1750,7 +1750,6 @@ static void move_linked_works(struct work_struct *work, struct list_head *head,
 static void cwq_activate_delayed_work(struct work_struct *work)
 {
 	struct cpu_workqueue_struct *cwq = get_work_cwq(work);
-	struct list_head *pos = gcwq_determine_ins_pos(cwq->gcwq, cwq);
 
 	trace_workqueue_activate_work(work);
 	move_linked_works(work, &cwq->pool->worklist, NULL);
@@ -1896,9 +1895,6 @@ __acquires(&gcwq->lock)
 	lock_map_acquire_read(&cwq->wq->lockdep_map);
 	lock_map_acquire(&lockdep_map);
 	trace_workqueue_execute_start(work);
-#ifdef CONFIG_SEC_DEBUG
-	secdbg_sched_msg("@%pS", f);
-#endif
 	worker->current_func(work);
 	/*
 	 * While we must be careful to not use "work" after this, the trace
