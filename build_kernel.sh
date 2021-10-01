@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export ARCH=arm
-export CROSS_COMPILE=$(pwd)/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+export CROSS_COMPILE=~/ubertc/bin/arm-eabi-
 
 mkdir output
 
