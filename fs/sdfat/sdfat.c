@@ -752,7 +752,7 @@ static int sdfat_revalidate_ci(struct dentry *dentry, unsigned int flags)
 	if (flags & LOOKUP_RCU)
 		return -ECHILD;
 
-	return __sdfat_revalidate_ci(flags : 0);
+	return __sdfat_revalidate_ci(dentry, flags);
 
 }
 
