@@ -177,10 +177,7 @@ esac
 
 DATE_START=$(date +"%s")
 
-export KBUILD_COMPILER_STRING=$(~/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
-
-make ARCH=arm CC="$(which ccache) /home/pascua14/clang/bin/clang" \
-CLANG_TRIPLE=arm-linux-gnueabihf- \
+make ARCH=arm \
 CROSS_COMPILE=arm-linux-gnueabihf- \
 -j$(nproc --all) 2>&1 | tee ../compile.log
 
