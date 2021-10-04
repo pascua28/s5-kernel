@@ -177,10 +177,12 @@ esac
 
 DATE_START=$(date +"%s")
 
-export ARCH=arm
-export CROSS_COMPILE=~/ubertc/bin/arm-eabi-
+export KBUILD_COMPILER_STRING=$(~/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 
-make -j$(nproc --all) 2>&1 | tee ../compile.log
+make ARCH=arm CC="$(which ccache) /home/pascua14/clang/bin/clang" \
+CLANG_TRIPLE=arm-linux-gnueabihf- \
+CROSS_COMPILE=arm-linux-gnueabihf- \
+-j$(nproc --all) 2>&1 | tee ../compile.log
 
 tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
 
