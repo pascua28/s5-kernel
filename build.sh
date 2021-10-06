@@ -1,7 +1,7 @@
 #!/bin/bash
 
 K_NAME="Intelli-Kernel"
-K_VERSION="v15"
+K_VERSION="v16"
 
 make ARCH=arm klte_defconfig
 find arch/arm/boot/ -name "*.dtb" -type f -delete
