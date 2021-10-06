@@ -58,7 +58,7 @@ CONFIG_NFC_FELICA=y
 " >> .config
 
     echo "Compiling kernel for kltekdi"
-    DEVICE_NAME="kltedi"
+    DEVICE_NAME="kltekdi"
     ;;
 
 	kltechn)
