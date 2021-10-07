@@ -296,7 +296,6 @@ static inline int freezable_schedule_hrtimeout_range(ktime_t *expires,
 	__retval;							\
 })
 
-
 #else /* !CONFIG_FREEZER */
 static inline bool frozen(struct task_struct *p) { return false; }
 static inline bool freezing(struct task_struct *p) { return false; }

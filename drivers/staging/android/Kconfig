@@ -129,6 +129,8 @@ config SW_SYNC_USER
 	  *WARNING* improper use of this can result in deadlocking kernel
 	  drivers from userspace.
 
+source "drivers/staging/android/fiq_debugger/Kconfig"
+
 endif # if ANDROID
 
 endmenu

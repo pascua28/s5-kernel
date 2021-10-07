@@ -36,11 +36,9 @@ static void *seq_buf_alloc(unsigned long size)
 {
 	void *buf;
 
-	if (size > PAGE_SIZE)
+	buf = kmalloc(size, GFP_KERNEL | __GFP_NOWARN);
+	if (!buf && size > PAGE_SIZE)
 		buf = vmalloc(size);
-	else
-		buf = kmalloc(size, GFP_KERNEL | __GFP_NOWARN);
-
 	return buf;
 }
 
@@ -150,7 +148,6 @@ static int traverse(struct seq_file *m, loff_t offset)
 Eoverflow:
 	m->op->stop(m, p);
 	kvfree(m->buf);
-	m->count = 0;
 	m->buf = seq_buf_alloc(m->size <<= 1);
 	return !m->buf ? -ENOMEM : -EAGAIN;
 }
@@ -247,7 +244,6 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 			goto Fill;
 		m->op->stop(m, p);
 		kvfree(m->buf);
-		m->count = 0;
 		m->buf = seq_buf_alloc(m->size <<= 1);
 		if (!m->buf)
 			goto Enomem;

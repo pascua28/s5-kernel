@@ -12,5 +12,7 @@ obj-$(CONFIG_RUNTIME_COMPCACHE)		+= rtcc.o
 
 CFLAGS_REMOVE_trace_persistent.o = -pg
 
+obj-$(CONFIG_FIQ_DEBUGGER)		+= fiq_debugger/
+
 obj-$(CONFIG_SYNC)			+= sync.o
 obj-$(CONFIG_SW_SYNC)			+= sw_sync.o

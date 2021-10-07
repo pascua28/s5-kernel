@@ -216,7 +216,7 @@ int min_free_order_shift = 1;
  * free memory, to make space for new workloads. Anyone can allocate
  * down to the min watermarks controlled by min_free_kbytes above.
  */
-int extra_free_kbytes;
+int extra_free_kbytes = 0;
 
 static unsigned long __meminitdata nr_kernel_pages;
 static unsigned long __meminitdata nr_all_pages;
@@ -5475,9 +5475,9 @@ static void __setup_per_zone_wmarks(void)
 		u64 min, low;
 
 		spin_lock_irqsave(&zone->lock, flags);
-		min = (u64)pages_min * zone->present_pages;
+		min = (u64)pages_min * zone->managed_pages;
 		do_div(min, lowmem_pages);
-		low = (u64)pages_low * zone->present_pages;
+		low = (u64)pages_low * zone->managed_pages;
 		do_div(low, vm_total_pages);
 
 		if (is_highmem(zone)) {

@@ -66,7 +66,6 @@ do {									\
 	ACCESS_ONCE(*p) = (v);						\
 } while (0)
 
-
 #define smp_load_acquire(p)						\
 ({									\
 	typeof(*p) ___p1 = ACCESS_ONCE(*p);				\

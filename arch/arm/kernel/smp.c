@@ -464,6 +464,7 @@ static const char *ipi_types[NR_IPI] = {
 	S(IPI_CALL_FUNC, "Function call interrupts"),
 	S(IPI_CALL_FUNC_SINGLE, "Single function call interrupts"),
 	S(IPI_CPU_STOP, "CPU stop interrupts"),
+	S(IPI_CPU_BACKTRACE, "CPU backtrace"),
 };
 
 void show_ipi_list(struct seq_file *p, int prec)
@@ -629,6 +630,20 @@ void smp_send_all_cpu_backtrace(void)
 }
 
 /*
+ * ipi_cpu_backtrace - handle IPI from smp_send_all_cpu_backtrace()
+ */
+static void ipi_cpu_backtrace(unsigned int cpu, struct pt_regs *regs)
+{
+	if (cpu_isset(cpu, backtrace_mask)) {
+		raw_spin_lock(&backtrace_lock);
+		pr_warning("IPI backtrace for cpu %d\n", cpu);
+		show_regs(regs);
+		raw_spin_unlock(&backtrace_lock);
+		cpu_clear(cpu, backtrace_mask);
+	}
+}
+
+/*
  * Main handler for inter-processor interrupts
  */
 asmlinkage void __exception_irq_entry do_IPI(int ipinr, struct pt_regs *regs)
@@ -676,6 +691,10 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 		irq_enter();
 		ipi_cpu_stop(cpu);
 		irq_exit();
+		break;
+
+	case IPI_CPU_BACKTRACE:
+		ipi_cpu_backtrace(cpu, regs);
 		break;
 
 	default:

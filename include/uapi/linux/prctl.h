@@ -149,7 +149,6 @@
 
 #define PR_GET_TID_ADDRESS	40
 
-
 /* Sets the timerslack for arbitrary threads
  * arg2 slack value, 0 means "use default"
  * arg3 pid of the thread whose timer slack needs to be set
