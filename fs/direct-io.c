@@ -263,8 +263,7 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret,
 		ret = transferred;
 
 	if (dio->end_io && dio->result)
-		dio->end_io(dio->iocb, offset, transferred,
-			    dio->private, ret, is_async);
+		dio->end_io(dio->iocb, offset, transferred, dio->private);
 
 	inode_dio_done(dio->inode);
 	if (is_async)
