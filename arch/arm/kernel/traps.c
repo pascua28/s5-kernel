@@ -35,8 +35,6 @@
 #include <asm/tls.h>
 #include <asm/system_misc.h>
 
-#include "signal.h"
-
 #include <mach/sec_debug.h>
 
 static const char *handler[]= { "prefetch abort", "data abort", "address exception", "interrupt" };
