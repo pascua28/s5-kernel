@@ -36,7 +36,7 @@ static void blk_done_softirq(struct softirq_action *h)
 	}
 }
 
-#ifdef CONFIG_SMP
+#if defined(CONFIG_SMP) && defined(CONFIG_USE_GENERIC_SMP_HELPERS)
 static void trigger_softirq(void *data)
 {
 	struct request *rq = data;
@@ -71,7 +71,7 @@ static int raise_blk_irq(int cpu, struct request *rq)
 
 	return 1;
 }
-#else /* CONFIG_SMP */
+#else /* CONFIG_SMP && CONFIG_USE_GENERIC_SMP_HELPERS */
 static int raise_blk_irq(int cpu, struct request *rq)
 {
 	return 1;

@@ -101,7 +101,7 @@ static int blkpg_ioctl(struct block_device *bdev, struct blkpg_ioctl_arg __user 
 			    sizeof(long long) > sizeof(long)) {
 				long pstart = start, plength = length;
 				if (pstart != start || plength != length
-				    || pstart < 0 || plength < 0)
+				    || pstart < 0 || plength < 0 || partno > 65535)
 					return -EINVAL;
 			}
 			part = disk_get_part(disk, partno);
@@ -316,6 +316,7 @@ int blkdev_ioctl(struct block_device *bdev, fmode_t mode, unsigned cmd,
 		return blk_ioctl_discard(bdev, range[0], range[1],
 					 cmd == BLKSECDISCARD);
 	}
+
 	case BLKZEROOUT: {
 		uint64_t range[2];
 
