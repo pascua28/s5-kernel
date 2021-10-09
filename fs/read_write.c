@@ -145,6 +145,26 @@ loff_t generic_file_llseek(struct file *file, loff_t offset, int whence)
 EXPORT_SYMBOL(generic_file_llseek);
 
 /**
+ * fixed_size_llseek - llseek implementation for fixed-sized devices
+ * @file:	file structure to seek on
+ * @offset:	file offset to seek to
+ * @whence:	type of seek
+ * @size:	size of the file
+ *
+ */
+loff_t fixed_size_llseek(struct file *file, loff_t offset, int whence, loff_t size)
+{
+	switch (whence) {
+	case SEEK_SET: case SEEK_CUR: case SEEK_END:
+		return generic_file_llseek_size(file, offset, whence,
+						size, size);
+	default:
+		return -EINVAL;
+	}
+}
+EXPORT_SYMBOL(fixed_size_llseek);
+
+/**
  * noop_llseek - No Operation Performed llseek implementation
  * @file:	file structure to seek on
  * @offset:	file offset to seek to
@@ -391,7 +411,7 @@ ssize_t do_sync_write(struct file *filp, const char __user *buf, size_t len, lof
 	kiocb.ki_left = len;
 	kiocb.ki_nbytes = len;
 
-	ret = filp->f_op->aio_write(&kiocb, &iov, 1, kiocb.ki_pos);
+	ret = filp->f_op->aio_write(&kiocb, &iov, 1, *ppos);
 	if (-EIOCBQUEUED == ret)
 		ret = wait_on_sync_kiocb(&kiocb);
 	*ppos = kiocb.ki_pos;

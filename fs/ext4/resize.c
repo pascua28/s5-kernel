@@ -42,7 +42,7 @@ int ext4_resize_begin(struct super_block *sb)
 void ext4_resize_end(struct super_block *sb)
 {
 	clear_bit_unlock(EXT4_RESIZING, &EXT4_SB(sb)->s_resize_flags);
-	smp_mb__after_clear_bit();
+	smp_mb__after_atomic_inc();
 }
 
 static ext4_group_t ext4_meta_bg_first_group(struct super_block *sb,
@@ -1911,8 +1911,7 @@ retry:
 			n_desc_blocks = o_desc_blocks +
 				le16_to_cpu(es->s_reserved_gdt_blocks);
 			n_group = n_desc_blocks * EXT4_DESC_PER_BLOCK(sb);
-			n_blocks_count = (ext4_fsblk_t)n_group *
-				EXT4_BLOCKS_PER_GROUP(sb);
+			n_blocks_count = n_group * EXT4_BLOCKS_PER_GROUP(sb);
 			n_group--; /* set to last group number */
 		}
 
