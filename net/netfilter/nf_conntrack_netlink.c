@@ -1414,6 +1414,11 @@ ctnetlink_change_timeout(struct nf_conn *ct, const struct nlattr * const cda[])
 	ct->timeout.expires = jiffies + timeout * HZ;
 	add_timer(&ct->timeout);
 
+/* Refresh the NAT type entry. */
+#if defined(CONFIG_IP_NF_TARGET_NATTYPE_MODULE)
+	(void)nattype_refresh_timer(ct->nattype_entry, ct->timeout.expires);
+#endif
+
 	return 0;
 }
 
@@ -3132,7 +3137,6 @@ static void __exit ctnetlink_exit(void)
 #ifdef CONFIG_NETFILTER_NETLINK_QUEUE_CT
 	RCU_INIT_POINTER(nfq_ct_hook, NULL);
 #endif
-	synchronize_rcu();
 }
 
 module_init(ctnetlink_init);

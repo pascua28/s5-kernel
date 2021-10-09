@@ -88,6 +88,7 @@
 #include <linux/magic.h>
 #include <linux/slab.h>
 #include <linux/xattr.h>
+#include <linux/qmp_sphinx_instrumentation.h>
 
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
@@ -104,6 +105,8 @@
 #include <linux/route.h>
 #include <linux/sockios.h>
 #include <linux/atalk.h>
+
+static BLOCKING_NOTIFIER_HEAD(sockev_notifier_list);
 
 static int sock_no_open(struct inode *irrelevant, struct file *dontcare);
 static ssize_t sock_aio_read(struct kiocb *iocb, const struct iovec *iov,
@@ -165,6 +168,14 @@ static const struct net_proto_family __rcu *net_families[NPROTO] __read_mostly;
 static DEFINE_PER_CPU(int, sockets_in_use);
 
 /*
+ * Socket Event framework helpers
+ */
+static void sockev_notify(unsigned long event, struct socket *sk)
+{
+	blocking_notifier_call_chain(&sockev_notifier_list, event, sk);
+}
+
+/**
  * Support routines.
  * Move socket addresses back and forth across the kernel/user
  * divide and look after the messy bits.
@@ -1382,6 +1393,9 @@ SYSCALL_DEFINE3(socket, int, family, int, type, int, protocol)
 	if (retval < 0)
 		goto out;
 
+	if (retval == 0)
+		sockev_notify(SOCKEV_SOCKET, sock);
+
 	retval = sock_map_fd(sock, flags & (O_CLOEXEC | O_NONBLOCK));
 	if (retval < 0)
 		goto out_release;
@@ -1513,6 +1527,13 @@ SYSCALL_DEFINE3(bind, int, fd, struct sockaddr __user *, umyaddr, int, addrlen)
 						      (struct sockaddr *)
 						      &address, addrlen);
 		}
+		if (!err) {
+			if (sock->sk)
+				sock_hold(sock->sk);
+			sockev_notify(SOCKEV_BIND, sock);
+			if (sock->sk)
+				sock_put(sock->sk);
+		}
 		fput_light(sock->file, fput_needed);
 	}
 	return err;
@@ -1540,6 +1561,13 @@ SYSCALL_DEFINE2(listen, int, fd, int, backlog)
 		if (!err)
 			err = sock->ops->listen(sock, backlog);
 
+		if (!err) {
+			if (sock->sk)
+				sock_hold(sock->sk);
+			sockev_notify(SOCKEV_LISTEN, sock);
+			if (sock->sk)
+				sock_put(sock->sk);
+		}
 		fput_light(sock->file, fput_needed);
 	}
 	return err;
@@ -1627,7 +1655,8 @@ SYSCALL_DEFINE4(accept4, int, fd, struct sockaddr __user *, upeer_sockaddr,
 
 	fd_install(newfd, newfile);
 	err = newfd;
-
+	if (!err)
+		sockev_notify(SOCKEV_ACCEPT, sock);
 out_put:
 	fput_light(sock->file, fput_needed);
 out:
@@ -1677,6 +1706,8 @@ SYSCALL_DEFINE3(connect, int, fd, struct sockaddr __user *, uservaddr,
 
 	err = sock->ops->connect(sock, (struct sockaddr *)&address, addrlen,
 				 sock->file->f_flags);
+	if (!err)
+		sockev_notify(SOCKEV_CONNECT, sock);
 out_put:
 	fput_light(sock->file, fput_needed);
 out:
@@ -1762,8 +1793,12 @@ SYSCALL_DEFINE6(sendto, int, fd, void __user *, buff, size_t, len,
 	struct iovec iov;
 	int fput_needed;
 
+	qmp_sphinx_logk_sendto(fd, buff, len, flags, addr, addr_len);
+
 	if (len > INT_MAX)
 		len = INT_MAX;
+	if (unlikely(!access_ok(VERIFY_READ, buff, len)))
+		return -EFAULT;
 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
 	if (!sock)
 		goto out;
@@ -1821,8 +1856,12 @@ SYSCALL_DEFINE6(recvfrom, int, fd, void __user *, ubuf, size_t, size,
 	int err, err2;
 	int fput_needed;
 
+	qmp_sphinx_logk_recvfrom(fd, ubuf, size, flags, addr, addr_len);
+
 	if (size > INT_MAX)
 		size = INT_MAX;
+	if (unlikely(!access_ok(VERIFY_WRITE, ubuf, size)))
+		return -EFAULT;
 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
 	if (!sock)
 		goto out;
@@ -1939,6 +1978,7 @@ SYSCALL_DEFINE2(shutdown, int, fd, int, how)
 
 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
 	if (sock != NULL) {
+		sockev_notify(SOCKEV_SHUTDOWN, sock);
 		err = security_socket_shutdown(sock, how);
 		if (!err)
 			err = sock->ops->shutdown(sock, how);
@@ -3479,3 +3519,15 @@ int kernel_sock_shutdown(struct socket *sock, enum sock_shutdown_cmd how)
 	return sock->ops->shutdown(sock, how);
 }
 EXPORT_SYMBOL(kernel_sock_shutdown);
+
+int sockev_register_notify(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&sockev_notifier_list, nb);
+}
+EXPORT_SYMBOL(sockev_register_notify);
+
+int sockev_unregister_notify(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&sockev_notifier_list, nb);
+}
+EXPORT_SYMBOL(sockev_unregister_notify);

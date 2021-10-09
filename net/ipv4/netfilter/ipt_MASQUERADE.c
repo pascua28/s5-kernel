@@ -89,7 +89,12 @@ masquerade_tg(struct sk_buff *skb, const struct xt_action_param *par)
 	newrange.max_proto   = mr->range[0].max;
 
 	/* Hand modified range to generic setup. */
+#if defined(CONFIG_IP_NF_TARGET_NATTYPE_MODULE)
+	nf_nat_setup_info(ct, &newrange, NF_NAT_MANIP_SRC);
+	return XT_CONTINUE;
+#else
 	return nf_nat_setup_info(ct, &newrange, NF_NAT_MANIP_SRC);
+#endif
 }
 
 static int
@@ -128,8 +133,16 @@ static int masq_inet_event(struct notifier_block *this,
 			   unsigned long event,
 			   void *ptr)
 {
-	struct net_device *dev = ((struct in_ifaddr *)ptr)->ifa_dev->dev;
-	return masq_device_event(this, event, dev);
+	struct in_device *idev = ((struct in_ifaddr *)ptr)->ifa_dev;
+	/* The masq_dev_notifier will catch the case of the device going
+	 * down.  So if the inetdev is dead and being destroyed we have
+	 * no work to do.  Otherwise this is an individual address removal
+	 * and we have to perform the flush.
+	 */
+	if (idev->dead)
+		return NOTIFY_DONE;
+
+	return masq_device_event(this, event, idev->dev);
 }
 
 static struct notifier_block masq_dev_notifier = {

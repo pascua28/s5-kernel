@@ -2342,10 +2342,9 @@ EXPORT_SYMBOL(skb_mac_gso_segment);
 static inline bool skb_needs_check(struct sk_buff *skb, bool tx_path)
 {
 	if (tx_path)
-		return skb->ip_summed != CHECKSUM_PARTIAL &&
-		       skb->ip_summed != CHECKSUM_NONE;
-
-	return skb->ip_summed == CHECKSUM_NONE;
+		return skb->ip_summed != CHECKSUM_PARTIAL;
+	else
+		return skb->ip_summed == CHECKSUM_NONE;
 }
 
 /**
@@ -2362,12 +2361,11 @@ static inline bool skb_needs_check(struct sk_buff *skb, bool tx_path)
 struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
 				  netdev_features_t features, bool tx_path)
 {
-	struct sk_buff *segs;
-
 	if (unlikely(skb_needs_check(skb, tx_path))) {
 		int err;
 
-		/* We're going to init ->check field in TCP or UDP header */
+		skb_warn_bad_offload(skb);
+
 		if (skb_header_cloned(skb) &&
 		    (err = pskb_expand_head(skb, 0, 0, GFP_ATOMIC)))
 			return ERR_PTR(err);
@@ -2377,12 +2375,7 @@ struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
 	skb_reset_mac_header(skb);
 	skb_reset_mac_len(skb);
 
-	segs = skb_mac_gso_segment(skb, features);
-
-	if (unlikely(skb_needs_check(skb, tx_path)))
-		skb_warn_bad_offload(skb);
-
-	return segs;
+	return skb_mac_gso_segment(skb, features);
 }
 EXPORT_SYMBOL(__skb_gso_segment);
 
@@ -5643,7 +5636,7 @@ struct rtnl_link_stats64 *dev_get_stats(struct net_device *dev,
 	} else {
 		netdev_stats_to_stats64(storage, &dev->stats);
 	}
-	storage->rx_dropped += (unsigned long)atomic_long_read(&dev->rx_dropped);
+	storage->rx_dropped += atomic_long_read(&dev->rx_dropped);
 	return storage;
 }
 EXPORT_SYMBOL(dev_get_stats);
@@ -6082,11 +6075,11 @@ static int dev_cpu_callback(struct notifier_block *nfb,
 
 	/* Process offline CPU's input_pkt_queue */
 	while ((skb = __skb_dequeue(&oldsd->process_queue))) {
-		netif_rx(skb);
+		kfree_skb(skb);
 		input_queue_head_incr(oldsd);
 	}
 	while ((skb = skb_dequeue(&oldsd->input_pkt_queue))) {
-		netif_rx(skb);
+		kfree_skb(skb);
 		input_queue_head_incr(oldsd);
 	}
 

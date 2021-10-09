@@ -18,6 +18,15 @@ config SECURITY_DMESG_RESTRICT
 
 	  If you are unsure how to answer this question, answer N.
 
+config SECURITY_PERF_EVENTS_RESTRICT
+	bool "Restrict unprivileged use of performance events"
+	depends on PERF_EVENTS
+	help
+	  If you say Y here, the kernel.perf_event_paranoid sysctl
+	  will be set to 3 by default, and no unprivileged use of the
+	  perf_event_open syscall will be permitted unless it is
+	  changed.
+
 config SECURITY
 	bool "Enable different security models"
 	depends on SYSFS
@@ -68,6 +77,16 @@ config SECURITY_PATH
 	  This enables the security hooks for pathname based access control.
 	  If enabled, a security module can use these hooks to
 	  implement pathname based access controls.
+	  If you are unsure how to answer this question, answer N.
+
+config SECURITY_PFT
+	bool "Security hooks for Per File Encryption"
+	depends on SECURITY
+	depends on PFT
+	help
+	  This enables the security hooks for Per File Encryption.
+	  If enabled, a security module can use these hooks to
+	  implement file based access controls and encryption.
 	  If you are unsure how to answer this question, answer N.
 
 config INTEL_TXT
@@ -132,6 +151,7 @@ choice
 	default DEFAULT_SECURITY_TOMOYO if SECURITY_TOMOYO
 	default DEFAULT_SECURITY_APPARMOR if SECURITY_APPARMOR
 	default DEFAULT_SECURITY_YAMA if SECURITY_YAMA
+	default DEFAULT_SECURITY_PFT if SECURITY_PFT
 	default DEFAULT_SECURITY_DAC
 
 	help
@@ -153,6 +173,9 @@ choice
 	config DEFAULT_SECURITY_YAMA
 		bool "Yama" if SECURITY_YAMA=y
 
+	config DEFAULT_SECURITY_PFT
+		bool "PFT" if SECURITY_PFT=y
+
 	config DEFAULT_SECURITY_DAC
 		bool "Unix Discretionary Access Controls"
 
@@ -165,6 +188,7 @@ config DEFAULT_SECURITY
 	default "tomoyo" if DEFAULT_SECURITY_TOMOYO
 	default "apparmor" if DEFAULT_SECURITY_APPARMOR
 	default "yama" if DEFAULT_SECURITY_YAMA
+	default "pft" if DEFAULT_SECURITY_PFT
 	default "" if DEFAULT_SECURITY_DAC
 
 endmenu

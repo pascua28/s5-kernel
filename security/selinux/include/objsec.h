@@ -24,8 +24,8 @@
 #include <linux/binfmts.h>
 #include <linux/in.h>
 #include <linux/spinlock.h>
-#include "flask.h"
-#include "avc.h"
+#include <linux/in6.h>
+#include <net/net_namespace.h>
 
 struct task_security_struct {
 	u32 osid;		/* SID prior to last execve */
@@ -46,6 +46,7 @@ struct inode_security_struct {
 	u32 sid;		/* SID of this object */
 	u16 sclass;		/* security class of this object */
 	unsigned char initialized;	/* initialization flag */
+	u32 tag;		/* Per-File-Encryption tag */
 	struct mutex lock;
 };
 
@@ -78,6 +79,7 @@ struct ipc_security_struct {
 };
 
 struct netif_security_struct {
+	struct net *ns;			/* network namespace */
 	int ifindex;			/* device index */
 	u32 sid;			/* SID for this interface */
 };

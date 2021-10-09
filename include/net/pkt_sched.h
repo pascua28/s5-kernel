@@ -78,7 +78,6 @@ extern void qdisc_watchdog_cancel(struct qdisc_watchdog *wd);
 extern struct Qdisc_ops pfifo_qdisc_ops;
 extern struct Qdisc_ops bfifo_qdisc_ops;
 extern struct Qdisc_ops pfifo_head_drop_qdisc_ops;
-extern const struct Qdisc_ops *default_qdisc_ops;
 
 extern int fifo_set_limit(struct Qdisc *q, unsigned int limit);
 extern struct Qdisc *fifo_create_dflt(struct Qdisc *sch, struct Qdisc_ops *ops,
@@ -110,7 +109,7 @@ extern int tc_classify_compat(struct sk_buff *skb, const struct tcf_proto *tp,
 			      struct tcf_result *res);
 extern int tc_classify(struct sk_buff *skb, const struct tcf_proto *tp,
 		       struct tcf_result *res);
-extern void tc_qdisc_flow_control(struct net_device *dev, u32 tcm_handle,
+extern int tc_qdisc_flow_control(struct net_device *dev, u32 tcm_handle,
 				  int flow_enable);
 /* Calculate maximal size of packet seen by hard_start_xmit
    routine of this device.
