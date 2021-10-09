@@ -18,6 +18,10 @@
 #include <linux/bit_spinlock.h>
 #include <linux/shrinker.h>
 
+#ifdef CONFIG_STRICT_MEMORY_RWX
+extern char __init_data_begin[];
+#endif
+
 struct mempolicy;
 struct anon_vma;
 struct anon_vma_chain;
@@ -43,6 +47,17 @@ extern int sysctl_legacy_va_layout;
 #define sysctl_legacy_va_layout 0
 #endif
 
+#ifdef CONFIG_HAVE_ARCH_MMAP_RND_BITS
+extern const int mmap_rnd_bits_min;
+extern const int mmap_rnd_bits_max;
+extern int mmap_rnd_bits __read_mostly;
+#endif
+#ifdef CONFIG_HAVE_ARCH_MMAP_RND_COMPAT_BITS
+extern const int mmap_rnd_compat_bits_min;
+extern const int mmap_rnd_compat_bits_max;
+extern int mmap_rnd_compat_bits __read_mostly;
+#endif
+
 #include <asm/page.h>
 #include <asm/pgtable.h>
 #include <asm/processor.h>
@@ -54,9 +69,6 @@ extern unsigned long sysctl_admin_reserve_kbytes;
 
 /* to align the pointer to the (next) page boundary */
 #define PAGE_ALIGN(addr) ALIGN(addr, PAGE_SIZE)
-
-/* test whether an address (unsigned long or pointer) is aligned to PAGE_SIZE */
-#define PAGE_ALIGNED(addr)	IS_ALIGNED((unsigned long)addr, PAGE_SIZE)
 
 /*
  * Linux kernel virtual memory manager primitives.
@@ -112,7 +124,6 @@ extern unsigned int kobjsize(const void *objp);
 #define VM_ARCH_1	0x01000000	/* Architecture-specific flag */
 #define VM_DONTDUMP	0x04000000	/* Do not include in the core dump */
 
-#define VM_CAN_NONLINEAR 0x08000000	/* Has ->fault & does nonlinear pages */
 #define VM_MIXEDMAP	0x10000000	/* Can contain "struct page" and pure PFN pages */
 #define VM_HUGEPAGE	0x20000000	/* MADV_HUGEPAGE marked this vma */
 #define VM_NOHUGEPAGE	0x40000000	/* MADV_NOHUGEPAGE marked this vma */
@@ -313,16 +324,16 @@ unsigned long vmalloc_to_pfn(const void *addr);
  * On nommu, vmalloc/vfree wrap through kmalloc/kfree directly, so there
  * is no special casing required.
  */
+
+#ifdef CONFIG_MMU
+extern int is_vmalloc_addr(const void *x);
+#else
 static inline int is_vmalloc_addr(const void *x)
 {
-#ifdef CONFIG_MMU
-	unsigned long addr = (unsigned long)x;
-
-	return addr >= VMALLOC_START && addr < VMALLOC_END;
-#else
 	return 0;
-#endif
 }
+#endif
+
 #ifdef CONFIG_MMU
 extern int is_vmalloc_or_module_addr(const void *x);
 #else
@@ -331,6 +342,8 @@ static inline int is_vmalloc_or_module_addr(const void *x)
 	return 0;
 }
 #endif
+
+extern void kvfree(const void *addr);
 
 static inline void compound_lock(struct page *page)
 {
@@ -930,8 +943,6 @@ extern void pagefault_out_of_memory(void);
 extern void show_free_areas(unsigned int flags);
 extern bool skip_free_areas_node(unsigned int flags, int nid);
 
-int shmem_lock(struct file *file, int lock, struct user_struct *user);
-struct file *shmem_file_setup(const char *name, loff_t size, unsigned long flags);
 void shmem_set_file(struct vm_area_struct *vma, struct file *file);
 int shmem_zero_setup(struct vm_area_struct *);
 
@@ -1254,10 +1265,11 @@ static inline pmd_t *pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long a
 #define pte_lockptr(mm, pmd)	({(void)(pmd); &(mm)->page_table_lock;})
 #endif /* USE_SPLIT_PTLOCKS */
 
-static inline void pgtable_page_ctor(struct page *page)
+static inline bool pgtable_page_ctor(struct page *page)
 {
 	pte_lock_init(page);
 	inc_zone_page_state(page, NR_PAGETABLE);
+	return true;
 }
 
 static inline void pgtable_page_dtor(struct page *page)
@@ -1307,6 +1319,7 @@ extern void free_initmem(void);
  */
 extern unsigned long free_reserved_area(unsigned long start, unsigned long end,
 					int poison, char *s);
+
 #ifdef	CONFIG_HIGHMEM
 /*
  * Free a highmem page into the buddy system, adjusting totalhigh_pages
@@ -1315,10 +1328,8 @@ extern unsigned long free_reserved_area(unsigned long start, unsigned long end,
 extern void free_highmem_page(struct page *page);
 #endif
 
-static inline void adjust_managed_page_count(struct page *page, long count)
-{
-	totalram_pages += count;
-}
+extern void adjust_managed_page_count(struct page *page, long count);
+extern void mem_init_print_info(const char *str);
 
 /* Free the reserved page into the buddy system, so it gets managed. */
 static inline void __free_reserved_page(struct page *page)
@@ -1352,6 +1363,17 @@ static inline unsigned long free_initmem_default(int poison)
 	return free_reserved_area(PAGE_ALIGN((unsigned long)&__init_begin) ,
 				  ((unsigned long)&__init_end) & PAGE_MASK,
 				  poison, "unused kernel");
+}
+
+static inline unsigned long get_num_physpages(void)
+{
+	int nid;
+	unsigned long phys_pages = 0;
+
+	for_each_online_node(nid)
+		phys_pages += node_present_pages(nid);
+
+	return phys_pages;
 }
 
 #ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
@@ -1483,7 +1505,7 @@ extern int vma_adjust(struct vm_area_struct *vma, unsigned long start,
 extern struct vm_area_struct *vma_merge(struct mm_struct *,
 	struct vm_area_struct *prev, unsigned long addr, unsigned long end,
 	unsigned long vm_flags, struct anon_vma *, struct file *, pgoff_t,
-	struct mempolicy *);
+	struct mempolicy *, const char __user *);
 extern struct anon_vma *find_mergeable_anon_vma(struct vm_area_struct *);
 extern int split_vma(struct mm_struct *,
 	struct vm_area_struct *, unsigned long addr, int new_below);
@@ -1876,6 +1898,20 @@ static inline bool page_is_guard(struct page *page) { return false; }
 void __init setup_nr_node_ids(void);
 #else
 static inline void setup_nr_node_ids(void) {}
+#endif
+
+#ifdef CONFIG_PROCESS_RECLAIM
+struct reclaim_param {
+	struct vm_area_struct *vma;
+	/* Number of pages scanned */
+	int nr_scanned;
+	/* max pages to reclaim */
+	int nr_to_reclaim;
+	/* pages reclaimed */
+	int nr_reclaimed;
+};
+extern struct reclaim_param reclaim_task_anon(struct task_struct *task,
+		int nr_to_reclaim);
 #endif
 
 #endif /* __KERNEL__ */

@@ -471,6 +471,7 @@ struct request_queue {
 #define QUEUE_FLAG_SAME_FORCE  18	/* force complete on same CPU */
 #define QUEUE_FLAG_SANITIZE    19	/* supports SANITIZE */
 #define QUEUE_FLAG_DEAD        19	/* queue tear-down finished */
+#define QUEUE_FLAG_FAST        20	/* fast block device (e.g. ram based) */
 
 #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
 				 (1 << QUEUE_FLAG_STACKABLE)	|	\
@@ -552,9 +553,9 @@ static inline void queue_flag_clear(unsigned int flag, struct request_queue *q)
 #define blk_queue_stackable(q)	\
 	test_bit(QUEUE_FLAG_STACKABLE, &(q)->queue_flags)
 #define blk_queue_discard(q)	test_bit(QUEUE_FLAG_DISCARD, &(q)->queue_flags)
-#define blk_queue_sanitize(q)	test_bit(QUEUE_FLAG_SANITIZE, &(q)->queue_flags)
 #define blk_queue_secdiscard(q)	(blk_queue_discard(q) && \
 	test_bit(QUEUE_FLAG_SECDISCARD, &(q)->queue_flags))
+#define blk_queue_fast(q)	test_bit(QUEUE_FLAG_FAST, &(q)->queue_flags)
 
 #define blk_noretry_request(rq) \
 	((rq)->cmd_flags & (REQ_FAILFAST_DEV|REQ_FAILFAST_TRANSPORT| \
@@ -742,6 +743,7 @@ extern void __blk_put_request(struct request_queue *, struct request *);
 extern struct request *blk_get_request(struct request_queue *, int, gfp_t);
 extern struct request *blk_make_request(struct request_queue *, struct bio *,
 					gfp_t);
+extern void blk_rq_set_block_pc(struct request *);
 extern void blk_requeue_request(struct request_queue *, struct request *);
 extern int blk_reinsert_request(struct request_queue *q, struct request *rq);
 extern bool blk_reinsert_req_sup(struct request_queue *q);
@@ -767,7 +769,7 @@ extern int sg_scsi_ioctl(struct request_queue *, struct gendisk *, fmode_t,
 			 struct scsi_ioctl_command __user *);
 
 extern void blk_queue_bio(struct request_queue *q, struct bio *bio);
-
+extern void blk_recalc_rq_segments(struct request *rq);
 /*
  * A queue has just exitted congestion.  Note this in the global counter of
  * congested queues, and wake up anyone who was waiting for requests to be
@@ -973,27 +975,6 @@ bool __must_check blk_get_queue(struct request_queue *);
 struct request_queue *blk_alloc_queue(gfp_t);
 struct request_queue *blk_alloc_queue_node(gfp_t, int);
 extern void blk_put_queue(struct request_queue *);
-
-/*
- * block layer runtime pm functions
- */
-#ifdef CONFIG_PM_RUNTIME
-extern void blk_pm_runtime_init(struct request_queue *q, struct device *dev);
-extern int blk_pre_runtime_suspend(struct request_queue *q);
-extern void blk_post_runtime_suspend(struct request_queue *q, int err);
-extern void blk_pre_runtime_resume(struct request_queue *q);
-extern void blk_post_runtime_resume(struct request_queue *q, int err);
-#else
-static inline void blk_pm_runtime_init(struct request_queue *q,
-	struct device *dev) {}
-static inline int blk_pre_runtime_suspend(struct request_queue *q)
-{
-	return -ENOSYS;
-}
-static inline void blk_post_runtime_suspend(struct request_queue *q, int err) {}
-static inline void blk_pre_runtime_resume(struct request_queue *q) {}
-static inline void blk_post_runtime_resume(struct request_queue *q, int err) {}
-#endif
 
 /*
  * block layer runtime pm functions

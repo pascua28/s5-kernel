@@ -1,20 +1,22 @@
 /* mm/ashmem.c
-**
-** Anonymous Shared Memory Subsystem, ashmem
-**
-** Copyright (C) 2008 Google, Inc.
-**
-** Robert Love <rlove@google.com>
-**
-** This software is licensed under the terms of the GNU General Public
-** License version 2, as published by the Free Software Foundation, and
-** may be copied, distributed, and modified under those terms.
-**
-** This program is distributed in the hope that it will be useful,
-** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-** GNU General Public License for more details.
-*/
+ *
+ * Anonymous Shared Memory Subsystem, ashmem
+ *
+ * Copyright (C) 2008 Google, Inc.
+ *
+ * Robert Love <rlove@google.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#define pr_fmt(fmt) "ashmem: " fmt
 
 #include <linux/module.h>
 #include <linux/file.h>
@@ -30,6 +32,8 @@
 #include <linux/mutex.h>
 #include <linux/shmem_fs.h>
 #include <linux/ashmem.h>
+
+#include "ashmem.h"
 
 #define ASHMEM_NAME_PREFIX "dev/ashmem/"
 #define ASHMEM_NAME_PREFIX_LEN (sizeof(ASHMEM_NAME_PREFIX) - 1)
@@ -77,7 +81,6 @@ static unsigned long lru_count;
  * Lock Ordering: ashmex_mutex -> i_mutex -> i_alloc_sem
  */
 static DEFINE_MUTEX(ashmem_mutex);
-struct task_struct	*mutex_owner = NULL;
 
 static struct kmem_cache *ashmem_area_cachep __read_mostly;
 static struct kmem_cache *ashmem_range_cachep __read_mostly;
@@ -204,10 +207,8 @@ static int ashmem_release(struct inode *ignored, struct file *file)
 	struct ashmem_range *range, *next;
 
 	mutex_lock(&ashmem_mutex);
-	mutex_owner = current;
 	list_for_each_entry_safe(range, next, &asma->unpinned_list, unpinned)
 		range_del(range);
-	mutex_owner = NULL;
 	mutex_unlock(&ashmem_mutex);
 
 	if (asma->file)
@@ -224,7 +225,7 @@ static ssize_t ashmem_read(struct file *file, char __user *buf,
 	int ret = 0;
 
 	mutex_lock(&ashmem_mutex);
-	mutex_owner = current;
+
 	/* If size is not set, or set to 0, always return EOF. */
 	if (asma->size == 0)
 		goto out_unlock;
@@ -233,7 +234,6 @@ static ssize_t ashmem_read(struct file *file, char __user *buf,
 		ret = -EBADF;
 		goto out_unlock;
 	}
-	mutex_owner = NULL;
 
 	mutex_unlock(&ashmem_mutex);
 
@@ -261,7 +261,7 @@ static loff_t ashmem_llseek(struct file *file, loff_t offset, int origin)
 	int ret;
 
 	mutex_lock(&ashmem_mutex);
-	mutex_owner = current;
+
 	if (asma->size == 0) {
 		ret = -EINVAL;
 		goto out;
@@ -280,12 +280,11 @@ static loff_t ashmem_llseek(struct file *file, loff_t offset, int origin)
 	file->f_pos = asma->file->f_pos;
 
 out:
-	mutex_owner = NULL;
 	mutex_unlock(&ashmem_mutex);
 	return ret;
 }
 
-static inline unsigned long calc_vm_may_flags(unsigned long prot)
+static inline vm_flags_t calc_vm_may_flags(unsigned long prot)
 {
 	return _calc_vm_trans(prot, PROT_READ,  VM_MAYREAD) |
 	       _calc_vm_trans(prot, PROT_WRITE, VM_MAYWRITE) |
@@ -296,17 +295,9 @@ static int ashmem_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct ashmem_area *asma = file->private_data;
 	int ret = 0;
-#ifdef CONFIG_TIMA_RKP
-	if (vma->vm_end - vma->vm_start) {
-		cpu_v7_tima_iommu_opt(vma->vm_start, vma->vm_end, (unsigned long)vma->vm_mm->pgd);
-		__asm__ __volatile__ (
-		"mcr    p15, 0, r0, c8, c3, 0\n"
-		"dsb\n"
-		"isb\n");
-	}
-#endif
+
 	mutex_lock(&ashmem_mutex);
-	mutex_owner = current;
+
 	/* user needs to SET_SIZE before mapping */
 	if (unlikely(!asma->size)) {
 		ret = -EINVAL;
@@ -345,11 +336,9 @@ static int ashmem_mmap(struct file *file, struct vm_area_struct *vma)
 			fput(vma->vm_file);
 		vma->vm_file = asma->file;
 	}
-	vma->vm_flags |= VM_CAN_NONLINEAR;
 	asma->vm_start = vma->vm_start;
 
 out:
-	mutex_owner = NULL;
 	mutex_unlock(&ashmem_mutex);
 	return ret;
 }
@@ -411,7 +400,7 @@ static int set_prot_mask(struct ashmem_area *asma, unsigned long prot)
 	int ret = 0;
 
 	mutex_lock(&ashmem_mutex);
-	mutex_owner = current;
+
 	/* the user can only remove, not add, protection bits */
 	if (unlikely((asma->prot_mask & prot) != prot)) {
 		ret = -EINVAL;
@@ -425,7 +414,6 @@ static int set_prot_mask(struct ashmem_area *asma, unsigned long prot)
 	asma->prot_mask = prot;
 
 out:
-	mutex_owner = NULL;
 	mutex_unlock(&ashmem_mutex);
 	return ret;
 }
@@ -474,8 +462,8 @@ static int get_name(struct ashmem_area *asma, void __user *name)
 	char local_name[ASHMEM_NAME_LEN];
 
 	mutex_lock(&ashmem_mutex);
-	mutex_owner = current;
 	if (asma->name[ASHMEM_NAME_PREFIX_LEN] != '\0') {
+
 		/*
 		 * Copying only `len', instead of ASHMEM_NAME_LEN, bytes
 		 * prevents us from revealing one user's stack to another.
@@ -486,7 +474,6 @@ static int get_name(struct ashmem_area *asma, void __user *name)
 		len = sizeof(ASHMEM_NAME_DEF);
 		memcpy(local_name, ASHMEM_NAME_DEF, len);
 	}
-	mutex_owner = NULL;
 	mutex_unlock(&ashmem_mutex);
 
 	/*
@@ -653,7 +640,7 @@ static int ashmem_pin_unpin(struct ashmem_area *asma, unsigned long cmd,
 	pgend = pgstart + (pin.len / PAGE_SIZE) - 1;
 
 	mutex_lock(&ashmem_mutex);
-	mutex_owner = current;
+
 	switch (cmd) {
 	case ASHMEM_PIN:
 		ret = ashmem_pin(asma, pgstart, pgend);
@@ -665,58 +652,11 @@ static int ashmem_pin_unpin(struct ashmem_area *asma, unsigned long cmd,
 		ret = ashmem_get_pin_status(asma, pgstart, pgend);
 		break;
 	}
-	mutex_owner = NULL;
+
 	mutex_unlock(&ashmem_mutex);
 
 	return ret;
 }
-
-#ifdef CONFIG_OUTER_CACHE
-static unsigned int virtaddr_to_physaddr(unsigned int virtaddr)
-{
-	unsigned int physaddr = 0;
-	pgd_t *pgd_ptr = NULL;
-	pud_t *pud_ptr = NULL;
-	pmd_t *pmd_ptr = NULL;
-	pte_t *pte_ptr = NULL, pte;
-
-	spin_lock(&current->mm->page_table_lock);
-	pgd_ptr = pgd_offset(current->mm, virtaddr);
-	if (pgd_none(*pgd_ptr) || pgd_bad(*pgd_ptr)) {
-		pr_err("Failed to convert virtaddr %x to pgd_ptr\n",
-			virtaddr);
-		goto done;
-	}
-
-	pud_ptr = pud_offset(pgd_ptr, virtaddr);
-	if (pud_none(*pud_ptr) || pud_bad(*pud_ptr)) {
-		pr_err("Failed to convert pgd_ptr %p to pud_ptr\n",
-			(void *)pgd_ptr);
-		goto done;
-	}
-
-	pmd_ptr = pmd_offset(pud_ptr, virtaddr);
-	if (pmd_none(*pmd_ptr) || pmd_bad(*pmd_ptr)) {
-		pr_err("Failed to convert pud_ptr %p to pmd_ptr\n",
-			(void *)pud_ptr);
-		goto done;
-	}
-
-	pte_ptr = pte_offset_map(pmd_ptr, virtaddr);
-	if (!pte_ptr) {
-		pr_err("Failed to convert pmd_ptr %p to pte_ptr\n",
-			(void *)pmd_ptr);
-		goto done;
-	}
-	pte = *pte_ptr;
-	physaddr = pte_pfn(pte);
-	pte_unmap(pte_ptr);
-done:
-	spin_unlock(&current->mm->page_table_lock);
-	physaddr <<= PAGE_SHIFT;
-	return physaddr;
-}
-#endif
 
 static long ashmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -768,6 +708,23 @@ static long ashmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
+/* support of 32bit userspace on 64bit platforms */
+#ifdef CONFIG_COMPAT
+static long compat_ashmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+
+	switch (cmd) {
+	case COMPAT_ASHMEM_SET_SIZE:
+		cmd = ASHMEM_SET_SIZE;
+		break;
+	case COMPAT_ASHMEM_SET_PROT_MASK:
+		cmd = ASHMEM_SET_PROT_MASK;
+		break;
+	}
+	return ashmem_ioctl(file, cmd, arg);
+}
+#endif
+
 static const struct file_operations ashmem_fops = {
 	.owner = THIS_MODULE,
 	.open = ashmem_open,
@@ -776,7 +733,9 @@ static const struct file_operations ashmem_fops = {
 	.llseek = ashmem_llseek,
 	.mmap = ashmem_mmap,
 	.unlocked_ioctl = ashmem_ioctl,
-	.compat_ioctl = ashmem_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = compat_ashmem_ioctl,
+#endif
 };
 
 static struct miscdevice ashmem_misc = {
@@ -844,7 +803,7 @@ static int __init ashmem_init(void)
 					  sizeof(struct ashmem_area),
 					  0, 0, NULL);
 	if (unlikely(!ashmem_area_cachep)) {
-		printk(KERN_ERR "ashmem: failed to create slab cache\n");
+		pr_err("failed to create slab cache\n");
 		return -ENOMEM;
 	}
 
@@ -852,19 +811,19 @@ static int __init ashmem_init(void)
 					  sizeof(struct ashmem_range),
 					  0, 0, NULL);
 	if (unlikely(!ashmem_range_cachep)) {
-		printk(KERN_ERR "ashmem: failed to create slab cache\n");
+		pr_err("failed to create slab cache\n");
 		return -ENOMEM;
 	}
 
 	ret = misc_register(&ashmem_misc);
 	if (unlikely(ret)) {
-		printk(KERN_ERR "ashmem: failed to register misc device!\n");
+		pr_err("failed to register misc device!\n");
 		return ret;
 	}
 
 	register_shrinker(&ashmem_shrinker);
 
-	printk(KERN_INFO "ashmem: initialized\n");
+	pr_info("initialized\n");
 
 	return 0;
 }
@@ -877,12 +836,12 @@ static void __exit ashmem_exit(void)
 
 	ret = misc_deregister(&ashmem_misc);
 	if (unlikely(ret))
-		printk(KERN_ERR "ashmem: failed to unregister misc device!\n");
+		pr_err("failed to unregister misc device!\n");
 
 	kmem_cache_destroy(ashmem_range_cachep);
 	kmem_cache_destroy(ashmem_area_cachep);
 
-	printk(KERN_INFO "ashmem: unloaded\n");
+	pr_info("unloaded\n");
 }
 
 module_init(ashmem_init);

@@ -461,16 +461,6 @@ config CLEANCACHE
 
 	  If unsure, say Y to enable cleancache
 
-config MEMORY_HOLE_CARVEOUT
-        bool
-        help
-          MEMORY_HOLE_CARVEOUT is needed to include the msm_mem_hole driver
-          which is needed to enable/disable memblock-remove features for
-          device tree nodes that set compatible="qcom,msm-mem-hole". The
-          corresponding device tree node provides the address and size of
-          the memory corresponding to the hole to be removed using memblock-
-          remove.
-
 config FRONTSWAP
 	bool "Enable frontswap to cache swap pages if tmem is present"
 	depends on SWAP
@@ -487,3 +477,126 @@ config FRONTSWAP
 	  and swap data is stored as normal on the matching swap device.
 
 	  If unsure, say Y to enable frontswap.
+
+config MEMORY_HOLE_CARVEOUT
+        bool
+        help
+          MEMORY_HOLE_CARVEOUT is needed to include the msm_mem_hole driver
+          which is needed to enable/disable memblock-remove features for
+          device tree nodes that set compatible="qcom,msm-mem-hole". The
+          corresponding device tree node provides the address and size of
+          the memory corresponding to the hole to be removed using memblock-
+          remove.
+
+config USE_USER_ACCESSIBLE_TIMERS
+	bool "Enables timers accessible from userspace"
+	depends on MMU
+	help
+	  User-accessible timers allow the kernel to map kernel timer
+	  registers to a userspace accessible page, to allow faster
+	  access to time information.  This flag will enable the
+	  interface code in the main kernel.  However, there are
+	  architecture-specific code that will need to be enabled
+	  separately.
+
+config MEM_SOFT_DIRTY
+	bool "Track memory changes"
+	depends on CHECKPOINT_RESTORE && HAVE_ARCH_SOFT_DIRTY && PROC_FS
+	select PROC_PAGE_MONITOR
+	help
+	  This option enables memory changes tracking by introducing a
+	  soft-dirty bit on pte-s. This bit it set when someone writes
+	  into a page just as regular dirty bit, but unlike the latter
+	  it can be cleared by hands.
+
+	  See Documentation/vm/soft-dirty.txt for more details.
+
+config ZSWAP
+	bool "Compressed cache for swap pages (EXPERIMENTAL)"
+	depends on FRONTSWAP && CRYPTO=y
+	select CRYPTO_LZO
+	select ZBUD
+	default n
+	help
+	  A lightweight compressed cache for swap pages.  It takes
+	  pages that are in the process of being swapped out and attempts to
+	  compress them into a dynamically allocated RAM-based memory pool.
+	  This can result in a significant I/O reduction on swap device and,
+	  in the case where decompressing from RAM is faster that swap device
+	  reads, can also improve workload performance.
+
+	  This is marked experimental because it is a new feature (as of
+	  v3.11) that interacts heavily with memory reclaim.  While these
+	  interactions don't cause any known issues on simple memory setups,
+	  they have not be fully explored on the large set of potential
+	  configurations and workloads that exist.
+
+config BALANCE_ANON_FILE_RECLAIM
+	bool "During reclaim treat anon and file backed pages equally"
+	depends on SWAP
+	help
+	  When performing memory reclaim treat anonymous and file backed pages
+	  equally.
+	  Swapping anonymous pages out to memory can be efficient enough to justify
+	  treating anonymous and file backed pages equally.
+
+config GENERIC_EARLY_IOREMAP
+	bool
+
+config PROCESS_RECLAIM
+	bool "Enable process reclaim"
+	depends on PROC_FS
+	default n
+	help
+	 It allows to reclaim pages of the process by /proc/pid/reclaim.
+
+	 (echo file > /proc/PID/reclaim) reclaims file-backed pages only.
+	 (echo anon > /proc/PID/reclaim) reclaims anonymous pages only.
+	 (echo all > /proc/PID/reclaim) reclaims all pages.
+
+	 (echo addr size-byte > /proc/PID/reclaim) reclaims pages in
+	 (addr, addr + size-bytes) of the process.
+
+	 Any other vaule is ignored.
+
+config ZPOOL
+	tristate "Common API for compressed memory storage"
+	default n
+	help
+	  Compressed memory storage API.  This allows using either zbud or
+	  zsmalloc.
+
+config ZBUD
+	tristate "Low density storage for compressed pages"
+	default n
+	help
+	  A special purpose allocator for storing compressed pages.
+	  It is designed to store up to two compressed pages per physical
+	  page.  While this design limits storage density, it has simple and
+	  deterministic reclaim properties that make it preferable to a higher
+	  density approach when reclaim will be used.
+
+config ZSMALLOC
+	bool "Memory allocator for compressed pages"
+	depends on MMU
+	default n
+	help
+	  zsmalloc is a slab-based memory allocator designed to store
+	  compressed RAM pages.  zsmalloc uses virtual memory mapping
+	  in order to reduce fragmentation.  However, this results in a
+	  non-standard allocator interface where a handle, not a pointer, is
+	  returned by an alloc().  This handle must be mapped in order to
+	  access the allocated space.
+
+config PGTABLE_MAPPING
+	bool "Use page table mapping to access object in zsmalloc"
+	depends on ZSMALLOC
+	help
+	  By default, zsmalloc uses a copy-based object mapping method to
+	  access allocations that span two pages. However, if a particular
+	  architecture (ex, ARM) performs VM mapping faster than copying,
+	  then you should select this. This causes zsmalloc to use page table
+	  mapping rather than copying for object mapping.
+
+	  You can check speed with zsmalloc benchmark[1].
+	  [1] https://github.com/spartacus06/zsmalloc

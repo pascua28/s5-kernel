@@ -2,9 +2,7 @@
 #define LINUX_MM_INLINE_H
 
 #include <linux/huge_mm.h>
-#ifdef CONFIG_SCFS_LOWER_PAGECACHE_INVALIDATION
-#include <linux/page-flags.h>
-#endif
+#include <linux/swap.h>
 
 /**
  * page_is_file_cache - should the page be on a file LRU or anon LRU?
@@ -27,31 +25,10 @@ static inline int page_is_file_cache(struct page *page)
 static __always_inline void add_page_to_lru_list(struct page *page,
 				struct lruvec *lruvec, enum lru_list lru)
 {
-/* was:
-	struct lruvec *lruvec;
-
-	lruvec = mem_cgroup_lru_add_list(zone, page, lru);
-#ifdef CONFIG_SCFS_LOWER_PAGECACHE_INVALIDATION
-	if (PageNocache(page))
-		list_add_tail(&page->lru, &lruvec->lists[lru]);
-	else
-		list_add(&page->lru, &lruvec->lists[lru]);
-#else
-	list_add(&page->lru, &lruvec->lists[lru]);
-#endif
-	__mod_zone_page_state(zone, NR_LRU_BASE + lru, hpage_nr_pages(page));
-
-#if defined(CONFIG_CMA_PAGE_COUNTING)
-	if (PageCMA(page))
-		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES + 1 + lru, 1);
-#endif
-*/
-//3.5
 	int nr_pages = hpage_nr_pages(page);
 	mem_cgroup_update_lru_size(lruvec, lru, nr_pages);
 	list_add(&page->lru, &lruvec->lists[lru]);
 	__mod_zone_page_state(lruvec_zone(lruvec), NR_LRU_BASE + lru, nr_pages);
-//3.5
 }
 
 static __always_inline void del_page_from_lru_list(struct page *page,
@@ -60,18 +37,7 @@ static __always_inline void del_page_from_lru_list(struct page *page,
 	int nr_pages = hpage_nr_pages(page);
 	mem_cgroup_update_lru_size(lruvec, lru, -nr_pages);
 	list_del(&page->lru);
-
-/*was:
-	__mod_zone_page_state(zone, NR_LRU_BASE + lru, -hpage_nr_pages(page));
-
-#if defined(CONFIG_CMA_PAGE_COUNTING)
-	if (PageCMA(page))
-		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES + 1 + lru, -1);
-#endif
-*/
-//3.5
 	__mod_zone_page_state(lruvec_zone(lruvec), NR_LRU_BASE + lru, -nr_pages);
-//3.5
 }
 
 /**
