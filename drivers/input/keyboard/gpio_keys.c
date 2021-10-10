@@ -961,7 +961,7 @@ static ssize_t sysfs_hall_detect_show(struct device *dev,
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(hall_detect, 0664, sysfs_hall_detect_show, NULL);
+static DEVICE_ATTR(hall_detect, 0444, sysfs_hall_detect_show, NULL);
 #endif
 
 #ifdef CONFIG_SENSORS_HALL_IRQ_CTRL
@@ -1151,7 +1151,7 @@ static ssize_t  sysfs_key_onoff_show(struct device *dev,
 	pr_info("key state:%d\n",  state);
 	return snprintf(buf, 5, "%d\n", state);
 }
-static DEVICE_ATTR(sec_key_pressed, 0664 , sysfs_key_onoff_show, NULL);
+static DEVICE_ATTR(sec_key_pressed, 0444 , sysfs_key_onoff_show, NULL);
 
 #if defined(CONFIG_SEC_S_PROJECT)
 static ssize_t sysfs_key_code_show(struct device *dev,
@@ -1177,7 +1177,7 @@ static ssize_t sysfs_key_code_show(struct device *dev,
 
 	return strlen(buf);
 }
-static DEVICE_ATTR(sec_key_pressed_code, 0664 , sysfs_key_code_show, NULL);
+static DEVICE_ATTR(sec_key_pressed_code, 0444 , sysfs_key_code_show, NULL);
 #endif
 
 /* the volume keys can be the wakeup keys in special case */
@@ -1216,7 +1216,7 @@ out:
 	return count;
 }
 
-static DEVICE_ATTR(wakeup_keys, 0664, NULL, wakeup_enable);
+static DEVICE_ATTR(wakeup_keys, 0222, NULL, wakeup_enable);
 
 #if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined (CONFIG_SEC_T8_PROJECT)
 struct regulator *lvs1_1p8 = NULL;
