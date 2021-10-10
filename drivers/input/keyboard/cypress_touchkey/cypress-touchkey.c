@@ -2524,7 +2524,6 @@ static int cypress_touchkey_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cypress_touchkey_info *info = i2c_get_clientdata(client);
-	struct irq_desc *desc;
 	int ret = 0;
 
 	if (wake_lock_active(&info->fw_wakelock)) {
@@ -2562,9 +2561,7 @@ static int cypress_touchkey_resume(struct device *dev)
 		msleep(30);
 	}
 out:
-	desc = irq_to_desc(info->irq);
-	if (desc && desc->depth > 0)
-		enable_irq(info->irq);
+	enable_irq(info->irq);
 
 	info->is_powering_on = false;
 	return ret;
