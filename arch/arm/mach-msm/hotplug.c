@@ -23,8 +23,6 @@
 #include "pm.h"
 #include "spm.h"
 
-extern volatile int pen_release;
-
 static cpumask_t cpu_dying_mask;
 
 static DEFINE_PER_CPU(unsigned int, warm_boot_flag);
@@ -77,7 +75,7 @@ int platform_cpu_kill(unsigned int cpu)
  *
  * Called with IRQs disabled
  */
-void platform_cpu_die(unsigned int cpu)
+void __ref platform_cpu_die(unsigned int cpu)
 {
 	int spurious = 0;
 
