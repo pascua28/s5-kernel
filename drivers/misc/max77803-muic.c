@@ -811,9 +811,9 @@ static DEVICE_ATTR(adc_debounce_time, 0664,
 		max77803_muic_show_adc_debounce_time,
 		max77803_muic_set_adc_debounce_time);
 #if defined(CONFIG_MUIC_DET_JACK)
-static DEVICE_ATTR(key_state, 0664,
+static DEVICE_ATTR(key_state, 0444,
 		key_state_onoff_show, NULL);
-static DEVICE_ATTR(state, 0664,
+static DEVICE_ATTR(state, 0444,
 		earjack_state_onoff_show, NULL);
 #endif
 
