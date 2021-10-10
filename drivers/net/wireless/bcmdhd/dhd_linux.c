@@ -7700,21 +7700,19 @@ int net_os_wake_lock_ctrl_timeout_enable(struct net_device *dev, int val)
 }
 
 #if defined(DHD_TRACE_WAKE_LOCK)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 #include <linux/hashtable.h>
 #else
 #include <linux/hash.h>
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0) */
-
-#include <linux/list.h>
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0) */
 
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 /* Define 2^5 = 32 bucket size hash table */
 DEFINE_HASHTABLE(wklock_history, 5);
 #else
 struct hlist_head wklock_history[32] = { [0 ... 31] = HLIST_HEAD_INIT };
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0) */
 
 int trace_wklock_onoff = 1;
 
@@ -7735,13 +7733,13 @@ struct wk_trace_record {
 static struct wk_trace_record *find_wklock_entry(unsigned long addr)
 {
 	struct wk_trace_record *wklock_info;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 	hash_for_each_possible(wklock_history, wklock_info, wklock_node, addr)
 #else
 	struct hlist_node *entry;
 	int index = hash_long(addr, ilog2(ARRAY_SIZE(wklock_history)));
 	hlist_for_each_entry(wklock_info, entry, &wklock_history[index], wklock_node)
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0) */
 	{
 		if (wklock_info->addr == addr) {
 			return wklock_info;
@@ -7750,7 +7748,7 @@ static struct wk_trace_record *find_wklock_entry(unsigned long addr)
 	return NULL;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 #define HASH_ADD(hashtable, node, key) \
 	do { \
 		hash_add(hashtable, node, key); \
@@ -7761,7 +7759,7 @@ static struct wk_trace_record *find_wklock_entry(unsigned long addr)
 		int index = hash_long(key, ilog2(ARRAY_SIZE(hashtable))); \
 		hlist_add_head(node, &hashtable[index]); \
 	} while (0);
-#endif /* KERNEL_VER < KERNEL_VERSION(3, 9, 0) */
+#endif /* KERNEL_VER < KERNEL_VERSION(3, 7, 0) */
 
 #define STORE_WKLOCK_RECORD(wklock_type) \
 	do { \
@@ -7796,14 +7794,14 @@ static inline void dhd_wk_lock_rec_dump(void)
 {
 	int bkt;
 	struct wk_trace_record *wklock_info;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 	hash_for_each(wklock_history, bkt, wklock_info, wklock_node)
 #else
 	struct hlist_node *entry;
 	int max_index = ARRAY_SIZE(wklock_history);
 	for (bkt = 0; bkt < max_index; bkt++)
 		hlist_for_each_entry(wklock_info, entry, &wklock_history[bkt], wklock_node)
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0) */
 		{
 			switch (wklock_info->lock_type) {
 				case DHD_WAKE_LOCK:
@@ -7829,17 +7827,17 @@ static inline void dhd_wk_lock_rec_dump(void)
 static void dhd_wk_lock_trace_init(struct dhd_info *dhd)
 {
 	unsigned long flags;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 7, 0))
 	int i;
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0) */
 
 	spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 	hash_init(wklock_history);
 #else
 	for (i = 0; i < ARRAY_SIZE(wklock_history); i++)
 		INIT_HLIST_HEAD(&wklock_history[i]);
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0) */
 	spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
 }
 
@@ -7849,25 +7847,25 @@ static void dhd_wk_lock_trace_deinit(struct dhd_info *dhd)
 	struct wk_trace_record *wklock_info;
 	struct hlist_node *tmp;
 	unsigned long flags;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 7, 0))
 	struct hlist_node *entry;
 	int max_index = ARRAY_SIZE(wklock_history);
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0) */
 
 	spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 	hash_for_each_safe(wklock_history, bkt, tmp, wklock_info, wklock_node)
 #else
 	for (bkt = 0; bkt < max_index; bkt++)
 		hlist_for_each_entry_safe(wklock_info, entry, tmp,
 			&wklock_history[bkt], wklock_node)
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0)) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0)) */
 		{
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 			hash_del(&wklock_info->wklock_node);
 #else
 			hlist_del_init(&wklock_info->wklock_node);
-#endif /* LINUX_VER >= KERNEL_VERSION(3, 9, 0)) */
+#endif /* LINUX_VER >= KERNEL_VERSION(3, 7, 0)) */
 			kfree(wklock_info);
 		}
 
