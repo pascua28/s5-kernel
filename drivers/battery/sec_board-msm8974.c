@@ -1849,6 +1849,7 @@ bool sec_bat_check_callback(struct sec_battery_info *battery)
 void sec_bat_check_cable_result_callback(struct device *dev,
 		int cable_type)
 {
+	int ret;
 #if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	struct regulator *ldo11;
 	current_cable_type = cable_type;
@@ -1868,7 +1869,9 @@ void sec_bat_check_cable_result_callback(struct device *dev,
 		ldo11 = regulator_get(NULL, "8941_l11");
 		if(ldo11 > 0)
 		{
-			regulator_enable(ldo11);
+			ret = regulator_enable(ldo11);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 		}
 	}
 #elif defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || \
@@ -1890,7 +1893,9 @@ void sec_bat_check_cable_result_callback(struct device *dev,
 		pr_info("%s set ldo on\n", __func__);
 		max77826_ldo6 = regulator_get(NULL, "max77826_ldo6");
 		if(max77826_ldo6) {
-			regulator_enable(max77826_ldo6);
+			ret = regulator_enable(max77826_ldo6);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 			regulator_put(max77826_ldo6);
 		}
 	}
