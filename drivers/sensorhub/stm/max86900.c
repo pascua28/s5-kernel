@@ -120,6 +120,8 @@ static int max86900_read_reg(struct max86900_device_data *data,
 /* Device Control */
 static int max86900_regulator_onoff(struct max86900_device_data *data, int onoff)
 {
+	int ret;
+
 	data->vdd_1p8 = regulator_get(NULL, data->sub_ldo4);
 	if (IS_ERR(data->vdd_1p8)) {
 		pr_err("%s - regulator_get fail\n", __func__);
@@ -137,15 +139,21 @@ static int max86900_regulator_onoff(struct max86900_device_data *data, int onoff
 
 	if (onoff == HRM_LDO_ON) {
 		regulator_set_voltage(data->vdd_1p8, 1800000, 1800000);
-		regulator_enable(data->vdd_1p8);
+		ret = regulator_enable(data->vdd_1p8);
+		if (ret)
+			pr_err("%s: regulator enable failed\n", __func__);
 #if defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_KSPORTSLTE_SPR)
 		regulator_set_voltage(data->vdd_3p3, 3300000, 3300000);
-		regulator_enable(data->vdd_3p3);
+		ret = regulator_enable(data->vdd_3p3);
+		if (ret)
+			pr_err("%s: regulator enable failed\n", __func__);
 #endif
 	} else {
 		regulator_disable(data->vdd_1p8);
 #if defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_KSPORTSLTE_SPR)
-		regulator_disable(data->vdd_3p3);
+		ret = regulator_disable(data->vdd_3p3);
+		if (ret)
+			pr_err("%s: regulator enable failed\n", __func__);
 #endif
 	}
 

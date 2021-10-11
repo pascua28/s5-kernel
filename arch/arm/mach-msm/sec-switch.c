@@ -288,10 +288,14 @@ static ssize_t midas_switch_store_vbus(struct device *dev,
 		if (regulator_is_enabled(regulator))
 			regulator_force_disable(regulator);
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			ret = regulator_enable(regulator);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 	} else {
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			ret = regulator_enable(regulator);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 	}
 	regulator_put(regulator);
 
@@ -813,6 +817,7 @@ int max77803_muic_host_notify_cb(int enable)
 int max77803_muic_set_safeout(int path)
 {
 	struct regulator *regulator;
+	int err;
 
 	pr_info("%s: MUIC safeout path=%d\n", __func__, path);
 
@@ -828,7 +833,9 @@ int max77803_muic_set_safeout(int path)
 		if (IS_ERR(regulator))
 			return -ENODEV;
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			err = regulator_enable(regulator);
+			if (err)
+				pr_err("%s: regulator enable failed\n", __func__);
 		regulator_put(regulator);
 	} else {
 		/* AP_USB_MODE || AUDIO_MODE */
@@ -836,7 +843,9 @@ int max77803_muic_set_safeout(int path)
 		if (IS_ERR(regulator))
 			return -ENODEV;
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			err = regulator_enable(regulator);
+			if (err)
+				pr_err("%s: regulator enable failed\n", __func__);
 		regulator_put(regulator);
 
 		regulator = regulator_get(NULL, "safeout2");
@@ -929,10 +938,14 @@ static ssize_t midas_switch_store_vbus(struct device *dev,
 		if (regulator_is_enabled(regulator))
 			regulator_force_disable(regulator);
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			ret = regulator_enable(regulator);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 	} else {
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			ret = regulator_enable(regulator);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 	}
 	regulator_put(regulator);
 
@@ -1405,7 +1418,8 @@ int max77804k_muic_set_safeout(int path)
 		if (IS_ERR(regulator))
 			return -ENODEV;
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if (regulator_enable(regulator))
+				pr_err("%s: regulator enable failed\n", __func__);
 		regulator_put(regulator);
 	} else {
 #if defined CONFIG_SEC_RUBENS_PROJECT
@@ -1416,7 +1430,8 @@ int max77804k_muic_set_safeout(int path)
 		if (IS_ERR(regulator))
 			return -ENODEV;
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if (regulator_enable(regulator))
+				pr_err("%s: regulator enable failed\n", __func__);
 		regulator_put(regulator);
 
 		regulator = regulator_get(NULL, "safeout2");
@@ -1432,7 +1447,8 @@ int max77804k_muic_set_safeout(int path)
                 if (IS_ERR(regulator))
                         return -ENODEV;
                 if (!regulator_is_enabled(regulator))
-                        regulator_enable(regulator);
+                        if (regulator_enable(regulator))
+				pr_err("%s: regulator enable failed\n", __func__);
                 regulator_put(regulator);
 
                 regulator = regulator_get(NULL, "safeout2");
@@ -1527,10 +1543,12 @@ static ssize_t midas_switch_store_vbus(struct device *dev,
 		if (regulator_is_enabled(regulator))
 			regulator_force_disable(regulator);
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if (regulator_enable(regulator))
+				pr_err("%s: regulator enable failed\n", __func__);
 	} else {
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if (regulator_enable(regulator))
+				pr_err("%s: regulator enable failed\n", __func__);
 	}
 	regulator_put(regulator);
 
@@ -2019,7 +2037,8 @@ int max77888_muic_set_safeout(int path)
 		if (IS_ERR(regulator))
 			return -ENODEV;
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if (regulator_enable(regulator))
+				pr_err("%s: regulator enable failed\n", __func__);
 		regulator_put(regulator);
 	} else {
 		/* AP_USB_MODE || AUDIO_MODE */
@@ -2027,7 +2046,8 @@ int max77888_muic_set_safeout(int path)
 		if (IS_ERR(regulator))
 			return -ENODEV;
 		if (!regulator_is_enabled(regulator))
-			regulator_enable(regulator);
+			if (regulator_enable(regulator))
+				pr_err("%s: regulator enable failed\n", __func__);
 		regulator_put(regulator);
 
 		regulator = regulator_get(NULL, "safeout2");
