@@ -1260,17 +1260,22 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 void mdss_mdp_footswitch_ctrl_splash(int on)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	int ret;
 	if (mdata != NULL) {
 		if (on) {
 			pr_debug("Enable MDP FS for splash.\n");
 			mdata->handoff_pending = true;
-			regulator_enable(mdata->fs);
+			ret = regulator_enable(mdata->fs);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 			mdss_hw_init(mdata);
 		} else {
 			pr_debug("Disable MDP FS for splash.\n");
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-			regulator_disable(mdata->fs);
+			ret = regulator_disable(mdata->fs);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 			mdata->handoff_pending = false;
 		}
 	} else {
@@ -2723,6 +2728,8 @@ vreg_set_voltage_fail:
 
 void mdss_mdp_batfet_ctrl(struct mdss_data_type *mdata, int enable)
 {
+	int ret;
+
 	if (!mdata->batfet_required)
 		return;
 
@@ -2743,20 +2750,26 @@ void mdss_mdp_batfet_ctrl(struct mdss_data_type *mdata, int enable)
 	}
 
 	if (enable)
-		regulator_enable(mdata->batfet);
+		ret = regulator_enable(mdata->batfet);
+		if (ret)
+			return;
 	else
 		regulator_disable(mdata->batfet);
 }
 
 static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 {
+	int ret;
+
 	if (!mdata->fs)
 		return;
 
 	if (on) {
 		pr_debug("Enable MDP FS\n");
 		if (!mdata->fs_ena) {
-			regulator_enable(mdata->fs);
+			ret = regulator_enable(mdata->fs);
+			if (ret)
+				pr_err("%s: regulator enable failed\n", __func__);
 			if (!mdata->idle_pc) {
 				mdss_mdp_cx_ctrl(mdata, true);
 				mdss_mdp_batfet_ctrl(mdata, true);
