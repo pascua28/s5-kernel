@@ -2802,6 +2802,11 @@ static inline void set_task_cpu(struct task_struct *p, unsigned int cpu)
 #endif /* CONFIG_SMP */
 
 extern struct atomic_notifier_head migration_notifier_head;
+struct migration_notify_data {
+	int src_cpu;
+	int dest_cpu;
+	int load;
+};
 
 extern struct atomic_notifier_head load_alert_notifier_head;
 
