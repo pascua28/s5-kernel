@@ -67,10 +67,6 @@
 
 #include "audit.h"
 
-#ifdef CONFIG_PROC_AVC
-#include <linux/proc_avc.h>
-#endif
-
 /* No auditing will take place until audit_initialized == AUDIT_INITIALIZED.
  * (Initialization happens after skb_init is called.) */
 #define AUDIT_DISABLED		-1
@@ -87,7 +83,7 @@ int		audit_ever_enabled;
 EXPORT_SYMBOL_GPL(audit_enabled);
 
 /* Default state when kernel boots without any parameters. */
-static int	audit_default = 1;
+static int	audit_default;
 
 /* If auditing cannot proceed, audit_failure selects what happens. */
 static int	audit_failure = AUDIT_FAIL_PRINTK;
@@ -189,6 +185,7 @@ void audit_panic(const char *message)
 	case AUDIT_FAIL_SILENT:
 		break;
 	case AUDIT_FAIL_PRINTK:
+		if (printk_ratelimit())
 			printk(KERN_ERR "audit: %s\n", message);
 		break;
 	case AUDIT_FAIL_PANIC:
@@ -259,6 +256,7 @@ void audit_log_lost(const char *message)
 	}
 
 	if (print) {
+		if (printk_ratelimit())
 			printk(KERN_WARNING
 				"audit: audit_lost=%d audit_rate_limit=%d "
 				"audit_backlog_limit=%d\n",
@@ -373,10 +371,11 @@ static void audit_printk_skb(struct sk_buff *skb)
 	struct nlmsghdr *nlh = nlmsg_hdr(skb);
 	char *data = nlmsg_data(nlh);
 
-	if (nlh->nlmsg_type != AUDIT_EOE && nlh->nlmsg_type != AUDIT_NETFILTER_CFG) {
-#ifdef CONFIG_PROC_AVC
-		sec_avc_log("%s\n", data);
-#endif
+	if (nlh->nlmsg_type != AUDIT_EOE) {
+		if (printk_ratelimit())
+			printk(KERN_NOTICE "type=%d %s\n", nlh->nlmsg_type, data);
+		else
+			audit_log_lost("printk limit exceeded\n");
 	}
 
 	audit_hold_skb(skb);
@@ -395,18 +394,9 @@ static void kauditd_send_skb(struct sk_buff *skb)
 		audit_pid = 0;
 		/* we might get lucky and get this in the next auditd */
 		audit_hold_skb(skb);
-	} else {
-#ifdef CONFIG_PROC_AVC
-		struct nlmsghdr *nlh = nlmsg_hdr(skb);
-		char *data = NLMSG_DATA(nlh);
-	
-		if (nlh->nlmsg_type != AUDIT_EOE && nlh->nlmsg_type != AUDIT_NETFILTER_CFG) {
-			sec_avc_log("%s\n", data);
-		}
-#endif
+	} else
 		/* drop the extra reference if sent ok */
 		consume_skb(skb);
-}
 }
 
 /*
@@ -828,12 +818,11 @@ static int audit_receive_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 	case AUDIT_TTY_GET: {
 		struct audit_tty_status s;
 		struct task_struct *tsk = current;
-		unsigned long flags;
 
-		spin_lock_irqsave(&tsk->sighand->siglock, flags);
+		spin_lock(&tsk->sighand->siglock);
 		s.enabled = tsk->signal->audit_tty != 0;
 		s.log_passwd = tsk->signal->audit_tty_log_passwd;
-		spin_unlock_irqrestore(&tsk->sighand->siglock, flags);
+		spin_unlock(&tsk->sighand->siglock);
 
 		audit_send_reply(NETLINK_CB(skb).portid, seq,
 				 AUDIT_TTY_GET, 0, 0, &s, sizeof(s));
@@ -842,7 +831,6 @@ static int audit_receive_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 	case AUDIT_TTY_SET: {
 		struct audit_tty_status s;
 		struct task_struct *tsk = current;
-		unsigned long flags;
 
 		memset(&s, 0, sizeof(s));
 		/* guard against past and future API changes */
@@ -851,10 +839,10 @@ static int audit_receive_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 		    (s.log_passwd != 0 && s.log_passwd != 1))
 			return -EINVAL;
 
-		spin_lock_irqsave(&tsk->sighand->siglock, flags);
+		spin_lock(&tsk->sighand->siglock);
 		tsk->signal->audit_tty = s.enabled;
 		tsk->signal->audit_tty_log_passwd = s.log_passwd;
-		spin_unlock_irqrestore(&tsk->sighand->siglock, flags);
+		spin_unlock(&tsk->sighand->siglock);
 		break;
 	}
 	default:
@@ -1136,7 +1124,7 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 				continue;
 			}
 		}
-		if (audit_rate_check())
+		if (audit_rate_check() && printk_ratelimit())
 			printk(KERN_WARNING
 			       "audit: audit_backlog=%d > "
 			       "audit_backlog_limit=%d\n",

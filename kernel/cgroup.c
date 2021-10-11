@@ -2019,7 +2019,7 @@ static int cgroup_attach_task(struct cgroup *cgrp, struct task_struct *tsk,
 		retval = flex_array_put(group, i, &ent, GFP_ATOMIC);
 		BUG_ON(retval != 0);
 		i++;
-	next:
+next:
 		if (!threadgroup)
 			break;
 	} while_each_thread(leader, tsk);
