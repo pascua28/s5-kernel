@@ -26,6 +26,12 @@
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
 
+#ifdef CONFIG_YL_POWEROFF_ALARM
+#include <linux/yl_params.h>
+
+#define YL_PARAM_BUF_SZ		512
+#endif
+
 #define ALARM_DELTA 120
 
 /**
@@ -57,6 +63,44 @@ static DEFINE_SPINLOCK(rtcdev_lock);
 static unsigned long power_on_alarm;
 static struct mutex power_on_alarm_lock;
 
+#ifdef CONFIG_YL_POWEROFF_ALARM
+static int set_yl_power_on_alarm(struct rtc_wkalrm *alarm)
+{
+	int rc;
+	unsigned long secs;
+	u8 value[4] = {0};
+	u8 param_buf[YL_PARAM_BUF_SZ] = "RETURNZERO";
+
+	if (alarm) {
+		rtc_tm_to_time(&alarm->time, &secs);
+
+		value[0] = secs & 0xFF;
+		value[1] = (secs >> 8) & 0xFF;
+		value[2] = (secs >> 16) & 0xFF;
+		value[3] = (secs >> 24) & 0xFF;
+	}
+
+	rc = yl_params_kernel_read(param_buf, YL_PARAM_BUF_SZ);
+	if (rc != YL_PARAM_BUF_SZ) {
+		return -EFAULT;
+	}
+
+	if (alarm) {
+		param_buf[RETURNZERO_ALARM_ASSIGNED] = 1;
+	} else {
+		param_buf[RETURNZERO_ALARM_ASSIGNED] = 0;
+	}
+	memcpy(&param_buf[RETURNZERO_ALARM_TIME], value, 4);
+
+	rc = yl_params_kernel_write(param_buf, YL_PARAM_BUF_SZ);
+	if (rc != YL_PARAM_BUF_SZ) {
+		return -EFAULT;
+	}
+
+	return 0;
+}
+#endif
+
 void set_power_on_alarm(long secs, bool enable)
 {
 	int rc;
@@ -72,6 +116,9 @@ void set_power_on_alarm(long secs, bool enable)
 	if (enable) {
 			power_on_alarm = secs;
 	} else {
+#ifdef CONFIG_YL_POWEROFF_ALARM
+		set_yl_power_on_alarm(NULL);
+#endif
 		if (power_on_alarm == secs)
 			power_on_alarm = 0;
 		else
@@ -102,6 +149,12 @@ void set_power_on_alarm(long secs, bool enable)
 	rc = rtc_set_alarm(rtcdev, &alarm);
 	if (rc)
 		goto disable_alarm;
+
+#ifdef CONFIG_YL_POWEROFF_ALARM
+	rc = set_yl_power_on_alarm(&alarm);
+	if (rc)
+		goto disable_alarm;
+#endif
 
 	mutex_unlock(&power_on_alarm_lock);
 	return;
@@ -570,18 +623,26 @@ static enum alarmtimer_type clock2alarm(clockid_t clockid)
 static enum alarmtimer_restart alarm_handle_timer(struct alarm *alarm,
 							ktime_t now)
 {
+	unsigned long flags;
 	struct k_itimer *ptr = container_of(alarm, struct k_itimer,
 						it.alarm.alarmtimer);
-	if (posix_timer_event(ptr, 0) != 0)
-		ptr->it_overrun++;
+	enum alarmtimer_restart result = ALARMTIMER_NORESTART;
+
+	spin_lock_irqsave(&ptr->it_lock, flags);
+	if ((ptr->it_sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE) {
+		if (posix_timer_event(ptr, 0) != 0)
+			ptr->it_overrun++;
+	}
 
 	/* Re-add periodic timers */
 	if (ptr->it.alarm.interval.tv64) {
 		ptr->it_overrun += alarm_forward(alarm, now,
 						ptr->it.alarm.interval);
-		return ALARMTIMER_RESTART;
+		result = ALARMTIMER_RESTART;
 	}
-	return ALARMTIMER_NORESTART;
+	spin_unlock_irqrestore(&ptr->it_lock, flags);
+
+	return result;
 }
 
 /**
@@ -691,8 +752,13 @@ static int alarm_timer_set(struct k_itimer *timr, int flags,
 				struct itimerspec *new_setting,
 				struct itimerspec *old_setting)
 {
+	ktime_t exp;
+
 	if (!rtcdev)
 		return -ENOTSUPP;
+
+	if (flags & ~TIMER_ABSTIME)
+		return -EINVAL;
 
 	if (old_setting)
 		alarm_timer_get(timr, old_setting);
@@ -703,8 +769,16 @@ static int alarm_timer_set(struct k_itimer *timr, int flags,
 
 	/* start the timer */
 	timr->it.alarm.interval = timespec_to_ktime(new_setting->it_interval);
-	alarm_start(&timr->it.alarm.alarmtimer,
-			timespec_to_ktime(new_setting->it_value));
+	exp = timespec_to_ktime(new_setting->it_value);
+	/* Convert (if necessary) to absolute time */
+	if (flags != TIMER_ABSTIME) {
+		ktime_t now;
+
+		now = alarm_bases[timr->it.alarm.alarmtimer.type].gettime();
+		exp = ktime_add(now, exp);
+	}
+
+	alarm_start(&timr->it.alarm.alarmtimer, exp);
 	return 0;
 }
 
@@ -835,6 +909,9 @@ static int alarm_timer_nsleep(const clockid_t which_clock, int flags,
 
 	if (!alarmtimer_get_rtcdev())
 		return -ENOTSUPP;
+
+	if (flags & ~TIMER_ABSTIME)
+		return -EINVAL;
 
 	if (!capable(CAP_WAKE_ALARM))
 		return -EPERM;
