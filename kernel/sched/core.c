@@ -2031,18 +2031,6 @@ static int select_fallback_rq(int cpu, struct task_struct *p)
 	}
 
 out:
-	if (state != cpuset) {
-		/*
-		 * Don't tell them about moving exiting tasks or
-		 * kernel threads (both mm NULL), since they never
-		 * leave kernel.
-		 */
-		if (p->mm && printk_ratelimit()) {
-			printk_sched("process %d (%s) no longer affine to cpu%d\n",
-					task_pid_nr(p), p->comm, cpu);
-		}
-	}
-
 	return dest_cpu;
 }
 
@@ -2400,12 +2388,8 @@ static void try_to_wake_up_local(struct task_struct *p)
 	struct rq *rq = task_rq(p);
 	int long_sleep = 0;
 
-	if (rq != this_rq() || p == current) {
-		printk_sched("%s: Failed to wakeup task %d (%s), rq = %p, this_rq = %p, p = %p, current = %p\n",
-			__func__, task_pid_nr(p), p->comm, rq,
-			this_rq(), p, current);
+	if (rq != this_rq() || p == current)
 		return;
-	}
 
 	lockdep_assert_held(&rq->lock);
 
@@ -5617,6 +5601,7 @@ EXPORT_SYMBOL_GPL(yield_to);
  * This task is about to go to sleep on IO. Increment rq->nr_iowait so
  * that process accounting knows that this is a task in IO wait state.
  */
+#if 0
 void __sched io_schedule(void)
 {
 	struct rq *rq = raw_rq();
@@ -5631,6 +5616,7 @@ void __sched io_schedule(void)
 	delayacct_blkio_end();
 }
 EXPORT_SYMBOL(io_schedule);
+#endif
 
 long __sched io_schedule_timeout(long timeout)
 {
