@@ -200,8 +200,7 @@ void __init sched_clock_postinit(void)
 
 static int sched_clock_suspend(void)
 {
-	update_sched_clock();
-	hrtimer_cancel(&sched_clock_timer);
+	sched_clock_poll(&sched_clock_timer);
 	cd.suspended = true;
 	return 0;
 }
@@ -209,7 +208,6 @@ static int sched_clock_suspend(void)
 static void sched_clock_resume(void)
 {
 	cd.epoch_cyc = read_sched_clock();
-	hrtimer_start(&sched_clock_timer, cd.wrap_kt, HRTIMER_MODE_REL);
 	cd.suspended = false;
 }
 
