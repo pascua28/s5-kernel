@@ -19,7 +19,6 @@
 #include <net/cfg80211-wext.h>
 #include "wext-compat.h"
 #include "core.h"
-#include "rdev-ops.h"
 
 int cfg80211_wext_giwname(struct net_device *dev,
 			  struct iw_request_info *info,
@@ -72,6 +71,7 @@ int cfg80211_wext_siwmode(struct net_device *dev, struct iw_request_info *info,
 	struct cfg80211_registered_device *rdev;
 	struct vif_params vifparams;
 	enum nl80211_iftype type;
+	int ret;
 
 	rdev = wiphy_to_dev(wdev->wiphy);
 
@@ -97,7 +97,11 @@ int cfg80211_wext_siwmode(struct net_device *dev, struct iw_request_info *info,
 
 	memset(&vifparams, 0, sizeof(vifparams));
 
-	return cfg80211_change_iface(rdev, dev, type, NULL, &vifparams);
+	cfg80211_lock_rdev(rdev);
+	ret = cfg80211_change_iface(rdev, dev, type, NULL, &vifparams);
+	cfg80211_unlock_rdev(rdev);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(cfg80211_wext_siwmode);
 
@@ -171,7 +175,7 @@ int cfg80211_wext_giwrange(struct net_device *dev,
 	case CFG80211_SIGNAL_TYPE_NONE:
 		break;
 	case CFG80211_SIGNAL_TYPE_MBM:
-		range->max_qual.level = (u8)-110;
+		range->max_qual.level = -110;
 		range->max_qual.qual = 70;
 		range->avg_qual.qual = 35;
 		range->max_qual.updated |= IW_QUAL_DBM;
@@ -297,7 +301,8 @@ int cfg80211_wext_siwrts(struct net_device *dev,
 	else
 		wdev->wiphy->rts_threshold = rts->value;
 
-	err = rdev_set_wiphy_params(rdev, WIPHY_PARAM_RTS_THRESHOLD);
+	err = rdev->ops->set_wiphy_params(wdev->wiphy,
+					  WIPHY_PARAM_RTS_THRESHOLD);
 	if (err)
 		wdev->wiphy->rts_threshold = orts;
 
@@ -337,7 +342,8 @@ int cfg80211_wext_siwfrag(struct net_device *dev,
 		wdev->wiphy->frag_threshold = frag->value & ~0x1;
 	}
 
-	err = rdev_set_wiphy_params(rdev, WIPHY_PARAM_FRAG_THRESHOLD);
+	err = rdev->ops->set_wiphy_params(wdev->wiphy,
+					  WIPHY_PARAM_FRAG_THRESHOLD);
 	if (err)
 		wdev->wiphy->frag_threshold = ofrag;
 
@@ -390,7 +396,7 @@ static int cfg80211_wext_siwretry(struct net_device *dev,
 	if (!changed)
 		return 0;
 
-	err = rdev_set_wiphy_params(rdev, changed);
+	err = rdev->ops->set_wiphy_params(wdev->wiphy, changed);
 	if (err) {
 		wdev->wiphy->retry_short = oshort;
 		wdev->wiphy->retry_long = olong;
@@ -484,8 +490,8 @@ static int __cfg80211_set_encryption(struct cfg80211_registered_device *rdev,
 			    !(rdev->wiphy.flags & WIPHY_FLAG_IBSS_RSN))
 				err = -ENOENT;
 			else
-				err = rdev_del_key(rdev, dev, idx, pairwise,
-						   addr);
+				err = rdev->ops->del_key(&rdev->wiphy, dev, idx,
+							 pairwise, addr);
 		}
 		wdev->wext.connect.privacy = false;
 		/*
@@ -519,7 +525,8 @@ static int __cfg80211_set_encryption(struct cfg80211_registered_device *rdev,
 
 	err = 0;
 	if (wdev->current_bss)
-		err = rdev_add_key(rdev, dev, idx, pairwise, addr, params);
+		err = rdev->ops->add_key(&rdev->wiphy, dev, idx,
+					 pairwise, addr, params);
 	if (err)
 		return err;
 
@@ -545,7 +552,8 @@ static int __cfg80211_set_encryption(struct cfg80211_registered_device *rdev,
 				__cfg80211_leave_ibss(rdev, wdev->netdev, true);
 				rejoin = true;
 			}
-			err = rdev_set_default_key(rdev, dev, idx, true, true);
+			err = rdev->ops->set_default_key(&rdev->wiphy, dev,
+							 idx, true, true);
 		}
 		if (!err) {
 			wdev->wext.default_key = idx;
@@ -558,7 +566,8 @@ static int __cfg80211_set_encryption(struct cfg80211_registered_device *rdev,
 	if (params->cipher == WLAN_CIPHER_SUITE_AES_CMAC &&
 	    (tx_key || (!addr && wdev->wext.default_mgmt_key == -1))) {
 		if (wdev->current_bss)
-			err = rdev_set_default_mgmt_key(rdev, dev, idx);
+			err = rdev->ops->set_default_mgmt_key(&rdev->wiphy,
+							      dev, idx);
 		if (!err)
 			wdev->wext.default_mgmt_key = idx;
 		return err;
@@ -574,10 +583,13 @@ static int cfg80211_set_encryption(struct cfg80211_registered_device *rdev,
 {
 	int err;
 
+	/* devlist mutex needed for possible IBSS re-join */
+	mutex_lock(&rdev->devlist_mtx);
 	wdev_lock(dev->ieee80211_ptr);
 	err = __cfg80211_set_encryption(rdev, dev, pairwise, addr,
 					remove, tx_key, idx, params);
 	wdev_unlock(dev->ieee80211_ptr);
+	mutex_unlock(&rdev->devlist_mtx);
 
 	return err;
 }
@@ -619,8 +631,8 @@ static int cfg80211_wext_siwencode(struct net_device *dev,
 		err = 0;
 		wdev_lock(wdev);
 		if (wdev->current_bss)
-			err = rdev_set_default_key(rdev, dev, idx, true,
-						   true);
+			err = rdev->ops->set_default_key(&rdev->wiphy, dev,
+							 idx, true, true);
 		if (!err)
 			wdev->wext.default_key = idx;
 		wdev_unlock(wdev);
@@ -776,10 +788,7 @@ static int cfg80211_wext_siwfreq(struct net_device *dev,
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct cfg80211_registered_device *rdev = wiphy_to_dev(wdev->wiphy);
-	struct cfg80211_chan_def chandef = {
-		.width = NL80211_CHAN_WIDTH_20_NOHT,
-	};
-	int freq;
+	int freq, err;
 
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_STATION:
@@ -787,27 +796,19 @@ static int cfg80211_wext_siwfreq(struct net_device *dev,
 	case NL80211_IFTYPE_ADHOC:
 		return cfg80211_ibss_wext_siwfreq(dev, info, wextfreq, extra);
 	case NL80211_IFTYPE_MONITOR:
-		freq = cfg80211_wext_freq(wdev->wiphy, wextfreq);
-		if (freq < 0)
-			return freq;
-		if (freq == 0)
-			return -EINVAL;
-		chandef.center_freq1 = freq;
-		chandef.chan = ieee80211_get_channel(&rdev->wiphy, freq);
-		if (!chandef.chan)
-			return -EINVAL;
-		return cfg80211_set_monitor_channel(rdev, &chandef);
+	case NL80211_IFTYPE_WDS:
 	case NL80211_IFTYPE_MESH_POINT:
 		freq = cfg80211_wext_freq(wdev->wiphy, wextfreq);
 		if (freq < 0)
 			return freq;
 		if (freq == 0)
 			return -EINVAL;
-		chandef.center_freq1 = freq;
-		chandef.chan = ieee80211_get_channel(&rdev->wiphy, freq);
-		if (!chandef.chan)
-			return -EINVAL;
-		return cfg80211_set_mesh_channel(rdev, wdev, &chandef);
+		mutex_lock(&rdev->devlist_mtx);
+		wdev_lock(wdev);
+		err = cfg80211_set_freq(rdev, wdev, freq, NL80211_CHAN_NO_HT);
+		wdev_unlock(wdev);
+		mutex_unlock(&rdev->devlist_mtx);
+		return err;
 	default:
 		return -EOPNOTSUPP;
 	}
@@ -819,8 +820,7 @@ static int cfg80211_wext_giwfreq(struct net_device *dev,
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct cfg80211_registered_device *rdev = wiphy_to_dev(wdev->wiphy);
-	struct cfg80211_chan_def chandef;
-	int ret;
+	struct ieee80211_channel *chan;
 
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_STATION:
@@ -831,14 +831,18 @@ static int cfg80211_wext_giwfreq(struct net_device *dev,
 		if (!rdev->ops->get_channel)
 			return -EINVAL;
 
-		ret = rdev_get_channel(rdev, wdev, &chandef);
-		if (ret)
-			return ret;
-		freq->m = chandef.chan->center_freq;
+		chan = rdev->ops->get_channel(wdev->wiphy);
+		if (!chan)
+			return -EINVAL;
+		freq->m = chan->center_freq;
 		freq->e = 6;
 		return 0;
 	default:
-		return -EINVAL;
+		if (!wdev->channel)
+			return -EINVAL;
+		freq->m = wdev->channel->center_freq;
+		freq->e = 6;
+		return 0;
 	}
 }
 
@@ -891,7 +895,7 @@ static int cfg80211_wext_siwtxpower(struct net_device *dev,
 		return 0;
 	}
 
-	return rdev_set_tx_power(rdev, wdev, type, DBM_TO_MBM(dbm));
+	return rdev->ops->set_tx_power(wdev->wiphy, type, DBM_TO_MBM(dbm));
 }
 
 static int cfg80211_wext_giwtxpower(struct net_device *dev,
@@ -910,7 +914,7 @@ static int cfg80211_wext_giwtxpower(struct net_device *dev,
 	if (!rdev->ops->get_tx_power)
 		return -EOPNOTSUPP;
 
-	err = rdev_get_tx_power(rdev, wdev, &val);
+	err = rdev->ops->get_tx_power(wdev->wiphy, &val);
 	if (err)
 		return err;
 
@@ -1150,7 +1154,7 @@ static int cfg80211_wext_siwpower(struct net_device *dev,
 			timeout = wrq->value / 1000;
 	}
 
-	err = rdev_set_power_mgmt(rdev, dev, ps, timeout);
+	err = rdev->ops->set_power_mgmt(wdev->wiphy, dev, ps, timeout);
 	if (err)
 		return err;
 
@@ -1192,7 +1196,7 @@ static int cfg80211_wds_wext_siwap(struct net_device *dev,
 	if (!rdev->ops->set_wds_peer)
 		return -EOPNOTSUPP;
 
-	err = rdev_set_wds_peer(rdev, dev, (u8 *)&addr->sa_data);
+	err = rdev->ops->set_wds_peer(wdev->wiphy, dev, (u8 *) &addr->sa_data);
 	if (err)
 		return err;
 
@@ -1264,7 +1268,7 @@ static int cfg80211_wext_siwrate(struct net_device *dev,
 	if (!match)
 		return -EINVAL;
 
-	return rdev_set_bitrate_mask(rdev, dev, NULL, &mask);
+	return rdev->ops->set_bitrate_mask(wdev->wiphy, dev, NULL, &mask);
 }
 
 static int cfg80211_wext_giwrate(struct net_device *dev,
@@ -1294,7 +1298,7 @@ static int cfg80211_wext_giwrate(struct net_device *dev,
 	if (err)
 		return err;
 
-	err = rdev_get_station(rdev, dev, addr, &sinfo);
+	err = rdev->ops->get_station(&rdev->wiphy, dev, addr, &sinfo);
 	if (err)
 		return err;
 
@@ -1331,7 +1335,7 @@ static struct iw_statistics *cfg80211_wireless_stats(struct net_device *dev)
 	memcpy(bssid, wdev->current_bss->pub.bssid, ETH_ALEN);
 	wdev_unlock(wdev);
 
-	if (rdev_get_station(rdev, dev, bssid, &sinfo))
+	if (rdev->ops->get_station(&rdev->wiphy, dev, bssid, &sinfo))
 		return NULL;
 
 	memset(&wstats, 0, sizeof(wstats));
@@ -1466,19 +1470,19 @@ static int cfg80211_wext_siwpmksa(struct net_device *dev,
 		if (!rdev->ops->set_pmksa)
 			return -EOPNOTSUPP;
 
-		return rdev_set_pmksa(rdev, dev, &cfg_pmksa);
+		return rdev->ops->set_pmksa(&rdev->wiphy, dev, &cfg_pmksa);
 
 	case IW_PMKSA_REMOVE:
 		if (!rdev->ops->del_pmksa)
 			return -EOPNOTSUPP;
 
-		return rdev_del_pmksa(rdev, dev, &cfg_pmksa);
+		return rdev->ops->del_pmksa(&rdev->wiphy, dev, &cfg_pmksa);
 
 	case IW_PMKSA_FLUSH:
 		if (!rdev->ops->flush_pmksa)
 			return -EOPNOTSUPP;
 
-		return rdev_flush_pmksa(rdev, dev);
+		return rdev->ops->flush_pmksa(&rdev->wiphy, dev);
 
 	default:
 		return -EOPNOTSUPP;

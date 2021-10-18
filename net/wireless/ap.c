@@ -3,7 +3,6 @@
 #include <net/cfg80211.h>
 #include "nl80211.h"
 #include "core.h"
-#include "rdev-ops.h"
 
 
 static int __cfg80211_stop_ap(struct cfg80211_registered_device *rdev,
@@ -24,11 +23,10 @@ static int __cfg80211_stop_ap(struct cfg80211_registered_device *rdev,
 	if (!wdev->beacon_interval)
 		return -ENOENT;
 
-	err = rdev_stop_ap(rdev, dev);
+	err = rdev->ops->stop_ap(&rdev->wiphy, dev);
 	if (!err) {
 		wdev->beacon_interval = 0;
 		wdev->channel = NULL;
-		wdev->ssid_len = 0;
 	}
 
 	return err;

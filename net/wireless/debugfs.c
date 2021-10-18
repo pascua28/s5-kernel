@@ -74,7 +74,7 @@ static ssize_t ht40allow_map_read(struct file *file,
 	if (!buf)
 		return -ENOMEM;
 
-	rtnl_lock();
+	mutex_lock(&cfg80211_mutex);
 
 	for (band = 0; band < IEEE80211_NUM_BANDS; band++) {
 		sband = wiphy->bands[band];
@@ -85,7 +85,7 @@ static ssize_t ht40allow_map_read(struct file *file,
 						buf, buf_size, offset);
 	}
 
-	rtnl_unlock();
+	mutex_unlock(&cfg80211_mutex);
 
 	r = simple_read_from_buffer(user_buf, count, ppos, buf, offset);
 

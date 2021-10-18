@@ -227,7 +227,11 @@ void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode)
 
 	DHD_TRACE(("%s\n", __FUNCTION__));
 	if (plat_data->get_country_code) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0))
+		return plat_data->get_country_code(ccode, WLAN_PLAT_NODFS_FLAG);
+#else
 		return plat_data->get_country_code(ccode);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)) */
 	}
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)) */
 
