@@ -2,7 +2,7 @@
  * tegra_asoc_utils.c - Harmony machine ASoC driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (C) 2010,2012 - NVIDIA, Inc.
+ * Copyright (C) 2010 - NVIDIA, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,6 @@
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/of.h>
 
 #include "tegra_asoc_utils.h"
 
@@ -41,10 +40,7 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 	case 22050:
 	case 44100:
 	case 88200:
-		if (data->soc == TEGRA_ASOC_UTILS_SOC_TEGRA20)
-			new_baseclock = 56448000;
-		else
-			new_baseclock = 564480000;
+		new_baseclock = 56448000;
 		break;
 	case 8000:
 	case 16000:
@@ -52,10 +48,7 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 	case 48000:
 	case 64000:
 	case 96000:
-		if (data->soc == TEGRA_ASOC_UTILS_SOC_TEGRA20)
-			new_baseclock = 73728000;
-		else
-			new_baseclock = 552960000;
+		new_baseclock = 73728000;
 		break;
 	default:
 		return -EINVAL;
@@ -85,7 +78,7 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 		return err;
 	}
 
-	/* Don't set cdev1/extern1 rate; it's locked to pll_a_out0 */
+	/* Don't set cdev1 rate; its locked to pll_a_out0 */
 
 	err = clk_enable(data->clk_pll_a);
 	if (err) {
@@ -119,17 +112,6 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 
 	data->dev = dev;
 
-	if (of_machine_is_compatible("nvidia,tegra20"))
-		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA20;
-	else if (of_machine_is_compatible("nvidia,tegra30"))
-		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA30;
-	else if (!dev->of_node)
-		/* non-DT is always Tegra20 */
-		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA20;
-	else
-		/* DT boot, but unknown SoC */
-		return -EINVAL;
-
 	data->clk_pll_a = clk_get_sys(NULL, "pll_a");
 	if (IS_ERR(data->clk_pll_a)) {
 		dev_err(data->dev, "Can't retrieve clk pll_a\n");
@@ -144,24 +126,15 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 		goto err_put_pll_a;
 	}
 
-	if (data->soc == TEGRA_ASOC_UTILS_SOC_TEGRA20)
-		data->clk_cdev1 = clk_get_sys(NULL, "cdev1");
-	else
-		data->clk_cdev1 = clk_get_sys("extern1", NULL);
+	data->clk_cdev1 = clk_get_sys(NULL, "cdev1");
 	if (IS_ERR(data->clk_cdev1)) {
 		dev_err(data->dev, "Can't retrieve clk cdev1\n");
 		ret = PTR_ERR(data->clk_cdev1);
 		goto err_put_pll_a_out0;
 	}
 
-	ret = tegra_asoc_utils_set_rate(data, 44100, 256 * 44100);
-	if (ret)
-		goto err_put_cdev1;
-
 	return 0;
 
-err_put_cdev1:
-	clk_put(data->clk_cdev1);
 err_put_pll_a_out0:
 	clk_put(data->clk_pll_a_out0);
 err_put_pll_a:

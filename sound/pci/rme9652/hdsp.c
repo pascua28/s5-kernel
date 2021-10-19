@@ -5636,11 +5636,22 @@ static void __devexit snd_hdsp_remove(struct pci_dev *pci)
 	pci_set_drvdata(pci, NULL);
 }
 
-static struct pci_driver hdsp_driver = {
+static struct pci_driver driver = {
 	.name =     KBUILD_MODNAME,
 	.id_table = snd_hdsp_ids,
 	.probe =    snd_hdsp_probe,
 	.remove = __devexit_p(snd_hdsp_remove),
 };
 
-module_pci_driver(hdsp_driver);
+static int __init alsa_card_hdsp_init(void)
+{
+	return pci_register_driver(&driver);
+}
+
+static void __exit alsa_card_hdsp_exit(void)
+{
+	pci_unregister_driver(&driver);
+}
+
+module_init(alsa_card_hdsp_init)
+module_exit(alsa_card_hdsp_exit)

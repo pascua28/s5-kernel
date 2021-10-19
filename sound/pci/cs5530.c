@@ -291,11 +291,23 @@ static int __devinit snd_cs5530_probe(struct pci_dev *pci,
 	return 0;
 }
 
-static struct pci_driver cs5530_driver = {
+static struct pci_driver driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_cs5530_ids,
 	.probe = snd_cs5530_probe,
 	.remove = __devexit_p(snd_cs5530_remove),
 };
 
-module_pci_driver(cs5530_driver);
+static int __init alsa_card_cs5530_init(void)
+{
+	return pci_register_driver(&driver);
+}
+
+static void __exit alsa_card_cs5530_exit(void)
+{
+	pci_unregister_driver(&driver);
+}
+
+module_init(alsa_card_cs5530_init)
+module_exit(alsa_card_cs5530_exit)
+

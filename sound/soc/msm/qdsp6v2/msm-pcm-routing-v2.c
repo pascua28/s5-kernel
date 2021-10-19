@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1171,7 +1171,7 @@ static int msm_routing_set_multimedia2_vol_mixer(struct snd_kcontrol *kcontrol,
 static int msm_routing_get_channel_map_mixer(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
-	char channel_map[PCM_FORMAT_MAX_NUM_CHANNEL];
+	char channel_map[PCM_FORMAT_MAX_NUM_CHANNEL] = {0};
 	int i;
 
 	adm_get_multi_ch_map(channel_map);
@@ -1557,6 +1557,7 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		pr_err("%s: Invalid mux value %d\n", __func__, mux);
 		return -EINVAL;
 	}
+
 	mutex_lock(&routing_lock);
 	switch (ucontrol->value.integer.value[0]) {
 	case 0:
@@ -1665,13 +1666,14 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	bool state = false;
 
+	pr_debug("%s: msm_route_ec_ref_rx = %d value = %ld\n",
+		 __func__, msm_route_ext_ec_ref,
+		 ucontrol->value.integer.value[0]);
+
 	if (mux >= e->max) {
 		pr_err("%s: Invalid mux value %d\n", __func__, mux);
 		return -EINVAL;
 	}
-	pr_debug("%s: msm_route_ec_ref_rx = %d value = %ld\n",
-		 __func__, msm_route_ext_ec_ref,
-		 ucontrol->value.integer.value[0]);
 
 	mutex_lock(&routing_lock);
 	switch (ucontrol->value.integer.value[0]) {

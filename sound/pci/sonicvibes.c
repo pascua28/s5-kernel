@@ -1530,11 +1530,22 @@ static void __devexit snd_sonic_remove(struct pci_dev *pci)
 	pci_set_drvdata(pci, NULL);
 }
 
-static struct pci_driver sonicvibes_driver = {
+static struct pci_driver driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_sonic_ids,
 	.probe = snd_sonic_probe,
 	.remove = __devexit_p(snd_sonic_remove),
 };
 
-module_pci_driver(sonicvibes_driver);
+static int __init alsa_card_sonicvibes_init(void)
+{
+	return pci_register_driver(&driver);
+}
+
+static void __exit alsa_card_sonicvibes_exit(void)
+{
+	pci_unregister_driver(&driver);
+}
+
+module_init(alsa_card_sonicvibes_init)
+module_exit(alsa_card_sonicvibes_exit)

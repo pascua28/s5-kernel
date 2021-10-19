@@ -172,7 +172,7 @@ static void __devexit snd_trident_remove(struct pci_dev *pci)
 	pci_set_drvdata(pci, NULL);
 }
 
-static struct pci_driver trident_driver = {
+static struct pci_driver driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_trident_ids,
 	.probe = snd_trident_probe,
@@ -183,4 +183,15 @@ static struct pci_driver trident_driver = {
 #endif
 };
 
-module_pci_driver(trident_driver);
+static int __init alsa_card_trident_init(void)
+{
+	return pci_register_driver(&driver);
+}
+
+static void __exit alsa_card_trident_exit(void)
+{
+	pci_unregister_driver(&driver);
+}
+
+module_init(alsa_card_trident_init)
+module_exit(alsa_card_trident_exit)

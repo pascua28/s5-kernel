@@ -853,8 +853,8 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 
 	/* Find CPU DAI from registered DAIs*/
 	list_for_each_entry(cpu_dai, &dai_list, list) {
-		if (dai_link->cpu_of_node) {
-			if (cpu_dai->dev->of_node != dai_link->cpu_of_node)
+		if (dai_link->cpu_dai_of_node) {
+			if (cpu_dai->dev->of_node != dai_link->cpu_dai_of_node)
 				continue;
 		} else {
 			if (strcmp(cpu_dai->name, dai_link->cpu_dai_name))
@@ -865,7 +865,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 	}
 
 	if (!rtd->cpu_dai) {
-		dev_err(card->dev, "CPU DAI %s not registered\n",
+		dev_dbg(card->dev, "CPU DAI %s not registered\n",
 			dai_link->cpu_dai_name);
 		return -EPROBE_DEFER;
 
@@ -896,7 +896,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 			}
 		}
 		if (!rtd->codec_dai) {
-			dev_err(card->dev, "CODEC DAI %s not registered\n",
+			dev_dbg(card->dev, "CODEC DAI %s not registered\n",
 				dai_link->codec_dai_name);
 			return -EPROBE_DEFER;
 		}
@@ -904,7 +904,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 	}
 
 	if (!rtd->codec) {
-		dev_err(card->dev, "CODEC %s not registered\n",
+		dev_dbg(card->dev, "CODEC %s not registered\n",
 			dai_link->codec_name);
 		return -EPROBE_DEFER;
 	}
@@ -928,7 +928,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 		rtd->platform = platform;
 	}
 	if (!rtd->platform) {
-		dev_err(card->dev, "platform %s not registered\n",
+		dev_dbg(card->dev, "platform %s not registered\n",
 			dai_link->platform_name);
 
 		return -EPROBE_DEFER;
@@ -1083,10 +1083,6 @@ static int soc_probe_codec(struct snd_soc_card *card,
 			goto err_probe;
 		}
 	}
-
-	/* If the driver didn't set I/O up try regmap */
-	if (!codec->write && dev_get_regmap(codec->dev, NULL))
-		snd_soc_codec_set_cache_io(codec, 0, 0, SND_SOC_REGMAP);
 
 	if (driver->controls)
 		snd_soc_add_codec_controls(codec, driver->controls,
@@ -1413,8 +1409,6 @@ static int soc_check_aux_dev(struct snd_soc_card *card, int num)
 			return 0;
 	}
 
-	dev_err(card->dev, "%s not registered\n", aux_dev->codec_name);
-
 	return -EPROBE_DEFER;
 }
 
@@ -1586,7 +1580,7 @@ static int snd_soc_instantiate_card(struct snd_soc_card *card)
 	struct snd_soc_dai_link *dai_link;
 	int ret, i, order;
 
-	mutex_lock(&card->mutex);
+	mutex_lock_nested(&card->mutex, SND_SOC_CARD_CLASS_INIT);
 
 
 	/* bind DAIs */
@@ -3223,7 +3217,7 @@ int snd_soc_register_card(struct snd_soc_card *card)
 		 * CPU DAI must be specified by 1 of name or OF node,
 		 * not both or neither.
 		 */
-		if (!!link->cpu_dai_name == !!link->cpu_of_node) {
+		if (!!link->cpu_dai_name == !!link->cpu_dai_of_node) {
 			dev_err(card->dev,
 				"Neither/both cpu_dai name/of_node are set for %s\n",
 				link->name);

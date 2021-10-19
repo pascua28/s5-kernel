@@ -123,7 +123,6 @@ struct kirkwood_dma_data {
 	void __iomem *io;
 	int irq;
 	int burst;
-	struct clk *clk;
 };
 
 #endif
