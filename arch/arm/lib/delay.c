@@ -86,16 +86,6 @@ void __init register_current_timer_delay(const struct delay_timer *timer)
 	}
 }
 
-void __init init_current_timer_delay(unsigned long freq)
-{
-	pr_info("Switching to timer-based delay loop\n");
-	lpj_fine			= freq / HZ;
-	loops_per_jiffy			= lpj_fine;
-	arm_delay_ops.delay		= __timer_delay;
-	arm_delay_ops.const_udelay	= __timer_const_udelay;
-	arm_delay_ops.udelay		= __timer_udelay;
-}
-
 unsigned long __cpuinit calibrate_delay_is_known(void)
 {
 	delay_calibrated = true;
