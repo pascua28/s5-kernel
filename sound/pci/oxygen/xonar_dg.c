@@ -1,5 +1,5 @@
 /*
- * card driver for the Xonar DG/DGX
+ * card driver for the Xonar DG
  *
  * Copyright (c) Clemens Ladisch <clemens@ladisch.de>
  *
@@ -17,8 +17,8 @@
  */
 
 /*
- * Xonar DG/DGX
- * ------------
+ * Xonar DG
+ * --------
  *
  * CMI8788:
  *
@@ -294,6 +294,16 @@ static int output_switch_put(struct snd_kcontrol *ctl,
 		oxygen_write16_masked(chip, OXYGEN_GPIO_DATA,
 				      data->output_sel == 1 ? GPIO_HP_REAR : 0,
 				      GPIO_HP_REAR);
+		oxygen_write8_masked(chip, OXYGEN_PLAY_ROUTING,
+				     data->output_sel == 0 ?
+				     OXYGEN_PLAY_MUTE01 :
+				     OXYGEN_PLAY_MUTE23 |
+				     OXYGEN_PLAY_MUTE45 |
+				     OXYGEN_PLAY_MUTE67,
+				     OXYGEN_PLAY_MUTE01 |
+				     OXYGEN_PLAY_MUTE23 |
+				     OXYGEN_PLAY_MUTE45 |
+				     OXYGEN_PLAY_MUTE67);
 	}
 	mutex_unlock(&chip->mutex);
 	return changed;
@@ -581,6 +591,7 @@ static void dump_cs4245_registers(struct oxygen *chip,
 }
 
 struct oxygen_model model_xonar_dg = {
+	.shortname = "Xonar DG",
 	.longname = "C-Media Oxygen HD Audio",
 	.chip = "CMI8786",
 	.init = dg_init,
@@ -596,7 +607,7 @@ struct oxygen_model model_xonar_dg = {
 	.model_data_size = sizeof(struct dg),
 	.device_config = PLAYBACK_0_TO_I2S |
 			 PLAYBACK_1_TO_SPDIF |
-			 CAPTURE_0_FROM_I2S_2 |
+			 CAPTURE_0_FROM_I2S_1 |
 			 CAPTURE_1_FROM_SPDIF,
 	.dac_channels_pcm = 6,
 	.dac_channels_mixer = 0,

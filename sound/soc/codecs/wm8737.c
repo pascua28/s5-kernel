@@ -329,7 +329,8 @@ static int wm8737_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params,
 			    struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_codec *codec = rtd->codec;
 	struct wm8737_priv *wm8737 = snd_soc_codec_get_drvdata(codec);
 	int i;
 	u16 clocking = 0;
@@ -483,7 +484,8 @@ static int wm8737_set_bias_level(struct snd_soc_codec *codec,
 
 			/* Fast VMID ramp at 2*2.5k */
 			snd_soc_update_bits(codec, WM8737_MISC_BIAS_CONTROL,
-					    WM8737_VMIDSEL_MASK, 0x4);
+					    WM8737_VMIDSEL_MASK,
+					    2 << WM8737_VMIDSEL_SHIFT);
 
 			/* Bring VMID up */
 			snd_soc_update_bits(codec, WM8737_POWER_MANAGEMENT,
@@ -497,7 +499,8 @@ static int wm8737_set_bias_level(struct snd_soc_codec *codec,
 
 		/* VMID at 2*300k */
 		snd_soc_update_bits(codec, WM8737_MISC_BIAS_CONTROL,
-				    WM8737_VMIDSEL_MASK, 2);
+				    WM8737_VMIDSEL_MASK,
+				    1 << WM8737_VMIDSEL_SHIFT);
 
 		break;
 

@@ -99,9 +99,8 @@ static void wm2000_reset(struct wm2000_priv *wm2000)
 }
 
 static int wm2000_poll_bit(struct i2c_client *i2c,
-			   unsigned int reg, u8 mask)
+			   unsigned int reg, u8 mask, int timeout)
 {
-	int timeout = 4000;
 	int val;
 
 	val = wm2000_read(i2c, reg);
@@ -120,7 +119,7 @@ static int wm2000_poll_bit(struct i2c_client *i2c,
 static int wm2000_power_up(struct i2c_client *i2c, int analogue)
 {
 	struct wm2000_priv *wm2000 = dev_get_drvdata(&i2c->dev);
-	int ret;
+	int ret, timeout;
 
 	BUG_ON(wm2000->anc_mode != ANC_OFF);
 
@@ -141,13 +140,13 @@ static int wm2000_power_up(struct i2c_client *i2c, int analogue)
 
 	/* Wait for ANC engine to become ready */
 	if (!wm2000_poll_bit(i2c, WM2000_REG_ANC_STAT,
-			     WM2000_ANC_ENG_IDLE)) {
+			     WM2000_ANC_ENG_IDLE, 1)) {
 		dev_err(&i2c->dev, "ANC engine failed to reset\n");
 		return -ETIMEDOUT;
 	}
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_SYS_STATUS,
-			     WM2000_STATUS_BOOT_COMPLETE)) {
+			     WM2000_STATUS_BOOT_COMPLETE, 1)) {
 		dev_err(&i2c->dev, "ANC engine failed to initialise\n");
 		return -ETIMEDOUT;
 	}
@@ -174,13 +173,16 @@ static int wm2000_power_up(struct i2c_client *i2c, int analogue)
 	dev_dbg(&i2c->dev, "Download complete\n");
 
 	if (analogue) {
-		wm2000_write(i2c, WM2000_REG_ANA_VMID_PU_TIME, 248 / 4);
+		timeout = 248;
+		wm2000_write(i2c, WM2000_REG_ANA_VMID_PU_TIME, timeout / 4);
 
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_ANA_SEQ_INCLUDE |
 			     WM2000_MODE_MOUSE_ENABLE |
 			     WM2000_MODE_THERMAL_ENABLE);
 	} else {
+		timeout = 10;
+
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_MOUSE_ENABLE |
 			     WM2000_MODE_THERMAL_ENABLE);
@@ -188,9 +190,9 @@ static int wm2000_power_up(struct i2c_client *i2c, int analogue)
 
 	ret = wm2000_read(i2c, WM2000_REG_SPEECH_CLARITY);
 	if (wm2000->speech_clarity)
-		ret &= ~WM2000_SPEECH_CLARITY;
-	else
 		ret |= WM2000_SPEECH_CLARITY;
+	else
+		ret &= ~WM2000_SPEECH_CLARITY;
 	wm2000_write(i2c, WM2000_REG_SPEECH_CLARITY, ret);
 
 	wm2000_write(i2c, WM2000_REG_SYS_START0, 0x33);
@@ -199,8 +201,9 @@ static int wm2000_power_up(struct i2c_client *i2c, int analogue)
 	wm2000_write(i2c, WM2000_REG_SYS_CTL2, WM2000_ANC_INT_N_CLR);
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_SYS_STATUS,
-			     WM2000_STATUS_MOUSE_ACTIVE)) {
-		dev_err(&i2c->dev, "Timed out waiting for device\n");
+			     WM2000_STATUS_MOUSE_ACTIVE, timeout)) {
+		dev_err(&i2c->dev, "Timed out waiting for device after %dms\n",
+			timeout * 10);
 		return -ETIMEDOUT;
 	}
 
@@ -215,25 +218,28 @@ static int wm2000_power_up(struct i2c_client *i2c, int analogue)
 static int wm2000_power_down(struct i2c_client *i2c, int analogue)
 {
 	struct wm2000_priv *wm2000 = dev_get_drvdata(&i2c->dev);
+	int timeout;
 
 	if (analogue) {
-		wm2000_write(i2c, WM2000_REG_ANA_VMID_PD_TIME, 248 / 4);
+		timeout = 248;
+		wm2000_write(i2c, WM2000_REG_ANA_VMID_PD_TIME, timeout / 4);
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_ANA_SEQ_INCLUDE |
 			     WM2000_MODE_POWER_DOWN);
 	} else {
+		timeout = 10;
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_POWER_DOWN);
 	}
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_SYS_STATUS,
-			     WM2000_STATUS_POWER_DOWN_COMPLETE)) {
+			     WM2000_STATUS_POWER_DOWN_COMPLETE, timeout)) {
 		dev_err(&i2c->dev, "Timeout waiting for ANC power down\n");
 		return -ETIMEDOUT;
 	}
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_ANC_STAT,
-			     WM2000_ANC_ENG_IDLE)) {
+			     WM2000_ANC_ENG_IDLE, 1)) {
 		dev_err(&i2c->dev, "Timeout waiting for ANC engine idle\n");
 		return -ETIMEDOUT;
 	}
@@ -262,13 +268,13 @@ static int wm2000_enter_bypass(struct i2c_client *i2c, int analogue)
 	}
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_SYS_STATUS,
-			     WM2000_STATUS_ANC_DISABLED)) {
+			     WM2000_STATUS_ANC_DISABLED, 10)) {
 		dev_err(&i2c->dev, "Timeout waiting for ANC disable\n");
 		return -ETIMEDOUT;
 	}
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_ANC_STAT,
-			     WM2000_ANC_ENG_IDLE)) {
+			     WM2000_ANC_ENG_IDLE, 1)) {
 		dev_err(&i2c->dev, "Timeout waiting for ANC engine idle\n");
 		return -ETIMEDOUT;
 	}
@@ -305,7 +311,7 @@ static int wm2000_exit_bypass(struct i2c_client *i2c, int analogue)
 	wm2000_write(i2c, WM2000_REG_SYS_CTL2, WM2000_ANC_INT_N_CLR);
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_SYS_STATUS,
-			     WM2000_STATUS_MOUSE_ACTIVE)) {
+			     WM2000_STATUS_MOUSE_ACTIVE, 10)) {
 		dev_err(&i2c->dev, "Timed out waiting for MOUSE\n");
 		return -ETIMEDOUT;
 	}
@@ -319,32 +325,38 @@ static int wm2000_exit_bypass(struct i2c_client *i2c, int analogue)
 static int wm2000_enter_standby(struct i2c_client *i2c, int analogue)
 {
 	struct wm2000_priv *wm2000 = dev_get_drvdata(&i2c->dev);
+	int timeout;
 
 	BUG_ON(wm2000->anc_mode != ANC_ACTIVE);
 
 	if (analogue) {
-		wm2000_write(i2c, WM2000_REG_ANA_VMID_PD_TIME, 248 / 4);
+		timeout = 248;
+		wm2000_write(i2c, WM2000_REG_ANA_VMID_PD_TIME, timeout / 4);
 
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_ANA_SEQ_INCLUDE |
 			     WM2000_MODE_THERMAL_ENABLE |
 			     WM2000_MODE_STANDBY_ENTRY);
 	} else {
+		timeout = 10;
+
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_THERMAL_ENABLE |
 			     WM2000_MODE_STANDBY_ENTRY);
 	}
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_SYS_STATUS,
-			     WM2000_STATUS_ANC_DISABLED)) {
+			     WM2000_STATUS_ANC_DISABLED, timeout)) {
 		dev_err(&i2c->dev,
 			"Timed out waiting for ANC disable after 1ms\n");
 		return -ETIMEDOUT;
 	}
 
-	if (!wm2000_poll_bit(i2c, WM2000_REG_ANC_STAT, WM2000_ANC_ENG_IDLE)) {
+	if (!wm2000_poll_bit(i2c, WM2000_REG_ANC_STAT, WM2000_ANC_ENG_IDLE,
+			     1)) {
 		dev_err(&i2c->dev,
-			"Timed out waiting for standby\n");
+			"Timed out waiting for standby after %dms\n",
+			timeout * 10);
 		return -ETIMEDOUT;
 	}
 
@@ -362,19 +374,23 @@ static int wm2000_enter_standby(struct i2c_client *i2c, int analogue)
 static int wm2000_exit_standby(struct i2c_client *i2c, int analogue)
 {
 	struct wm2000_priv *wm2000 = dev_get_drvdata(&i2c->dev);
+	int timeout;
 
 	BUG_ON(wm2000->anc_mode != ANC_STANDBY);
 
 	wm2000_write(i2c, WM2000_REG_SYS_CTL1, 0);
 
 	if (analogue) {
-		wm2000_write(i2c, WM2000_REG_ANA_VMID_PU_TIME, 248 / 4);
+		timeout = 248;
+		wm2000_write(i2c, WM2000_REG_ANA_VMID_PU_TIME, timeout / 4);
 
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_ANA_SEQ_INCLUDE |
 			     WM2000_MODE_THERMAL_ENABLE |
 			     WM2000_MODE_MOUSE_ENABLE);
 	} else {
+		timeout = 10;
+
 		wm2000_write(i2c, WM2000_REG_SYS_MODE_CNTRL,
 			     WM2000_MODE_THERMAL_ENABLE |
 			     WM2000_MODE_MOUSE_ENABLE);
@@ -384,8 +400,9 @@ static int wm2000_exit_standby(struct i2c_client *i2c, int analogue)
 	wm2000_write(i2c, WM2000_REG_SYS_CTL2, WM2000_ANC_INT_N_CLR);
 
 	if (!wm2000_poll_bit(i2c, WM2000_REG_SYS_STATUS,
-			     WM2000_STATUS_MOUSE_ACTIVE)) {
-		dev_err(&i2c->dev, "Timed out waiting for MOUSE\n");
+			     WM2000_STATUS_MOUSE_ACTIVE, timeout)) {
+		dev_err(&i2c->dev, "Timed out waiting for MOUSE after %dms\n",
+			timeout * 10);
 		return -ETIMEDOUT;
 	}
 
@@ -564,7 +581,7 @@ static int wm2000_anc_mode_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm2000_priv *wm2000 = dev_get_drvdata(codec->dev);
 
-	ucontrol->value.enumerated.item[0] = wm2000->anc_active;
+	ucontrol->value.integer.value[0] = wm2000->anc_active;
 
 	return 0;
 }
@@ -574,7 +591,7 @@ static int wm2000_anc_mode_put(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm2000_priv *wm2000 = dev_get_drvdata(codec->dev);
-	int anc_active = ucontrol->value.enumerated.item[0];
+	int anc_active = ucontrol->value.integer.value[0];
 
 	if (anc_active > 1)
 		return -EINVAL;
@@ -590,7 +607,7 @@ static int wm2000_speaker_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm2000_priv *wm2000 = dev_get_drvdata(codec->dev);
 
-	ucontrol->value.enumerated.item[0] = wm2000->spk_ena;
+	ucontrol->value.integer.value[0] = wm2000->spk_ena;
 
 	return 0;
 }
@@ -600,7 +617,7 @@ static int wm2000_speaker_put(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm2000_priv *wm2000 = dev_get_drvdata(codec->dev);
-	int val = ucontrol->value.enumerated.item[0];
+	int val = ucontrol->value.integer.value[0];
 
 	if (val > 1)
 		return -EINVAL;
@@ -675,7 +692,7 @@ static int wm2000_resume(struct snd_soc_codec *codec)
 #endif
 
 static const struct regmap_config wm2000_regmap = {
-	.reg_bits = 8,
+	.reg_bits = 16,
 	.val_bits = 8,
 };
 

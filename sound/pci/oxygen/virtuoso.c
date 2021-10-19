@@ -100,4 +100,15 @@ static struct pci_driver xonar_driver = {
 	.shutdown = oxygen_pci_shutdown,
 };
 
-module_pci_driver(xonar_driver);
+static int __init alsa_card_xonar_init(void)
+{
+	return pci_register_driver(&xonar_driver);
+}
+
+static void __exit alsa_card_xonar_exit(void)
+{
+	pci_unregister_driver(&xonar_driver);
+}
+
+module_init(alsa_card_xonar_init)
+module_exit(alsa_card_xonar_exit)

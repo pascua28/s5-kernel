@@ -375,11 +375,24 @@ static void __devexit snd_vortex_remove(struct pci_dev *pci)
 }
 
 // pci_driver definition
-static struct pci_driver vortex_driver = {
+static struct pci_driver driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_vortex_ids,
 	.probe = snd_vortex_probe,
 	.remove = __devexit_p(snd_vortex_remove),
 };
 
-module_pci_driver(vortex_driver);
+// initialization of the module
+static int __init alsa_card_vortex_init(void)
+{
+	return pci_register_driver(&driver);
+}
+
+// clean up the module
+static void __exit alsa_card_vortex_exit(void)
+{
+	pci_unregister_driver(&driver);
+}
+
+module_init(alsa_card_vortex_init)
+module_exit(alsa_card_vortex_exit)

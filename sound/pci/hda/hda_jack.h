@@ -12,8 +12,6 @@
 #ifndef __SOUND_HDA_JACK_H
 #define __SOUND_HDA_JACK_H
 
-struct auto_pin_cfg;
-
 struct hda_jack_tbl {
 	hda_nid_t nid;
 	unsigned char action;		/* event action (0 = none) */

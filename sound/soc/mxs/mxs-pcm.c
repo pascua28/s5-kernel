@@ -220,16 +220,28 @@ static struct snd_soc_platform_driver mxs_soc_platform = {
 	.pcm_free	= mxs_pcm_free,
 };
 
-int __devinit mxs_pcm_platform_register(struct device *dev)
+static int __devinit mxs_soc_platform_probe(struct platform_device *pdev)
 {
-	return snd_soc_register_platform(dev, &mxs_soc_platform);
+	return snd_soc_register_platform(&pdev->dev, &mxs_soc_platform);
 }
-EXPORT_SYMBOL_GPL(mxs_pcm_platform_register);
 
-void __devexit mxs_pcm_platform_unregister(struct device *dev)
+static int __devexit mxs_soc_platform_remove(struct platform_device *pdev)
 {
-	snd_soc_unregister_platform(dev);
+	snd_soc_unregister_platform(&pdev->dev);
+
+	return 0;
 }
-EXPORT_SYMBOL_GPL(mxs_pcm_platform_unregister);
+
+static struct platform_driver mxs_pcm_driver = {
+	.driver = {
+		.name = "mxs-pcm-audio",
+		.owner = THIS_MODULE,
+	},
+	.probe = mxs_soc_platform_probe,
+	.remove = __devexit_p(mxs_soc_platform_remove),
+};
+
+module_platform_driver(mxs_pcm_driver);
 
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:mxs-pcm-audio");

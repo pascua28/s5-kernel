@@ -120,7 +120,7 @@ static int wm8731_get_deemph(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8731_priv *wm8731 = snd_soc_codec_get_drvdata(codec);
 
-	ucontrol->value.enumerated.item[0] = wm8731->deemph;
+	ucontrol->value.integer.value[0] = wm8731->deemph;
 
 	return 0;
 }
@@ -130,7 +130,7 @@ static int wm8731_put_deemph(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8731_priv *wm8731 = snd_soc_codec_get_drvdata(codec);
-	int deemph = ucontrol->value.enumerated.item[0];
+	int deemph = ucontrol->value.integer.value[0];
 	int ret = 0;
 
 	if (deemph > 1)
@@ -406,10 +406,10 @@ static int wm8731_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		iface |= 0x0001;
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
-		iface |= 0x0003;
+		iface |= 0x0013;
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
-		iface |= 0x0013;
+		iface |= 0x0003;
 		break;
 	default:
 		return -EINVAL;
@@ -635,17 +635,16 @@ static int __devinit wm8731_spi_probe(struct spi_device *spi)
 	struct wm8731_priv *wm8731;
 	int ret;
 
-	wm8731 = devm_kzalloc(&spi->dev, sizeof(struct wm8731_priv),
-			      GFP_KERNEL);
+	wm8731 = kzalloc(sizeof(struct wm8731_priv), GFP_KERNEL);
 	if (wm8731 == NULL)
 		return -ENOMEM;
 
-	wm8731->regmap = devm_regmap_init_spi(spi, &wm8731_regmap);
+	wm8731->regmap = regmap_init_spi(spi, &wm8731_regmap);
 	if (IS_ERR(wm8731->regmap)) {
 		ret = PTR_ERR(wm8731->regmap);
 		dev_err(&spi->dev, "Failed to allocate register map: %d\n",
 			ret);
-		return ret;
+		goto err;
 	}
 
 	spi_set_drvdata(spi, wm8731);
@@ -654,15 +653,25 @@ static int __devinit wm8731_spi_probe(struct spi_device *spi)
 			&soc_codec_dev_wm8731, &wm8731_dai, 1);
 	if (ret != 0) {
 		dev_err(&spi->dev, "Failed to register CODEC: %d\n", ret);
-		return ret;
+		goto err_regmap;
 	}
 
 	return 0;
+
+err_regmap:
+	regmap_exit(wm8731->regmap);
+err:
+	kfree(wm8731);
+	return ret;
 }
 
 static int __devexit wm8731_spi_remove(struct spi_device *spi)
 {
+	struct wm8731_priv *wm8731 = spi_get_drvdata(spi);
+
 	snd_soc_unregister_codec(&spi->dev);
+	regmap_exit(wm8731->regmap);
+	kfree(wm8731);
 	return 0;
 }
 
@@ -684,17 +693,16 @@ static __devinit int wm8731_i2c_probe(struct i2c_client *i2c,
 	struct wm8731_priv *wm8731;
 	int ret;
 
-	wm8731 = devm_kzalloc(&i2c->dev, sizeof(struct wm8731_priv),
-			      GFP_KERNEL);
+	wm8731 = kzalloc(sizeof(struct wm8731_priv), GFP_KERNEL);
 	if (wm8731 == NULL)
 		return -ENOMEM;
 
-	wm8731->regmap = devm_regmap_init_i2c(i2c, &wm8731_regmap);
+	wm8731->regmap = regmap_init_i2c(i2c, &wm8731_regmap);
 	if (IS_ERR(wm8731->regmap)) {
 		ret = PTR_ERR(wm8731->regmap);
 		dev_err(&i2c->dev, "Failed to allocate register map: %d\n",
 			ret);
-		return ret;
+		goto err;
 	}
 
 	i2c_set_clientdata(i2c, wm8731);
@@ -703,15 +711,24 @@ static __devinit int wm8731_i2c_probe(struct i2c_client *i2c,
 			&soc_codec_dev_wm8731, &wm8731_dai, 1);
 	if (ret != 0) {
 		dev_err(&i2c->dev, "Failed to register CODEC: %d\n", ret);
-		return ret;
+		goto err_regmap;
 	}
 
 	return 0;
+
+err_regmap:
+	regmap_exit(wm8731->regmap);
+err:
+	kfree(wm8731);
+	return ret;
 }
 
 static __devexit int wm8731_i2c_remove(struct i2c_client *client)
 {
+	struct wm8731_priv *wm8731 = i2c_get_clientdata(client);
 	snd_soc_unregister_codec(&client->dev);
+	regmap_exit(wm8731->regmap);
+	kfree(wm8731);
 	return 0;
 }
 

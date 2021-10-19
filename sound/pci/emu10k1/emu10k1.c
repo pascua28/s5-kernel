@@ -181,8 +181,10 @@ static int __devinit snd_card_emu10k1_probe(struct pci_dev *pci,
 	}
 #endif
  
-	strcpy(card->driver, emu->card_capabilities->driver);
-	strcpy(card->shortname, emu->card_capabilities->name);
+	strlcpy(card->driver, emu->card_capabilities->driver,
+		sizeof(card->driver));
+	strlcpy(card->shortname, emu->card_capabilities->name,
+		sizeof(card->shortname));
 	snprintf(card->longname, sizeof(card->longname),
 		 "%s (rev.%d, serial:0x%x) at 0x%lx, irq %i",
 		 card->shortname, emu->revision, emu->serial, emu->port, emu->irq);
@@ -263,7 +265,7 @@ static int snd_emu10k1_resume(struct pci_dev *pci)
 }
 #endif
 
-static struct pci_driver emu10k1_driver = {
+static struct pci_driver driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_emu10k1_ids,
 	.probe = snd_card_emu10k1_probe,
@@ -274,4 +276,15 @@ static struct pci_driver emu10k1_driver = {
 #endif
 };
 
-module_pci_driver(emu10k1_driver);
+static int __init alsa_card_emu10k1_init(void)
+{
+	return pci_register_driver(&driver);
+}
+
+static void __exit alsa_card_emu10k1_exit(void)
+{
+	pci_unregister_driver(&driver);
+}
+
+module_init(alsa_card_emu10k1_init)
+module_exit(alsa_card_emu10k1_exit)
