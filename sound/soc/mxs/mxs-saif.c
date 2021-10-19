@@ -18,8 +18,6 @@
 
 #include <linux/module.h>
 #include <linux/init.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
@@ -27,7 +25,6 @@
 #include <linux/delay.h>
 #include <linux/time.h>
 #include <linux/fsl/mxs-dma.h>
-#include <linux/pinctrl/consumer.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -623,61 +620,34 @@ static irqreturn_t mxs_saif_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int __devinit mxs_saif_probe(struct platform_device *pdev)
+static int mxs_saif_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
 	struct resource *iores, *dmares;
 	struct mxs_saif *saif;
 	struct mxs_saif_platform_data *pdata;
-	struct pinctrl *pinctrl;
 	int ret = 0;
 
-
-	if (!np && pdev->id >= ARRAY_SIZE(mxs_saif))
+	if (pdev->id >= ARRAY_SIZE(mxs_saif))
 		return -EINVAL;
 
 	saif = devm_kzalloc(&pdev->dev, sizeof(*saif), GFP_KERNEL);
 	if (!saif)
 		return -ENOMEM;
 
-	if (np) {
-		struct device_node *master;
-		saif->id = of_alias_get_id(np, "saif");
-		if (saif->id < 0)
-			return saif->id;
-		/*
-		 * If there is no "fsl,saif-master" phandle, it's a saif
-		 * master.  Otherwise, it's a slave and its phandle points
-		 * to the master.
-		 */
-		master = of_parse_phandle(np, "fsl,saif-master", 0);
-		if (!master) {
-			saif->master_id = saif->id;
-		} else {
-			saif->master_id = of_alias_get_id(master, "saif");
-			if (saif->master_id < 0)
-				return saif->master_id;
+	mxs_saif[pdev->id] = saif;
+	saif->id = pdev->id;
+
+	pdata = pdev->dev.platform_data;
+	if (pdata && !pdata->master_mode) {
+		saif->master_id = pdata->master_id;
+		if (saif->master_id < 0 ||
+			saif->master_id >= ARRAY_SIZE(mxs_saif) ||
+			saif->master_id == saif->id) {
+			dev_err(&pdev->dev, "get wrong master id\n");
+			return -EINVAL;
 		}
 	} else {
-		saif->id = pdev->id;
-		pdata = pdev->dev.platform_data;
-		if (pdata && !pdata->master_mode)
-			saif->master_id = pdata->master_id;
-		else
-			saif->master_id = saif->id;
-	}
-
-	if (saif->master_id < 0 || saif->master_id >= ARRAY_SIZE(mxs_saif)) {
-		dev_err(&pdev->dev, "get wrong master id\n");
-		return -EINVAL;
-	}
-
-	mxs_saif[saif->id] = saif;
-
-	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
-	if (IS_ERR(pinctrl)) {
-		ret = PTR_ERR(pinctrl);
-		return ret;
+		saif->master_id = saif->id;
 	}
 
 	saif->clk = clk_get(&pdev->dev, NULL);
@@ -699,19 +669,12 @@ static int __devinit mxs_saif_probe(struct platform_device *pdev)
 
 	dmares = platform_get_resource(pdev, IORESOURCE_DMA, 0);
 	if (!dmares) {
-		/*
-		 * TODO: This is a temporary solution and should be changed
-		 * to use generic DMA binding later when the helplers get in.
-		 */
-		ret = of_property_read_u32(np, "fsl,saif-dma-channel",
-					   &saif->dma_param.chan_num);
-		if (ret) {
-			dev_err(&pdev->dev, "failed to get dma channel\n");
-			goto failed_get_resource;
-		}
-	} else {
-		saif->dma_param.chan_num = dmares->start;
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "failed to get dma resource: %d\n",
+			ret);
+		goto failed_get_resource;
 	}
+	saif->dma_param.chan_num = dmares->start;
 
 	saif->irq = platform_get_irq(pdev, 0);
 	if (saif->irq < 0) {
@@ -745,14 +708,24 @@ static int __devinit mxs_saif_probe(struct platform_device *pdev)
 		goto failed_get_resource;
 	}
 
-	ret = mxs_pcm_platform_register(&pdev->dev);
-	if (ret) {
-		dev_err(&pdev->dev, "register PCM failed: %d\n", ret);
+	saif->soc_platform_pdev = platform_device_alloc(
+					"mxs-pcm-audio", pdev->id);
+	if (!saif->soc_platform_pdev) {
+		ret = -ENOMEM;
 		goto failed_pdev_alloc;
+	}
+
+	platform_set_drvdata(saif->soc_platform_pdev, saif);
+	ret = platform_device_add(saif->soc_platform_pdev);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to add soc platform device\n");
+		goto failed_pdev_add;
 	}
 
 	return 0;
 
+failed_pdev_add:
+	platform_device_put(saif->soc_platform_pdev);
 failed_pdev_alloc:
 	snd_soc_unregister_dai(&pdev->dev);
 failed_get_resource:
@@ -765,18 +738,12 @@ static int __devexit mxs_saif_remove(struct platform_device *pdev)
 {
 	struct mxs_saif *saif = platform_get_drvdata(pdev);
 
-	mxs_pcm_platform_unregister(&pdev->dev);
+	platform_device_unregister(saif->soc_platform_pdev);
 	snd_soc_unregister_dai(&pdev->dev);
 	clk_put(saif->clk);
 
 	return 0;
 }
-
-static const struct of_device_id mxs_saif_dt_ids[] = {
-	{ .compatible = "fsl,imx28-saif", },
-	{ /* sentinel */ }
-};
-MODULE_DEVICE_TABLE(of, mxs_saif_dt_ids);
 
 static struct platform_driver mxs_saif_driver = {
 	.probe = mxs_saif_probe,
@@ -785,7 +752,6 @@ static struct platform_driver mxs_saif_driver = {
 	.driver = {
 		.name = "mxs-saif",
 		.owner = THIS_MODULE,
-		.of_match_table = mxs_saif_dt_ids,
 	},
 };
 

@@ -528,7 +528,7 @@ static int wm8904_get_deemph(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8904_priv *wm8904 = snd_soc_codec_get_drvdata(codec);
 
-	ucontrol->value.enumerated.item[0] = wm8904->deemph;
+	ucontrol->value.integer.value[0] = wm8904->deemph;
 	return 0;
 }
 
@@ -537,7 +537,7 @@ static int wm8904_put_deemph(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8904_priv *wm8904 = snd_soc_codec_get_drvdata(codec);
-	int deemph = ucontrol->value.enumerated.item[0];
+	int deemph = ucontrol->value.integer.value[0];
 
 	if (deemph > 1)
 		return -EINVAL;
@@ -1456,7 +1456,7 @@ static int wm8904_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_DSP_B:
-		aif1 |= WM8904_AIF_LRCLK_INV;
+		aif1 |= 0x3 | WM8904_AIF_LRCLK_INV;
 	case SND_SOC_DAIFMT_DSP_A:
 		aif1 |= 0x3;
 		break;
@@ -1863,7 +1863,6 @@ static int wm8904_set_bias_level(struct snd_soc_codec *codec,
 				return ret;
 			}
 
-			regcache_cache_only(wm8904->regmap, false);
 			regcache_sync(wm8904->regmap);
 
 			/* Enable bias */
@@ -1900,8 +1899,14 @@ static int wm8904_set_bias_level(struct snd_soc_codec *codec,
 		snd_soc_update_bits(codec, WM8904_BIAS_CONTROL_0,
 				    WM8904_BIAS_ENA, 0);
 
-		regcache_cache_only(wm8904->regmap, true);
-		regcache_mark_dirty(wm8904->regmap);
+#ifdef CONFIG_REGULATOR
+		/* Post 2.6.34 we will be able to get a callback when
+		 * the regulators are disabled which we can use but
+		 * for now just assume that the power will be cut if
+		 * the regulator API is in use.
+		 */
+		codec->cache_sync = 1;
+#endif
 
 		regulator_bulk_disable(ARRAY_SIZE(wm8904->supplies),
 				       wm8904->supplies);
@@ -2081,6 +2086,7 @@ static int wm8904_probe(struct snd_soc_codec *codec)
 	struct wm8904_pdata *pdata = wm8904->pdata;
 	int ret, i;
 
+	codec->cache_sync = 1;
 	codec->control_data = wm8904->regmap;
 
 	switch (wm8904->devtype) {
@@ -2143,7 +2149,6 @@ static int wm8904_probe(struct snd_soc_codec *codec)
 		goto err_enable;
 	}
 
-	regcache_cache_only(wm8904->regmap, true);
 	/* Change some default settings - latch VU and enable ZC */
 	snd_soc_update_bits(codec, WM8904_ADC_DIGITAL_VOLUME_LEFT,
 			    WM8904_ADC_VU, WM8904_ADC_VU);

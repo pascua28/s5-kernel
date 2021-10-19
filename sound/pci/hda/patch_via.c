@@ -54,7 +54,6 @@
 #include <sound/asoundef.h>
 #include "hda_codec.h"
 #include "hda_local.h"
-#include "hda_auto_parser.h"
 #include "hda_jack.h"
 
 /* Pin Widget NID */
@@ -485,7 +484,7 @@ static void activate_output_mix(struct hda_codec *codec, struct nid_path *path,
 
 	if (!path)
 		return;
-	num = snd_hda_get_num_conns(codec, mix_nid);
+	num = snd_hda_get_conn_list(codec, mix_nid, NULL);
 	for (i = 0; i < num; i++) {
 		if (i == idx)
 			val = AMP_IN_UNMUTE(i);
@@ -533,7 +532,8 @@ static void init_output_pin(struct hda_codec *codec, hda_nid_t pin,
 {
 	if (!pin)
 		return;
-	snd_hda_set_pin_ctl(codec, pin, pin_type);
+	snd_hda_codec_write(codec, pin, 0, AC_VERB_SET_PIN_WIDGET_CONTROL,
+			    pin_type);
 	if (snd_hda_query_pin_caps(codec, pin) & AC_PINCAP_EAPD)
 		snd_hda_codec_write(codec, pin, 0,
 				    AC_VERB_SET_EAPD_BTLENABLE, 0x02);
@@ -662,12 +662,12 @@ static void via_auto_init_analog_input(struct hda_codec *codec)
 		hda_nid_t nid = cfg->inputs[i].pin;
 		if (spec->smart51_enabled && is_smart51_pins(codec, nid))
 			ctl = PIN_OUT;
-		else {
+		else if (cfg->inputs[i].type == AUTO_PIN_MIC)
+			ctl = PIN_VREF50;
+		else
 			ctl = PIN_IN;
-			if (cfg->inputs[i].type == AUTO_PIN_MIC)
-				ctl |= snd_hda_get_default_vref(codec, nid);
-		}
-		snd_hda_set_pin_ctl(codec, nid, ctl);
+		snd_hda_codec_write(codec, nid, 0,
+				    AC_VERB_SET_PIN_WIDGET_CONTROL, ctl);
 	}
 
 	/* init input-src */
@@ -1006,7 +1006,9 @@ static int via_smart51_put(struct snd_kcontrol *kcontrol,
 					  AC_VERB_GET_PIN_WIDGET_CONTROL, 0);
 		parm &= ~(AC_PINCTL_IN_EN | AC_PINCTL_OUT_EN);
 		parm |= out_in;
-		snd_hda_set_pin_ctl(codec, nid, parm);
+		snd_hda_codec_write(codec, nid, 0,
+				    AC_VERB_SET_PIN_WIDGET_CONTROL,
+				    parm);
 		if (out_in == AC_PINCTL_OUT_EN) {
 			mute_aa_path(codec, 1);
 			notify_aa_path_ctls(codec);
@@ -1645,7 +1647,8 @@ static void toggle_output_mutes(struct hda_codec *codec, int num_pins,
 			parm &= ~AC_PINCTL_OUT_EN;
 		else
 			parm |= AC_PINCTL_OUT_EN;
-		snd_hda_set_pin_ctl(codec, pins[i], parm);
+		snd_hda_codec_write(codec, pins[i], 0,
+				    AC_VERB_SET_PIN_WIDGET_CONTROL, parm);
 	}
 }
 
@@ -1706,7 +1709,8 @@ static void via_gpio_control(struct hda_codec *codec)
 
 	if (gpio_data == 0x02) {
 		/* unmute line out */
-		snd_hda_set_pin_ctl(codec, spec->autocfg.line_out_pins[0],
+		snd_hda_codec_write(codec, spec->autocfg.line_out_pins[0], 0,
+				    AC_VERB_SET_PIN_WIDGET_CONTROL,
 				    PIN_OUT);
 		if (vol_counter & 0x20) {
 			/* decrease volume */
@@ -1724,7 +1728,9 @@ static void via_gpio_control(struct hda_codec *codec)
 		}
 	} else if (!(gpio_data & 0x02)) {
 		/* mute line out */
-		snd_hda_set_pin_ctl(codec, spec->autocfg.line_out_pins[0], 0);
+		snd_hda_codec_write(codec, spec->autocfg.line_out_pins[0], 0,
+				    AC_VERB_SET_PIN_WIDGET_CONTROL,
+				    0);
 	}
 }
 
@@ -1862,11 +1868,11 @@ static int via_auto_fill_dac_nids(struct hda_codec *codec)
 {
 	struct via_spec *spec = codec->spec;
 	const struct auto_pin_cfg *cfg = &spec->autocfg;
-	int i, dac_num;
+	int i;
 	hda_nid_t nid;
 
+	spec->multiout.num_dacs = 0;
 	spec->multiout.dac_nids = spec->private_dac_nids;
-	dac_num = 0;
 	for (i = 0; i < cfg->line_outs; i++) {
 		hda_nid_t dac = 0;
 		nid = cfg->line_out_pins[i];
@@ -1877,16 +1883,13 @@ static int via_auto_fill_dac_nids(struct hda_codec *codec)
 		if (!i && parse_output_path(codec, nid, dac, 1,
 					    &spec->out_mix_path))
 			dac = spec->out_mix_path.path[0];
-		if (dac) {
-			spec->private_dac_nids[i] = dac;
-			dac_num++;
-		}
+		if (dac)
+			spec->private_dac_nids[spec->multiout.num_dacs++] = dac;
 	}
 	if (!spec->out_path[0].depth && spec->out_mix_path.depth) {
 		spec->out_path[0] = spec->out_mix_path;
 		spec->out_mix_path.depth = 0;
 	}
-	spec->multiout.num_dacs = dac_num;
 	return 0;
 }
 
@@ -2751,7 +2754,8 @@ static void via_auto_init_dig_in(struct hda_codec *codec)
 	struct via_spec *spec = codec->spec;
 	if (!spec->dig_in_nid)
 		return;
-	snd_hda_set_pin_ctl(codec, spec->autocfg.dig_in_pin, PIN_IN);
+	snd_hda_codec_write(codec, spec->autocfg.dig_in_pin, 0,
+			    AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_IN);
 }
 
 /* initialize the unsolicited events */
@@ -3226,7 +3230,7 @@ static void set_widgets_power_state_vt1718S(struct hda_codec *codec)
 {
 	struct via_spec *spec = codec->spec;
 	int imux_is_smixer;
-	unsigned int parm;
+	unsigned int parm, parm2;
 	/* MUX6 (1eh) = stereo mixer */
 	imux_is_smixer =
 	snd_hda_codec_read(codec, 0x1e, 0, AC_VERB_GET_CONNECT_SEL, 0x00) == 5;
@@ -3249,7 +3253,7 @@ static void set_widgets_power_state_vt1718S(struct hda_codec *codec)
 	parm = AC_PWRST_D3;
 	set_pin_power_state(codec, 0x27, &parm);
 	update_power_state(codec, 0x1a, parm);
-	update_power_state(codec, 0xb, parm);
+	parm2 = parm; /* for pin 0x0b */
 
 	/* PW2 (26h), AOW2 (ah) */
 	parm = AC_PWRST_D3;
@@ -3264,6 +3268,9 @@ static void set_widgets_power_state_vt1718S(struct hda_codec *codec)
 	if (!spec->hp_independent_mode) /* check for redirected HP */
 		set_pin_power_state(codec, 0x28, &parm);
 	update_power_state(codec, 0x8, parm);
+	if (!spec->hp_independent_mode && parm2 != AC_PWRST_D3)
+		parm = parm2;
+	update_power_state(codec, 0xb, parm);
 	/* MW9 (21h), Mw2 (1ah), AOW0 (8h) */
 	update_power_state(codec, 0x21, imux_is_smixer ? AC_PWRST_D0 : parm);
 
@@ -3658,6 +3665,18 @@ static void set_widgets_power_state_vt2002P(struct hda_codec *codec)
 		update_power_state(codec, 0x21, AC_PWRST_D3);
 }
 
+/* NIDs 0x24 and 0x33 on VT1802 have connections to non-existing NID 0x3e
+ * Replace this with mixer NID 0x1c
+ */
+static void fix_vt1802_connections(struct hda_codec *codec)
+{
+	static hda_nid_t conn_24[] = { 0x14, 0x1c };
+	static hda_nid_t conn_33[] = { 0x1c };
+
+	snd_hda_override_conn_list(codec, 0x24, ARRAY_SIZE(conn_24), conn_24);
+	snd_hda_override_conn_list(codec, 0x33, ARRAY_SIZE(conn_33), conn_33);
+}
+
 /* patch for vt2002P */
 static int patch_vt2002P(struct hda_codec *codec)
 {
@@ -3672,6 +3691,8 @@ static int patch_vt2002P(struct hda_codec *codec)
 	spec->aa_mix_nid = 0x21;
 	override_mic_boost(codec, 0x2b, 0, 3, 40);
 	override_mic_boost(codec, 0x29, 0, 3, 40);
+	if (spec->codec_type == VT1802)
+		fix_vt1802_connections(codec);
 	add_secret_dac_path(codec);
 
 	/* automatic parse from the BIOS config */

@@ -991,8 +991,6 @@ static int __devinit atmel_ac97c_probe(struct platform_device *pdev)
 			gpio_direction_output(pdata->reset_pin, 1);
 			chip->reset_pin = pdata->reset_pin;
 		}
-	} else {
-		chip->reset_pin = -EINVAL;
 	}
 
 	snd_card_set_dev(card, &pdev->dev);

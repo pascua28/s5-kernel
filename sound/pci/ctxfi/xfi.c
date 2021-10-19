@@ -154,4 +154,15 @@ static struct pci_driver ct_driver = {
 #endif
 };
 
-module_pci_driver(ct_driver);
+static int __init ct_card_init(void)
+{
+	return pci_register_driver(&ct_driver);
+}
+
+static void __exit ct_card_exit(void)
+{
+	pci_unregister_driver(&ct_driver);
+}
+
+module_init(ct_card_init)
+module_exit(ct_card_exit)

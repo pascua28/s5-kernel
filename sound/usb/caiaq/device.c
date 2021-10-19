@@ -485,7 +485,7 @@ static int __devinit snd_probe(struct usb_interface *intf,
 		     const struct usb_device_id *id)
 {
 	int ret;
-	struct snd_card *card;
+	struct snd_card *card = NULL;
 	struct usb_device *device = interface_to_usbdev(intf);
 
 	ret = create_card(device, intf, &card);
@@ -509,7 +509,7 @@ static void snd_disconnect(struct usb_interface *intf)
 	struct snd_usb_caiaqdev *dev;
 	struct snd_card *card = usb_get_intfdata(intf);
 
-	debug("%s(%p)\n", __func__, intf);
+	debug("%s(%pK)\n", __func__, intf);
 
 	if (!card)
 		return;

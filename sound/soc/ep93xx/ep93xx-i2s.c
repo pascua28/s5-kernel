@@ -63,6 +63,7 @@ struct ep93xx_i2s_info {
 	struct clk			*sclk;
 	struct clk			*lrclk;
 	struct ep93xx_pcm_dma_params	*dma_params;
+	struct resource			*mem;
 	void __iomem			*regs;
 };
 
@@ -372,22 +373,38 @@ static int ep93xx_i2s_probe(struct platform_device *pdev)
 	struct resource *res;
 	int err;
 
-	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
-	if (!info)
-		return -ENOMEM;
+	info = kzalloc(sizeof(struct ep93xx_i2s_info), GFP_KERNEL);
+	if (!info) {
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	dev_set_drvdata(&pdev->dev, info);
+	info->dma_params = ep93xx_i2s_dma_params;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -ENODEV;
+	if (!res) {
+		err = -ENODEV;
+		goto fail_free_info;
+	}
 
-	info->regs = devm_request_and_ioremap(&pdev->dev, res);
-	if (!info->regs)
-		return -ENXIO;
+	info->mem = request_mem_region(res->start, resource_size(res),
+				       pdev->name);
+	if (!info->mem) {
+		err = -EBUSY;
+		goto fail_free_info;
+	}
+
+	info->regs = ioremap(info->mem->start, resource_size(info->mem));
+	if (!info->regs) {
+		err = -ENXIO;
+		goto fail_release_mem;
+	}
 
 	info->mclk = clk_get(&pdev->dev, "mclk");
 	if (IS_ERR(info->mclk)) {
 		err = PTR_ERR(info->mclk);
-		goto fail;
+		goto fail_unmap_mem;
 	}
 
 	info->sclk = clk_get(&pdev->dev, "sclk");
@@ -402,9 +419,6 @@ static int ep93xx_i2s_probe(struct platform_device *pdev)
 		goto fail_put_sclk;
 	}
 
-	dev_set_drvdata(&pdev->dev, info);
-	info->dma_params = ep93xx_i2s_dma_params;
-
 	err = snd_soc_register_dai(&pdev->dev, &ep93xx_i2s_dai);
 	if (err)
 		goto fail_put_lrclk;
@@ -412,12 +426,17 @@ static int ep93xx_i2s_probe(struct platform_device *pdev)
 	return 0;
 
 fail_put_lrclk:
-	dev_set_drvdata(&pdev->dev, NULL);
 	clk_put(info->lrclk);
 fail_put_sclk:
 	clk_put(info->sclk);
 fail_put_mclk:
 	clk_put(info->mclk);
+fail_unmap_mem:
+	iounmap(info->regs);
+fail_release_mem:
+	release_mem_region(info->mem->start, resource_size(info->mem));
+fail_free_info:
+	kfree(info);
 fail:
 	return err;
 }
@@ -427,10 +446,12 @@ static int __devexit ep93xx_i2s_remove(struct platform_device *pdev)
 	struct ep93xx_i2s_info *info = dev_get_drvdata(&pdev->dev);
 
 	snd_soc_unregister_dai(&pdev->dev);
-	dev_set_drvdata(&pdev->dev, NULL);
 	clk_put(info->lrclk);
 	clk_put(info->sclk);
 	clk_put(info->mclk);
+	iounmap(info->regs);
+	release_mem_region(info->mem->start, resource_size(info->mem));
+	kfree(info);
 	return 0;
 }
 

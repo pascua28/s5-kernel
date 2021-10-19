@@ -610,7 +610,8 @@ static int wm8900_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params,
 	struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_codec *codec = rtd->codec;
 	u16 reg;
 
 	reg = snd_soc_read(codec, WM8900_REG_AUDIO1) & ~0x60;

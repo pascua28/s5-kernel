@@ -39,10 +39,6 @@
 #define SOC_SINGLE_VALUE_EXT(xreg, xmax, xinvert) \
 	((unsigned long)&(struct soc_mixer_control) \
 	{.reg = xreg, .max = xmax, .platform_max = xmax, .invert = xinvert})
-#define SOC_DOUBLE_R_RANGE_VALUE(xlreg, xrreg, xshift, xmin, xmax, xinvert) \
-	((unsigned long)&(struct soc_mixer_control) \
-	{.reg = xlreg, .rreg = xrreg, .shift = xshift, .rshift = xshift, \
-	.min = xmin, .max = xmax, .platform_max = xmax, .invert = xinvert})
 #define SOC_DOUBLE_R_VALUE(xlreg, xrreg, xshift, xmax, xinvert) \
 	((unsigned long)&(struct soc_mixer_control) \
 	{.reg = xlreg, .rreg = xrreg, .shift = xshift, .rshift = xshift, \
@@ -52,13 +48,6 @@
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw,\
 	.put = snd_soc_put_volsw, \
 	.private_value =  SOC_SINGLE_VALUE(reg, shift, max, invert) }
-#define SOC_SINGLE_RANGE(xname, xreg, xshift, xmin, xmax, xinvert) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
-	.info = snd_soc_info_volsw_range, .get = snd_soc_get_volsw_range, \
-	.put = snd_soc_put_volsw_range, \
-	.private_value = (unsigned long)&(struct soc_mixer_control) \
-		{.reg = xreg, .shift = xshift, .min = xmin,\
-		 .max = xmax, .platform_max = xmax, .invert = xinvert} }
 #define SOC_SINGLE_TLV(xname, reg, shift, max, invert, tlv_array) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
@@ -77,16 +66,6 @@
 	.private_value = (unsigned long)&(struct soc_mixer_control) \
 		{.reg = xreg, .min = xmin, .max = xmax, \
 		 .platform_max = xmax} }
-#define SOC_SINGLE_RANGE_TLV(xname, xreg, xshift, xmin, xmax, xinvert, tlv_array) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
-	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
-		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
-	.tlv.p = (tlv_array), \
-	.info = snd_soc_info_volsw_range, \
-	.get = snd_soc_get_volsw_range, .put = snd_soc_put_volsw_range, \
-	.private_value = (unsigned long)&(struct soc_mixer_control) \
-		{.reg = xreg, .shift = xshift, .min = xmin,\
-		 .max = xmax, .platform_max = xmax, .invert = xinvert} }
 #define SOC_DOUBLE(xname, reg, shift_left, shift_right, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw, \
@@ -99,13 +78,6 @@
 	.get = snd_soc_get_volsw, .put = snd_soc_put_volsw, \
 	.private_value = SOC_DOUBLE_R_VALUE(reg_left, reg_right, xshift, \
 					    xmax, xinvert) }
-#define SOC_DOUBLE_R_RANGE(xname, reg_left, reg_right, xshift, xmin, \
-			   xmax, xinvert)		\
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
-	.info = snd_soc_info_volsw_range, \
-	.get = snd_soc_get_volsw_range, .put = snd_soc_put_volsw_range, \
-	.private_value = SOC_DOUBLE_R_RANGE_VALUE(reg_left, reg_right, \
-					    xshift, xmin, xmax, xinvert) }
 #define SOC_DOUBLE_TLV(xname, reg, shift_left, shift_right, max, invert, tlv_array) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
 	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
@@ -217,16 +189,7 @@
 	.info = snd_soc_info_enum_ext, \
 	.get = xhandler_get, .put = xhandler_put, \
 	.private_value = (unsigned long)&xenum }
-#define SOC_DOUBLE_R_RANGE_TLV(xname, reg_left, reg_right, xshift, xmin, \
-			       xmax, xinvert, tlv_array)		\
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
-	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
-		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
-	.tlv.p = (tlv_array), \
-	.info = snd_soc_info_volsw_range, \
-	.get = snd_soc_get_volsw_range, .put = snd_soc_put_volsw_range, \
-	.private_value = SOC_DOUBLE_R_RANGE_VALUE(reg_left, reg_right, \
-					    xshift, xmin, xmax, xinvert) }
+
 #define SOC_DOUBLE_R_SX_TLV(xname, xreg_left, xreg_right, xshift,\
 		xmin, xmax, tlv_array) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
@@ -367,6 +330,11 @@ enum snd_soc_dpcm_trigger {
 	SND_SOC_DPCM_TRIGGER_PRE		= 0,
 	SND_SOC_DPCM_TRIGGER_POST,
 	SND_SOC_DPCM_TRIGGER_BESPOKE,
+};
+
+enum snd_soc_card_subclass {
+	SND_SOC_CARD_CLASS_INIT	= 0,
+	SND_SOC_CARD_CLASS_PCM	= 1,
 };
 
 int snd_soc_codec_set_sysclk(struct snd_soc_codec *codec, int clk_id,
@@ -512,12 +480,6 @@ int snd_soc_info_volsw_s8(struct snd_kcontrol *kcontrol,
 int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_info_volsw_range(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_info *uinfo);
-int snd_soc_put_volsw_range(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_get_volsw_range(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_limit_volume(struct snd_soc_codec *codec,
 	const char *name, int max);
@@ -843,36 +805,13 @@ struct snd_soc_dai_link {
 	/* config - must be set by machine driver */
 	const char *name;			/* Codec name */
 	const char *stream_name;		/* Stream name */
-	/*
-	 * You MAY specify the link's CPU-side device, either by device name,
-	 * or by DT/OF node, but not both. If this information is omitted,
-	 * the CPU-side DAI is matched using .cpu_dai_name only, which hence
-	 * must be globally unique. These fields are currently typically used
-	 * only for codec to codec links, or systems using device tree.
-	 */
-	const char *cpu_name;
-	const struct device_node *cpu_of_node;
-	/*
-	 * You MAY specify the DAI name of the CPU DAI. If this information is
-	 * omitted, the CPU-side DAI is matched using .cpu_name/.cpu_of_node
-	 * only, which only works well when that device exposes a single DAI.
-	 */
-	const char *cpu_dai_name;
-	/*
-	 * You MUST specify the link's codec, either by device name, or by
-	 * DT/OF node, but not both.
-	 */
-	const char *codec_name;
+	const char *codec_name;		/* for multi-codec */
 	const struct device_node *codec_of_node;
-	/* You MUST specify the DAI name within the codec */
-	const char *codec_dai_name;
-	/*
-	 * You MAY specify the link's platform/PCM/DMA driver, either by
-	 * device name, or by DT/OF node, but not both. Some forms of link
-	 * do not need a platform.
-	 */
-	const char *platform_name;
+	const char *platform_name;	/* for multi-platform */
 	const struct device_node *platform_of_node;
+	const char *cpu_dai_name;
+	const struct device_node *cpu_dai_of_node;
+	const char *codec_dai_name;
 
 	unsigned int dai_fmt;           /* format to set on init */
 

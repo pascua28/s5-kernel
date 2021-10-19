@@ -26,7 +26,7 @@
 #include <sound/q6afe-v2.h>
 #include <sound/q6audio-v2.h>
 #include <sound/apr_audio-v2.h>
-#include <q6voice.h>
+#include "q6voice.h"
 #include "audio_acdb.h"
 
 
@@ -994,7 +994,7 @@ u32 send_adm_apr(void *buf, u32 opcode)
 			result = -EINVAL;
 			goto err;
 		}
-				
+
 		if (bytes_returned > user_buf_size) {
 			pr_err("%s: User buf not big enough, size = 0x%x, returned size = 0x%x\n",
 				__func__, user_buf_size, bytes_returned);
@@ -1208,7 +1208,7 @@ u32 send_rtac_asm_apr(void *buf, u32 opcode)
 			result = -EINVAL;
 			goto err;
 		}
-				
+
 		if (bytes_returned > user_buf_size) {
 			pr_err("%s: User buf not big enough, size = 0x%x, returned size = 0x%x\n",
 				__func__, user_buf_size, bytes_returned);
@@ -1421,7 +1421,7 @@ u32 send_voice_apr(u32 mode, void *buf, u32 opcode)
 			result = -EINVAL;
 			goto err;
 		}
-				
+
 		if (bytes_returned > user_buf_size) {
 			pr_err("%s: User buf not big enough, size = 0x%x, returned size = 0x%x\n",
 				__func__, user_buf_size, bytes_returned);
