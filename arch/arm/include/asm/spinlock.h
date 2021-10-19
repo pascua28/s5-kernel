@@ -92,7 +92,7 @@ static inline void dsb_sev(void)
 
 static inline void arch_spin_lock(arch_spinlock_t *lock)
 {
-	unsigned long tmp;
+	unsigned long tmp, flags = 0;
 	u32 newval;
 	arch_spinlock_t lockval;
 
@@ -107,7 +107,32 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 	: "cc");
 
 	while (lockval.tickets.next != lockval.tickets.owner) {
+		if (msm_krait_need_wfe_fixup) {
+			local_irq_save(flags);
+			__asm__ __volatile__(
+			"mrc	p15, 7, %0, c15, c0, 5\n"
+			: "=r" (tmp)
+			:
+			: "cc");
+			tmp &= ~(0x10000);
+			__asm__ __volatile__(
+			"mcr	p15, 7, %0, c15, c0, 5\n"
+			:
+			: "r" (tmp)
+			: "cc");
+			isb();
+		}
 		wfe();
+		if (msm_krait_need_wfe_fixup) {
+			tmp |= 0x10000;
+			__asm__ __volatile__(
+			"mcr	p15, 7, %0, c15, c0, 5\n"
+			:
+			: "r" (tmp)
+			: "cc");
+			isb();
+			local_irq_restore(flags);
+		}
 		lockval.tickets.owner = ACCESS_ONCE(lock->tickets.owner);
 	}
 
@@ -169,16 +194,16 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 	unsigned long tmp, fixup = msm_krait_need_wfe_fixup;
 
 	__asm__ __volatile__(
-"1:	ldrex	%[tmp], [%[lock]]\n"
-"	teq	%[tmp], #0\n"
+"1:	ldrex	%0, [%2]\n"
+"	teq	%0, #0\n"
 "	beq	2f\n"
-	WFE_SAFE("%[fixup]", "%[tmp]")
+	WFE_SAFE("%1", "%0")
 "2:\n"
-"	strexeq	%[tmp], %[bit31], [%[lock]]\n"
-"	teq	%[tmp], #0\n"
+"	strexeq	%0, %3, [%2]\n"
+"	teq	%0, #0\n"
 "	bne	1b"
-	: [tmp] "=&r" (tmp), [fixup] "+r" (fixup)
-	: [lock] "r" (&rw->lock), [bit31] "r" (0x80000000)
+	: "=&r" (tmp), "+r" (fixup)
+	: "r" (&rw->lock), "r" (0x80000000)
 	: "cc");
 
 	smp_mb();
@@ -237,16 +262,16 @@ static inline void arch_read_lock(arch_rwlock_t *rw)
 	unsigned long tmp, tmp2, fixup = msm_krait_need_wfe_fixup;
 
 	__asm__ __volatile__(
-"1:	ldrex	%[tmp], [%[lock]]\n"
-"	adds	%[tmp], %[tmp], #1\n"
-"	strexpl	%[tmp2], %[tmp], [%[lock]]\n"
+"1:	ldrex	%0, [%3]\n"
+"	adds	%0, %0, #1\n"
+"	strexpl	%1, %0, [%3]\n"
 "	bpl	2f\n"
-	WFE_SAFE("%[fixup]", "%[tmp]")
+	WFE_SAFE("%2", "%0")
 "2:\n"
-"	rsbpls	%[tmp], %[tmp2], #0\n"
+"	rsbpls	%0, %1, #0\n"
 "	bmi	1b"
-	: [tmp] "=&r" (tmp), [tmp2] "=&r" (tmp2), [fixup] "+r" (fixup)
-	: [lock] "r" (&rw->lock)
+	: "=&r" (tmp), "=&r" (tmp2), "+r" (fixup)
+	: "r" (&rw->lock)
 	: "cc");
 
 	smp_mb();
