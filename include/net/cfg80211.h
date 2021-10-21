@@ -456,6 +456,9 @@ struct cfg80211_acl_data {
  *	MAC address based access control
  */
 struct cfg80211_ap_settings {
+	struct ieee80211_channel *channel;
+	enum nl80211_channel_type channel_type;
+
 	struct cfg80211_beacon_data beacon;
 
 	int beacon_interval, dtim_period;
@@ -2548,6 +2551,8 @@ struct wireless_dev {
 	spinlock_t event_lock;
 
 	struct cfg80211_internal_bss *current_bss; /* associated / joined */
+	struct ieee80211_channel *preset_chan;
+	enum nl80211_channel_type preset_chantype;
 	struct ieee80211_channel *channel;
 
 	bool ps;
