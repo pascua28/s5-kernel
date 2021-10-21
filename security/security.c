@@ -134,26 +134,6 @@ int __init register_security(struct security_operations *ops)
 
 /* Security operations */
 
-int security_binder_set_context_mgr(struct task_struct *mgr)
-{
-	return security_ops->binder_set_context_mgr(mgr);
-}
-
-int security_binder_transaction(struct task_struct *from, struct task_struct *to)
-{
-	return security_ops->binder_transaction(from, to);
-}
-
-int security_binder_transfer_binder(struct task_struct *from, struct task_struct *to)
-{
-	return security_ops->binder_transfer_binder(from, to);
-}
-
-int security_binder_transfer_file(struct task_struct *from, struct task_struct *to, struct file *file)
-{
-	return security_ops->binder_transfer_file(from, to, file);
-}
-
 int security_ptrace_access_check(struct task_struct *child, unsigned int mode)
 {
 #ifdef CONFIG_SECURITY_YAMA_STACKED
@@ -683,10 +663,6 @@ int security_file_permission(struct file *file, int mask)
 
 	return fsnotify_perm(file, mask);
 }
-
-#if defined(CONFIG_VMWARE_MVP)
-EXPORT_SYMBOL_GPL(security_file_permission);
-#endif
 
 int security_file_alloc(struct file *file)
 {

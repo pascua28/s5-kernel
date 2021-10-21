@@ -146,11 +146,10 @@ struct security_class_mapping secclass_map[] = {
 	{ "memprotect", { "mmap_zero", NULL } },
 	{ "peer", { "recv", NULL } },
 	{ "capability2",
-	  { "mac_override", "mac_admin", "syslog", "wake_alarm", "epollwakeup"
-	    "block_suspend", NULL } },
+	  { "mac_override", "mac_admin", "syslog", "wake_alarm", "block_suspend",
+	    NULL } },
 	{ "kernel_service", { "use_as_override", "create_files_as", NULL } },
 	{ "tun_socket",
 	  { COMMON_SOCK_PERMS, "attach_queue", NULL } },
-	{ "binder", { "impersonate", "call", "set_context_mgr", "transfer", NULL } },
 	{ NULL }
   };
