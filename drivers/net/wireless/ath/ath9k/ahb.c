@@ -146,7 +146,6 @@ static int ath_ahb_probe(struct platform_device *pdev)
 	free_irq(irq, sc);
  err_free_hw:
 	ieee80211_free_hw(hw);
-	platform_set_drvdata(pdev, NULL);
 	return ret;
 }
 
@@ -160,7 +159,6 @@ static int ath_ahb_remove(struct platform_device *pdev)
 		ath9k_deinit_device(sc);
 		free_irq(sc->irq, sc);
 		ieee80211_free_hw(sc->hw);
-		platform_set_drvdata(pdev, NULL);
 	}
 
 	return 0;

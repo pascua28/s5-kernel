@@ -243,7 +243,6 @@ static int ssp_parse_dt(struct device *dev,
 	struct device_node *np = dev->of_node;
 	enum of_gpio_flags flags;
 	int errorno = 0;
-	int ret;
 
 	data->mcu_int1 = of_get_named_gpio_flags(np, "ssp,mcu_int1-gpio",
 		0, &flags);
@@ -341,9 +340,8 @@ static int ssp_parse_dt(struct device *dev,
 		pr_err("[SSP] could not get hub_vreg, %ld\n",
 			PTR_ERR(data->reg_hub));
 	} else {
-		ret = regulator_enable(data->reg_hub);
-		if (ret)
-			pr_err("%s: regulator enable failed\n", __func__);
+		if (regulator_enable(data->reg_hub))
+			goto dt_exit;
 	}
 
 	data->reg_sns= devm_regulator_get(dev, "psns_vreg");
@@ -351,9 +349,8 @@ static int ssp_parse_dt(struct device *dev,
 		pr_err("[SSP] could not get psns_vreg, %ld\n",
 			PTR_ERR(data->reg_sns));
 	} else {
-		ret = regulator_enable(data->reg_sns);
-		if (ret)
-			pr_err("%s: regulator enable failed\n", __func__);
+		if (regulator_enable(data->reg_sns))
+		goto dt_exit;
 	}
 
 dt_exit:

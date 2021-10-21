@@ -263,7 +263,6 @@ int snd_card_create(int idx, const char *xid,
 	spin_lock_init(&card->files_lock);
 	INIT_LIST_HEAD(&card->files_list);
 	init_waitqueue_head(&card->shutdown_sleep);
-	atomic_set(&card->refcount, 0);
 #ifdef CONFIG_PM
 	mutex_init(&card->power_lock);
 	init_waitqueue_head(&card->power_sleep);
@@ -409,7 +408,14 @@ int snd_card_disconnect(struct snd_card *card)
 	card->shutdown = 1;
 	spin_unlock(&card->files_lock);
 
-	/* replace file->f_op with special dummy operations */
+	/* phase 1: disable fops (user space) operations for ALSA API */
+	mutex_lock(&snd_card_mutex);
+	snd_cards[card->number] = NULL;
+	snd_cards_lock &= ~(1 << card->number);
+	mutex_unlock(&snd_card_mutex);
+	
+	/* phase 2: replace file->f_op with special dummy operations */
+	
 	spin_lock(&card->files_lock);
 	list_for_each_entry(mfile, &card->files_list, list) {
 		/* it's critical part, use endless loop */
@@ -425,7 +431,7 @@ int snd_card_disconnect(struct snd_card *card)
 	}
 	spin_unlock(&card->files_lock);	
 
-	/* notify all connected devices about disconnection */
+	/* phase 3: notify all connected devices about disconnection */
 	/* at this point, they cannot respond to any calls except release() */
 
 #if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
@@ -443,13 +449,6 @@ int snd_card_disconnect(struct snd_card *card)
 		device_unregister(card->card_dev);
 		card->card_dev = NULL;
 	}
-
-	/* disable fops (user space) operations for ALSA API */
-	mutex_lock(&snd_card_mutex);
-	snd_cards[card->number] = NULL;
-	snd_cards_lock &= ~(1 << card->number);
-	mutex_unlock(&snd_card_mutex);
-
 #ifdef CONFIG_PM
 	wake_up(&card->power_sleep);
 #endif
@@ -498,36 +497,21 @@ static int snd_card_do_free(struct snd_card *card)
 	return 0;
 }
 
-/**
- * snd_card_unref - release the reference counter
- * @card: the card instance
- *
- * Decrements the reference counter.  When it reaches to zero, wake up
- * the sleeper and call the destructor if needed.
- */
-void snd_card_unref(struct snd_card *card)
-{
-	if (atomic_dec_and_test(&card->refcount)) {
-		wake_up(&card->shutdown_sleep);
-		if (card->free_on_last_close)
-			snd_card_do_free(card);
-	}
-}
-EXPORT_SYMBOL(snd_card_unref);
-
 int snd_card_free_when_closed(struct snd_card *card)
 {
-	int ret;
-
-	atomic_inc(&card->refcount);
-	ret = snd_card_disconnect(card);
-	if (ret) {
-		atomic_dec(&card->refcount);
+	int free_now = 0;
+	int ret = snd_card_disconnect(card);
+	if (ret)
 		return ret;
-	}
 
-	card->free_on_last_close = 1;
-	if (atomic_dec_and_test(&card->refcount))
+	spin_lock(&card->files_lock);
+	if (list_empty(&card->files_list))
+		free_now = 1;
+	else
+		card->free_on_last_close = 1;
+	spin_unlock(&card->files_lock);
+
+	if (free_now)
 		snd_card_do_free(card);
 	return 0;
 }
@@ -541,7 +525,7 @@ int snd_card_free(struct snd_card *card)
 		return ret;
 
 	/* wait, until all devices are ready for the free operation */
-	wait_event(card->shutdown_sleep, !atomic_read(&card->refcount));
+	wait_event(card->shutdown_sleep, list_empty(&card->files_list));
 	snd_card_do_free(card);
 	return 0;
 }
@@ -922,7 +906,6 @@ int snd_card_file_add(struct snd_card *card, struct file *file)
 		return -ENODEV;
 	}
 	list_add(&mfile->list, &card->files_list);
-	atomic_inc(&card->refcount);
 	spin_unlock(&card->files_lock);
 	return 0;
 }
@@ -945,6 +928,7 @@ EXPORT_SYMBOL(snd_card_file_add);
 int snd_card_file_remove(struct snd_card *card, struct file *file)
 {
 	struct snd_monitor_file *mfile, *found = NULL;
+	int last_close = 0;
 
 	spin_lock(&card->files_lock);
 	list_for_each_entry(mfile, &card->files_list, list) {
@@ -959,13 +943,19 @@ int snd_card_file_remove(struct snd_card *card, struct file *file)
 			break;
 		}
 	}
+	if (list_empty(&card->files_list))
+		last_close = 1;
 	spin_unlock(&card->files_lock);
+	if (last_close) {
+		wake_up(&card->shutdown_sleep);
+		if (card->free_on_last_close)
+			snd_card_do_free(card);
+	}
 	if (!found) {
 		snd_printk(KERN_ERR "ALSA card file remove problem (%p)\n", file);
 		return -ENOENT;
 	}
 	kfree(found);
-	snd_card_unref(card);
 	return 0;
 }
 

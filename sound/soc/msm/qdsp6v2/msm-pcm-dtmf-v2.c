@@ -548,7 +548,7 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 	.probe		= msm_pcm_dtmf_probe,
 };
 
-static __devinit int msm_pcm_probe(struct platform_device *pdev)
+static int msm_pcm_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 			dev_set_name(&pdev->dev, "%s", "msm-pcm-dtmf");
@@ -579,7 +579,7 @@ static struct platform_driver msm_pcm_driver = {
 		.of_match_table = msm_pcm_dtmf_dt_match,
 	},
 	.probe = msm_pcm_probe,
-	.remove = __devexit_p(msm_pcm_remove),
+	.remove = msm_pcm_remove,
 };
 
 static int __init msm_soc_platform_init(void)

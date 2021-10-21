@@ -8,9 +8,6 @@
 #include <asm/thread_info.h>
 #include <asm/memory.h>
 #include <asm/page.h>
-#ifdef CONFIG_STRICT_MEMORY_RWX
-#include <asm/pgtable.h>
-#endif
 
 #define PROC_INFO							\
 	. = ALIGN(4);							\
@@ -73,10 +70,6 @@ SECTIONS
 		ARM_EXIT_DISCARD(EXIT_TEXT)
 		ARM_EXIT_DISCARD(EXIT_DATA)
 		EXIT_CALL
-#ifndef CONFIG_HOTPLUG
-		*(.ARM.exidx.devexit.text)
-		*(.ARM.extab.devexit.text)
-#endif
 #ifndef CONFIG_MMU
 		*(.fixup)
 		*(__ex_table)
@@ -97,9 +90,6 @@ SECTIONS
 		_text = .;
 		HEAD_TEXT
 	}
-#ifdef CONFIG_STRICT_MEMORY_RWX
-	. = ALIGN(1<<SECTION_SHIFT);
-#endif
 
 	.text : {			/* Real text segment		*/
 		_stext = .;		/* Text and read-only data	*/
@@ -123,9 +113,6 @@ SECTIONS
 			ARM_CPU_KEEP(PROC_INFO)
 	}
 
-#ifdef CONFIG_STRICT_MEMORY_RWX
-	. = ALIGN(1<<SECTION_SHIFT);
-#endif
 	RO_DATA(PAGE_SIZE)
 
 	. = ALIGN(L1_CACHE_BYTES);
@@ -159,13 +146,26 @@ SECTIONS
 	_etext = .;			/* End of text and rodata section */
 
 #ifndef CONFIG_XIP_KERNEL
-#ifdef CONFIG_STRICT_MEMORY_RWX
-	. = ALIGN(1<<SECTION_SHIFT);
-#else
 	. = ALIGN(PAGE_SIZE);
-#endif
 	__init_begin = .;
 #endif
+	/*
+	 * The vectors and stubs are relocatable code, and the
+	 * only thing that matters is their relative offsets
+	 */
+	__vectors_start = .;
+	.vectors 0 : AT(__vectors_start) {
+		*(.vectors)
+	}
+	. = __vectors_start + SIZEOF(.vectors);
+	__vectors_end = .;
+
+	__stubs_start = .;
+	.stubs 0x1000 : AT(__stubs_start) {
+		*(.stubs)
+	}
+	. = __stubs_start + SIZEOF(.stubs);
+	__stubs_end = .;
 
 	INIT_TEXT_SECTION(8)
 	.exit.text : {
@@ -174,9 +174,6 @@ SECTIONS
 	.init.proc.info : {
 		ARM_CPU_DISCARD(PROC_INFO)
 	}
-#ifdef CONFIG_STRICT_MEMORY_RWX
-	. = ALIGN(1<<SECTION_SHIFT);
-#endif
 	.init.arch.info : {
 		__arch_info_begin = .;
 		*(.arch.info.init)

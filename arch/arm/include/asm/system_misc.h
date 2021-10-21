@@ -6,6 +6,7 @@
 #include <linux/compiler.h>
 #include <linux/linkage.h>
 #include <linux/irqflags.h>
+#include <linux/reboot.h>
 
 extern void cpu_init(void);
 

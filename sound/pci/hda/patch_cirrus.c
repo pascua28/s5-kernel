@@ -26,6 +26,7 @@
 #include <sound/core.h>
 #include "hda_codec.h"
 #include "hda_local.h"
+#include "hda_auto_parser.h"
 #include "hda_jack.h"
 #include <sound/tlv.h>
 
@@ -95,8 +96,8 @@ enum {
 #define CS420X_VENDOR_NID	0x11
 #define CS_DIG_OUT1_PIN_NID	0x10
 #define CS_DIG_OUT2_PIN_NID	0x15
-#define CS_DMIC1_PIN_NID	0x0e
-#define CS_DMIC2_PIN_NID	0x12
+#define CS_DMIC1_PIN_NID	0x12
+#define CS_DMIC2_PIN_NID	0x0e
 
 /* coef indices */
 #define IDX_SPDIF_STAT		0x0000
@@ -460,7 +461,6 @@ static int parse_output(struct hda_codec *codec)
 		memcpy(cfg->speaker_pins, cfg->line_out_pins,
 		       sizeof(cfg->speaker_pins));
 		cfg->line_outs = 0;
-		memset(cfg->line_out_pins, 0, sizeof(cfg->line_out_pins));
 	}
 
 	return 0;
@@ -934,8 +934,7 @@ static void cs_automute(struct hda_codec *codec)
 			pin_ctl = 0;
 
 		nid = cfg->speaker_pins[i];
-		snd_hda_codec_write(codec, nid, 0,
-				    AC_VERB_SET_PIN_WIDGET_CONTROL, pin_ctl);
+		snd_hda_set_pin_ctl(codec, nid, pin_ctl);
 	}
 	if (spec->gpio_eapd_hp) {
 		unsigned int gpio = hp_present ?
@@ -949,16 +948,14 @@ static void cs_automute(struct hda_codec *codec)
 		/* mute HPs if spdif jack (SENSE_B) is present */
 		for (i = 0; i < cfg->hp_outs; i++) {
 			nid = cfg->hp_pins[i];
-			snd_hda_codec_write(codec, nid, 0,
-				AC_VERB_SET_PIN_WIDGET_CONTROL,
+			snd_hda_set_pin_ctl(codec, nid,
 				(spdif_present && spec->sense_b) ? 0 : PIN_HP);
 		}
 
 		/* SPDIF TX on/off */
 		if (cfg->dig_outs) {
 			nid = cfg->dig_out_pins[0];
-			snd_hda_codec_write(codec, nid, 0,
-				AC_VERB_SET_PIN_WIDGET_CONTROL,
+			snd_hda_set_pin_ctl(codec, nid,
 				spdif_present ? PIN_OUT : 0);
 
 		}
@@ -1025,13 +1022,11 @@ static void init_output(struct hda_codec *codec)
 
 	/* set appropriate pin controls */
 	for (i = 0; i < cfg->line_outs; i++)
-		snd_hda_codec_write(codec, cfg->line_out_pins[i], 0,
-				    AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT);
+		snd_hda_set_pin_ctl(codec, cfg->line_out_pins[i], PIN_OUT);
 	/* HP */
 	for (i = 0; i < cfg->hp_outs; i++) {
 		hda_nid_t nid = cfg->hp_pins[i];
-		snd_hda_codec_write(codec, nid, 0,
-				    AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_HP);
+		snd_hda_set_pin_ctl(codec, nid, PIN_HP);
 		if (!cfg->speaker_outs)
 			continue;
 		if (get_wcaps(codec, nid) & AC_WCAP_UNSOL_CAP) {
@@ -1042,8 +1037,7 @@ static void init_output(struct hda_codec *codec)
 
 	/* Speaker */
 	for (i = 0; i < cfg->speaker_outs; i++)
-		snd_hda_codec_write(codec, cfg->speaker_pins[i], 0,
-				    AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT);
+		snd_hda_set_pin_ctl(codec, cfg->speaker_pins[i], PIN_OUT);
 
 	/* SPDIF is enabled on presence detect for CS421x */
 	if (spec->hp_detect || spec->spdif_detect)
@@ -1064,14 +1058,9 @@ static void init_input(struct hda_codec *codec)
 			continue;
 		/* set appropriate pin control and mute first */
 		ctl = PIN_IN;
-		if (cfg->inputs[i].type == AUTO_PIN_MIC) {
-			unsigned int caps = snd_hda_query_pin_caps(codec, pin);
-			caps >>= AC_PINCAP_VREF_SHIFT;
-			if (caps & AC_PINCAP_VREF_80)
-				ctl = PIN_VREF80;
-		}
-		snd_hda_codec_write(codec, pin, 0,
-				    AC_VERB_SET_PIN_WIDGET_CONTROL, ctl);
+		if (cfg->inputs[i].type == AUTO_PIN_MIC)
+			ctl |= snd_hda_get_default_vref(codec, pin);
+		snd_hda_set_pin_ctl(codec, pin, ctl);
 		snd_hda_codec_write(codec, spec->adc_nid[i], 0,
 				    AC_VERB_SET_AMP_GAIN_MUTE,
 				    AMP_IN_MUTE(spec->adc_idx[i]));
@@ -1085,18 +1074,14 @@ static void init_input(struct hda_codec *codec)
 			cs_automic(codec);
 
 		coef = 0x000a; /* ADC1/2 - Digital and Analog Soft Ramp */
-		cs_vendor_coef_set(codec, IDX_ADC_CFG, coef);
-
-		coef = cs_vendor_coef_get(codec, IDX_BEEP_CFG);
 		if (is_active_pin(codec, CS_DMIC2_PIN_NID))
-			coef |= 1 << 4; /* DMIC2 2 chan on, GPIO1 off */
+			coef |= 0x0500; /* DMIC2 2 chan on, GPIO1 off */
 		if (is_active_pin(codec, CS_DMIC1_PIN_NID))
-			coef |= 1 << 3; /* DMIC1 2 chan on, GPIO0 off
+			coef |= 0x1800; /* DMIC1 2 chan on, GPIO0 off
 					 * No effect if SPDIF_OUT2 is
 					 * selected in IDX_SPDIF_CTL.
 					*/
-
-		cs_vendor_coef_set(codec, IDX_BEEP_CFG, coef);
+		cs_vendor_coef_set(codec, IDX_ADC_CFG, coef);
 	} else {
 		if (spec->mic_detect)
 			cs_automic(codec);
@@ -1117,7 +1102,7 @@ static const struct hda_verb cs_coef_init_verbs[] = {
 	  | 0x0400 /* Disable Coefficient Auto increment */
 	  )},
 	/* Beep */
-	{0x11, AC_VERB_SET_COEF_INDEX, IDX_BEEP_CFG},
+	{0x11, AC_VERB_SET_COEF_INDEX, IDX_DAC_CFG},
 	{0x11, AC_VERB_SET_PROC_COEF, 0x0007}, /* Enable Beep thru DAC1/2/3 */
 
 	{} /* terminator */
@@ -1432,7 +1417,7 @@ static int patch_cs420x(struct hda_codec *codec)
 	return 0;
 
  error:
-	cs_free(codec);
+	kfree(codec->spec);
 	codec->spec = NULL;
 	return err;
 }
@@ -1989,7 +1974,7 @@ static int patch_cs4210(struct hda_codec *codec)
 	return 0;
 
  error:
-	cs_free(codec);
+	kfree(codec->spec);
 	codec->spec = NULL;
 	return err;
 }
@@ -2014,7 +1999,7 @@ static int patch_cs4213(struct hda_codec *codec)
 	return 0;
 
  error:
-	cs_free(codec);
+	kfree(codec->spec);
 	codec->spec = NULL;
 	return err;
 }

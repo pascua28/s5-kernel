@@ -40,10 +40,14 @@ config MFD_88PM805
 	select REGMAP_IRQ
 	select MFD_CORE
 	help
-	  This supports for Marvell 88PM805 Power Management IC. This includes
-	  the I2C driver and the core APIs _only_, you have to select individual
-	  components like codec device, headset/Mic device under the
-	  corresponding menus.
+	  If you say Y here you get support for the ChromeOS Embedded
+	  Controller (EC) providing keyboard, battery and power services.
+	  You also need to enable the driver for the bus you are using. The
+	  protocol for talking to the EC is defined by the bus driver.
+
+config MFD_CROS_EC_I2C
+	tristate "ChromeOS Embedded Controller (I2C)"
+	depends on MFD_CROS_EC && I2C
 
 config MFD_SM501
 	tristate "Support for Silicon Motion SM501"
@@ -213,6 +217,33 @@ config PMIC8058
 config PMIC8901
 	tristate "PMIC8901 Power Management chip"
 	depends on MSM_SSBI
+
+config MFD_KEMPLD
+	tristate "Kontron module PLD device"
+	select MFD_CORE
+	help
+	  This is the core driver for the PLD (Programmable Logic Device) found
+	  on some Kontron ETX and COMexpress (ETXexpress) modules. The PLD
+	  device may provide functions like watchdog, GPIO, UART and I2C bus.
+
+	  The following modules are supported:
+		* COMe-bIP#
+		* COMe-bPC2 (ETXexpress-PC)
+		* COMe-bSC# (ETXexpress-SC T#)
+		* COMe-cCT6
+		* COMe-cDC2 (microETXexpress-DC)
+		* COMe-cPC2 (microETXexpress-PC)
+		* COMe-mCT10
+		* ETX-OH
+
+	  This driver can also be built as a module. If so, the module
+	  will be called kempld-core.
+
+config MFD_88PM800
+	tristate "Marvell 88PM800"
+	depends on I2C=y && GENERIC_HARDIRQS
+	select REGMAP_I2C
+	select REGMAP_IRQ
 	select MFD_CORE
 	select MFD_PM8XXX
 	help
@@ -305,8 +336,7 @@ config MFD_TPS80031
 	bool "TI TPS80031/TPS80032 Power Management chips"
 	depends on I2C=y && GENERIC_HARDIRQS
 	select MFD_CORE
-	select REGMAP_I2C
-	select REGMAP_IRQ
+	select IRQ_DOMAIN
 	help
 	  If you say yes here you get support for the Texas Instruments
 	  TPS80031/ TPS80032 Fully Integrated Power Management with Power
@@ -397,9 +427,10 @@ config MFD_TWL4030_AUDIO
 	select MFD_CORE
 	default n
 
-config TWL6040_CORE
-	bool "Support for TWL6040 audio codec"
-	depends on I2C=y && GENERIC_HARDIRQS
+config MFD_PM8921_CORE
+	tristate "Qualcomm PM8921 PMIC chip"
+	depends on (ARCH_MSM || HEXAGON)
+	depends on BROKEN
 	select MFD_CORE
 	select REGMAP_I2C
 	select REGMAP_IRQ
@@ -1303,8 +1334,15 @@ config WCD9306_CODEC
 	  The WCD9306 codec supports either I2C/I2S or Slimbus for
 	  control and data exchnage with master processor.
 
-config MFD_RC5T583
-	bool "Ricoh RC5T583 Power Management system device"
+config MFD_WM8997
+	bool "Support Wolfson Microelectronics WM8997"
+	depends on MFD_ARIZONA
+	help
+	  Support for Wolfson Microelectronics WM8997 low power audio SoC
+
+config MFD_WM8400
+	bool "Wolfson Microelectronics WM8400"
+	select MFD_CORE
 	depends on I2C=y && GENERIC_HARDIRQS
 	select MFD_CORE
 	select REGMAP_I2C
@@ -1401,7 +1439,8 @@ config MCP_UCB1200_TS
 endmenu
 
 config VEXPRESS_CONFIG
-	bool
+	bool "ARM Versatile Express platform infrastructure"
+	depends on ARM || ARM64
 	help
 	  Platform configuration infrastructure for the ARM Ltd.
 	  Versatile Express.

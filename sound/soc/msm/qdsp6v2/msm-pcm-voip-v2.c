@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -817,21 +817,17 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 			if (prtd->mode == MODE_PCM) {
 				ret = copy_from_user(&buf_node->frame.voc_pkt,
 							buf, count);
-				if (ret) {
-					pr_err("%s: copy from user failed %d\n",
-							__func__, ret);
-					return -EFAULT;
-				}
 				buf_node->frame.pktlen = count;
-			} else {
+			} else
 				ret = copy_from_user(&buf_node->frame,
 							buf, count);
-				if (ret) {
-					pr_err("%s: copy from user failed %d\n",
-							__func__, ret);
-					return -EFAULT;
-				}
+
+			if (ret) {
+				pr_err("%s: copy from user failed %d\n",
+						__func__, ret);
+				return -EFAULT;
 			}
+
 			spin_lock_irqsave(&prtd->dsp_lock, dsp_flags);
 			list_add_tail(&buf_node->list, &prtd->in_queue);
 			spin_unlock_irqrestore(&prtd->dsp_lock, dsp_flags);
@@ -1628,7 +1624,7 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 	.probe		= msm_pcm_voip_probe,
 };
 
-static __devinit int msm_pcm_probe(struct platform_device *pdev)
+static int msm_pcm_probe(struct platform_device *pdev)
 {
 	int rc;
 
@@ -1687,7 +1683,7 @@ static struct platform_driver msm_pcm_driver = {
 		.of_match_table = msm_voip_dt_match,
 	},
 	.probe = msm_pcm_probe,
-	.remove = __devexit_p(msm_pcm_remove),
+	.remove = msm_pcm_remove,
 };
 
 static int __init msm_soc_platform_init(void)

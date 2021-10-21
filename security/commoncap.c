@@ -80,14 +80,14 @@ int cap_netlink_send(struct sock *sk, struct sk_buff *skb)
 int cap_capable(const struct cred *cred, struct user_namespace *targ_ns,
 		int cap, int audit)
 {
-	struct user_namespace *ns = targ_ns;
-
 #ifdef CONFIG_ANDROID_PARANOID_NETWORK
 	if (cap == CAP_NET_RAW && in_egroup_p(AID_NET_RAW))
 		return 0;
 	if (cap == CAP_NET_ADMIN && in_egroup_p(AID_NET_ADMIN))
 		return 0;
 #endif
+
+	struct user_namespace *ns = targ_ns;
 
 	/* See if cred has the capability in the target user namespace
 	 * by examining the target user namespace and all of the target
@@ -493,14 +493,11 @@ int cap_bprm_set_creds(struct linux_binprm *bprm)
 	struct cred *new = bprm->cred;
 	bool effective, has_cap = false;
 	int ret;
-	kuid_t root_uid;
 
 	effective = false;
 	ret = get_file_caps(bprm, &effective, &has_cap);
 	if (ret < 0)
 		return ret;
-
-	root_uid = make_kuid(new->user_ns, 0);
 
 	if (!issecure(SECURE_NOROOT)) {
 		/*
@@ -508,7 +505,7 @@ int cap_bprm_set_creds(struct linux_binprm *bprm)
 		 * for a setuid root binary run by a non-root user.  Do set it
 		 * for a root user just to cause least surprise to an admin.
 		 */
-		if (has_cap && !uid_eq(new->uid, root_uid) && uid_eq(new->euid, root_uid)) {
+		if (has_cap && new->uid != 0 && new->euid == 0) {
 			warn_setuid_and_fcaps_mixed(bprm->filename);
 			goto skip;
 		}
@@ -519,12 +516,12 @@ int cap_bprm_set_creds(struct linux_binprm *bprm)
 		 *
 		 * If only the real uid is 0, we do not set the effective bit.
 		 */
-		if (uid_eq(new->euid, root_uid) || uid_eq(new->uid, root_uid)) {
+		if (new->euid == 0 || new->uid == 0) {
 			/* pP' = (cap_bset & ~0) | (pI & ~0) */
 			new->cap_permitted = cap_combine(old->cap_bset,
 							 old->cap_inheritable);
 		}
-		if (uid_eq(new->euid, root_uid))
+		if (new->euid == 0)
 			effective = true;
 	}
 skip:
@@ -539,8 +536,8 @@ skip:
 	 *
 	 * In addition, if NO_NEW_PRIVS, then ensure we get no new privs.
 	 */
-	if ((!uid_eq(new->euid, old->uid) ||
-	     !gid_eq(new->egid, old->gid) ||
+	if ((new->euid != old->uid ||
+	     new->egid != old->gid ||
 	     !cap_issubset(new->cap_permitted, old->cap_permitted)) &&
 	    bprm->unsafe & ~LSM_UNSAFE_PTRACE_CAP) {
 		/* downgrade; they get no more than they had, and maybe less */
@@ -576,7 +573,7 @@ skip:
 	 */
 	if (!cap_isclear(new->cap_effective)) {
 		if (!cap_issubset(CAP_FULL_SET, new->cap_effective) ||
-		    !uid_eq(new->euid, root_uid) || !uid_eq(new->uid, root_uid) ||
+		    new->euid != 0 || new->uid != 0 ||
 		    issecure(SECURE_NOROOT)) {
 			ret = audit_log_bprm_fcaps(bprm, new, old);
 			if (ret < 0)
@@ -601,17 +598,16 @@ skip:
 int cap_bprm_secureexec(struct linux_binprm *bprm)
 {
 	const struct cred *cred = current_cred();
-	kuid_t root_uid = make_kuid(cred->user_ns, 0);
 
-	if (!uid_eq(cred->uid, root_uid)) {
+	if (cred->uid != 0) {
 		if (bprm->cap_effective)
 			return 1;
 		if (!cap_isclear(cred->cap_permitted))
 			return 1;
 	}
 
-	return (!uid_eq(cred->euid, cred->uid) ||
-		!gid_eq(cred->egid, cred->gid));
+	return (cred->euid != cred->uid ||
+		cred->egid != cred->gid);
 }
 
 /**
@@ -701,21 +697,15 @@ int cap_inode_removexattr(struct dentry *dentry, const char *name)
  */
 static inline void cap_emulate_setxuid(struct cred *new, const struct cred *old)
 {
-	kuid_t root_uid = make_kuid(old->user_ns, 0);
-
-	if ((uid_eq(old->uid, root_uid) ||
-	     uid_eq(old->euid, root_uid) ||
-	     uid_eq(old->suid, root_uid)) &&
-	    (!uid_eq(new->uid, root_uid) &&
-	     !uid_eq(new->euid, root_uid) &&
-	     !uid_eq(new->suid, root_uid)) &&
+	if ((old->uid == 0 || old->euid == 0 || old->suid == 0) &&
+	    (new->uid != 0 && new->euid != 0 && new->suid != 0) &&
 	    !issecure(SECURE_KEEP_CAPS)) {
 		cap_clear(new->cap_permitted);
 		cap_clear(new->cap_effective);
 	}
-	if (uid_eq(old->euid, root_uid) && !uid_eq(new->euid, root_uid))
+	if (old->euid == 0 && new->euid != 0)
 		cap_clear(new->cap_effective);
-	if (!uid_eq(old->euid, root_uid) && uid_eq(new->euid, root_uid))
+	if (old->euid != 0 && new->euid == 0)
 		new->cap_effective = new->cap_permitted;
 }
 
@@ -748,12 +738,11 @@ int cap_task_fix_setuid(struct cred *new, const struct cred *old, int flags)
 		 *          if not, we might be a bit too harsh here.
 		 */
 		if (!issecure(SECURE_NO_SETUID_FIXUP)) {
-			kuid_t root_uid = make_kuid(old->user_ns, 0);
-			if (uid_eq(old->fsuid, root_uid) && !uid_eq(new->fsuid, root_uid))
+			if (old->fsuid == 0 && new->fsuid != 0)
 				new->cap_effective =
 					cap_drop_fs_set(new->cap_effective);
 
-			if (!uid_eq(old->fsuid, root_uid) && uid_eq(new->fsuid, root_uid))
+			if (old->fsuid != 0 && new->fsuid == 0)
 				new->cap_effective =
 					cap_raise_fs_set(new->cap_effective,
 							 new->cap_permitted);

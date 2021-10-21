@@ -105,7 +105,7 @@ static struct {
 };
 
 static unsigned int rates_11289[] = {
-	44100, 88200,
+	44100, 88235,
 };
 
 static struct snd_pcm_hw_constraint_list constraints_11289 = {
@@ -132,7 +132,7 @@ static struct snd_pcm_hw_constraint_list constraints_16384 = {
 };
 
 static unsigned int rates_16934[] = {
-	44100, 88200,
+	44100, 88235,
 };
 
 static struct snd_pcm_hw_constraint_list constraints_16934 = {
@@ -150,7 +150,7 @@ static struct snd_pcm_hw_constraint_list constraints_18432 = {
 };
 
 static unsigned int rates_22579[] = {
-	44100, 88200, 176400
+	44100, 88235, 1764000
 };
 
 static struct snd_pcm_hw_constraint_list constraints_22579 = {
@@ -168,7 +168,7 @@ static struct snd_pcm_hw_constraint_list constraints_24576 = {
 };
 
 static unsigned int rates_36864[] = {
-	48000, 96000, 192000
+	48000, 96000, 19200
 };
 
 static struct snd_pcm_hw_constraint_list constraints_36864 = {
@@ -203,8 +203,7 @@ static int wm8741_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params,
 			    struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_codec *codec = dai->codec;
 	struct wm8741_priv *wm8741 = snd_soc_codec_get_drvdata(codec);
 	u16 iface = snd_soc_read(codec, WM8741_FORMAT_CONTROL) & 0x1FC;
 	int i;

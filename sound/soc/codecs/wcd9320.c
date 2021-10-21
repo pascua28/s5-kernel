@@ -1879,7 +1879,7 @@ static const struct soc_enum dec7_mux_enum =
 	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_TX_B2_CTL, 4, 7, dec7_mux_text);
 
 static const struct soc_enum dec8_mux_enum =
-	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_TX_B3_CTL, 0, 7, dec8_mux_text);
+	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_TX_B3_CTL, 0, 5, dec8_mux_text);
 
 static const struct soc_enum dec9_mux_enum =
 	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_TX_B3_CTL, 3, 8, dec9_mux_text);
@@ -1888,10 +1888,10 @@ static const struct soc_enum dec10_mux_enum =
 	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_TX_B4_CTL, 0, 8, dec10_mux_text);
 
 static const struct soc_enum anc1_mux_enum =
-	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_ANC_B1_CTL, 0, 16, anc_mux_text);
+	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_ANC_B1_CTL, 0, 15, anc_mux_text);
 
 static const struct soc_enum anc2_mux_enum =
-	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_ANC_B1_CTL, 4, 16, anc_mux_text);
+	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_ANC_B1_CTL, 4, 15, anc_mux_text);
 
 static const struct soc_enum anc1_fb_mux_enum =
 	SOC_ENUM_SINGLE(TAIKO_A_CDC_CONN_ANC_B2_CTL, 0, 3, anc1_fb_mux_text);
@@ -7783,7 +7783,7 @@ static const struct dev_pm_ops taiko_pm_ops = {
 };
 #endif
 
-static int __devinit taiko_probe(struct platform_device *pdev)
+static int taiko_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_SLIMBUS)
@@ -7794,7 +7794,7 @@ static int __devinit taiko_probe(struct platform_device *pdev)
 			taiko_i2s_dai, ARRAY_SIZE(taiko_i2s_dai));
 	return ret;
 }
-static int __devexit taiko_remove(struct platform_device *pdev)
+static int taiko_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_codec(&pdev->dev);
 	return 0;

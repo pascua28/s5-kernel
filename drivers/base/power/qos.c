@@ -42,6 +42,7 @@
 #include <linux/export.h>
 #include <linux/pm_runtime.h>
 #include <linux/err.h>
+#include <trace/events/power.h>
 
 #include "power.h"
 

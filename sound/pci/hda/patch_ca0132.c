@@ -30,6 +30,7 @@
 #include <sound/core.h>
 #include "hda_codec.h"
 #include "hda_local.h"
+#include "hda_auto_parser.h"
 
 #define WIDGET_CHIP_CTRL      0x15
 #define WIDGET_DSP_CTRL       0x16
@@ -239,8 +240,7 @@ enum get_set {
 static void init_output(struct hda_codec *codec, hda_nid_t pin, hda_nid_t dac)
 {
 	if (pin) {
-		snd_hda_codec_write(codec, pin, 0,
-				    AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_HP);
+		snd_hda_set_pin_ctl(codec, pin, PIN_HP);
 		if (get_wcaps(codec, pin) & AC_WCAP_OUT_AMP)
 			snd_hda_codec_write(codec, pin, 0,
 					    AC_VERB_SET_AMP_GAIN_MUTE,
@@ -254,9 +254,8 @@ static void init_output(struct hda_codec *codec, hda_nid_t pin, hda_nid_t dac)
 static void init_input(struct hda_codec *codec, hda_nid_t pin, hda_nid_t adc)
 {
 	if (pin) {
-		snd_hda_codec_write(codec, pin, 0,
-				    AC_VERB_SET_PIN_WIDGET_CONTROL,
-				    PIN_VREF80);
+		snd_hda_set_pin_ctl(codec, pin, PIN_IN |
+				    snd_hda_get_default_vref(codec, pin));
 		if (get_wcaps(codec, pin) & AC_WCAP_IN_AMP)
 			snd_hda_codec_write(codec, pin, 0,
 					    AC_VERB_SET_AMP_GAIN_MUTE,
@@ -276,10 +275,6 @@ static int _add_switch(struct hda_codec *codec, hda_nid_t nid, const char *pfx,
 	int type = dir ? HDA_INPUT : HDA_OUTPUT;
 	struct snd_kcontrol_new knew =
 		HDA_CODEC_MUTE_MONO(namestr, nid, chan, 0, type);
-	if ((query_amp_caps(codec, nid, type) & AC_AMPCAP_MUTE) == 0) {
-		snd_printdd("Skipping '%s %s Switch' (no mute on node 0x%x)\n", pfx, dirstr[dir], nid);
-		return 0;
-	}
 	sprintf(namestr, "%s %s Switch", pfx, dirstr[dir]);
 	return snd_hda_ctl_add(codec, nid, snd_ctl_new1(&knew, codec));
 }
@@ -291,10 +286,6 @@ static int _add_volume(struct hda_codec *codec, hda_nid_t nid, const char *pfx,
 	int type = dir ? HDA_INPUT : HDA_OUTPUT;
 	struct snd_kcontrol_new knew =
 		HDA_CODEC_VOLUME_MONO(namestr, nid, chan, 0, type);
-	if ((query_amp_caps(codec, nid, type) & AC_AMPCAP_NUM_STEPS) == 0) {
-		snd_printdd("Skipping '%s %s Volume' (no amp on node 0x%x)\n", pfx, dirstr[dir], nid);
-		return 0;
-	}
 	sprintf(namestr, "%s %s Volume", pfx, dirstr[dir]);
 	return snd_hda_ctl_add(codec, nid, snd_ctl_new1(&knew, codec));
 }

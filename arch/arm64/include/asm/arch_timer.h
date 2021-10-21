@@ -26,7 +26,7 @@
 
 #include <clocksource/arm_arch_timer.h>
 
-static inline void arch_timer_reg_write_cp15(int access, int reg, u32 val)
+static inline void arch_timer_reg_write(int access, int reg, u32 val)
 {
 	if (access == ARCH_TIMER_PHYS_ACCESS) {
 		switch (reg) {
@@ -57,7 +57,7 @@ static inline void arch_timer_reg_write_cp15(int access, int reg, u32 val)
 	isb();
 }
 
-static inline u32 arch_timer_reg_read_cp15(int access, int reg)
+static inline u32 arch_timer_reg_read(int access, int reg)
 {
 	u32 val;
 
@@ -97,7 +97,7 @@ static inline u32 arch_timer_get_cntfrq(void)
 	return val;
 }
 
-static inline void __cpuinit arch_counter_set_user_access(void)
+static inline void arch_counter_set_user_access(void)
 {
 	u32 cntkctl;
 
@@ -110,7 +110,7 @@ static inline void __cpuinit arch_counter_set_user_access(void)
 	asm volatile("msr	cntkctl_el1, %0" : : "r" (cntkctl));
 }
 
-static inline u64 arch_counter_get_cntvct_cp15(void)
+static inline u64 arch_counter_get_cntvct(void)
 {
 	u64 cval;
 
@@ -118,11 +118,6 @@ static inline u64 arch_counter_get_cntvct_cp15(void)
 	asm volatile("mrs %0, cntvct_el0" : "=r" (cval));
 
 	return cval;
-}
-
-static inline int arch_timer_arch_init(void)
-{
-	return 0;
 }
 
 static inline int arch_timer_arch_init(void)

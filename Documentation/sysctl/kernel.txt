@@ -23,10 +23,8 @@ show up in /proc/sys/kernel:
 - auto_msgmni
 - bootloader_type	     [ X86 only ]
 - bootloader_version	     [ X86 only ]
-- boot_reason		     [ ARM only ]
 - callhome		     [ S390 only ]
 - cap_last_cap
-- cold_boot		     [ ARM only ]
 - core_pattern
 - core_pipe_limit
 - core_uses_pid
@@ -51,9 +49,8 @@ show up in /proc/sys/kernel:
 - overflowuid
 - panic
 - panic_on_oops
-- panic_on_stackoverflow
 - panic_on_unrecovered_nmi
-- perf_event_paranoid
+- panic_on_stackoverflow
 - pid_max
 - powersave-nap               [ PPC only ]
 - printk
@@ -73,12 +70,12 @@ show up in /proc/sys/kernel:
 - shmall
 - shmmax                      [ sysv ipc ]
 - shmmni
-- softlockup_thresh
 - stop-a                      [ SPARC only ]
 - sysrq                       ==> Documentation/sysrq.txt
 - tainted
 - threads-max
 - unknown_nmi_panic
+- watchdog_thresh
 - version
 
 ==============================================================
@@ -148,19 +145,6 @@ Documentation/x86/boot.txt for additional information.
 
 ==============================================================
 
-boot_reason:
-
-ARM -- reason for device boot
-
-A single bit will be set in the unsigned integer value to identify the
-reason the device was booted / powered on. The value will be zero if this
-feature is not supported on the ARM device being booted.
-
-See the power-on-status field definitions in
-Documentation/arm/msm/boot.txt for Qualcomm's family of devices.
-
-==============================================================
-
 callhome:
 
 Controls the kernel's callhome behavior in case of a kernel panic.
@@ -180,16 +164,6 @@ cap_last_cap
 
 Highest valid capability of the running kernel.  Exports
 CAP_LAST_CAP from the kernel.
-
-===============================================================
-
-cold_boot
-
-ARM -- indicator for system cold boot
-
-A single bit will be set in the unsigned integer value to identify
-whether the device was booted from a cold or warm state. Zero
-indicating a warm boot and one indicating a cold boot.
 
 ==============================================================
 
@@ -417,6 +391,19 @@ the recommended setting is 60.
 
 ==============================================================
 
+panic_on_unrecovered_nmi:
+
+The default Linux behaviour on an NMI of either memory or unknown is
+to continue operation. For many environments such as scientific
+computing it is preferable that the box is taken out and the error
+dealt with than an uncorrected parity/ECC error get propagated.
+
+A small number of systems do generate NMI's for bizarre random reasons
+such as power management so the default is off. That sysctl works like
+the existing panic controls already in that directory.
+
+==============================================================
+
 panic_on_oops:
 
 Controls the kernel's behaviour when an oops or BUG is encountered.
@@ -440,32 +427,32 @@ This file shows up if CONFIG_DEBUG_STACKOVERFLOW is enabled.
 
 ==============================================================
 
-panic_on_unrecovered_nmi:
+perf_cpu_time_max_percent:
 
-The default Linux behaviour on an NMI of either memory or unknown is
-to continue operation. For many environments such as scientific
-computing it is preferable that the box is taken out and the error
-dealt with than an uncorrected parity/ECC error get propagated.
+Hints to the kernel how much CPU time it should be allowed to
+use to handle perf sampling events.  If the perf subsystem
+is informed that its samples are exceeding this limit, it
+will drop its sampling frequency to attempt to reduce its CPU
+usage.
 
-A small number of systems do generate NMI's for bizarre random reasons
-such as power management so the default is off. That sysctl works like
-the existing panic controls already in that directory.
+Some perf sampling happens in NMIs.  If these samples
+unexpectedly take too long to execute, the NMIs can become
+stacked up next to each other so much that nothing else is
+allowed to execute.
+
+0: disable the mechanism.  Do not monitor or correct perf's
+   sampling rate no matter how CPU time it takes.
+
+1-100: attempt to throttle perf's sample rate to this
+   percentage of CPU.  Note: the kernel calculates an
+   "expected" length of each sample event.  100 here means
+   100% of that expected length.  Even if this is set to
+   100, you may still see sample throttling if this
+   length is exceeded.  Set to 0 if you truly do not care
+   how much CPU is consumed.
 
 ==============================================================
 
-perf_event_paranoid:
-
-Controls use of the performance events system by unprivileged
-users (without CAP_SYS_ADMIN).  The default value is 3 if
-CONFIG_SECURITY_PERF_EVENTS_RESTRICT is set, or 1 otherwise.
-
- -1: Allow use of (almost) all events by all users
->=0: Disallow raw tracepoint access by users without CAP_IOC_LOCK
->=1: Disallow CPU event access by users without CAP_SYS_ADMIN
->=2: Disallow kernel profiling by users without CAP_SYS_ADMIN
->=3: Disallow all event access by users without CAP_SYS_ADMIN
-
-==============================================================
 
 pid_max:
 
@@ -643,15 +630,6 @@ without users and with a dead originative process will be destroyed.
 
 ==============================================================
 
-softlockup_thresh:
-
-This value can be used to lower the softlockup tolerance threshold.  The
-default threshold is 60 seconds.  If a cpu is locked up for 60 seconds,
-the kernel complains.  Valid values are 1-60 seconds.  Setting this
-tunable to zero will disable the softlockup detection altogether.
-
-==============================================================
-
 tainted:
 
 Non-zero if the kernel has been tainted.  Numeric values, which
@@ -687,3 +665,16 @@ that time, kernel debugging information is displayed on console.
 
 NMI switch that most IA32 servers have fires unknown NMI up, for
 example.  If a system hangs up, try pressing the NMI switch.
+
+==============================================================
+
+watchdog_thresh:
+
+This value can be used to control the frequency of hrtimer and NMI
+events and the soft and hard lockup thresholds. The default threshold
+is 10 seconds.
+
+The softlockup threshold is (2 * watchdog_thresh). Setting this
+tunable to zero will disable lockup detection altogether.
+
+==============================================================

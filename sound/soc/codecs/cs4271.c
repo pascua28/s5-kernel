@@ -261,7 +261,7 @@ static int cs4271_get_deemph(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct cs4271_private *cs4271 = snd_soc_codec_get_drvdata(codec);
 
-	ucontrol->value.integer.value[0] = cs4271->deemph;
+	ucontrol->value.enumerated.item[0] = cs4271->deemph;
 	return 0;
 }
 
@@ -271,7 +271,7 @@ static int cs4271_put_deemph(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct cs4271_private *cs4271 = snd_soc_codec_get_drvdata(codec);
 
-	cs4271->deemph = ucontrol->value.integer.value[0];
+	cs4271->deemph = ucontrol->value.enumerated.item[0];
 	return cs4271_set_deemph(codec);
 }
 
@@ -318,8 +318,7 @@ static int cs4271_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params,
 			    struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_codec *codec = dai->codec;
 	struct cs4271_private *cs4271 = snd_soc_codec_get_drvdata(codec);
 	int i, ret;
 	unsigned int ratio, val;
@@ -475,10 +474,10 @@ static int cs4271_probe(struct snd_soc_codec *codec)
 	if (gpio_nreset >= 0) {
 		/* Reset codec */
 		gpio_direction_output(gpio_nreset, 0);
-		mdelay(1);
+		udelay(1);
 		gpio_set_value(gpio_nreset, 1);
 		/* Give the codec time to wake up */
-		mdelay(1);
+		udelay(1);
 	}
 
 	cs4271->gpio_nreset = gpio_nreset;

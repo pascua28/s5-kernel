@@ -52,7 +52,7 @@ static struct snd_soc_dai_driver msm_dai_stub_dai = {
 	.ops = &msm_dai_stub_ops,
 };
 
-static __devinit int msm_dai_stub_dev_probe(struct platform_device *pdev)
+static int msm_dai_stub_dev_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 
@@ -67,7 +67,7 @@ static __devinit int msm_dai_stub_dev_probe(struct platform_device *pdev)
 	return rc;
 }
 
-static __devexit int msm_dai_stub_dev_remove(struct platform_device *pdev)
+static int msm_dai_stub_dev_remove(struct platform_device *pdev)
 {
 	pr_debug("%s:\n", __func__);
 

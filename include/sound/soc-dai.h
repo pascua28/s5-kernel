@@ -207,6 +207,7 @@ struct snd_soc_dai_driver {
 	const char *name;
 	unsigned int id;
 	int ac97_control;
+	unsigned int base;
 
 	/* DAI driver callbacks */
 	int (*probe)(struct snd_soc_dai *dai);
@@ -254,6 +255,7 @@ struct snd_soc_dai {
 
 	struct snd_soc_dapm_widget *playback_widget;
 	struct snd_soc_dapm_widget *capture_widget;
+	struct snd_soc_dapm_context dapm;
 
 	/* DAI DMA data */
 	void *playback_dma_data;

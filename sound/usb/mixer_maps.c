@@ -288,6 +288,15 @@ static struct usbmix_name_map scratch_live_map[] = {
 	{ 0 } /* terminator */
 };
 
+static struct usbmix_name_map ebox44_map[] = {
+	{ 4, NULL }, /* FU */
+	{ 6, NULL }, /* MU */
+	{ 7, NULL }, /* FU */
+	{ 10, NULL }, /* FU */
+	{ 11, NULL }, /* MU */
+	{ 0 }
+};
+
 /* "Gamesurround Muse Pocket LT" looks same like "Sound Blaster MP3+"
  *  most importand difference is SU[8], it should be set to "Capture Source"
  *  to make alsamixer and PA working properly.
@@ -302,21 +311,6 @@ static struct usbmix_name_map hercules_usb51_map[] = {
 	{ 13, "Mic Bypass Playback" },	/* FU, default "Mic Playback" */
 	{ 14, "Line Bypass Playback" },	/* FU, default "Line Playback" */
 	{ 0 }				/* terminator */
-};
-
-/* some (all?) SCMS USB3318 devices are affected by a firmware lock up
- * when anything attempts to access FU 10 (control)
- */
-static const struct usbmix_name_map scms_usb3318_map[] = {
-	{ 10, NULL },
-	{ 0 }
-};
-
-/* Bose companion 5, the dB conversion factor is 16 instead of 256 */
-static struct usbmix_dB_map bose_companion5_dB = {-5006, -6};
-static struct usbmix_name_map bose_companion5_map[] = {
-	{ 3, NULL, .dB = &bose_companion5_dB },
-	{ 0 }	/* terminator */
 };
 
 /*
@@ -346,6 +340,14 @@ static struct usbmix_ctl_map usbmix_ctl_maps[] = {
 		.id = USB_ID(0x041e, 0x3048),
 		.map = audigy2nx_map,
 		.selector_map = audigy2nx_selectors,
+	},
+	{	/* Logitech, Inc. QuickCam Pro for Notebooks */
+		.id = USB_ID(0x046d, 0x0991),
+		.ignore_ctl_error = 1,
+	},
+	{	/* Logitech, Inc. QuickCam E 3500 */
+		.id = USB_ID(0x046d, 0x09a4),
+		.ignore_ctl_error = 1,
 	},
 	{
 		/* Hercules DJ Console (Windows Edition) */
@@ -387,24 +389,8 @@ static struct usbmix_ctl_map usbmix_ctl_maps[] = {
 		.ignore_ctl_error = 1,
 	},
 	{
-		/* MAYA44 USB+ */
-		.id = USB_ID(0x2573, 0x0008),
-		.map = maya44_map,
-	},
-	{
-		/* KEF X300A */
-		.id = USB_ID(0x27ac, 0x1000),
-		.map = scms_usb3318_map,
-	},
-	{
-		/* Arcam rPAC */
-		.id = USB_ID(0x25c4, 0x0003),
-		.map = scms_usb3318_map,
-	},
-	{
-		/* Bose Companion 5 */
-		.id = USB_ID(0x05a7, 0x1020),
-		.map = bose_companion5_map,
+		.id = USB_ID(0x200c, 0x1018),
+		.map = ebox44_map,
 	},
 	{ 0 } /* terminator */
 };

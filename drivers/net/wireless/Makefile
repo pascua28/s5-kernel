@@ -73,3 +73,4 @@ obj-$(CONFIG_WCNSS_CORE)	+= wcnss/
 
 obj-$(CONFIG_LGUIWLAN)	+= mwlan_aarp/
 obj-$(CONFIG_LGUIWLAN)	+= ipsecdrvtl/
+obj-$(CONFIG_CW1200)	+= cw1200/

@@ -155,7 +155,7 @@ static int es705_spi_boot_finish(struct es705_priv *es705)
 	return rc;
 }
 
-static int __devinit es705_spi_probe(struct spi_device *spi)
+static int es705_spi_probe(struct spi_device *spi)
 {
 	int rc;
 
@@ -198,7 +198,7 @@ struct es_stream_device spi_streamdev = {
 	.intf = ES705_SPI_INTF,
 };
 
-static int __devexit es705_spi_remove(struct spi_device *spi)
+static int es705_spi_remove(struct spi_device *spi)
 {
 	snd_soc_unregister_codec(&spi->dev);
 	return 0;
@@ -213,7 +213,7 @@ struct spi_driver es705_spi_driver = {
 	},
 	/* .id_table    = m25p_ids,*/
 	.probe  = es705_spi_probe,
-	.remove = __devexit_p(es705_spi_remove),
+	.remove = es705_spi_remove,
 };
 
 

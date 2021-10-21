@@ -500,12 +500,14 @@ do_translation_fault(unsigned long addr, unsigned int fsr,
  * Some section permission faults need to be handled gracefully.
  * They can happen due to a __{get,put}_user during an oops.
  */
+#ifndef CONFIG_ARM_LPAE
 static int
 do_sect_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 {
 	do_bad_area(addr, fsr, regs);
 	return 0;
 }
+#endif /* CONFIG_ARM_LPAE */
 
 /*
  * This abort handler always returns "fault".
@@ -664,13 +666,13 @@ do_DataAbort(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	const struct fsr_info *inf = fsr_info + fsr_fs(fsr);
 	struct siginfo info;
 
-#ifdef CONFIG_MSM_KRAIT_TBB_ABORT_HANDLER
-	if (krait_tbb_fixup(fsr, regs))
+#ifdef CONFIG_EMULATE_DOMAIN_MANAGER_V7
+	if (emulate_domain_manager_data_abort(fsr, addr))
 		return;
 #endif
 
-#ifdef CONFIG_EMULATE_DOMAIN_MANAGER_V7
-	if (emulate_domain_manager_data_abort(fsr, addr))
+#ifdef CONFIG_MSM_KRAIT_TBB_ABORT_HANDLER
+	if (krait_tbb_fixup(fsr, regs))
 		return;
 #endif
 

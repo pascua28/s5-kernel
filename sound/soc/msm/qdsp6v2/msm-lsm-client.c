@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Linux Foundation. All rights reserved.
+ * Copyright (c) 2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,7 +39,6 @@ struct lsm_priv {
 	wait_queue_head_t event_wait;
 	unsigned long event_avail;
 	atomic_t event_wait_stop;
-	struct mutex lsm_api_lock;
 };
 
 static void lsm_event_handler(uint32_t opcode, uint32_t token,
@@ -96,7 +95,6 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	struct lsm_priv *prtd = runtime->private_data;
 	struct snd_lsm_event_status *user = arg;
 
-	mutex_lock(&prtd->lsm_api_lock);
 	pr_debug("%s: enter cmd %x\n", __func__, cmd);
 	switch (cmd) {
 	case SNDRV_LSM_REG_SND_MODEL:
@@ -146,18 +144,10 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	case SNDRV_LSM_EVENT_STATUS:
 		pr_debug("%s: Get event status\n", __func__);
 		atomic_set(&prtd->event_wait_stop, 0);
-
-		/*
-		 * Release the api lock before wait to allow
-		 * other IOCTLs to be invoked while waiting
-		 * for event
-		 */
-		mutex_unlock(&prtd->lsm_api_lock);
 		rc = wait_event_interruptible(prtd->event_wait,
 				(cmpxchg(&prtd->event_avail, 1, 0) ||
 				 (xchg = atomic_cmpxchg(&prtd->event_wait_stop,
 							1, 0))));
-		mutex_lock(&prtd->lsm_api_lock);
 		pr_debug("%s: wait_event_interruptible %d event_wait_stop %d\n",
 			 __func__, rc, xchg);
 		if (!rc && !xchg) {
@@ -248,7 +238,6 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	else
 		pr_err("%s: cmd 0x%x failed %d\n", __func__, cmd, rc);
 
-	mutex_unlock(&prtd->lsm_api_lock);
 	return rc;
 }
 
@@ -273,17 +262,16 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 		kfree(prtd);
 		return -ENOMEM;
 	}
-	prtd->lsm_client->opened = false;
 	ret = q6lsm_open(prtd->lsm_client);
 	if (ret < 0) {
 		pr_err("%s: lsm open failed, %d\n", __func__, ret);
+		q6lsm_client_free(prtd->lsm_client);
+		kfree(prtd);
 		return ret;
 	}
-	prtd->lsm_client->opened = true;
 
 	pr_debug("%s: Session ID %d\n", __func__, prtd->lsm_client->session);
 	prtd->lsm_client->started = false;
-	mutex_init(&prtd->lsm_api_lock);
 	spin_lock_init(&prtd->event_lock);
 	init_waitqueue_head(&prtd->event_wait);
 	runtime->private_data = prtd;
@@ -323,19 +311,14 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 				 __func__);
 	}
 
-	if (prtd->lsm_client->opened) {
-		q6lsm_close(prtd->lsm_client);
-		prtd->lsm_client->opened = false;
-	}
+	q6lsm_close(prtd->lsm_client);
 	q6lsm_client_free(prtd->lsm_client);
 
 	spin_lock_irqsave(&prtd->event_lock, flags);
 	kfree(prtd->event_status);
 	prtd->event_status = NULL;
 	spin_unlock_irqrestore(&prtd->event_lock, flags);
-	mutex_destroy(&prtd->lsm_api_lock);
 	kfree(prtd);
-	runtime->private_data = NULL;
 
 	return 0;
 }
@@ -369,7 +352,7 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 	.probe		= msm_asoc_lsm_probe,
 };
 
-static __devinit int msm_lsm_probe(struct platform_device *pdev)
+static int msm_lsm_probe(struct platform_device *pdev)
 {
 	if (pdev->dev.of_node)
 		dev_set_name(&pdev->dev, "%s", "msm-lsm-client");
@@ -396,7 +379,7 @@ static struct platform_driver msm_lsm_driver = {
 		.of_match_table = of_match_ptr(msm_lsm_client_dt_match),
 	},
 	.probe = msm_lsm_probe,
-	.remove = __devexit_p(msm_lsm_remove),
+	.remove = msm_lsm_remove,
 };
 
 static int __init msm_soc_platform_init(void)

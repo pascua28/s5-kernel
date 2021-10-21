@@ -389,6 +389,7 @@ static int attach_req(struct ocmem_region *region, struct ocmem_req *req)
 	id = idr_alloc(&region->region_idr, req, 1, 0, GFP_KERNEL);
 	if (id < 0)
 		return id;
+
 	req->req_id = id;
 	pr_debug("ocmem: request %p(id:%d) attached to region %p\n",
 			req, id, region);

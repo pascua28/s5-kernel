@@ -738,14 +738,9 @@ fail:
 	return -EINVAL;
 }
 
-static inline int mpm_irq_domain_linear_size(struct irq_domain *d)
+static inline int mpm_irq_domain_size(struct irq_domain *d)
 {
-	return d->revmap_data.linear.size;
-}
-
-static inline int mpm_irq_domain_legacy_size(struct irq_domain *d)
-{
-	return d->revmap_data.legacy.size;
+	return d->revmap_size ?: 1024;
 }
 
 void __init of_mpm_init(struct device_node *node)
@@ -767,14 +762,14 @@ void __init of_mpm_init(struct device_node *node)
 			"qcom,gic-map",
 			"gic",
 			&gic_arch_extn,
-			mpm_irq_domain_linear_size,
+			mpm_irq_domain_size,
 		},
 		{
 			"qcom,gpio-parent",
 			"qcom,gpio-map",
 			"gpio",
 			&msm_gpio_irq_extn,
-			mpm_irq_domain_legacy_size,
+			mpm_irq_domain_size,
 		},
 	};
 
