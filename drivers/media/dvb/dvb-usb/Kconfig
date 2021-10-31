@@ -244,7 +244,7 @@ config DVB_USB_OPERA1
 
 config DVB_USB_AF9005
 	tristate "Afatech AF9005 DVB-T USB1.1 support"
-	depends on DVB_USB && EXPERIMENTAL
+	depends on DVB_USB
 	select MEDIA_TUNER_MT2060 if !MEDIA_TUNER_CUSTOMISE
 	select MEDIA_TUNER_QT1010 if !MEDIA_TUNER_CUSTOMISE
 	help
@@ -416,7 +416,7 @@ config DVB_USB_MXL111SF
 
 config DVB_USB_RTL28XXU
 	tristate "Realtek RTL28xxU DVB USB support"
-	depends on DVB_USB && EXPERIMENTAL
+	depends on DVB_USB
 	select DVB_RTL2830
 	select MEDIA_TUNER_QT1010 if !MEDIA_TUNER_CUSTOMISE
 	select MEDIA_TUNER_MT2060 if !MEDIA_TUNER_CUSTOMISE
