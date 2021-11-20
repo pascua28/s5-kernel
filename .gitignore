@@ -55,6 +55,13 @@ modules.builtin
 #
 !.gitignore
 !.mailmap
+*.lzo
+*.patch
+*.gcno
+*.ll
+modules.builtin
+Module.symvers
+*.dwo
 
 #
 # Generated include files
@@ -84,3 +91,4 @@ GTAGS
 *.orig
 *~
 \#*#
+output/
