@@ -2672,10 +2672,10 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 		old_bh2 = ext4_find_entry(old_dir, &old_dentry->d_name, &old_de2, NULL);
 #else
 		old_bh2 = ext4_find_entry(old_dir, &old_dentry->d_name, &old_de2);
+#endif
 		if (IS_ERR(old_bh2)) {
 			retval = PTR_ERR(old_bh2);
 		} else if (old_bh2) {
-#endif
 			retval = ext4_delete_entry(handle, old_dir,
 						   old_de2, old_bh2);
 			brelse(old_bh2);
