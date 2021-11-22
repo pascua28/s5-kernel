@@ -33,3 +33,7 @@ obj-$(CONFIG_TIMA_UEVENT)     += tima_uevent/
 
 #TZ ICCC
 obj-$(CONFIG_TZ_ICCC)     += tz_iccc/
+
+# Knox SDP
+obj-$(CONFIG_SDP) += sdp/
+obj-$(CONFIG_SDP) += sdp/built-in.o

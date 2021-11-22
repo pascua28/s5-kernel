@@ -209,6 +209,10 @@ struct sdcardfs_dentry_info {
 	spinlock_t lock;	/* protects lower_path */
 	struct path lower_path;
 	struct path orig_path;
+#ifdef CONFIG_SDP
+	int under_knox;
+	int userid;
+#endif	
 };
 
 struct sdcardfs_mount_options {
