@@ -122,9 +122,6 @@ BINDER_DEBUG_ENTRY(proc);
 
 #define BINDER_SMALL_BUF_SIZE (PAGE_SIZE * 64)
 
-#define MAX_NICE	19
-#define MIN_NICE	-20
-
 enum {
 	BINDER_DEBUG_USER_ERROR             = 1U << 0,
 	BINDER_DEBUG_FAILED_TRANSACTION     = 1U << 1,
@@ -678,7 +675,7 @@ struct binder_transaction {
 	struct binder_priority	priority;
 	struct binder_priority	saved_priority;
 	bool    set_priority_called;
-	uid_t	sender_euid;
+	kuid_t	sender_euid;
 	binder_uintptr_t security_ctx;
 	/**
 	 * @lock:  protects @from, @to_proc, and @to_thread
@@ -4888,7 +4885,7 @@ static int binder_ioctl_set_inherit_fifo_prio(struct file *filp)
 	struct binder_proc *proc = filp->private_data;
 	struct binder_context *context = proc->context;
 
-	uid_t curr_euid = current_euid();
+	kuid_t curr_euid = current_euid();
 	mutex_lock(&context->context_mgr_node_lock);
 
 	if (uid_valid(context->binder_context_mgr_uid)) {
@@ -4917,7 +4914,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 	struct binder_proc *proc = filp->private_data;
 	struct binder_context *context = proc->context;
 	struct binder_node *new_node;
-	uid_t curr_euid = current_euid();
+	kuid_t curr_euid = current_euid();
 
 	mutex_lock(&context->context_mgr_node_lock);
 	if (context->binder_context_mgr_node) {
