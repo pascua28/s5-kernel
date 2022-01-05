@@ -18,9 +18,14 @@
 #ifndef _LINUX_WAKEUP_REASON_H
 #define _LINUX_WAKEUP_REASON_H
 
-void log_wakeup_reason(int irq);
 #ifdef CONFIG_ARCH_MSM
 void update_wakeup_reason_stats(int irq);
 #endif
+
+#define MAX_SUSPEND_ABORT_LEN 256
+
+void log_wakeup_reason(int irq);
+void log_suspend_abort_reason(const char *fmt, ...);
+int check_wakeup_reason(int irq);
 
 #endif /* _LINUX_WAKEUP_REASON_H */

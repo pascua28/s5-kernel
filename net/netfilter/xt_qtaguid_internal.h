@@ -179,6 +179,25 @@ struct data_counters {
 	struct byte_packet_counters bpc[IFS_MAX_COUNTER_SETS][IFS_MAX_DIRECTIONS][IFS_MAX_PROTOS];
 };
 
+static inline uint64_t dc_sum_bytes(struct data_counters *counters,
+				    int set,
+				    enum ifs_tx_rx direction)
+{
+	return counters->bpc[set][direction][IFS_TCP].bytes
+		+ counters->bpc[set][direction][IFS_UDP].bytes
+		+ counters->bpc[set][direction][IFS_PROTO_OTHER].bytes;
+}
+
+static inline uint64_t dc_sum_packets(struct data_counters *counters,
+				      int set,
+				      enum ifs_tx_rx direction)
+{
+	return counters->bpc[set][direction][IFS_TCP].packets
+		+ counters->bpc[set][direction][IFS_UDP].packets
+		+ counters->bpc[set][direction][IFS_PROTO_OTHER].packets;
+}
+
+
 /* Generic X based nodes used as a base for rb_tree ops */
 struct tag_node {
 	struct rb_node node;
@@ -203,7 +222,7 @@ struct iface_stat {
 	struct net_device *net_dev;
 
 	struct byte_packet_counters totals_via_dev[IFS_MAX_DIRECTIONS];
-	struct byte_packet_counters totals_via_skb[IFS_MAX_DIRECTIONS];
+	struct data_counters totals_via_skb;
 	/*
 	 * We keep the last_known, because some devices reset their counters
 	 * just before NETDEV_UP, while some will reset just before
@@ -237,8 +256,6 @@ struct iface_stat_work {
 struct sock_tag {
 	struct rb_node sock_node;
 	struct sock *sk;  /* Only used as a number, never dereferenced */
-	/* The socket is needed for sockfd_put() */
-	struct socket *socket;
 	/* Used to associate with a given pid */
 	struct list_head list;   /* in proc_qtu_data.sock_tag_list */
 	pid_t pid;
@@ -272,10 +289,10 @@ struct qtaguid_event_counts {
 	 */
 	atomic64_t match_no_sk;
 	/*
-	 * The file ptr in the sk_socket wasn't there.
+	 * The file ptr in the sk_socket wasn't there and we couldn't get GID.
 	 * This might happen for traffic while the socket is being closed.
 	 */
-	atomic64_t match_no_sk_file;
+	atomic64_t match_no_sk_gid;
 };
 
 /* Track the set active_set for the given tag. */

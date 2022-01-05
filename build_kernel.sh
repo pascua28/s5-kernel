@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export ARCH=arm
-export CROSS_COMPILE=~/ubertc/bin/arm-eabi-
+export CROSS_COMPILE=~/linaro-4.9/bin/arm-linux-gnueabihf-
 
 mkdir output
 

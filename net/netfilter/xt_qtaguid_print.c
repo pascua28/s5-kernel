@@ -24,7 +24,7 @@
 #include <linux/rbtree.h>
 #include <linux/slab.h>
 #include <linux/spinlock_types.h>
-
+#include <net/sock.h>
 
 #include "xt_qtaguid_internal.h"
 #include "xt_qtaguid_print.h"
@@ -177,9 +177,10 @@ char *pp_tag_stat(struct tag_stat *ts)
 char *pp_iface_stat(struct iface_stat *is)
 {
 	char *res;
-	if (!is)
+	if (!is) {
 		res = kasprintf(GFP_ATOMIC, "iface_stat@null{}");
-	else
+	} else {
+		struct data_counters *cnts = &is->totals_via_skb;
 		res = kasprintf(GFP_ATOMIC, "iface_stat@%p{"
 				"list=list_head{...}, "
 				"ifname=%s, "
@@ -206,10 +207,10 @@ char *pp_iface_stat(struct iface_stat *is)
 				is->totals_via_dev[IFS_RX].packets,
 				is->totals_via_dev[IFS_TX].bytes,
 				is->totals_via_dev[IFS_TX].packets,
-				is->totals_via_skb[IFS_RX].bytes,
-				is->totals_via_skb[IFS_RX].packets,
-				is->totals_via_skb[IFS_TX].bytes,
-				is->totals_via_skb[IFS_TX].packets,
+				dc_sum_bytes(cnts, 0, IFS_RX),
+				dc_sum_packets(cnts, 0, IFS_RX),
+				dc_sum_bytes(cnts, 0, IFS_TX),
+				dc_sum_packets(cnts, 0, IFS_TX),
 				is->last_known_valid,
 				is->last_known[IFS_RX].bytes,
 				is->last_known[IFS_RX].packets,
@@ -218,6 +219,7 @@ char *pp_iface_stat(struct iface_stat *is)
 				is->active,
 				is->net_dev,
 				is->proc_ptr);
+	}
 	_bug_on_err_or_null(res);
 	return res;
 }
@@ -235,10 +237,10 @@ char *pp_sock_tag(struct sock_tag *st)
 	tag_str = pp_tag_t(&st->tag);
 	res = kasprintf(GFP_ATOMIC, "sock_tag@%p{"
 			"sock_node=rb_node{...}, "
-			"sk=%p socket=%p (f_count=%lu), list=list_head{...}, "
+			"sk=%p (f_count=%d), list=list_head{...}, "
 			"pid=%u, tag=%s}",
-			st, st->sk, st->socket, atomic_long_read(
-				&st->socket->file->f_count),
+			st, st->sk, atomic_read(
+				&st->sk->sk_refcnt),
 			st->pid, tag_str);
 	_bug_on_err_or_null(res);
 	kfree(tag_str);

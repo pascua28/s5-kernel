@@ -276,6 +276,12 @@ cmd_cat = (cat $(filter-out FORCE,$^) > $@) || (rm -f $@; false)
 
 dtc-tmp = $(subst $(comma),_,$(dot-target).dts.tmp)
 
+# cat
+# ---------------------------------------------------------------------------
+# Concatentate multiple files together
+quiet_cmd_cat = CAT     $@
+cmd_cat = (cat $(filter-out FORCE,$^) > $@) || (rm -f $@; false)
+
 # Bzip2
 # ---------------------------------------------------------------------------
 

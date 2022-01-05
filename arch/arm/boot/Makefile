@@ -17,6 +17,7 @@ endif
 ifneq ($(MACHINE),)
 include $(srctree)/$(MACHINE)/Makefile.boot
 endif
+include $(srctree)/arch/arm/boot/dts/Makefile
 
 # Note: the following conditions must always be true:
 #   ZRELADDR == virt_to_phys(PAGE_OFFSET + TEXT_OFFSET)
@@ -69,6 +70,10 @@ $(obj)/zImage:	$(obj)/compressed/vmlinux FORCE
 $(obj)/zImage-dtb:	$(obj)/zImage $(DTB_OBJS) FORCE
 	$(call if_changed,cat)
 	@$(kecho) '  Kernel: $@ is ready'
+
+$(obj)/zImage-dtb:	$(obj)/zImage $(DTB_OBJS) FORCE
+	$(call if_changed,cat)
+	@echo '  Kernel: $@ is ready'
 
 endif
 

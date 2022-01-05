@@ -118,6 +118,8 @@
 
 #define L2X0_WAY_SIZE_SHIFT		3
 
+#define REV_PL310_R2P0				4
+
 #ifndef __ASSEMBLY__
 extern void __iomem *l2x0_base;
 extern void l2cc_suspend(void);

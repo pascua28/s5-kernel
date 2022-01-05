@@ -56,6 +56,15 @@ struct l2x0_of_data {
 	void (*resume)(void);
 };
 
+static bool of_init = false;
+
+static inline bool is_pl310_rev(int rev)
+{
+	return (l2x0_cache_id &
+		(L2X0_CACHE_ID_PART_MASK | L2X0_CACHE_ID_REV_MASK)) ==
+			(L2X0_CACHE_ID_PART_L310 | rev);
+}
+
 static inline void cache_wait_way(void __iomem *reg, unsigned long mask)
 {
 	/* wait for cache operation by line or way to complete */
@@ -357,20 +366,21 @@ void __init l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 {
 	u32 aux;
 	u32 way_size = 0;
+	int way_size_shift = L2X0_WAY_SIZE_SHIFT;
 	const char *type;
 
 	l2x0_base = base;
 	if (cache_id_part_number_from_dt)
-		cache_id = cache_id_part_number_from_dt;
+		l2x0_cache_id = cache_id_part_number_from_dt;
 	else
-		cache_id = readl_relaxed(l2x0_base + L2X0_CACHE_ID);
+		l2x0_cache_id = readl_relaxed(l2x0_base + L2X0_CACHE_ID);
 	aux = readl_relaxed(l2x0_base + L2X0_AUX_CTRL);
 
 	aux &= aux_mask;
 	aux |= aux_val;
 
 	/* Determine the number of ways */
-	switch (cache_id & L2X0_CACHE_ID_PART_MASK) {
+	switch (l2x0_cache_id & L2X0_CACHE_ID_PART_MASK) {
 	case L2X0_CACHE_ID_PART_L310:
 		if (aux & (1 << 16))
 			l2x0_ways = 16;
@@ -381,13 +391,20 @@ void __init l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 		/* Unmapped register. */
 		sync_reg_offset = L2X0_DUMMY_REG;
 #endif
-		outer_cache.set_debug = pl310_set_debug;
-		outer_cache.resume = pl310_resume;
+		if ((l2x0_cache_id & L2X0_CACHE_ID_RTL_MASK) <= L2X0_CACHE_ID_RTL_R3P0)
+			outer_cache.set_debug = pl310_set_debug;
 		break;
 	case L2X0_CACHE_ID_PART_L210:
 		l2x0_ways = (aux >> 13) & 0xf;
 		type = "L210";
-		outer_cache.resume = l2x0_resume;
+		break;
+
+	case AURORA_CACHE_ID:
+		sync_reg_offset = AURORA_SYNC_REG;
+		l2x0_ways = (aux >> 13) & 0xf;
+		l2x0_ways = 2 << ((l2x0_ways + 1) >> 2);
+		way_size_shift = AURORA_WAY_SIZE_SHIFT;
+		type = "Aurora";
 		break;
 	default:
 		/* Assume unknown chips have 8 ways */
@@ -403,7 +420,8 @@ void __init l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 	 * L2 cache Size =  Way size * Number of ways
 	 */
 	way_size = (aux & L2X0_AUX_CTRL_WAY_SIZE_MASK) >> 17;
-	way_size = SZ_1K << (way_size + 3);
+	way_size = SZ_1K << (way_size + way_size_shift);
+
 	l2x0_size = l2x0_ways * way_size;
 	l2x0_sets = way_size / CACHE_LINE_SIZE;
 
@@ -442,9 +460,6 @@ void __init l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 	printk(KERN_INFO "%s cache controller enabled\n", type);
 	printk(KERN_INFO "l2x0: %d ways, CACHE_ID 0x%08x, AUX_CTRL 0x%08x, Cache size: %d B\n",
 			l2x0_ways, l2x0_cache_id, aux, l2x0_size);
-
-	/* Save the L2X0 contents, as they are not modified else where */
-	pl310_save();
 }
 
 #ifdef CONFIG_OF
