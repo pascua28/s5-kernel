@@ -401,7 +401,7 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
 	      ((iname->name[1] == '.') && (iname->len == 2))))) {
 		fname->disk_name.name = (unsigned char *) iname->name;
 		fname->disk_name.len = iname->len;
-		return 0;
+		goto out;
 	}
 	ret = ext4_get_encryption_info(dir);
 	if (ret)
@@ -411,16 +411,19 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
 		ret = ext4_fname_crypto_alloc_buffer(dir, iname->len,
 						     &fname->crypto_buf);
 		if (ret < 0)
-			return ret;
+			goto out;
 		ret = ext4_fname_encrypt(dir, iname, &fname->crypto_buf);
 		if (ret < 0)
-			goto errout;
+			goto out;
 		fname->disk_name.name = fname->crypto_buf.name;
 		fname->disk_name.len = fname->crypto_buf.len;
-		return 0;
+		ret = 0;
+		goto out;
 	}
-	if (!lookup)
-		return -EACCES;
+	if (!lookup) {
+		ret = -EACCES;
+		goto out;
+	}
 
 	/* We don't have the key and we are doing a lookup; decode the
 	 * user-supplied name
@@ -428,17 +431,19 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
 	if (iname->name[0] == '_')
 		bigname = 1;
 	if ((bigname && (iname->len != 33)) ||
-	    (!bigname && (iname->len > 43)))
-		return -ENOENT;
-
+	    (!bigname && (iname->len > 43))) {
+		ret = -ENOENT;
+	}
 	fname->crypto_buf.name = kmalloc(32, GFP_KERNEL);
-	if (fname->crypto_buf.name == NULL)
-		return -ENOMEM;
+	if (fname->crypto_buf.name == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
 	ret = digest_decode(iname->name + bigname, iname->len - bigname,
 			    fname->crypto_buf.name);
 	if (ret < 0) {
 		ret = -ENOENT;
-		goto errout;
+		goto out;
 	}
 	fname->crypto_buf.len = ret;
 	if (bigname) {
@@ -448,10 +453,8 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
 		fname->disk_name.name = fname->crypto_buf.name;
 		fname->disk_name.len = fname->crypto_buf.len;
 	}
-	return 0;
-errout:
-	kfree(fname->crypto_buf.name);
-	fname->crypto_buf.name = NULL;
+	ret = 0;
+out:
 	return ret;
 }
 
