@@ -152,13 +152,14 @@ int _ext4_get_encryption_info(struct inode *inode)
 	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
 	       sizeof(crypt_info->ci_master_key));
 	if (S_ISREG(inode->i_mode))
-		crypt_info->ci_size =
-			ext4_encryption_key_size(crypt_info->ci_data_mode);
+		crypt_info->ci_mode = ctx.contents_encryption_mode;
 	else if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-		crypt_info->ci_size =
-			ext4_encryption_key_size(crypt_info->ci_filename_mode);
-	else
+		crypt_info->ci_mode = ctx.filenames_encryption_mode;
+	else {
+		printk(KERN_ERR "ext4 crypto: Unsupported inode type.\n");
 		BUG();
+	}
+	crypt_info->ci_size = ext4_encryption_key_size(crypt_info->ci_mode);
 	BUG_ON(!crypt_info->ci_size);
 	if (DUMMY_ENCRYPTION_ENABLED(sbi)) {
 		memset(crypt_info->ci_raw, 0x42, EXT4_AES_256_XTS_KEY_SIZE);
