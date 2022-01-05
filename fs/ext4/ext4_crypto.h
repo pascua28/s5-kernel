@@ -123,8 +123,10 @@ struct ext4_str {
 
 struct ext4_fname_crypto_ctx {
 	u32 lim;
+	char tmp_buf[EXT4_CRYPTO_BLOCK_SIZE];
 	struct crypto_ablkcipher *ctfm;
 	struct crypto_hash *htfm;
+	struct page *workpage;
 	struct ext4_encryption_key key;
 	unsigned flags : 8;
 	unsigned has_valid_key : 1;
