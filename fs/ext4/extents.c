@@ -5391,7 +5391,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
 	handle_t *handle;
 	unsigned int credits;
 	loff_t new_size, ioffset;
-	loff_t oldsize = i_size_read(inode);
 	int ret;
 
 	/* Collapse range works only on fs block size aligned offsets. */
@@ -5433,7 +5432,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
 	 * There is no need to overlap collapse range with EOF, in which case
 	 * it is effectively a truncate operation
 	 */
-	if (offset + len >= oldsize) {
+	if (offset + len >= i_size_read(inode)) {
 		ret = -EINVAL;
 		goto out_mutex;
 	}
@@ -5444,7 +5443,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
 		goto out_mutex;
 	}
 
-	truncate_pagecache(inode, oldsize, ioffset);
+	truncate_pagecache(inode, ioffset);
 
 	/* Wait for existing dio to complete */
 	ext4_inode_block_unlocked_dio(inode);
