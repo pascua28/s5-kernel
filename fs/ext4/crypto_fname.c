@@ -48,12 +48,6 @@ bool ext4_valid_filenames_enc_mode(uint32_t mode)
 	return (mode == EXT4_ENCRYPTION_MODE_AES_256_CTS);
 }
 
-static unsigned max_name_len(struct inode *inode)
-{
-	return S_ISLNK(inode->i_mode) ? inode->i_sb->s_blocksize :
-		EXT4_NAME_LEN;
-}
-
 /**
  * ext4_fname_encrypt() -
  *
@@ -61,30 +55,28 @@ static unsigned max_name_len(struct inode *inode)
  * ciphertext. Errors are returned as negative numbers.  We trust the caller to
  * allocate sufficient memory to oname string.
  */
-static int ext4_fname_encrypt(struct inode *inode,
+static int ext4_fname_encrypt(struct ext4_fname_crypto_ctx *ctx,
 			      const struct qstr *iname,
 			      struct ext4_str *oname)
 {
 	u32 ciphertext_len;
 	struct ablkcipher_request *req = NULL;
 	DECLARE_EXT4_COMPLETION_RESULT(ecr);
-	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
-	struct crypto_ablkcipher *tfm = ci->ci_ctfm;
+	struct crypto_ablkcipher *tfm = ctx->ctfm;
 	int res = 0;
 	char iv[EXT4_CRYPTO_BLOCK_SIZE];
 	struct scatterlist src_sg, dst_sg;
-	int padding = 4 << (ci->ci_flags & EXT4_POLICY_FLAGS_PAD_MASK);
+	int padding = 4 << (ctx->flags & EXT4_POLICY_FLAGS_PAD_MASK);
 	char *workbuf, buf[32], *alloc_buf = NULL;
-	unsigned lim = max_name_len(inode);
 
-	if (iname->len <= 0 || iname->len > lim)
+	if (iname->len <= 0 || iname->len > ctx->lim)
 		return -EIO;
 
 	ciphertext_len = (iname->len < EXT4_CRYPTO_BLOCK_SIZE) ?
 		EXT4_CRYPTO_BLOCK_SIZE : iname->len;
 	ciphertext_len = ext4_fname_crypto_round_up(ciphertext_len, padding);
-	ciphertext_len = (ciphertext_len > lim)
-			? lim : ciphertext_len;
+	ciphertext_len = (ciphertext_len > ctx->lim)
+			? ctx->lim : ciphertext_len;
 
 	if (ciphertext_len <= sizeof(buf)) {
 		workbuf = buf;
@@ -142,7 +134,7 @@ static int ext4_fname_encrypt(struct inode *inode,
  *	Errors are returned as negative numbers.
  *	We trust the caller to allocate sufficient memory to oname string.
  */
-static int ext4_fname_decrypt(struct inode *inode,
+static int ext4_fname_decrypt(struct ext4_fname_crypto_ctx *ctx,
 			      const struct ext4_str *iname,
 			      struct ext4_str *oname)
 {
@@ -150,13 +142,11 @@ static int ext4_fname_decrypt(struct inode *inode,
 	struct ablkcipher_request *req = NULL;
 	DECLARE_EXT4_COMPLETION_RESULT(ecr);
 	struct scatterlist src_sg, dst_sg;
-	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
-	struct crypto_ablkcipher *tfm = ci->ci_ctfm;
+	struct crypto_ablkcipher *tfm = ctx->ctfm;
 	int res = 0;
 	char iv[EXT4_CRYPTO_BLOCK_SIZE];
-	unsigned lim = max_name_len(inode);
 
-	if (iname->len <= 0 || iname->len > lim)
+	if (iname->len <= 0 || iname->len > ctx->lim)
 		return -EIO;
 
 	tmp_in[0].name = iname->name;
@@ -252,50 +242,171 @@ static int digest_decode(const char *src, int len, char *dst)
 	return cp - dst;
 }
 
-int ext4_setup_fname_crypto(struct inode *inode)
+/**
+ * ext4_free_fname_crypto_ctx() -
+ *
+ * Frees up a crypto context.
+ */
+void ext4_free_fname_crypto_ctx(struct ext4_fname_crypto_ctx *ctx)
 {
+	if (ctx == NULL || IS_ERR(ctx))
+		return;
+
+	if (ctx->ctfm && !IS_ERR(ctx->ctfm))
+		crypto_free_ablkcipher(ctx->ctfm);
+	if (ctx->htfm && !IS_ERR(ctx->htfm))
+		crypto_free_hash(ctx->htfm);
+	kfree(ctx);
+}
+
+/**
+ * ext4_put_fname_crypto_ctx() -
+ *
+ * Return: The crypto context onto free list. If the free list is above a
+ * threshold, completely frees up the context, and returns the memory.
+ *
+ * TODO: Currently we directly free the crypto context. Eventually we should
+ * add code it to return to free list. Such an approach will increase
+ * efficiency of directory lookup.
+ */
+void ext4_put_fname_crypto_ctx(struct ext4_fname_crypto_ctx **ctx)
+{
+	if (*ctx == NULL || IS_ERR(*ctx))
+		return;
+	ext4_free_fname_crypto_ctx(*ctx);
+	*ctx = NULL;
+}
+
+/**
+ * ext4_alloc_fname_crypto_ctx() -
+ */
+struct ext4_fname_crypto_ctx *ext4_alloc_fname_crypto_ctx(
+	const struct ext4_crypt_info *ci)
+{
+	struct ext4_fname_crypto_ctx *ctx;
+
+	ctx = kmalloc(sizeof(struct ext4_fname_crypto_ctx), GFP_NOFS);
+	if (ctx == NULL)
+		return ERR_PTR(-ENOMEM);
+	if (ci->ci_mode == EXT4_ENCRYPTION_MODE_INVALID) {
+		/* This will automatically set key mode to invalid
+		 * As enum for ENCRYPTION_MODE_INVALID is zero */
+		memset(&ctx->ci, 0, sizeof(ctx->ci));
+	} else {
+		memcpy(&ctx->ci, ci, sizeof(struct ext4_crypt_info));
+	}
+	ctx->has_valid_key = (EXT4_ENCRYPTION_MODE_INVALID == ci->ci_mode)
+		? 0 : 1;
+	ctx->ctfm_key_is_ready = 0;
+	ctx->ctfm = NULL;
+	ctx->htfm = NULL;
+	return ctx;
+}
+
+/**
+ * ext4_get_fname_crypto_ctx() -
+ *
+ * Allocates a free crypto context and initializes it to hold
+ * the crypto material for the inode.
+ *
+ * Return: NULL if not encrypted. Error value on error. Valid pointer otherwise.
+ */
+struct ext4_fname_crypto_ctx *ext4_get_fname_crypto_ctx(
+	struct inode *inode, u32 max_ciphertext_len)
+{
+	struct ext4_fname_crypto_ctx *ctx;
 	struct ext4_inode_info *ei = EXT4_I(inode);
-	struct ext4_crypt_info *ci = ei->i_crypt_info;
-	struct crypto_ablkcipher *ctfm;
 	int res;
 
 	/* Check if the crypto policy is set on the inode */
 	res = ext4_encrypted_inode(inode);
 	if (res == 0)
-		return 0;
+		return NULL;
 
-	res = ext4_get_encryption_info(inode);
-	if (res < 0)
-		return res;
-	ci = ei->i_crypt_info;
+	if (!ext4_has_encryption_key(inode))
+		ext4_generate_encryption_key(inode);
 
-	if (!ci || ci->ci_ctfm)
-		return 0;
+	/* Get a crypto context based on the key. */
+	ctx = ext4_alloc_fname_crypto_ctx(&(ei->i_crypt_info));
+	if (IS_ERR(ctx))
+		return ctx;
 
-	if (ci->ci_mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
-		printk_once(KERN_WARNING "ext4: unsupported key mode %d\n",
-			    ci->ci_mode);
-		return -ENOKEY;
+	ctx->flags = ei->i_crypt_policy_flags;
+	if (ctx->has_valid_key) {
+		if (ctx->ci.ci_mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
+			printk_once(KERN_WARNING
+				    "ext4: unsupported key mode %d\n",
+				    ctx->ci.ci_mode);
+			return ERR_PTR(-ENOKEY);
+		}
+
+		/* As a first cut, we will allocate new tfm in every call.
+		 * later, we will keep the tfm around, in case the key gets
+		 * re-used */
+		if (ctx->ctfm == NULL) {
+			ctx->ctfm = crypto_alloc_ablkcipher("cts(cbc(aes))",
+					0, 0);
+		}
+		if (IS_ERR(ctx->ctfm)) {
+			res = PTR_ERR(ctx->ctfm);
+			printk(
+			    KERN_DEBUG "%s: error (%d) allocating crypto tfm\n",
+			    __func__, res);
+			ctx->ctfm = NULL;
+			ext4_put_fname_crypto_ctx(&ctx);
+			return ERR_PTR(res);
+		}
+		if (ctx->ctfm == NULL) {
+			printk(
+			    KERN_DEBUG "%s: could not allocate crypto tfm\n",
+			    __func__);
+			ext4_put_fname_crypto_ctx(&ctx);
+			return ERR_PTR(-ENOMEM);
+		}
+		ctx->lim = max_ciphertext_len;
+		crypto_ablkcipher_clear_flags(ctx->ctfm, ~0);
+		crypto_tfm_set_flags(crypto_ablkcipher_tfm(ctx->ctfm),
+			CRYPTO_TFM_REQ_WEAK_KEY);
+
+		/* If we are lucky, we will get a context that is already
+		 * set up with the right key. Else, we will have to
+		 * set the key */
+		if (!ctx->ctfm_key_is_ready) {
+			/* Since our crypto objectives for filename encryption
+			 * are pretty weak,
+			 * we directly use the inode master key */
+			res = crypto_ablkcipher_setkey(ctx->ctfm,
+					ctx->ci.ci_raw, ctx->ci.ci_size);
+			if (res) {
+				ext4_put_fname_crypto_ctx(&ctx);
+				return ERR_PTR(-EIO);
+			}
+			ctx->ctfm_key_is_ready = 1;
+		} else {
+			/* In the current implementation, key should never be
+			 * marked "ready" for a context that has just been
+			 * allocated. So we should never reach here */
+			 BUG();
+		}
+	}
+	if (ctx->htfm == NULL)
+		ctx->htfm = crypto_alloc_hash("sha256", 0, CRYPTO_ALG_ASYNC);
+	if (IS_ERR(ctx->htfm)) {
+		res = PTR_ERR(ctx->htfm);
+		printk(KERN_DEBUG "%s: error (%d) allocating hash tfm\n",
+			__func__, res);
+		ctx->htfm = NULL;
+		ext4_put_fname_crypto_ctx(&ctx);
+		return ERR_PTR(res);
+	}
+	if (ctx->htfm == NULL) {
+		printk(KERN_DEBUG "%s: could not allocate hash tfm\n",
+				__func__);
+		ext4_put_fname_crypto_ctx(&ctx);
+		return ERR_PTR(-ENOMEM);
 	}
 
-	ctfm = crypto_alloc_ablkcipher("cts(cbc(aes))", 0, 0);
-	if (!ctfm || IS_ERR(ctfm)) {
-		res = ctfm ? PTR_ERR(ctfm) : -ENOMEM;
-		printk(KERN_DEBUG "%s: error (%d) allocating crypto tfm\n",
-		       __func__, res);
-		return res;
-	}
-	crypto_ablkcipher_clear_flags(ctfm, ~0);
-	crypto_tfm_set_flags(crypto_ablkcipher_tfm(ctfm),
-			     CRYPTO_TFM_REQ_WEAK_KEY);
-
-	res = crypto_ablkcipher_setkey(ctfm, ci->ci_raw, ci->ci_size);
-	if (res) {
-		crypto_free_ablkcipher(ctfm);
-		return -EIO;
-	}
-	ci->ci_ctfm = ctfm;
-	return 0;
+	return ctx;
 }
 
 /**
@@ -309,20 +420,40 @@ u32 ext4_fname_crypto_round_up(u32 size, u32 blksize)
 }
 
 /**
+ * ext4_fname_crypto_namelen_on_disk() -
+ */
+int ext4_fname_crypto_namelen_on_disk(struct ext4_fname_crypto_ctx *ctx,
+				      u32 namelen)
+{
+	u32 ciphertext_len;
+	int padding = 4 << (ctx->flags & EXT4_POLICY_FLAGS_PAD_MASK);
+
+	if (ctx == NULL)
+		return -EIO;
+	if (!(ctx->has_valid_key))
+		return -EACCES;
+	ciphertext_len = (namelen < EXT4_CRYPTO_BLOCK_SIZE) ?
+		EXT4_CRYPTO_BLOCK_SIZE : namelen;
+	ciphertext_len = ext4_fname_crypto_round_up(ciphertext_len, padding);
+	ciphertext_len = (ciphertext_len > ctx->lim)
+			? ctx->lim : ciphertext_len;
+	return (int) ciphertext_len;
+}
+
+/**
  * ext4_fname_crypto_alloc_obuff() -
  *
  * Allocates an output buffer that is sufficient for the crypto operation
  * specified by the context and the direction.
  */
-int ext4_fname_crypto_alloc_buffer(struct inode *inode,
+int ext4_fname_crypto_alloc_buffer(struct ext4_fname_crypto_ctx *ctx,
 				   u32 ilen, struct ext4_str *crypto_str)
 {
 	unsigned int olen;
-	int padding = 16;
-	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
+	int padding = 4 << (ctx->flags & EXT4_POLICY_FLAGS_PAD_MASK);
 
-	if (ci)
-		padding = 4 << (ci->ci_flags & EXT4_POLICY_FLAGS_PAD_MASK);
+	if (!ctx)
+		return -EIO;
 	if (padding < EXT4_CRYPTO_BLOCK_SIZE)
 		padding = EXT4_CRYPTO_BLOCK_SIZE;
 	olen = ext4_fname_crypto_round_up(ilen, padding);
@@ -353,7 +484,7 @@ void ext4_fname_crypto_free_buffer(struct ext4_str *crypto_str)
 /**
  * ext4_fname_disk_to_usr() - converts a filename from disk space to user space
  */
-int _ext4_fname_disk_to_usr(struct inode *inode,
+int _ext4_fname_disk_to_usr(struct ext4_fname_crypto_ctx *ctx,
 			    struct dx_hash_info *hinfo,
 			    const struct ext4_str *iname,
 			    struct ext4_str *oname)
@@ -361,6 +492,8 @@ int _ext4_fname_disk_to_usr(struct inode *inode,
 	char buf[24];
 	int ret;
 
+	if (ctx == NULL)
+		return -EIO;
 	if (iname->len < 3) {
 		/*Check for . and .. */
 		if (iname->name[0] == '.' && iname->name[iname->len-1] == '.') {
@@ -370,8 +503,8 @@ int _ext4_fname_disk_to_usr(struct inode *inode,
 			return oname->len;
 		}
 	}
-	if (EXT4_I(inode)->i_crypt_info)
-		return ext4_fname_decrypt(inode, iname, oname);
+	if (ctx->has_valid_key)
+		return ext4_fname_decrypt(ctx, iname, oname);
 
 	if (iname->len <= EXT4_FNAME_CRYPTO_DIGEST_SIZE) {
 		ret = digest_encode(iname->name, iname->len, oname->name);
@@ -390,7 +523,7 @@ int _ext4_fname_disk_to_usr(struct inode *inode,
 	return ret + 1;
 }
 
-int ext4_fname_disk_to_usr(struct inode *inode,
+int ext4_fname_disk_to_usr(struct ext4_fname_crypto_ctx *ctx,
 			   struct dx_hash_info *hinfo,
 			   const struct ext4_dir_entry_2 *de,
 			   struct ext4_str *oname)
@@ -398,20 +531,21 @@ int ext4_fname_disk_to_usr(struct inode *inode,
 	struct ext4_str iname = {.name = (unsigned char *) de->name,
 				 .len = de->name_len };
 
-	return _ext4_fname_disk_to_usr(inode, hinfo, &iname, oname);
+	return _ext4_fname_disk_to_usr(ctx, hinfo, &iname, oname);
 }
 
 
 /**
  * ext4_fname_usr_to_disk() - converts a filename from user space to disk space
  */
-int ext4_fname_usr_to_disk(struct inode *inode,
+int ext4_fname_usr_to_disk(struct ext4_fname_crypto_ctx *ctx,
 			   const struct qstr *iname,
 			   struct ext4_str *oname)
 {
 	int res;
-	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
 
+	if (ctx == NULL)
+		return -EIO;
 	if (iname->len < 3) {
 		/*Check for . and .. */
 		if (iname->name[0] == '.' &&
@@ -422,8 +556,8 @@ int ext4_fname_usr_to_disk(struct inode *inode,
 			return oname->len;
 		}
 	}
-	if (ci) {
-		res = ext4_fname_encrypt(inode, iname, oname);
+	if (ctx->has_valid_key) {
+		res = ext4_fname_encrypt(ctx, iname, oname);
 		return res;
 	}
 	/* Without a proper key, a user is not allowed to modify the filenames
@@ -435,13 +569,16 @@ int ext4_fname_usr_to_disk(struct inode *inode,
 int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
 			      int lookup, struct ext4_filename *fname)
 {
-	struct ext4_crypt_info *ci;
+	struct ext4_fname_crypto_ctx *ctx;
 	int ret = 0, bigname = 0;
 
 	memset(fname, 0, sizeof(struct ext4_filename));
 	fname->usr_fname = iname;
 
-	if (!ext4_encrypted_inode(dir) ||
+	ctx = ext4_get_fname_crypto_ctx(dir, EXT4_NAME_LEN);
+	if (IS_ERR(ctx))
+		return PTR_ERR(ctx);
+	if ((ctx == NULL) ||
 	    ((iname->name[0] == '.') &&
 	     ((iname->len == 1) ||
 	      ((iname->name[1] == '.') && (iname->len == 2))))) {
@@ -449,16 +586,12 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
 		fname->disk_name.len = iname->len;
 		goto out;
 	}
-	ret = ext4_setup_fname_crypto(dir);
-	if (ret)
-		return ret;
-	ci = EXT4_I(dir)->i_crypt_info;
-	if (ci) {
-		ret = ext4_fname_crypto_alloc_buffer(dir, iname->len,
+	if (ctx->has_valid_key) {
+		ret = ext4_fname_crypto_alloc_buffer(ctx, iname->len,
 						     &fname->crypto_buf);
 		if (ret < 0)
 			goto out;
-		ret = ext4_fname_encrypt(dir, iname, &fname->crypto_buf);
+		ret = ext4_fname_encrypt(ctx, iname, &fname->crypto_buf);
 		if (ret < 0)
 			goto out;
 		fname->disk_name.name = fname->crypto_buf.name;
@@ -501,6 +634,7 @@ int ext4_fname_setup_filename(struct inode *dir, const struct qstr *iname,
 	}
 	ret = 0;
 out:
+	ext4_put_fname_crypto_ctx(&ctx);
 	return ret;
 }
 

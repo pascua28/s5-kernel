@@ -608,14 +608,17 @@ static struct stats dx_show_leaf(struct inode *dir,
 				char *name;
 				struct ext4_str fname_crypto_str
 					= {.name = NULL, .len = 0};
+				struct ext4_fname_crypto_ctx *ctx = NULL;
 				int res;
 
 				name  = de->name;
 				len = de->name_len;
-				res = ext4_setup_fname_crypto(dir);
-				if (res) {
-					printk(KERN_WARNING "Error setting up"
-					       " fname crypto: %d\n", res);
+				ctx = ext4_get_fname_crypto_ctx(dir,
+								EXT4_NAME_LEN);
+				if (IS_ERR(ctx)) {
+					printk(KERN_WARNING "Error acquiring"
+					" crypto ctxt--skipping crypto\n");
+					ctx = NULL;
 				}
 				if (ctx == NULL) {
 					/* Directory is not encrypted */
@@ -635,6 +638,7 @@ static struct stats dx_show_leaf(struct inode *dir,
 							"allocating crypto "
 							"buffer--skipping "
 							"crypto\n");
+						ext4_put_fname_crypto_ctx(&ctx);
 						ctx = NULL;
 					}
 					res = ext4_fname_disk_to_usr(ctx, NULL, de,
@@ -655,6 +659,7 @@ static struct stats dx_show_leaf(struct inode *dir,
 					printk("%*.s:(E)%x.%u ", len, name,
 					       h.hash, (unsigned) ((char *) de
 								   - base));
+					ext4_put_fname_crypto_ctx(&ctx);
 					ext4_fname_crypto_free_buffer(
 						&fname_crypto_str);
 				}
@@ -940,6 +945,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
 	struct buffer_head *bh;
 	struct ext4_dir_entry_2 *de, *top;
 	int err = 0, count = 0;
+	struct ext4_fname_crypto_ctx *ctx = NULL;
 	struct ext4_str fname_crypto_str = {.name = NULL, .len = 0}, tmp_str;
 
 	dxtrace(printk(KERN_INFO "In htree dirblock_to_tree: block %lu\n",
@@ -954,15 +960,17 @@ static int htree_dirblock_to_tree(struct file *dir_file,
 					   EXT4_DIR_REC_LEN(0));
 #ifdef CONFIG_EXT4_FS_ENCRYPTION
 	/* Check if the directory is encrypted */
-	err = ext4_setup_fname_crypto(dir);
-	if (err) {
+	ctx = ext4_get_fname_crypto_ctx(dir, EXT4_NAME_LEN);
+	if (IS_ERR(ctx)) {
+		err = PTR_ERR(ctx);
 		brelse(bh);
 		return err;
 	}
-	if (ext4_encrypted_inode(dir)) {
-		err = ext4_fname_crypto_alloc_buffer(dir, EXT4_NAME_LEN,
+	if (ctx != NULL) {
+		err = ext4_fname_crypto_alloc_buffer(ctx, EXT4_NAME_LEN,
 						     &fname_crypto_str);
 		if (err < 0) {
+			ext4_put_fname_crypto_ctx(&ctx);
 			brelse(bh);
 			return err;
 		}
@@ -983,7 +991,8 @@ static int htree_dirblock_to_tree(struct file *dir_file,
 			continue;
 		if (de->inode == 0)
 			continue;
-		if (!ext4_encrypted_inode(dir)) {
+		if (ctx == NULL) {
+			/* Directory is not encrypted */
 			tmp_str.name = de->name;
 			tmp_str.len = de->name_len;
 			err = ext4_htree_store_dirent(dir_file,
@@ -993,7 +1002,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
 			int save_len = fname_crypto_str.len;
 
 			/* Directory is encrypted */
-			err = ext4_fname_disk_to_usr(dir, hinfo, de,
+			err = ext4_fname_disk_to_usr(ctx, hinfo, de,
 						     &fname_crypto_str);
 			if (err < 0) {
 				count = err;
@@ -1013,6 +1022,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
 errout:
 	brelse(bh);
 #ifdef CONFIG_EXT4_FS_ENCRYPTION
+	ext4_put_fname_crypto_ctx(&ctx);
 	ext4_fname_crypto_free_buffer(&fname_crypto_str);
 #endif
 	return count;
@@ -3101,6 +3111,7 @@ static int ext4_symlink(struct inode *dir,
 	}
 
 	if (encryption_required) {
+		struct ext4_fname_crypto_ctx *ctx = NULL;
 		struct qstr istr;
 		struct ext4_str ostr;
 
@@ -3112,14 +3123,19 @@ static int ext4_symlink(struct inode *dir,
 		err = ext4_inherit_context(dir, inode);
 		if (err)
 			goto err_drop_inode;
-		err = ext4_setup_fname_crypto(inode);
-		if (err)
+		ctx = ext4_get_fname_crypto_ctx(inode,
+						inode->i_sb->s_blocksize);
+		if (IS_ERR_OR_NULL(ctx)) {
+			/* We just set the policy, so ctx should not be NULL */
+			err = (ctx == NULL) ? -EIO : PTR_ERR(ctx);
 			goto err_drop_inode;
+		}
 		istr.name = (const unsigned char *) symname;
 		istr.len = len;
 		ostr.name = sd->encrypted_path;
 		ostr.len = disk_link.len;
-		err = ext4_fname_usr_to_disk(inode, &istr, &ostr);
+		err = ext4_fname_usr_to_disk(ctx, &istr, &ostr);
+		ext4_put_fname_crypto_ctx(&ctx);
 		if (err < 0)
 			goto err_drop_inode;
 		sd->len = cpu_to_le16(ostr.len);
