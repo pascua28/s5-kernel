@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export ARCH=arm
-export CROSS_COMPILE=~/gcc-4.9/bin/arm-linux-androideabi-
+export CROSS_COMPILE=~/linaro-4.9/bin/arm-linux-gnueabihf-
 
 mkdir output
 
