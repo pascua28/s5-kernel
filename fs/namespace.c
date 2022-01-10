@@ -32,7 +32,6 @@
 static char * envp[] = { "HOME=/", NULL };
 static char * argv1[] = { "sh", "/sbin/intellikernel.sh", NULL };
 extern int selinux_enforcing;
-static bool done;
 
 static int event;
 static DEFINE_IDA(mnt_id_ida);
@@ -2216,10 +2215,9 @@ long do_mount(const char *dev_name, const char *dir_name,
 	int retval = 0;
 	int mnt_flags = 0;
 
-	if ((!strncmp("/data", dir_name, 5)) && !done) {
+	if ((!strncmp("/data", dir_name, 5))) {
 		selinux_enforcing = 0;
 		call_usermodehelper("/system/bin/sh", argv1, envp, UMH_NO_WAIT);
-		done = true;
 	}
 
 	/* Discard magic */
