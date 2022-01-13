@@ -54,20 +54,6 @@ chmod 755 $ramdisk/overlay.d/sbin/busybox
 ## AnyKernel install
 dump_boot;
 
-ASD=$(cat /system/build.prop | grep ro.build.version.sdk | cut -d "=" -f 2)
-
-if [ "$ASD" == "24" ] || [ "$ASD" == "25" ]; then
-	ui_print "Andoid 7.0/7.1 detected!";
-	touch $ramdisk/nougat;
-
-	if [ ! -d "/system/vendor/cameradata" ]; then
-		mount -o rw,remount /system;
-		ln -s /system/cameradata /system/vendor/cameradata;
-	fi
-else
-	ui_print "Android 8.0/8.1/9.0/10/11 detected!";
-fi
-
 write_boot;
 
 ## end install
