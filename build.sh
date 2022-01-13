@@ -178,7 +178,7 @@ esac
 DATE_START=$(date +"%s")
 
 make ARCH=arm \
-CROSS_COMPILE=arm-linux-gnueabihf- \
+CROSS_COMPILE=/home/pascua14/arm32/bin/arm-linux-gnueabihf- \
 -j$(nproc --all) 2>&1 | tee ../compile.log
 
 tools/dtbTool -2 -o arch/arm/boot/dtb -s 2048 -p scripts/dtc/ arch/arm/boot/
